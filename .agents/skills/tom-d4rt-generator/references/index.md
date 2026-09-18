@@ -1,0 +1,145 @@
+# tom_d4rt_generator — Documentation Index
+
+The bridge generator reads `buildkit.yaml` / `build.yaml`, follows barrel
+files, and emits `*.b.dart` bridge registrations (plus relaxer wrappers,
+generic-constructor factories, and proxy classes) that let the `tom_d4rt`
+interpreter call native Dart code. This index is the navigable entry point to
+the generator's documentation, organized by the four mechanism areas that the
+proxy/relaxer optimization work (quest `d4rt`) consolidated.
+
+> Maintenance note: the generator is the **single source of truth** for every
+> `*.b.dart`. Never hand-edit generated files — fix the generator and
+> regenerate. See the quest rule in `_ai/quests/d4rt/overview.d4rt.md`.
+
+---
+
+## Getting started
+
+| Doc | What it covers |
+|-----|----------------|
+| [bridgegenerator_user_guide.md](bridgegenerator_user_guide.md) | Quick start: dependencies, annotations, running `build_runner`. |
+| [tom_d4rt_generator_configuration.md](tom_d4rt_generator_configuration.md) | **Authoritative** full `d4rtgen:` `buildkit.yaml` configuration model — every top-level and per-module key, advanced entry shapes, facades/annotations. |
+| [d4rt_generator_cli_user_guide.md](d4rt_generator_cli_user_guide.md) | The `d4rtgen` CLI (no-build_runner generation, CI, batch). |
+| [bridgegenerator_user_reference.md](bridgegenerator_user_reference.md) | `build.yaml` builder-configuration reference. |
+
+---
+
+## The four mechanism areas
+
+The generator emits four categories of artifact. The labels **A–D** are the
+ones used throughout the codebase:
+
+| Cat | Artifact | Selection | Canonical doc |
+|-----|----------|-----------|---------------|
+| **A** | `$Relaxed*<V>` type-relaxing wrapper classes | auto (1 type param) | [generics_wrapper_and_type_relaxation_strategy.md](generics_wrapper_and_type_relaxation_strategy.md) |
+| **B** | `_relax*` factory switches (`registerGenericTypeWrapper`) | auto + combinatorial | [generics_wrapper_and_type_relaxation_strategy.md](generics_wrapper_and_type_relaxation_strategy.md) |
+| **C** | `_rc2*` generic-constructor factories (`registerGenericConstructor`) | auto + combinatorial | [generic_constructor_and_other_extensions.md](generic_constructor_and_other_extensions.md) |
+| **D** | `D4rt*` proxy classes (`registerInterfaceProxy`) | explicit `proxyClasses:` | [proxy_class_generation.md](proxy_class_generation.md) |
+
+### 1. Categories — wrappers, relaxers, constructor factories, proxies
+
+- **Type relaxation (A/B):** why erased generics (`ValueNotifier<dynamic>` ≠
+  `ValueNotifier<MagnifierInfo>`) need relaxing wrappers and factory switches —
+  [generics_wrapper_and_type_relaxation_strategy.md](generics_wrapper_and_type_relaxation_strategy.md).
+- **Generic constructors + runtime extensions (C):** the RC-1…RC-5 runtime
+  registration categories that complement the generated bridges —
+  [generic_constructor_and_other_extensions.md](generic_constructor_and_other_extensions.md).
+- **Proxy classes (D):** native subclasses of abstract framework classes
+  (`CustomPainter`, `FlowDelegate`, …) that delegate to interpreter callbacks —
+  [proxy_class_generation.md](proxy_class_generation.md).
+
+### 2. Reduction config — deciding what gets emitted
+
+The combinatorial B/C switch families dominate generated size. The reduction
+knobs let a consumer trade generate-everything for a scanned allowlist.
+
+- [tom_d4rt_generator_configuration.md](tom_d4rt_generator_configuration.md) —
+  the `generateAllRelaxers` / `relaxerClasses` / `additionalRelaxerTypes` knobs.
+- [generate_allowlists.md](generate_allowlists.md) — what the
+  `corpus_relaxer_allowlist.yaml` relaxer allowlist is, why it exists, and how to
+  regenerate it with `scan_corpus_types` (also covers the deprecated allowlist).
+
+### 3. User registration — overriding what the generator can't derive
+
+- [user_bridge_user_guide.md](user_bridge_user_guide.md) — authoring
+  `@D4rtUserBridge` overrides for members the generator handles incorrectly.
+- [userbridge_override_design.md](userbridge_override_design.md) — the design
+  of the override pre-scan and registration routing.
+- Programmatic registration (`registerRelaxerFactory`, the typed-execute and
+  extension-hook API) is covered in the `tom_d4rt_ast` docs
+  (`extension_registration.md`); the generator emits the registrations these
+  consume.
+
+### 4. Annotation patterns — declared variant generation
+
+- [user_proxy_relaxer_annotations.md](user_proxy_relaxer_annotations.md) —
+  `@D4rtUserProxy` / `@D4rtUserRelaxer` declare the concrete type-argument
+  variants the generator should emit for a base class, including the single-`*`
+  wildcard pattern (`$0` full / `$1` captured) and multi-type-param expansion.
+  The doc covers the variant syntax, three worked examples
+  (explicit multi-param, wildcard, single-param), the expansion/rendering API,
+  the `UserProxyRelaxerScanner` element-walker, the unit/resolution tests
+  (`G-UVP-*`, `G-UPR-*`, `G-UPS-*`), and the deferred emission/regen/integration
+  tail. The parsing/expansion engine (`lib/src/user_variant_pattern.dart`),
+  annotations, directive core, and scanner shipped alongside `mixinVariants`
+  and `typeArgVariants`; the **annotation-driven emission** is part of the
+  deferred tail (see Status below).
+
+### Deprecated-symbol allowlist (`@Deprecated` opt-in)
+
+- [deprecated_allowlist.md](deprecated_allowlist.md) — the per-symbol
+  `ModuleConfig.deprecatedAllowlist` knob. The generator skips
+  every `@Deprecated` element by default; this list opts **one** deprecated
+  top-level symbol back in by simple name without flipping the whole module to
+  `generateDeprecatedElements: true`. The doc covers the config knob, the
+  `_isDeprecatedExcluded` decision site, the byte-identical empty default,
+  granularity (top-level simple names only → `@D4rtUserBridge` for members), the
+  unit tests (`G-DEP-1..4`), and the deferred both-twin regen / integration tail.
+
+### Web-divergence registry (VM↔web signature skew)
+
+- [vm_web_skew_coercion.md](vm_web_skew_coercion.md) — the full reference:
+  `_vmWebSkewNonNullParams` in `bridge_generator.dart` records parameters that
+  are nullable on the VM SDK but non-nullable on web (dart2js), so the
+  generator can emit a `?? default` coercion. Seeded with
+  `SceneBuilder.pushOpacity.offset`. Gated behind the default-off
+  `enableVmWebSkewCoercion` flag. The doc
+  covers the mechanism (registry / gate / integration site), the
+  extend-the-registry recipe, the interim `SceneBuilderUserBridge` override and
+  its retirement, the unit tests, and the deferred both-twin regen tail.
+
+---
+
+## Status — shipped cores vs. deferred tails
+
+The proxy/relaxer optimization work shipped each mechanism's **analyzer-free /
+config core with unit tests** while deferring the heavyweight tails
+(annotation-driven emission, both-twin regeneration, serial `flutter test` +
+dart2js/web smoke, and obsolete-code removal). The authoritative live status is
+`_ai/quests/d4rt/todos.d4rt.todo.yaml` — the quest's todo file, which carries
+each deferred tail as its own entry.
+
+The worked-sample apps live under `tom_d4rt_flutter_test/example/` (calculator,
+clock_face, counter_app, stopwatch_laps, tip_calculator) — **not** `lib/`, as
+some older prose states. [worked_samples.md](worked_samples.md) catalogs them
+against the mechanisms they exercise and points at the in-tester runner harness
+(`sample_apps_in_tester_test.dart`); the `G-WSD-*` drift guard keeps the
+catalog's sample references from rotting. The purpose-built per-fix-path samples
+(missing-relaxer error + the reduction-knob/user-annotation fix paths) remain
+deferred — they need the annotation-driven emission live first.
+
+---
+
+## Development records
+
+Step-0 component reviews/baselines, refactoring + regression summaries,
+re-export and fix logs, and the coverage/issue trackers are kept in the
+repository for development context but are **not published** — they are
+development-time records, not user documentation, and are excluded from the
+package via `.pubignore`. The live backlog lives in the quest folder
+(`_ai/quests/d4rt/`).
+
+> Stale-prose flags (do not treat as current):
+> `generic_constructor_and_other_extensions.md` references `tom_d4rt_flutterm`
+> paths — the live flutter-material twins are `tom_d4rt_flutter` and
+> `tom_d4rt_flutter_ast`.
