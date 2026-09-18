@@ -14,11 +14,11 @@ T? unwrap<T>(Object? arg) {
 }
 
 /// Registers the complete generated DartNative bridges into a [D4rt] interpreter.
-void registerDartNativeBridges(D4rt interpreter) {
+void registerDartNativeBridges(D4rt interpreter, {void Function(String message)? onLog}) {
   DartnativeUiBridge.registerBridges(
     interpreter,
     'package:dartnative/dartnative.dart',
   );
-  registerWidgetInterfaceProxies(interpreter);
+  registerWidgetInterfaceProxies(interpreter, onLog: onLog);
 }
 

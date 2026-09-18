@@ -278,6 +278,31 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
 }
 ''';
 
+  final List<String> _consoleLogs = [];
+
+  void _handleGuestLog(String message) {
+    // 1. Output to IDE debug console / device stdout
+    Zone.root.print('[GuestApp] $message');
+
+    // 2. Keep in local log history (last 100 entries)
+    _consoleLogs.add(message);
+    if (_consoleLogs.length > 100) {
+      _consoleLogs.removeAt(0);
+    }
+
+    // 3. Stream over WebSocket to the dev server terminal
+    if (_devSocket != null && _devSocket!.readyState == WebSocket.open) {
+      try {
+        _devSocket!.add(jsonEncode({
+          'type': 'log',
+          'level': 'INFO',
+          'message': message,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        }));
+      } catch (_) {}
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -286,7 +311,7 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
 
   void _initInterpreter() {
     _interpreter = D4rt();
-    registerDartNativeBridges(_interpreter);
+    registerDartNativeBridges(_interpreter, onLog: _handleGuestLog);
     _interpreter.registertopLevelFunction(
       'exitToLauncher',
       (visitor, positional, named, typeArgs) {
@@ -445,48 +470,62 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
 
       final Object? rawResult;
       if (currentScript.contains(RegExp(r'\bmain\s*\('))) {
-        rawResult = _interpreter.execute(
-          source: currentScript,
-          name: 'main',
-          library: 'package:guest_app/main.dart',
-          sources: _isLiveDevMode ? _liveSources : null,
+        rawResult = runZoned(
+          () => _interpreter.execute(
+            source: currentScript,
+            name: 'main',
+            library: 'package:guest_app/main.dart',
+            sources: _isLiveDevMode ? _liveSources : null,
+          ),
+          zoneSpecification: ZoneSpecification(
+            print: (self, parent, zone, line) {
+              _handleGuestLog(line);
+            },
+          ),
         );
       } else {
         // Pass the current state & action callbacks directly to the interpreted entrypoint
-        rawResult = _interpreter.execute(
-          source: currentScript,
-          name: 'buildUI',
-          library: 'package:guest_app/main.dart',
-          sources: _isLiveDevMode ? _liveSources : null,
-          positionalArgs: [
-            _counter,
-            () {
-              setState(() {
-                _counter += step;
-              });
-              _evaluateInterpretedUI();
+        rawResult = runZoned(
+          () => _interpreter.execute(
+            source: currentScript,
+            name: 'buildUI',
+            library: 'package:guest_app/main.dart',
+            sources: _isLiveDevMode ? _liveSources : null,
+            positionalArgs: [
+              _counter,
+              () {
+                setState(() {
+                  _counter += step;
+                });
+                _evaluateInterpretedUI();
+              },
+              () {
+                setState(() {
+                  _counter -= step;
+                });
+                _evaluateInterpretedUI();
+              },
+              () {
+                setState(() {
+                  _counter = 0;
+                });
+                _evaluateInterpretedUI();
+              },
+              () {
+                if (!_isLiveDevMode) {
+                  _triggerHotReload();
+                }
+              },
+              () {
+                _unmountApp();
+              },
+            ],
+          ),
+          zoneSpecification: ZoneSpecification(
+            print: (self, parent, zone, line) {
+              _handleGuestLog(line);
             },
-            () {
-              setState(() {
-                _counter -= step;
-              });
-              _evaluateInterpretedUI();
-            },
-            () {
-              setState(() {
-                _counter = 0;
-              });
-              _evaluateInterpretedUI();
-            },
-            () {
-              if (!_isLiveDevMode) {
-                _triggerHotReload();
-              }
-            },
-            () {
-              _unmountApp();
-            },
-          ],
+          ),
         );
       }
 
@@ -662,6 +701,38 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               onPressed: _mountApp,
             ),
+            if (_consoleLogs.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                color: const Color(0xFF1E1E24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Recent Logs (from guest app):',
+                      style: TextStyle(
+                        color: Color(0xFF8E8E93),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    ..._consoleLogs.reversed.take(4).map(
+                          (log) => Text(
+                            '> $log',
+                            style: const TextStyle(
+                              color: Color(0xFF00D2FF),
+                              fontSize: 11,
+                              fontFamily: 'Courier',
+                            ),
+                          ),
+                        ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             const Text(
               'Real-time interpreted hot reload powered by tom_d4rt',

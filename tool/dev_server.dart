@@ -53,6 +53,15 @@ Future<void> main(List<String> args) async {
         print('[DevServer] 📱 Client connected via WebSocket (${sockets.length} active)');
         socket.listen(
           (message) {
+            try {
+              final data = jsonDecode(message as String);
+              if (data is Map && data['type'] == 'log') {
+                final time = DateTime.now().toIso8601String().substring(11, 19);
+                final msg = data['message'] ?? '';
+                print('\x1B[36m[$time][Device Log]\x1B[0m $msg');
+                return;
+              }
+            } catch (_) {}
             print('[DevServer] Received message: $message');
           },
           onDone: () {
