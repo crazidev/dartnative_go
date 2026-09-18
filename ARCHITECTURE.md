@@ -116,6 +116,21 @@
     - `yieldVoidCallbacks: true`: Wraps void bridged callbacks in an asynchronous micro-yield (`Future.delayed(Duration.zero)`) after calling the interpreted handler, returning a slice of the event loop to Flutter for smooth touch gestures and animations.
     - `generateDartscript: true` & `registrationClass: DartnativeGoBridges`: Generates [`lib/src/interpreter/dartscript.b.dart`](file:///Users/mac/Dev/projects/dartnative_go/lib/src/interpreter/dartscript.b.dart) to automatically register both primary and sub-package barrels (`src/core.dart`, `src/widgets.dart`, `src/framework.dart`) as well as RC-2 / GEN-079 relaxer factories.
 
+### Problem 7: Stale Closures / Callbacks Not Updating on Hot Reload
+* **Challenge**: When editing callbacks in imported submodules (e.g., updating `onPressed: () { print("onPressed: reset count 2"); }` in `reset_button.dart`), live hot reloads failed to take effect until a manual hot restart was performed.
+* **Root Causes**:
+  1. `tom_d4rt`'s internal `ModuleLoader._moduleCache` retained previously parsed AST `CompilationUnit` objects for imported modules across `execute()` calls on the same interpreter instance.
+  2. Flutter's element reconciliation (`canUpdate`) preserved existing child state elements without triggering a re-render of their `build()` methods.
+* **Solution**:
+  - **Interpreter Session Disposal**: On reload, invoke `_interpreter.dispose()`, calling `releaseLoadedModules()` to purge `_moduleLoader._moduleCache` and re-parse all updated files from `_liveSources`.
+  - **Generational Remounting**: Increment `_reloadGeneration++` and mount the root inside `KeyedSubtree(key: ValueKey('guest_root_$_reloadGeneration'))`. This ensures that all widgets and state closures recreate with the newly parsed closures.
+
+### Problem 8: First-Class App Lifecycle & Safe `setState` Execution
+* **Challenge**: Complex guest applications create long-lived listeners, tickers, and streams that outlive a single widget frame, and mid-build `setState` calls can crash the engine.
+* **Solution**:
+  - Implemented [`D4rtFlutterApplication`](file:///Users/mac/Dev/projects/dartnative_go/lib/src/interpreter/d4rt_flutter_application.dart) supporting `onMount` and `onUnmount` hooks invoked automatically across reloads and disconnects.
+  - Implemented safe `setState` deferral via microtask scheduling when invoked during active render passes.
+
 ---
 
 ## 5. Directory Structure & Key Files
