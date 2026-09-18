@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Dartscript registration for dartnative_go
-// Generated: 2026-09-18T05:43:29.596946 by tom_d4rt_generator 1.26.2
+// Generated: 2026-09-18T06:05:52.269041 by tom_d4rt_generator 1.26.2
 
 /// D4rt Bridge Registration for dartnative_go
 library;

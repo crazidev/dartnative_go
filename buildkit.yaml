@@ -14,5 +14,4 @@ d4rtgen:
       barrelFiles:
         - package:dartnative/dartnative.dart
       barrelImport: package:dartnative/dartnative.dart
-      followAllReExports: true
       outputPath: lib/src/interpreter/dartnative_bridges.b.dart

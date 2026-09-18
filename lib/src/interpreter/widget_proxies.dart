@@ -127,18 +127,38 @@ class InterpretedStateProxy extends State<StatefulWidget> {
   }
 
   @override
+  void setState(VoidCallback fn) {
+    if (!mounted) return;
+    try {
+      super.setState(fn);
+    } catch (_) {
+      // If called during build or layout pass, defer execution cleanly
+      scheduleMicrotask(() {
+        if (mounted) {
+          super.setState(fn);
+        }
+      });
+    }
+  }
+
+  @override
   void didUpdateWidget(covariant StatefulWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (_isDispatchingDidUpdateWidget) return;
     _isDispatchingDidUpdateWidget = true;
     try {
       _runWithLogCapture(() {
-        stateInstance.interpretedStatefulWidget = ownerWidget.instance;
+        if (widget is InterpretedStatefulWidget) {
+          stateInstance.interpretedStatefulWidget =
+              (widget as InterpretedStatefulWidget).instance;
+        }
         final method = stateInstance.klass.findInstanceMethod('didUpdateWidget');
         if (method != null) {
           final callable = stateInstance.bindMethodCached(method);
           callable.call(visitor, [oldWidget], {});
         }
+        // Ensure stateful widget triggers rebuild with new properties and closures
+        setState(() {});
       });
     } finally {
       _isDispatchingDidUpdateWidget = false;

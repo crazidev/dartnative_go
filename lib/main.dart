@@ -7,6 +7,7 @@ import 'package:dartnative/dartnative.dart';
 
 import 'dartnative_plugin_registrant.dart';
 import 'src/interpreter/auto_import_parser.dart';
+import 'src/interpreter/d4rt_flutter_application.dart';
 import 'src/interpreter/dn_bridge.dart';
 
 void main() {
@@ -33,10 +34,12 @@ class DartNativeGoShell extends StatefulWidget {
 }
 
 class _DartNativeGoShellState extends State<DartNativeGoShell> {
-  // Application mounting state
+  // Launcher / OTA state
   bool _isAppMounted = false;
   int _counter = 0;
   int _scriptVersion = 1;
+  int _reloadGeneration = 0;
+  D4rtFlutterApplication? _activeApplication;
   bool _isLiveDevMode = false;
   String _liveScriptSource = '';
   Map<String, String> _liveSources = {};
@@ -322,6 +325,26 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
       'package:dartnative/dartnative.dart',
       signature: 'void exitToLauncher()',
     );
+    _interpreter.registertopLevelFunction(
+      'D4rtFlutterApplication',
+      (visitor, positional, named, typeArgs) {
+        final rootWidget = unwrap<Widget>(named['root'], visitor: visitor);
+        return D4rtFlutterApplication(
+          root: rootWidget ??
+              const Scaffold(
+                body: Center(child: Text('Empty D4rtFlutterApplication root')),
+              ),
+          onMount: named['onMount'] != null
+              ? () => D4.callInterpreterCallback(visitor, named['onMount'], [])
+              : null,
+          onUnmount: named['onUnmount'] != null
+              ? () => D4.callInterpreterCallback(visitor, named['onUnmount'], [])
+              : null,
+        );
+      },
+      'package:dartnative/dartnative.dart',
+      signature: 'D4rtFlutterApplication({required Widget root, Function? onMount, Function? onUnmount})',
+    );
   }
 
   /// Mounts the local embedded counter demo
@@ -364,7 +387,7 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
               if (data['type'] == 'reload') {
                 print('[DartNative Go] 🔄 DevServer triggered Live Hot Reload!');
                 await _fetchBundleAndSources(client);
-                _evaluateInterpretedUI();
+                _evaluateInterpretedUI(isHotReload: true);
               }
             } catch (e) {
               print('[DartNative Go] Live reload update error: $e');
@@ -448,6 +471,10 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
   void _unmountApp() {
     _devSocket?.close();
     _devSocket = null;
+    try {
+      _activeApplication?.onUnmount?.call();
+    } catch (_) {}
+    _activeApplication = null;
     setState(() {
       _isAppMounted = false;
       _isLiveDevMode = false;
@@ -457,7 +484,21 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
   }
 
   /// Evaluates the active script with current counter state & callbacks
-  void _evaluateInterpretedUI() {
+  void _evaluateInterpretedUI({bool isHotReload = false}) {
+    if (isHotReload) {
+      _reloadGeneration++;
+      try {
+        _activeApplication?.onUnmount?.call();
+      } catch (_) {}
+      _activeApplication = null;
+      // Step #3: Dispose prior interpreter session to drop ModuleLoader._moduleCache
+      // so all modified files (like reset_button.dart) are parsed fresh!
+      try {
+        _interpreter.dispose();
+      } catch (_) {}
+      _initInterpreter();
+    }
+
     try {
       final rawScript = _isLiveDevMode
           ? _liveScriptSource
@@ -530,6 +571,13 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
         );
       }
 
+      if (rawResult is D4rtFlutterApplication) {
+        _activeApplication = rawResult;
+        try {
+          rawResult.onMount?.call();
+        } catch (_) {}
+      }
+
       final widget = unwrap<Widget>(rawResult, visitor: _interpreter.visitor);
       if (widget == null) {
         throw StateError(
@@ -537,6 +585,14 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
           'Ensure your main() or buildUI() returns a Widget.',
         );
       }
+
+      // Settle window for asynchronous framework validation (~150ms)
+      Timer(const Duration(milliseconds: 150), () {
+        if (mounted && _errorMessage == null) {
+          // Settled cleanly
+        }
+      });
+
       setState(() {
         _interpretedWidget = widget;
         _errorMessage = null;
@@ -557,7 +613,7 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
     setState(() {
       _scriptVersion = _scriptVersion == 1 ? 2 : 1;
     });
-    _evaluateInterpretedUI();
+    _evaluateInterpretedUI(isHotReload: true);
   }
 
   @override
@@ -596,13 +652,16 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
         );
       }
 
-      return _interpretedWidget ??
-          const Scaffold(
-            body: Container(
-              alignment: Alignment.center,
-              child: Text('Evaluating widget...'),
+      return KeyedSubtree(
+        key: ValueKey('guest_root_$_reloadGeneration'),
+        child: _interpretedWidget ??
+            const Scaffold(
+              body: Container(
+                alignment: Alignment.center,
+                child: Text('Evaluating widget...'),
+              ),
             ),
-          );
+      );
     }
 
     // 2. Default state: DartNative Go Launcher screen (unmounted)
