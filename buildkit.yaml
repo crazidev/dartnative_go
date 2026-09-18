@@ -1,0 +1,10 @@
+d4rtgen:
+  name: dartnative_go
+  helpersImport: package:tom_d4rt/tom_d4rt.dart
+  generateBarrel: true
+  barrelPath: lib/d4rt_bridges.b.dart
+  modules:
+    - name: dartnative_ui
+      barrelFiles:
+        - package:dartnative/dartnative.dart
+      outputPath: lib/src/interpreter/dartnative_bridges.b.dart
