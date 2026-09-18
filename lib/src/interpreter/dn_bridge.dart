@@ -1,5 +1,6 @@
 import 'package:tom_d4rt/tom_d4rt.dart';
 import '../../d4rt_bridges.b.dart';
+import 'widget_proxies.dart';
 
 /// Helper to unwrap native Dart objects from d4rt's [BridgedInstance] or raw objects.
 T? unwrap<T>(Object? arg) {
@@ -18,4 +19,6 @@ void registerDartNativeBridges(D4rt interpreter) {
     interpreter,
     'package:dartnative/dartnative.dart',
   );
+  registerWidgetInterfaceProxies(interpreter);
 }
+

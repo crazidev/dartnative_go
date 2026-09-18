@@ -286,6 +286,15 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
   void _initInterpreter() {
     _interpreter = D4rt();
     registerDartNativeBridges(_interpreter);
+    _interpreter.registertopLevelFunction(
+      'exitToLauncher',
+      (visitor, positional, named, typeArgs) {
+        _unmountApp();
+        return null;
+      },
+      'package:dartnative/dartnative.dart',
+      signature: 'void exitToLauncher()',
+    );
   }
 
   /// Mounts the local embedded counter demo
@@ -386,40 +395,48 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
           : (_scriptVersion == 1 ? _counterScriptV1 : _counterScriptV2);
       final step = _isLiveDevMode ? 1 : (_scriptVersion == 1 ? 1 : 5);
 
-      // Pass the current state & action callbacks directly to the interpreted entrypoint
-      final rawResult = _interpreter.execute(
-        source: currentScript,
-        name: 'buildUI',
-        positionalArgs: [
-          _counter,
-          () {
-            setState(() {
-              _counter += step;
-            });
-            _evaluateInterpretedUI();
-          },
-          () {
-            setState(() {
-              _counter -= step;
-            });
-            _evaluateInterpretedUI();
-          },
-          () {
-            setState(() {
-              _counter = 0;
-            });
-            _evaluateInterpretedUI();
-          },
-          () {
-            if (!_isLiveDevMode) {
-              _triggerHotReload();
-            }
-          },
-          () {
-            _unmountApp();
-          },
-        ],
-      );
+      final Object? rawResult;
+      if (currentScript.contains(RegExp(r'\bmain\s*\('))) {
+        rawResult = _interpreter.execute(
+          source: currentScript,
+          name: 'main',
+        );
+      } else {
+        // Pass the current state & action callbacks directly to the interpreted entrypoint
+        rawResult = _interpreter.execute(
+          source: currentScript,
+          name: 'buildUI',
+          positionalArgs: [
+            _counter,
+            () {
+              setState(() {
+                _counter += step;
+              });
+              _evaluateInterpretedUI();
+            },
+            () {
+              setState(() {
+                _counter -= step;
+              });
+              _evaluateInterpretedUI();
+            },
+            () {
+              setState(() {
+                _counter = 0;
+              });
+              _evaluateInterpretedUI();
+            },
+            () {
+              if (!_isLiveDevMode) {
+                _triggerHotReload();
+              }
+            },
+            () {
+              _unmountApp();
+            },
+          ],
+        );
+      }
 
       final widget = unwrap<Widget>(rawResult);
       setState(() {
