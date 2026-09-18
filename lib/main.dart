@@ -6,6 +6,7 @@ import 'package:tom_d4rt/tom_d4rt.dart';
 import 'package:dartnative/dartnative.dart';
 
 import 'dartnative_plugin_registrant.dart';
+import 'src/interpreter/auto_import_parser.dart';
 import 'src/interpreter/dn_bridge.dart';
 
 void main() {
@@ -401,18 +402,14 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
       if (bundleRes.statusCode == HttpStatus.ok) {
         final jsonStr = await bundleRes.transform(utf8.decoder).join();
         final Map<String, dynamic> rawMap = jsonDecode(jsonStr);
-        final mapped = <String, String>{};
+        final rawFiles = <String, String>{};
         rawMap.forEach((path, code) {
-          final s = code.toString();
-          mapped['package:guest_app/$path'] = s;
-          mapped[path] = s;
-          final norm = path.startsWith('/') ? path.substring(1) : path;
-          mapped[norm] = s;
-          mapped['file:///$norm'] = s;
-          mapped['file:///guest_app/$norm'] = s;
+          rawFiles[path] = code.toString();
         });
-        _liveSources = mapped;
-        _liveScriptSource = mapped['package:guest_app/main.dart'] ?? mapped['main.dart'] ?? '';
+        _liveSources = AutoImportParser.buildVirtualSourceMap(rawFiles);
+        _liveScriptSource = _liveSources['package:guest_app/main.dart'] ??
+            _liveSources['main.dart'] ??
+            '';
         return;
       }
     } catch (_) {}
@@ -424,11 +421,7 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
       throw HttpException('Server returned HTTP ${response.statusCode}');
     }
     final source = await response.transform(utf8.decoder).join();
-    _liveScriptSource = source;
-    _liveSources = {
-      'package:guest_app/main.dart': source,
-      'main.dart': source,
-    };
+    final rawFiles = {'main.dart': source};
 
     // If local guest_app directory is present (e.g. simulator or host), populate multi-file sources
     if (Directory('guest_app').existsSync()) {
@@ -439,13 +432,16 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
             final relPath = entity.path
                 .replaceFirst('${guestDir.path}/', '')
                 .replaceAll(r'\', '/');
-            final s = entity.readAsStringSync();
-            _liveSources['package:guest_app/$relPath'] = s;
-            _liveSources[relPath] = s;
+            rawFiles[relPath] = entity.readAsStringSync();
           }
         }
       } catch (_) {}
     }
+
+    _liveSources = AutoImportParser.buildVirtualSourceMap(rawFiles);
+    _liveScriptSource = _liveSources['package:guest_app/main.dart'] ??
+        _liveSources['main.dart'] ??
+        source;
   }
 
   /// Unmounts the app and returns to the Go Launcher screen
@@ -463,9 +459,14 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
   /// Evaluates the active script with current counter state & callbacks
   void _evaluateInterpretedUI() {
     try {
-      final currentScript = _isLiveDevMode
+      final rawScript = _isLiveDevMode
           ? _liveScriptSource
           : (_scriptVersion == 1 ? _counterScriptV1 : _counterScriptV2);
+      final currentScript = AutoImportParser.processAndAutoImport(
+        rawScript,
+        currentFilePath: 'main.dart',
+        projectFiles: _isLiveDevMode ? _liveSources : null,
+      );
       final step = _isLiveDevMode ? 1 : (_scriptVersion == 1 ? 1 : 5);
 
       final Object? rawResult;

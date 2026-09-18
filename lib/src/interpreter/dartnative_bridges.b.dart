@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 62 files
-// Generated: 2026-09-18T03:10:28.291718 by tom_d4rt_generator 1.26.2
+// Generated: 2026-09-18T05:43:27.884066 by tom_d4rt_generator 1.26.2
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -2451,7 +2451,7 @@ class DartnativeUiBridge {
         final cancelLabel = D4.getNamedArgWithDefault<String>(named, 'cancelLabel', 'Cancel');
         final destructiveIndices = named.containsKey('destructiveIndices') && named['destructiveIndices'] != null
             ? D4.coerceList<int>(named['destructiveIndices'], 'destructiveIndices')
-            : const <int>[];
+            : const [];
         return $dartnative_42.showActionSheet(context: context, title: title, message: message, actions: actions, cancelLabel: cancelLabel, destructiveIndices: destructiveIndices);
       },
       'showColorPicker': (visitor, positional, named, typeArgs) {
@@ -40903,7 +40903,7 @@ BridgedClass _createFastListControllerBridge() {
           throw ArgumentError('attachAnimateCallback: Missing required argument "cb" at position 0');
         }
         final cbRaw = positional[0];
-        t.attachAnimateCallback((int p0, {double alignment = 0.0, $dartnative_3.Curve curve = $dartnative_3.Curves.linear, int durationMs = 0}) { D4.callInterpreterCallback(visitor!, cbRaw, [p0], {'alignment': alignment, 'curve': curve, 'durationMs': durationMs}); });
+        t.attachAnimateCallback((int p0, {double alignment = 0.0, required $dartnative_3.Curve curve, int durationMs = 0}) { D4.callInterpreterCallback(visitor!, cbRaw, [p0], {'alignment': alignment, 'curve': curve, 'durationMs': durationMs}); });
         return null;
       },
       'detachAnimateCallback': (visitor, target, positional, named, typeArgs) {
@@ -41092,7 +41092,7 @@ BridgedClass _createFastGridControllerBridge() {
           throw ArgumentError('attachAnimateCallback: Missing required argument "cb" at position 0');
         }
         final cbRaw = positional[0];
-        t.attachAnimateCallback((int p0, {double alignment = 0.0, $dartnative_3.Curve curve = $dartnative_3.Curves.linear, int durationMs = 0}) { D4.callInterpreterCallback(visitor!, cbRaw, [p0], {'alignment': alignment, 'curve': curve, 'durationMs': durationMs}); });
+        t.attachAnimateCallback((int p0, {double alignment = 0.0, required $dartnative_3.Curve curve, int durationMs = 0}) { D4.callInterpreterCallback(visitor!, cbRaw, [p0], {'alignment': alignment, 'curve': curve, 'durationMs': durationMs}); });
         return null;
       },
       'detachAnimateCallback': (visitor, target, positional, named, typeArgs) {

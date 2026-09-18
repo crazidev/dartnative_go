@@ -2,10 +2,17 @@ d4rtgen:
   name: dartnative_go
   helpersImport: package:tom_d4rt/tom_d4rt.dart
   generateBarrel: true
-  generateProxies: true
   barrelPath: lib/d4rt_bridges.b.dart
+  generateDartscript: true
+  dartscriptPath: lib/src/interpreter/dartscript.b.dart
+  registrationClass: DartnativeGoBridges
+  generateProxies: true
+  relaxerOutputPath: lib/src/interpreter/relaxers.b.dart
+  yieldVoidCallbacks: true
   modules:
     - name: dartnative_ui
       barrelFiles:
         - package:dartnative/dartnative.dart
+      barrelImport: package:dartnative/dartnative.dart
+      followAllReExports: true
       outputPath: lib/src/interpreter/dartnative_bridges.b.dart

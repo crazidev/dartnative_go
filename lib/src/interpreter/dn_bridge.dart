@@ -1,6 +1,6 @@
 import 'package:dartnative/dartnative.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
-import '../../d4rt_bridges.b.dart';
+import 'dartscript.b.dart';
 import 'widget_proxies.dart';
 
 /// Helper to unwrap native Dart objects from d4rt's [BridgedInstance], interpreted widgets, or raw objects.
@@ -20,10 +20,7 @@ T? unwrap<T>(Object? arg, {InterpreterVisitor? visitor}) {
 
 /// Registers the complete generated DartNative bridges into a [D4rt] interpreter.
 void registerDartNativeBridges(D4rt interpreter, {void Function(String message)? onLog}) {
-  DartnativeUiBridge.registerBridges(
-    interpreter,
-    'package:dartnative/dartnative.dart',
-  );
+  DartnativeGoBridges.register(interpreter);
   registerWidgetInterfaceProxies(interpreter, onLog: onLog);
 }
 
