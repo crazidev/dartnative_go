@@ -1,5 +1,7 @@
 import 'package:dartnative/dartnative.dart';
 
+import 'reset_button.dart';
+
 external void exitToLauncher();
 
 class CounterApp extends StatefulWidget {
@@ -94,13 +96,7 @@ class _CounterAppState extends State<CounterApp> {
               ],
             ),
             const SizedBox(height: 16),
-            Button(
-              title: 'Reset Count',
-              variant: ButtonVariant.plain,
-              foregroundColor: const Color(0xFFFF3B30),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              onPressed: _reset,
-            ),
+            ResetButton(reset: _reset),
           ],
         ),
       ),

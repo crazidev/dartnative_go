@@ -69,6 +69,30 @@ Future<void> main(List<String> args) async {
           ..write('Expected WebSocket upgrade')
           ..close();
       }
+    } else if (request.uri.path == '/bundle.json') {
+      try {
+        final bundle = <String, String>{};
+        await for (final entity in guestDir.list(recursive: true)) {
+          if (entity is File && entity.path.endsWith('.dart')) {
+            final relPath = entity.path
+                .replaceFirst('${guestDir.path}/', '')
+                .replaceAll(r'\', '/');
+            bundle[relPath] = await entity.readAsString();
+          }
+        }
+        final jsonStr = jsonEncode(bundle);
+        request.response
+          ..headers.contentType = ContentType.json
+          ..headers.add('Access-Control-Allow-Origin', '*')
+          ..write(jsonStr)
+          ..close();
+        print('[DevServer] 📦 Served bundle.json (${bundle.length} files, ${jsonStr.length} bytes)');
+      } catch (e) {
+        request.response
+          ..statusCode = HttpStatus.internalServerError
+          ..write('Error reading bundle: $e')
+          ..close();
+      }
     } else if (request.uri.path == '/app.dart') {
       try {
         final content = await guestFile.readAsString();

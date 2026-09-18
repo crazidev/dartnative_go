@@ -38,6 +38,7 @@ class _DartNativeGoShellState extends State<DartNativeGoShell> {
   int _scriptVersion = 1;
   bool _isLiveDevMode = false;
   String _liveScriptSource = '';
+  Map<String, String> _liveSources = {};
   WebSocket? _devSocket;
   String? _launcherNotice;
 
@@ -315,19 +316,15 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
   /// Connects to the Live Dev Server at localhost:8088
   Future<void> _mountLiveApp() async {
     setState(() {
-      _launcherNotice = 'Connecting to dev server at http://localhost:8088/app.dart...';
+      _launcherNotice = 'Connecting to dev server at http://localhost:8088/bundle.json...';
     });
 
     try {
       final client = HttpClient();
       client.connectionTimeout = const Duration(seconds: 3);
-      final request = await client.getUrl(Uri.parse('http://localhost:8088/app.dart'));
-      final response = await request.close();
-      if (response.statusCode != HttpStatus.ok) {
-        throw HttpException('Server returned HTTP ${response.statusCode}');
-      }
-      final source = await response.transform(utf8.decoder).join();
-      _liveScriptSource = source;
+
+      // Fetch all project files as a multi-file bundle
+      await _fetchBundleAndSources(client);
 
       // Connect WebSocket for automated Hot Reload
       try {
@@ -340,12 +337,8 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
               final data = jsonDecode(message as String);
               if (data['type'] == 'reload') {
                 print('[DartNative Go] 🔄 DevServer triggered Live Hot Reload!');
-                final reloadReq = await client.getUrl(Uri.parse('http://localhost:8088/app.dart'));
-                final reloadRes = await reloadReq.close();
-                if (reloadRes.statusCode == HttpStatus.ok) {
-                  _liveScriptSource = await reloadRes.transform(utf8.decoder).join();
-                  _evaluateInterpretedUI();
-                }
+                await _fetchBundleAndSources(client);
+                _evaluateInterpretedUI();
               }
             } catch (e) {
               print('[DartNative Go] Live reload update error: $e');
@@ -375,6 +368,61 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
     }
   }
 
+  /// Fetches the project bundle from the dev server and populates [_liveSources]
+  Future<void> _fetchBundleAndSources(HttpClient client) async {
+    try {
+      final bundleReq = await client.getUrl(Uri.parse('http://localhost:8088/bundle.json'));
+      final bundleRes = await bundleReq.close();
+      if (bundleRes.statusCode == HttpStatus.ok) {
+        final jsonStr = await bundleRes.transform(utf8.decoder).join();
+        final Map<String, dynamic> rawMap = jsonDecode(jsonStr);
+        final mapped = <String, String>{};
+        rawMap.forEach((path, code) {
+          final s = code.toString();
+          mapped['package:guest_app/$path'] = s;
+          mapped[path] = s;
+          final norm = path.startsWith('/') ? path.substring(1) : path;
+          mapped[norm] = s;
+          mapped['file:///$norm'] = s;
+          mapped['file:///guest_app/$norm'] = s;
+        });
+        _liveSources = mapped;
+        _liveScriptSource = mapped['package:guest_app/main.dart'] ?? mapped['main.dart'] ?? '';
+        return;
+      }
+    } catch (_) {}
+
+    // Fallback to /app.dart if bundle.json is unavailable
+    final request = await client.getUrl(Uri.parse('http://localhost:8088/app.dart'));
+    final response = await request.close();
+    if (response.statusCode != HttpStatus.ok) {
+      throw HttpException('Server returned HTTP ${response.statusCode}');
+    }
+    final source = await response.transform(utf8.decoder).join();
+    _liveScriptSource = source;
+    _liveSources = {
+      'package:guest_app/main.dart': source,
+      'main.dart': source,
+    };
+
+    // If local guest_app directory is present (e.g. simulator or host), populate multi-file sources
+    if (Directory('guest_app').existsSync()) {
+      try {
+        final guestDir = Directory('guest_app');
+        for (final entity in guestDir.listSync(recursive: true)) {
+          if (entity is File && entity.path.endsWith('.dart')) {
+            final relPath = entity.path
+                .replaceFirst('${guestDir.path}/', '')
+                .replaceAll(r'\', '/');
+            final s = entity.readAsStringSync();
+            _liveSources['package:guest_app/$relPath'] = s;
+            _liveSources[relPath] = s;
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
   /// Unmounts the app and returns to the Go Launcher screen
   void _unmountApp() {
     _devSocket?.close();
@@ -400,12 +448,16 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
         rawResult = _interpreter.execute(
           source: currentScript,
           name: 'main',
+          library: 'package:guest_app/main.dart',
+          sources: _isLiveDevMode ? _liveSources : null,
         );
       } else {
         // Pass the current state & action callbacks directly to the interpreted entrypoint
         rawResult = _interpreter.execute(
           source: currentScript,
           name: 'buildUI',
+          library: 'package:guest_app/main.dart',
+          sources: _isLiveDevMode ? _liveSources : null,
           positionalArgs: [
             _counter,
             () {
