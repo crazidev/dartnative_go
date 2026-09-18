@@ -75,6 +75,11 @@ class InterpretedStateProxy extends State<StatefulWidget> {
   final InterpretedInstance stateInstance;
   final InterpretedStatefulWidget ownerWidget;
 
+  bool _isDispatchingInitState = false;
+  bool _isDispatchingDidChangeDependencies = false;
+  bool _isDispatchingDidUpdateWidget = false;
+  bool _isDispatchingDispose = false;
+
   InterpretedStateProxy(this.visitor, this.stateInstance, this.ownerWidget) {
     stateInstance.nativeProxy = this;
     stateInstance.bridgedSuperObject = this;
@@ -85,26 +90,59 @@ class InterpretedStateProxy extends State<StatefulWidget> {
   @override
   void initState() {
     super.initState();
-    _runWithLogCapture(() {
-      final method = stateInstance.klass.findInstanceMethod('initState');
-      if (method != null) {
-        final callable = stateInstance.bindMethodCached(method);
-        callable.call(visitor, [], {});
-      }
-    });
+    if (_isDispatchingInitState) {
+      // Re-entrant call originating from guest code's super.initState()
+      return;
+    }
+    _isDispatchingInitState = true;
+    try {
+      _runWithLogCapture(() {
+        final method = stateInstance.klass.findInstanceMethod('initState');
+        if (method != null) {
+          final callable = stateInstance.bindMethodCached(method);
+          callable.call(visitor, [], {});
+        }
+      });
+    } finally {
+      _isDispatchingInitState = false;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_isDispatchingDidChangeDependencies) return;
+    _isDispatchingDidChangeDependencies = true;
+    try {
+      _runWithLogCapture(() {
+        final method = stateInstance.klass.findInstanceMethod('didChangeDependencies');
+        if (method != null) {
+          final callable = stateInstance.bindMethodCached(method);
+          callable.call(visitor, [], {});
+        }
+      });
+    } finally {
+      _isDispatchingDidChangeDependencies = false;
+    }
   }
 
   @override
   void didUpdateWidget(covariant StatefulWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _runWithLogCapture(() {
-      stateInstance.interpretedStatefulWidget = ownerWidget.instance;
-      final method = stateInstance.klass.findInstanceMethod('didUpdateWidget');
-      if (method != null) {
-        final callable = stateInstance.bindMethodCached(method);
-        callable.call(visitor, [oldWidget], {});
-      }
-    });
+    if (_isDispatchingDidUpdateWidget) return;
+    _isDispatchingDidUpdateWidget = true;
+    try {
+      _runWithLogCapture(() {
+        stateInstance.interpretedStatefulWidget = ownerWidget.instance;
+        final method = stateInstance.klass.findInstanceMethod('didUpdateWidget');
+        if (method != null) {
+          final callable = stateInstance.bindMethodCached(method);
+          callable.call(visitor, [oldWidget], {});
+        }
+      });
+    } finally {
+      _isDispatchingDidUpdateWidget = false;
+    }
   }
 
   @override
@@ -122,15 +160,53 @@ class InterpretedStateProxy extends State<StatefulWidget> {
 
   @override
   void dispose() {
-    _runWithLogCapture(() {
-      final method = stateInstance.klass.findInstanceMethod('dispose');
-      if (method != null) {
-        final callable = stateInstance.bindMethodCached(method);
-        callable.call(visitor, [], {});
-      }
-    });
+    if (_isDispatchingDispose) return;
+    _isDispatchingDispose = true;
+    try {
+      _runWithLogCapture(() {
+        final method = stateInstance.klass.findInstanceMethod('dispose');
+        if (method != null) {
+          final callable = stateInstance.bindMethodCached(method);
+          callable.call(visitor, [], {});
+        }
+      });
+    } finally {
+      _isDispatchingDispose = false;
+    }
     super.dispose();
   }
+}
+
+/// Resolves and wraps an interpreted widget or native proxy into a native [Widget].
+Widget? wrapInterpretedWidget(Object? arg, {InterpreterVisitor? visitor}) {
+  if (arg == null) return null;
+  if (arg is Widget) return arg;
+  if (arg is InterpretedInstance) {
+    if (arg.nativeProxy is Widget) return arg.nativeProxy as Widget;
+    if (arg.bridgedSuperObject is Widget) return arg.bridgedSuperObject as Widget;
+    final effectiveVisitor = visitor ?? D4.activeVisitor;
+    if (effectiveVisitor != null) {
+      // Walk class inheritance chain to find StatefulWidget or StatelessWidget
+      var cur = arg.klass;
+      while (true) {
+        if (cur.name == 'StatefulWidget' || cur.bridgedSuperclass?.name == 'StatefulWidget') {
+          return InterpretedStatefulWidget(effectiveVisitor, arg);
+        }
+        if (cur.name == 'StatelessWidget' || cur.bridgedSuperclass?.name == 'StatelessWidget') {
+          return InterpretedStatelessWidget(effectiveVisitor, arg);
+        }
+        if (cur.superclass == null) break;
+        cur = cur.superclass!;
+      }
+      try {
+        return D4.withActiveVisitor(
+          effectiveVisitor,
+          () => D4.extractBridgedArg<Widget>(arg, 'widget', effectiveVisitor),
+        );
+      } catch (_) {}
+    }
+  }
+  return null;
 }
 
 /// Registers interface proxies for [StatelessWidget] and [StatefulWidget]

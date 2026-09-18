@@ -529,7 +529,13 @@ buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset,
         );
       }
 
-      final widget = unwrap<Widget>(rawResult);
+      final widget = unwrap<Widget>(rawResult, visitor: _interpreter.visitor);
+      if (widget == null) {
+        throw StateError(
+          'Evaluation succeeded, but could not resolve a Widget from the result ($rawResult).\n'
+          'Ensure your main() or buildUI() returns a Widget.',
+        );
+      }
       setState(() {
         _interpretedWidget = widget;
         _errorMessage = null;
