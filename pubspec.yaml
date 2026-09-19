@@ -22,6 +22,8 @@ dependencies:
   crypto: ^3.0.0
   # == Supported plugins ends ===
   tom_d4rt: any
+  tom_d4rt_ast: any
+  tom_ast_model: any
   analyzer: any
   yaml: ^3.1.2
 
@@ -29,10 +31,22 @@ dev_dependencies:
   lints: ^6.0.0
   image: ^4.0.0
   tom_d4rt_generator: any
+  tom_ast_generator: any
+  tom_d4rt_exec: any
 
 dartnative:
   assets:
     - assets/dn-logo.png
+
+# Vendored fork of tom_d4rt_ast 0.65.0 (see pkgs/tom_d4rt_ast/pubspec.yaml):
+# DartNative's patched AOT platform embeds the `package:archive` 3.x API
+# (non-const GZip codecs, nullable ZipEncoder.encode), which the pub.dev
+# release (written for archive ^4.0.9) does not compile against, breaking
+# every iOS release build at `Target kernel_snapshot_program`. The fork is
+# patched to compile against both archive 3.x (device) and 4.x (host).
+dependency_overrides:
+  tom_d4rt_ast:
+    path: pkgs/tom_d4rt_ast
 
 # Branded launch splash + app icon: add the dartnative_splash plugin from
 # dartpub.dev, then see tool/generate_app_assets.dart.

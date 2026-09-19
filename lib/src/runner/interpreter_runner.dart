@@ -9,8 +9,16 @@ import '../interpreter/dartnative_share_bridges.b.dart';
 import '../interpreter/dartnative_webview_bridges.b.dart';
 import '../interpreter/debug_controller.dart';
 import '../interpreter/dn_bridge.dart';
+import 'ast_interpreter_runner.dart';
+import 'bundle_loader.dart';
+import 'runtime_mode.dart';
 
 /// Manages dynamic execution of DartNative guest apps using tom_d4rt.
+///
+/// Dual-mode: [RuntimeMode.source] (default) executes Dart source on-device.
+/// [RuntimeMode.ast] executes pre-compiled `AstBundle` bytes once
+/// `tom_d4rt_ast` lands in the closed SDK. The flag defaults to source so
+/// existing hot-reload behavior is unchanged.
 class InterpreterRunner {
   late D4rt _interpreter;
   final DebugController _debugController = DebugController();
@@ -21,10 +29,20 @@ class InterpreterRunner {
   void Function(String message)? onLog;
   VoidCallback? onExit;
 
+  /// When true, [evaluateBundle] prefers pre-compiled AST bytes.
+  /// Defaults to [kUseAst] (false → source).
+  bool useAst;
+
   DebugController get debugController => _debugController;
   D4rt get interpreter => _interpreter;
+  RuntimeMode get runtimeMode => runtimeModeFromBool(useAst);
 
-  InterpreterRunner({this.onLog, this.onExit, this.currentServerUrl}) {
+  InterpreterRunner({
+    this.onLog,
+    this.onExit,
+    this.currentServerUrl,
+    this.useAst = kUseAst,
+  }) {
     initInterpreter();
   }
 
@@ -199,6 +217,8 @@ class InterpreterRunner {
   }
 
   /// Evaluates guest code from [source] and resolves the root [Widget].
+  ///
+  /// Source path (default). See [evaluateBundle] for mode dispatch.
   Future<Widget> evaluate({
     required String source,
     required String library,
@@ -255,6 +275,66 @@ class InterpreterRunner {
     }
 
     return resolvedWidget;
+  }
+
+  /// Dispatches to source or AST evaluation based on [useAst].
+  ///
+  /// Source stays the default. AST requires [ProjectBundle.astBytes] (served
+  /// from `GET /guest.ast`, see `BundleLoader.fetchAstBytes`).
+  Future<Widget> evaluateBundle(
+    ProjectBundle bundle, {
+    bool isHotReload = false,
+  }) async {
+    if (useAst) {
+      if (bundle.hasAst) {
+        return evaluateAstBundle(
+          bundle.astBytes!,
+          entryPoint: bundle.astEntryPoint,
+          isHotReload: isHotReload,
+        );
+      }
+      onLog?.call(
+        '[Runner] AST mode enabled but no /guest.ast on server — falling back to source.',
+      );
+    }
+    return evaluate(
+      source: bundle.entrypointCode,
+      library: bundle.entrypointLibrary,
+      sources: bundle.sources,
+      isHotReload: isHotReload,
+    );
+  }
+
+  /// Executes pre-compiled `AstBundle` bytes via `tom_d4rt_ast`.
+  ///
+  /// Delegates to [AstInterpreterRunner] (analyzer-free, stdlib + direct
+  /// native widgets in v1). Generated DartNative bridges are source-typed
+  /// and register on phase 2 — see [AstInterpreterRunner] docs.
+  Future<Widget> evaluateAstBundle(
+    List<int> astBytes, {
+    String? entryPoint,
+    bool isHotReload = false,
+  }) async {
+    // Keep interpreter lifecycle consistent with source hot-reload.
+    if (isHotReload) {
+      try {
+        _interpreter.dispose();
+      } catch (_) {}
+      initInterpreter();
+    }
+    final astRunner = AstInterpreterRunner(
+      onLog: onLog,
+      onExit: onExit,
+      currentServerUrl: currentServerUrl,
+    );
+    try {
+      return await astRunner.evaluateAstBundleAs<Widget>(
+        astBytes,
+        entryPoint: entryPoint,
+      );
+    } finally {
+      astRunner.dispose();
+    }
   }
 
   /// Cleanly unmounts the active guest app.

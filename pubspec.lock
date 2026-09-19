@@ -441,6 +441,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.5"
+  tom_ast_generator:
+    dependency: "direct dev"
+    description:
+      name: tom_ast_generator
+      sha256: d68ef7cd4d810fc125ae42e8d82ac5f130896e1a939f6dc9e14d17d7a89ba136
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.7"
+  tom_ast_model:
+    dependency: "direct main"
+    description:
+      name: tom_ast_model
+      sha256: "97375a04017b39989da8ee0f97e5736cd399ef9d24ef1e2ac9e830ddc1c9d65a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.2"
   tom_build_base:
     dependency: transitive
     description:
@@ -457,6 +473,21 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.77.0"
+  tom_d4rt_ast:
+    dependency: "direct main"
+    description:
+      path: "pkgs/tom_d4rt_ast"
+      relative: true
+    source: path
+    version: "0.65.0"
+  tom_d4rt_exec:
+    dependency: "direct dev"
+    description:
+      name: tom_d4rt_exec
+      sha256: "0cea98de1a76a7185898d50e3c4165545e761dae6607251d9a603df09b790729"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.25.0"
   tom_d4rt_generator:
     dependency: "direct dev"
     description:

@@ -17,6 +17,13 @@ class DevToolOverlay extends StatefulWidget {
   final VoidCallback onGoHome;
   final VoidCallback onReload;
 
+  /// Current engine mode label (e.g. "Source (tom_d4rt)").
+  final String runtimeModeLabel;
+
+  /// True when testing AST bundles. Defaults to false (source).
+  final bool useAst;
+  final void Function(bool enabled)? onToggleAst;
+
   const DevToolOverlay({
     super.key,
     required this.child,
@@ -26,6 +33,9 @@ class DevToolOverlay extends StatefulWidget {
     required this.isConnected,
     required this.onGoHome,
     required this.onReload,
+    this.runtimeModeLabel = 'Source (tom_d4rt)',
+    this.useAst = false,
+    this.onToggleAst,
   });
 
   @override
@@ -335,6 +345,66 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Runtime mode (source default, AST opt-in test)
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      widget.onToggleAst?.call(!widget.useAst);
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2C2C2E),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'RUNTIME MODE',
+                                  style: TextStyle(
+                                    color: Colors.white38,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  widget.runtimeModeLabel,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const Text(
+                                  'Tap to toggle AST test mode (default: source)',
+                                  style: TextStyle(
+                                    color: Colors.white38,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            widget.useAst ? 'AST' : 'Source',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),

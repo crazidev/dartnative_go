@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'asset_detector.dart';
+import 'ast_builder.dart';
 import 'broadcaster.dart';
 import 'dart_go_version.dart';
 import 'pubspec_validator.dart';
@@ -17,6 +18,13 @@ class DartGoServerOptions {
   final bool enableQrCode;
   final String? customHost;
 
+  /// When true (default), Dart file changes trigger an `AstBundle` rebuild
+  /// (`assets/bundles/guest.ast`) before the reload broadcast, so AST-mode
+  /// clients hot-reload fresh bytes. Unchanged sources skip the analyzer
+  /// parse via content fingerprint (millisecond fast path). Disable with
+  /// `--no-rebuild-ast` if you only test source mode.
+  final bool rebuildAst;
+
   const DartGoServerOptions({
     required this.projectDir,
     this.startPort = 8088,
@@ -24,6 +32,7 @@ class DartGoServerOptions {
     this.enableBroadcast = true,
     this.enableQrCode = true,
     this.customHost,
+    this.rebuildAst = true,
   });
 }
 
@@ -37,6 +46,8 @@ class DartGoServer {
   StreamSubscription? _stdinSub;
   final List<WebSocket> _sockets = [];
   final List<Map<String, dynamic>> _activeBreakpoints = [];
+  bool _astRebuildInFlight = false;
+  bool _astRebuildQueued = false;
 
   DartGoServer(this.options);
 
@@ -114,8 +125,19 @@ class DartGoServer {
     }
 
     print('🌐 Server URL: \x1B[36m$serverUrl\x1B[0m');
-    print('⚡️ WebSocket:  \x1B[36m$wsUrl\x1B[0m\n');
+    print('⚡️ WebSocket:  \x1B[36m$wsUrl\x1B[0m');
+    print(
+      options.rebuildAst
+          ? '📦 AST auto-build: \x1B[36mon\x1B[0m (guest.ast rebuilt on save; --no-rebuild-ast to disable)\n'
+          : '📦 AST auto-build: \x1B[90moff (--no-rebuild-ast)\x1B[0m\n',
+    );
     print('\x1B[90mPress h for help\x1B[0m\n');
+
+    // 6b. Initial AST bundle build (background) so `/guest.ast` exists
+    // before the first client connects — later saves reuse the watcher.
+    if (options.rebuildAst) {
+      _initialAstBuild(projectDir);
+    }
 
     // 7. Setup Stdin debugger commands
     _setupStdinListener(serverUrl);
@@ -127,8 +149,7 @@ class DartGoServer {
         if (event.path.endsWith('.dart')) {
           debounceTimer?.cancel();
           debounceTimer = Timer(const Duration(milliseconds: 150), () {
-            print('[DevServer] 🔄 File change detected: ${event.path}. Broadcasting reload...');
-            _broadcastReload(event.path, codeDir.path);
+            _onCodeChanged(event.path, codeDir, projectDir);
           });
         }
       });
@@ -137,6 +158,9 @@ class DartGoServer {
     final assetsDir = Directory('${projectDir.path}/assets');
     if (assetsDir.existsSync()) {
       _assetsWatchSub = assetsDir.watch(recursive: true).listen((event) {
+        // guest.ast writes are already covered by the code-change broadcast
+        // that triggered the rebuild — ignore to avoid double reloads.
+        if (event.path.endsWith('guest.ast')) return;
         debounceTimer?.cancel();
         debounceTimer = Timer(const Duration(milliseconds: 150), () {
           print('[DevServer] 🔄 Asset change detected: ${event.path}. Broadcasting reload...');
@@ -159,8 +183,80 @@ class DartGoServer {
     }
   }
 
-  void _broadcast(Map<String, dynamic> data) {
-    final payload = jsonEncode(data);
+  /// Initial background build at startup (fire-and-forget).
+  ///
+  /// Ensures `/guest.ast` is served from the first connection; failures
+  /// (e.g. FFI registrants in full native shells) only log — source mode
+  /// is unaffected.
+  Future<void> _initialAstBuild(Directory projectDir) async {
+    try {
+      final result = await buildGuestAstBundle(projectDir);
+      if (result.success) {
+        print(
+          '[DevServer] 📦 guest.ast ready '
+          '(${result.moduleCount} modules, ${result.byteSize} bytes)',
+        );
+      } else {
+        print(
+          '[DevServer] ⚠️ Initial AST build skipped (${result.error}). '
+          'Source hot reload unaffected.',
+        );
+      }
+    } catch (e) {
+      print('[DevServer] ⚠️ Initial AST build error: $e');
+    }
+  }
+
+  /// Handles a Dart file change: optionally rebuilds the AST bundle first
+  /// (`--rebuild-ast`), then broadcasts a single reload so clients fetch
+  /// fresh source AND fresh bytes together.
+  Future<void> _onCodeChanged(
+    String changedPath,
+    Directory codeDir,
+    Directory projectDir,
+  ) async {
+    print('[DevServer] 🔄 File change detected: $changedPath.');
+    if (!options.rebuildAst) {
+      _broadcastReload(changedPath, codeDir.path);
+      return;
+    }
+    if (_astRebuildInFlight) {
+      _astRebuildQueued = true;
+      return;
+    }
+    _astRebuildInFlight = true;
+    try {
+      final result = await buildGuestAstBundle(projectDir);
+      if (result.success) {
+        if (result.cached) {
+          print(
+            '[DevServer] 📦 guest.ast up to date '
+            '(${result.byteSize} bytes, fingerprint hit). Broadcasting reload...',
+          );
+        } else {
+          print(
+            '[DevServer] 📦 guest.ast rebuilt '
+            '(${result.moduleCount} modules, ${result.byteSize} bytes). '
+            'Broadcasting reload...',
+          );
+        }
+      } else {
+        print(
+          '[DevServer] ⚠️ AST rebuild failed (${result.error}). '
+          'Broadcasting source-only reload...',
+        );
+      }
+    } finally {
+      _astRebuildInFlight = false;
+    }
+    _broadcastReload(changedPath, codeDir.path);
+    if (_astRebuildQueued) {
+      _astRebuildQueued = false;
+      _onCodeChanged(changedPath, codeDir, projectDir);
+    }
+  }
+
+  void _broadcast(Map<String, dynamic> data) {    final payload = jsonEncode(data);
     for (final ws in _sockets) {
       try {
         ws.add(payload);
@@ -221,7 +317,7 @@ class DartGoServer {
           print('\x1B[90mPress h for help\x1B[0m\n');
         } else if (char == 'c') {
           print('\x1B[2J\x1B[0;0H');
-          print('🌐 Server URL: \x1B[36m$serverUrl\x1B[0m');
+    print('🌐 Server URL: \x1B[36m$serverUrl\x1B[0m');
           print('⚡️ WebSocket:  \x1B[36m${serverUrl.replaceFirst('http', 'ws')}/ws\x1B[0m\n');
           print('\x1B[90mPress h for help\x1B[0m\n');
         }
@@ -302,6 +398,7 @@ class DartGoServer {
           ..close();
       }
     } else if (path == '/manifest.json') {
+      final astFile = _resolveAstBundleFile(projectDir);
       final manifest = {
         'protocol': 'dart_go',
         'appName': validation.appName,
@@ -316,6 +413,8 @@ class DartGoServer {
         'splashUrl': assets.hasSplash ? '$serverUrl/assets/splash.png' : null,
         'splashBackgroundColor': assets.splashBackgroundColor,
         'assets': _collectProjectAssets(projectDir),
+        'hasAstBundle': astFile != null,
+        'astUrl': astFile != null ? '$serverUrl/guest.ast' : null,
         'supportedPlugins': validation.validSupportedPlugins,
         'unsupportedPlugins': validation.unsupportedNativePlugins,
         'versionMismatches': validation.versionMismatches
@@ -427,6 +526,26 @@ class DartGoServer {
           ..write('Error reading bundle: $e')
           ..close();
       }
+    } else if (path == '/guest.ast') {
+      // Pre-compiled AST bundle (tom_ast_generator output).
+      // Built via `dart run tool/build_ast_bundle.dart`.
+      // 404 when absent — client stays on source mode.
+      final astFile = _resolveAstBundleFile(projectDir);
+      if (astFile != null) {
+        await _serveAssetFile(request, astFile);
+        print(
+          '[DevServer] 📦 Served guest.ast (${await astFile.length()} bytes)',
+        );
+      } else {
+        request.response
+          ..statusCode = HttpStatus.notFound
+          ..headers.add('Access-Control-Allow-Origin', '*')
+          ..write(
+            'No AST bundle. Run `dart run tool/build_ast_bundle.dart` '
+            'once tom_ast_generator is available.',
+          )
+          ..close();
+      }
     } else if (path == '/app.dart') {
       try {
         final content = await mainFile.readAsString();
@@ -534,6 +653,27 @@ class DartGoServer {
     } catch (_) {}
     results.sort();
     return results;
+  }
+
+  /// Locates a pre-compiled AST bundle if `tool/build_ast_bundle.dart` ran.
+  ///
+  /// Checks `assets/bundles/guest.ast` then `build/guest.ast` (traversal-safe).
+  static File? _resolveAstBundleFile(Directory projectDir) {
+    const candidates = [
+      'assets/bundles/guest.ast',
+      'build/guest.ast',
+    ];
+    try {
+      final canonicalProject = projectDir.resolveSymbolicLinksSync();
+      for (final rel in candidates) {
+        final file = File('${projectDir.path}/$rel');
+        if (file.existsSync()) {
+          final canonicalFile = file.resolveSymbolicLinksSync();
+          if (canonicalFile.startsWith(canonicalProject)) return file;
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   /// Resolves an asset request path to a concrete [File] inside [projectDir].

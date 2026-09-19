@@ -35,6 +35,7 @@ Future<void> main(List<String> args) async {
     final enableBroadcast = !commandArgs.contains('--no-broadcast');
     final enableQrCode = !commandArgs.contains('--no-qrcode');
     final customHost = _parseStringArg(commandArgs, 'host');
+    final rebuildAst = !commandArgs.contains('--no-rebuild-ast');
 
     final server = DartGoServer(
       DartGoServerOptions(
@@ -44,6 +45,7 @@ Future<void> main(List<String> args) async {
         enableBroadcast: enableBroadcast,
         enableQrCode: enableQrCode,
         customHost: customHost,
+        rebuildAst: rebuildAst,
       ),
     );
 
@@ -175,12 +177,15 @@ OPTIONS FOR 'start':
       --port-range=<min-max>  Range of ports to scan and broadcast across (default: 8088-8098)
       --project=<path>        Path to DartNative project directory (default: current directory)
       --host=<ip>             Custom host IP/interface to advertise
+      --rebuild-ast           Rebuild assets/bundles/guest.ast on Dart changes (AST hot reload; default: on)
+      --no-rebuild-ast        Disable AST rebuild (source-only hot reload)
       --no-broadcast          Disable local UDP discovery beacon
       --no-qrcode             Disable terminal QR code rendering
 
 EXAMPLES:
   dart_go start
   dart_go start --project=/path/to/my_app
+  dart_go start --project=/path/to/my_app --rebuild-ast
   dart_go start -p 8090
   dart_go doctor
   dart_go version

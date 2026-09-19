@@ -10,6 +10,7 @@ Future<void> main(List<String> args) async {
       endPort: 8098,
       enableBroadcast: true,
       enableQrCode: true,
+      rebuildAst: !args.contains('--no-rebuild-ast'),
     ),
   );
 

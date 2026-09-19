@@ -5,6 +5,10 @@ import 'dart:io';
 import '../interpreter/auto_import_parser.dart';
 
 /// Encapsulates the loaded project metadata and virtual multi-file source map.
+///
+/// Dual-mode: [sources]/[entrypointCode] always populated (source default).
+/// [astBytes] best-effort populated from `GET /guest.ast` when the dev server
+/// has a pre-compiled bundle (see `tool/build_ast_bundle.dart` + `server.dart`).
 class ProjectBundle {
   final String appName;
   final String? appVersion;
@@ -18,6 +22,16 @@ class ProjectBundle {
   final List<Map<String, dynamic>> breakpoints;
   final List<String> assets;
 
+  /// Raw pre-compiled `AstBundle` bytes (ZIP/gzip/JSON auto-detected by
+  /// `tom_d4rt_ast` on the device). Null when server has no `/guest.ast`.
+  final List<int>? astBytes;
+
+  /// Entry function inside [astBytes] (defaults to `main`).
+  final String? astEntryPoint;
+
+  /// Whether an AST bundle is available for opt-in testing.
+  bool get hasAst => astBytes != null && astBytes!.isNotEmpty;
+
   const ProjectBundle({
     required this.appName,
     this.appVersion,
@@ -30,6 +44,8 @@ class ProjectBundle {
     required this.entrypointLibrary,
     this.breakpoints = const [],
     this.assets = const [],
+    this.astBytes,
+    this.astEntryPoint,
   });
 }
 
@@ -69,11 +85,35 @@ class BundleLoader {
     return null;
   }
 
+  /// Best-effort fetch of pre-compiled `AstBundle` bytes from `/guest.ast`.
+  ///
+  /// Returns null (not an error) when the server has no bundle yet — source
+  /// mode keeps working. Never throws.
+  Future<List<int>?> fetchAstBytes(String serverUrl) async {
+    final baseUrl = normalizeUrl(serverUrl);
+    try {
+      final req = await _client.getUrl(Uri.parse('$baseUrl/guest.ast'));
+      final res = await req.close();
+      if (res.statusCode != HttpStatus.ok) return null;
+      final bytes = await res.fold<List<int>>(
+        <int>[],
+        (prev, el) => prev..addAll(el),
+      );
+      return bytes.isEmpty ? null : bytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Fetches the complete project bundle and compiles virtual source maps.
+  ///
+  /// Always fetches source (`/bundle.json` → `/app.dart` fallback). When
+  /// [fetchAst] is true, also best-effort fetches `/guest.ast` bytes.
   Future<ProjectBundle> fetchBundle(
     String serverUrl, {
     Map<String, dynamic>? preloadedManifest,
     Map<String, Set<int>>? breakpointsByFile,
+    bool fetchAst = true,
   }) async {
     final baseUrl = normalizeUrl(serverUrl);
     final manifest = preloadedManifest ?? await fetchManifest(baseUrl) ?? {};
@@ -168,6 +208,8 @@ class BundleLoader {
           entrypointLibrary: entrypointLibrary,
           breakpoints: breakpoints,
           assets: rawAssets,
+          astBytes: fetchAst ? await fetchAstBytes(baseUrl) : null,
+          astEntryPoint: manifest['astEntryPoint']?.toString(),
         );
       }
     } catch (_) {}
@@ -196,6 +238,7 @@ class BundleLoader {
       sources: virtualSources,
       entrypointCode: virtualSources['main.dart'] ?? code,
       entrypointLibrary: 'main.dart',
+      astBytes: fetchAst ? await fetchAstBytes(baseUrl) : null,
     );
   }
 

@@ -2,10 +2,14 @@ import 'dart:async';
 import 'dart:io';
 
 import 'auto_import_parser_test.dart' as auto_import_test;
+import 'ast_builder_test.dart' as ast_builder_test;
+import 'ast_parity_test.dart' as ast_parity_test;
+import 'bridge_config_parity_test.dart' as bridge_config_test;
 import 'debug_controller_test.dart' as debug_test;
 import 'granular_generational_remounting_test.dart' as granular_test;
 import 'hot_reload_callback_test.dart' as callback_test;
 import 'hot_reload_state_preservation_test.dart' as state_test;
+import 'runtime_mode_test.dart' as runtime_mode_test;
 
 class TestCase {
   final String name;
@@ -45,6 +49,22 @@ Future<void> main() async {
     TestCase(
       name: 'Hot Reload State Preservation & Field Transfer',
       run: () => state_test.main(),
+    ),
+    TestCase(
+      name: 'Runtime Mode (source default, AST opt-in)',
+      run: () => runtime_mode_test.main(),
+    ),
+    TestCase(
+      name: 'AST Parity (source vs tom_d4rt_ast logic)',
+      run: () => ast_parity_test.main(),
+    ),
+    TestCase(
+      name: 'AST Builder (entry/package/bundle)',
+      run: () => ast_builder_test.main(),
+    ),
+    TestCase(
+      name: 'Bridge Config Parity (buildkit vs buildkit_ast)',
+      run: () => bridge_config_test.main(),
     ),
   ];
 

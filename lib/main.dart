@@ -10,6 +10,7 @@ import 'src/devtool/devtool_overlay.dart';
 import 'src/runner/bundle_loader.dart';
 import 'src/runner/interpreter_runner.dart';
 import 'src/runner/live_connection.dart';
+import 'src/runner/runtime_mode.dart';
 import 'src/widgets/interpreter_error_view.dart';
 import 'src/widgets/project_splash_screen.dart';
 
@@ -48,12 +49,16 @@ class _DartNativeGoState extends State<DartNativeGo> {
   late InterpreterRunner _interpreterRunner;
   LiveConnection? _liveConnection;
 
+  /// Engine mode. Source default; AST opt-in for testing (see runtime_mode.dart).
+  bool _useAst = kUseAst;
+
   @override
   void initState() {
     super.initState();
     _interpreterRunner = InterpreterRunner(
       onLog: (msg) => _liveConnection?.sendDeviceLog(msg),
       onExit: _unmountApp,
+      useAst: _useAst,
     );
     _initScanner();
   }
@@ -139,11 +144,11 @@ class _DartNativeGoState extends State<DartNativeGo> {
       });
 
       _interpreterRunner.currentServerUrl = bundle.serverUrl;
+      _interpreterRunner.useAst = _useAst;
       _interpreterRunner.initInterpreter();
-      final widget = await _interpreterRunner.evaluate(
-        source: bundle.entrypointCode,
-        library: bundle.entrypointLibrary,
-        sources: bundle.sources,
+      final widget = await _interpreterRunner.evaluateBundle(
+        bundle,
+        isHotReload: false,
       );
 
       if (!mounted) return;
@@ -179,10 +184,9 @@ class _DartNativeGoState extends State<DartNativeGo> {
       if (!mounted) return;
       _activeBundle = updatedBundle;
 
-      final widget = await _interpreterRunner.evaluate(
-        source: updatedBundle.entrypointCode,
-        library: updatedBundle.entrypointLibrary,
-        sources: updatedBundle.sources,
+      _interpreterRunner.useAst = _useAst;
+      final widget = await _interpreterRunner.evaluateBundle(
+        updatedBundle,
         isHotReload: true,
       );
 
@@ -259,6 +263,15 @@ class _DartNativeGoState extends State<DartNativeGo> {
         isConnected: _liveConnection?.isConnected ?? false,
         onGoHome: _unmountApp,
         onReload: () => _reloadApp(),
+        runtimeModeLabel: runtimeModeFromBool(_useAst).label,
+        useAst: _useAst,
+        onToggleAst: (enabled) {
+          setState(() {
+            _useAst = enabled;
+            _interpreterRunner.useAst = enabled;
+          });
+          _reloadApp();
+        },
         child: KeyedSubtree(
           key: ValueKey('guest_root_$_reloadGeneration'),
           child:
