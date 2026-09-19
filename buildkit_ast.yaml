@@ -1,0 +1,61 @@
+# AST bridge set for the analyzer-free runtime (`tom_d4rt_ast`).
+#
+# Mirror of buildkit.yaml with swapped runtime imports. The source set stays
+# default for `tom_d4rt`; this set backs `AstInterpreterRunner` (AST mode).
+# Regenerate with: dart run tool/d4rtgen_ast.dart
+# (it swaps this file into buildkit.yaml, runs d4rtgen, and restores).
+#
+# KEEP IN SYNC with buildkit.yaml: same modules/barrels. Covered by
+# test/bridge_config_parity_test.dart (module list comparison).
+d4rtgen:
+  name: dartnative_go_ast
+  d4rtImport: package:tom_d4rt_ast/d4rt.dart
+  helpersImport: package:tom_d4rt_ast/runtime.dart
+  generateBarrel: false
+  generateDartscript: true
+  dartscriptPath: lib/src/interpreter/ast/dartscript.b.dart
+  registrationClass: DartnativeGoAstBridges
+  generateProxies: true
+  relaxerOutputPath: lib/src/interpreter/ast/relaxers.b.dart
+  yieldVoidCallbacks: true
+  modules:
+    - name: dartnative_ui
+      barrelFiles:
+        - package:dartnative/dartnative.dart
+      barrelImport: package:dartnative/dartnative.dart
+      outputPath: lib/src/interpreter/ast/dartnative_bridges.b.dart
+    - name: dartnative_webview
+      barrelFiles:
+        - package:dartnative_webview/dartnative_webview.dart
+      barrelImport: package:dartnative_webview/dartnative_webview.dart
+      outputPath: lib/src/interpreter/ast/dartnative_webview_bridges.b.dart
+    - name: dartnative_share
+      barrelFiles:
+        - package:dartnative_share/dartnative_share.dart
+      barrelImport: package:dartnative_share/dartnative_share.dart
+      outputPath: lib/src/interpreter/ast/dartnative_share_bridges.b.dart
+    - name: dartnative_shared_preferences
+      barrelFiles:
+        - package:dartnative_shared_preferences/dartnative_shared_preferences.dart
+      barrelImport: package:dartnative_shared_preferences/dartnative_shared_preferences.dart
+      outputPath: lib/src/interpreter/ast/dartnative_shared_preferences_bridges.b.dart
+    - name: dartnative_path_provider
+      barrelFiles:
+        - package:dartnative_path_provider/dartnative_path_provider.dart
+      barrelImport: package:dartnative_path_provider/dartnative_path_provider.dart
+      outputPath: lib/src/interpreter/ast/dartnative_path_provider_bridges.b.dart
+    - name: dartnative_url_launcher
+      barrelFiles:
+        - package:dartnative_url_launcher/dartnative_url_launcher.dart
+      barrelImport: package:dartnative_url_launcher/dartnative_url_launcher.dart
+      outputPath: lib/src/interpreter/ast/dartnative_url_launcher_bridges.b.dart
+    - name: dartnative_splash
+      barrelFiles:
+        - package:dartnative_splash/dartnative_splash.dart
+      barrelImport: package:dartnative_splash/dartnative_splash.dart
+      outputPath: lib/src/interpreter/ast/dartnative_splash_bridges.b.dart
+    - name: crypto
+      barrelFiles:
+        - package:crypto/crypto.dart
+      barrelImport: package:crypto/crypto.dart
+      outputPath: lib/src/interpreter/ast/crypto_bridges.b.dart
