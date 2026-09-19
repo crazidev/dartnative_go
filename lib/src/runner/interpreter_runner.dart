@@ -33,6 +33,11 @@ class InterpreterRunner {
   /// Defaults to [kUseAst] (false → source).
   bool useAst;
 
+  // Snapshot of InterpretedClass.staticFields captured before each hot reload.
+  // Restored into the newly-created class objects after re-execution, giving
+  // the same transparent state-preservation behaviour as the Dart VM.
+  final Map<String, Map<String, Object?>> _staticFieldSnapshot = {};
+
   DebugController get debugController => _debugController;
   D4rt get interpreter => _interpreter;
   RuntimeMode get runtimeMode => runtimeModeFromBool(useAst);
@@ -216,6 +221,32 @@ class InterpreterRunner {
     );
   }
 
+  void _snapshotStaticFields() {
+    final visitor = _interpreter.visitor;
+    if (visitor == null) return;
+    _staticFieldSnapshot.clear();
+    for (final entry in visitor.globalEnvironment.values.entries) {
+      if (entry.value is InterpretedClass) {
+        final cls = entry.value as InterpretedClass;
+        if (cls.staticFields.isNotEmpty) {
+          _staticFieldSnapshot[entry.key] = Map.of(cls.staticFields);
+        }
+      }
+    }
+  }
+
+  void _restoreStaticFields() {
+    final visitor = _interpreter.visitor;
+    if (visitor == null) return;
+    for (final entry in _staticFieldSnapshot.entries) {
+      final cls = visitor.globalEnvironment.values[entry.key];
+      if (cls is InterpretedClass) {
+        cls.staticFields.addAll(entry.value);
+      }
+    }
+    _staticFieldSnapshot.clear();
+  }
+
   /// Evaluates guest code from [source] and resolves the root [Widget].
   ///
   /// Source path (default). See [evaluateBundle] for mode dispatch.
@@ -226,10 +257,11 @@ class InterpreterRunner {
     bool isHotReload = false,
   }) async {
     if (isHotReload) {
+      _snapshotStaticFields();
       try {
         _interpreter.dispose();
       } catch (_) {}
-      initInterpreter();
+      // dispose() keeps bridge registrations intact — no need to reinitialise.
     }
 
     _capturedApp = null;
@@ -274,6 +306,8 @@ class InterpreterRunner {
       );
     }
 
+    if (isHotReload) _restoreStaticFields();
+
     return resolvedWidget;
   }
 
@@ -317,10 +351,10 @@ class InterpreterRunner {
   }) async {
     // Keep interpreter lifecycle consistent with source hot-reload.
     if (isHotReload) {
+      _snapshotStaticFields();
       try {
         _interpreter.dispose();
       } catch (_) {}
-      initInterpreter();
     }
     final astRunner = AstInterpreterRunner(
       onLog: onLog,
