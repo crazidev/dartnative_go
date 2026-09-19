@@ -20,7 +20,8 @@
       "name": "dartnative_go (release mode)",
       "request": "launch",
       "type": "dart",
-      "flutterMode": "release"
+      "flutterMode": "release",
+      "args": ["--no-pub", "--no-build"]
     }
   ]
 }
