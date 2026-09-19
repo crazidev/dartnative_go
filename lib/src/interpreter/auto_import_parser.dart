@@ -1,3 +1,7 @@
+import 'package:analyzer/dart/analysis/utilities.dart';
+import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/ast/visitor.dart';
+
 /// Represents a parsed import or export directive.
 class ImportDirectiveInfo {
   final String uri;
@@ -80,6 +84,9 @@ class AutoImportParser {
     'ThemeData',
     'MaterialApp',
     'CupertinoApp',
+    'debugger',
+    'breakpoint',
+    '__debugBreakpoint',
   };
 
   /// Dart Math symbols.
@@ -106,6 +113,20 @@ class AutoImportParser {
     'Stream',
   };
 
+  /// DartNative Media Picker symbols.
+  static const Set<String> dartMediaPickerSymbols = {
+    'showMediaPicker',
+    'MediaPickerType',
+    'MediaFile',
+  };
+
+  /// DartNative Share symbols.
+  static const Set<String> dartShareSymbols = {
+    'Share',
+    'ShareResult',
+    'ShareResultStatus',
+  };
+
   static final RegExp _importExportRegex = RegExp(
     r'''^\s*(?:import|export)\s+['"]([^'"]+)['"](?:\s+as\s+([a-zA-Z0-9_$]+))?(?:\s+show\s+([^;]+))?(?:\s+hide\s+([^;]+))?\s*;''',
     multiLine: true,
@@ -124,16 +145,26 @@ class AutoImportParser {
         final prefix = match.group(2);
         final showStr = match.group(3);
         final hideStr = match.group(4);
-        list.add(ImportDirectiveInfo(
-          uri: uri,
-          prefix: prefix,
-          showList: showStr != null
-              ? showStr.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()
-              : const [],
-          hideList: hideStr != null
-              ? hideStr.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()
-              : const [],
-        ));
+        list.add(
+          ImportDirectiveInfo(
+            uri: uri,
+            prefix: prefix,
+            showList: showStr != null
+                ? showStr
+                      .split(',')
+                      .map((e) => e.trim())
+                      .where((e) => e.isNotEmpty)
+                      .toList()
+                : const [],
+            hideList: hideStr != null
+                ? hideStr
+                      .split(',')
+                      .map((e) => e.trim())
+                      .where((e) => e.isNotEmpty)
+                      .toList()
+                : const [],
+          ),
+        );
       }
     }
     return list;
@@ -150,7 +181,9 @@ class AutoImportParser {
   }
 
   /// Builds an index mapping symbol name -> defining file path from project sources.
-  static Map<String, String> buildSymbolIndex(Map<String, String> projectFiles) {
+  static Map<String, String> buildSymbolIndex(
+    Map<String, String> projectFiles,
+  ) {
     final index = <String, String>{};
     projectFiles.forEach((path, code) {
       final declared = extractDeclaredSymbols(code);
@@ -175,14 +208,17 @@ class AutoImportParser {
     final importsToAdd = <String>{};
 
     // 1. Check for DartNative framework symbols
-    final hasDartNativeImport = existingUris.any((uri) =>
-        uri == 'package:dartnative/dartnative.dart' ||
-        uri == 'package:flutter/material.dart' ||
-        uri.endsWith('dartnative.dart'));
+    final hasDartNativeImport = existingUris.any(
+      (uri) =>
+          uri == 'package:dartnative/dartnative.dart' ||
+          uri == 'package:flutter/material.dart' ||
+          uri.endsWith('dartnative.dart'),
+    );
 
     if (!hasDartNativeImport) {
-      final usesDartNative = dartNativeSymbols.any((sym) =>
-          RegExp(r'\b' + RegExp.escape(sym) + r'\b').hasMatch(source));
+      final usesDartNative = dartNativeSymbols.any(
+        (sym) => RegExp(r'\b' + RegExp.escape(sym) + r'\b').hasMatch(source),
+      );
       if (usesDartNative) {
         importsToAdd.add("import 'package:dartnative/dartnative.dart';");
       }
@@ -190,8 +226,9 @@ class AutoImportParser {
 
     // 2. Check for dart:math
     if (!existingUris.contains('dart:math')) {
-      final usesMath = dartMathSymbols.any((sym) =>
-          RegExp(r'\b' + RegExp.escape(sym) + r'\b').hasMatch(source));
+      final usesMath = dartMathSymbols.any(
+        (sym) => RegExp(r'\b' + RegExp.escape(sym) + r'\b').hasMatch(source),
+      );
       if (usesMath) {
         importsToAdd.add("import 'dart:math';");
       }
@@ -199,10 +236,32 @@ class AutoImportParser {
 
     // 3. Check for dart:async
     if (!existingUris.contains('dart:async')) {
-      final usesAsync = dartAsyncSymbols.any((sym) =>
-          RegExp(r'\b' + RegExp.escape(sym) + r'\b').hasMatch(source));
+      final usesAsync = dartAsyncSymbols.any(
+        (sym) => RegExp(r'\b' + RegExp.escape(sym) + r'\b').hasMatch(source),
+      );
       if (usesAsync) {
         importsToAdd.add("import 'dart:async';");
+      }
+    }
+
+    // 4. Check for dartnative_media_picker
+    // if (!existingUris.any((u) => u.contains('dartnative_media_picker'))) {
+    //   final usesMedia = dartMediaPickerSymbols.any((sym) =>
+    //       RegExp(r'\b' + RegExp.escape(sym) + r'\b').hasMatch(source));
+    //   if (usesMedia) {
+    //     importsToAdd.add("import 'package:dartnative_media_picker/dartnative_media_picker.dart';");
+    //   }
+    // }
+
+    // 5. Check for dartnative_share
+    if (!existingUris.any((u) => u.contains('dartnative_share'))) {
+      final usesShare = dartShareSymbols.any(
+        (sym) => RegExp(r'\b' + RegExp.escape(sym) + r'\b').hasMatch(source),
+      );
+      if (usesShare) {
+        importsToAdd.add(
+          "import 'package:dartnative_share/dartnative_share.dart';",
+        );
       }
     }
 
@@ -212,16 +271,21 @@ class AutoImportParser {
       symbolIndex.forEach((symbol, definingPath) {
         if (definingPath != currentFilePath) {
           // If the symbol is referenced in source
-          final isReferenced =
-              RegExp(r'\b' + RegExp.escape(symbol) + r'\b').hasMatch(source);
+          final isReferenced = RegExp(
+            r'\b' + RegExp.escape(symbol) + r'\b',
+          ).hasMatch(source);
           if (isReferenced) {
             // Check if defining file or symbol is already imported
-            final relImportPath =
-                computeRelativePath(currentFilePath, definingPath);
-            final alreadyImported = existingUris.any((uri) =>
-                uri == relImportPath ||
-                uri == definingPath ||
-                uri.endsWith(definingPath));
+            final relImportPath = computeRelativePath(
+              currentFilePath,
+              definingPath,
+            );
+            final alreadyImported = existingUris.any(
+              (uri) =>
+                  uri == relImportPath ||
+                  uri == definingPath ||
+                  uri.endsWith(definingPath),
+            );
 
             if (!alreadyImported) {
               importsToAdd.add("import '$relImportPath';");
@@ -245,6 +309,79 @@ class AutoImportParser {
     return buffer.toString();
   }
 
+  /// Instruments the given [source] code with breakpoint triggers.
+  ///
+  /// For every line in [targetLines]:
+  /// 1. Finds the enclosing function/closure via AST and ensures it is marked `async`.
+  /// 2. Prepends `await __debugBreakpoint('$normalizedFile', $line);` to that line.
+  /// Preserves exact line numbering across the entire document.
+  static String instrumentBreakpoints(
+    String source,
+    String fileName,
+    Set<int> targetLines,
+  ) {
+    if (targetLines.isEmpty) return source;
+
+    final cleanFile = fileName.replaceAll(r'\', '/');
+    final baseFile = cleanFile.contains('/')
+        ? cleanFile.split('/').last
+        : cleanFile;
+
+    // First pass: analyze AST to ensure any enclosing function bodies for target lines are async
+    var code = source;
+    try {
+      final parseResult = parseString(content: code, throwIfDiagnostics: false);
+      final lineInfo = parseResult.lineInfo;
+      final asyncInsertOffsets = <int>{};
+
+      for (final targetLine in targetLines) {
+        final finder = _EnclosingBodyFinder(targetLine, lineInfo);
+        parseResult.unit.accept(finder);
+        final body = finder.innermostBody;
+        if (body != null && !body.isAsynchronous) {
+          asyncInsertOffsets.add(body.block.leftBracket.offset);
+        }
+      }
+
+      if (asyncInsertOffsets.isNotEmpty) {
+        final sorted = asyncInsertOffsets.toList()
+          ..sort((a, b) => b.compareTo(a));
+        for (final offset in sorted) {
+          code = '${code.substring(0, offset)}async ${code.substring(offset)}';
+        }
+      }
+    } catch (_) {}
+
+    // Second pass: prepend `await __debugBreakpoint('$baseFile', $targetLine); ` to target lines
+    final lines = code.split('\n');
+    for (final targetLine in targetLines) {
+      final index = targetLine - 1;
+      if (index >= 0 && index < lines.length) {
+        final line = lines[index];
+        final trimmed = line.trim();
+
+        // Skip blank lines, comments, imports, exports, solitary braces
+        if (trimmed.isEmpty ||
+            trimmed.startsWith('//') ||
+            trimmed.startsWith('/*') ||
+            trimmed.startsWith('*') ||
+            trimmed.startsWith('import ') ||
+            trimmed.startsWith('export ') ||
+            trimmed.startsWith('part ') ||
+            trimmed == '{' ||
+            trimmed == '}') {
+          continue;
+        }
+
+        final leadingSpaces = line.substring(0, line.indexOf(trimmed));
+        lines[index] =
+            '$leadingSpaces'
+            'await __debugBreakpoint(\'$baseFile\', $targetLine); $trimmed';
+      }
+    }
+    return lines.join('\n');
+  }
+
   /// Normalizes and generates all virtual alias paths for a given file.
   ///
   /// Examples for `components/button.dart`:
@@ -253,37 +390,150 @@ class AutoImportParser {
   /// - `file:///components/button.dart`
   /// - `file:///guest_app/components/button.dart`
   /// - `./components/button.dart`
-  static Map<String, String> buildVirtualSourceMap(Map<String, String> rawFiles) {
+  static Map<String, String> buildVirtualSourceMap(
+    Map<String, String> rawFiles, {
+    String? packageName,
+    Map<String, Set<int>>? breakpointsByFile,
+  }) {
     final result = <String, String>{};
 
-    // First pass: auto-import processing on all files
+    // Collect all valid package name aliases
+    final packageNames = <String>{'guest_app'};
+    if (packageName != null && packageName.trim().isNotEmpty) {
+      packageNames.add(packageName.trim());
+    }
+
+    // Auto-discover any imported package name from raw files
+    final importRegex =
+        RegExp(r'''(?:import|export)\s+['"]package:([a-zA-Z0-9_]+)/''');
+    for (final content in rawFiles.values) {
+      for (final match in importRegex.allMatches(content)) {
+        final pkg = match.group(1);
+        if (pkg != null &&
+            pkg != 'dartnative' &&
+            !pkg.startsWith('dartnative_') &&
+            pkg != 'flutter' &&
+            pkg != 'analyzer') {
+          packageNames.add(pkg);
+        }
+      }
+    }
+
+    // First pass: breakpoint instrumentation & auto-import processing on all files
     final processedFiles = <String, String>{};
     rawFiles.forEach((path, content) {
       final normalized = path.startsWith('/') ? path.substring(1) : path;
+      final cleanFile = normalized.replaceAll(r'\', '/');
+      final baseFile = cleanFile.contains('/')
+          ? cleanFile.split('/').last
+          : cleanFile;
+
+      final targetLines =
+          (breakpointsByFile?[normalized] ??
+          breakpointsByFile?[baseFile] ??
+          breakpointsByFile?[cleanFile] ??
+          const <int>{});
+
+      final instrumented = targetLines.isNotEmpty
+          ? instrumentBreakpoints(content, baseFile, targetLines)
+          : content;
+
       processedFiles[normalized] = processAndAutoImport(
-        content,
+        instrumented,
         currentFilePath: normalized,
         projectFiles: rawFiles,
       );
     });
 
-    // Second pass: generate multi-key aliases
+    // Second pass: generate multi-key aliases for all discovered/configured packages
     processedFiles.forEach((path, code) {
       result[path] = code;
-      result['package:guest_app/$path'] = code;
       result['./$path'] = code;
       result['file:///$path'] = code;
-      result['file:///guest_app/$path'] = code;
 
-      // Sibling / bare filename alias (e.g., if path is 'guest_app/main.dart' -> 'main.dart')
-      if (path.startsWith('guest_app/')) {
-        final sub = path.substring('guest_app/'.length);
-        result[sub] = code;
-        result['package:guest_app/$sub'] = code;
-        result['./$sub'] = code;
-        result['file:///$sub'] = code;
+      final normalizedPath = path.startsWith('lib/') ? path.substring(4) : path;
+
+      for (final pkg in packageNames) {
+        result['package:$pkg/$path'] = code;
+        result['package:$pkg/$normalizedPath'] = code;
+        result['file:///$pkg/$path'] = code;
+        result['file:///$pkg/$normalizedPath'] = code;
+
+        // Sibling / bare filename alias
+        if (path.startsWith('$pkg/')) {
+          final sub = path.substring('$pkg/'.length);
+          result[sub] = code;
+          result['package:$pkg/$sub'] = code;
+          result['./$sub'] = code;
+          result['file:///$sub'] = code;
+        }
       }
     });
+
+    // Built-in package stubs for platform bindings & plugin registrants
+    result['package:dartnative_ios/dartnative_ios.dart'] = '''
+library dartnative_ios;
+
+class IOSNativeBindings {
+  static final IOSNativeBindings instance = IOSNativeBindings._();
+  IOSNativeBindings._();
+}
+''';
+
+    result['package:dartnative_android/dartnative_android.dart'] = '''
+library dartnative_android;
+
+class AndroidNativeBindings {
+  static final AndroidNativeBindings instance = AndroidNativeBindings._();
+  AndroidNativeBindings._();
+}
+''';
+
+    result['package:dartnative_shared_preferences/dartnative_shared_preferences.dart'] = '''
+library dartnative_shared_preferences;
+
+class PrefsBindings {
+  static void loadSymbols() {}
+}
+
+class SharedPreferences {
+  static SharedPreferences? _instance;
+  static Future<SharedPreferences> getInstance() async {
+    _instance ??= SharedPreferences._();
+    return _instance!;
+  }
+  SharedPreferences._();
+  final Map<String, Object> _storage = {};
+  String? getString(String key) => _storage[key] as String?;
+  bool? getBool(String key) => _storage[key] as bool?;
+  int? getInt(String key) => _storage[key] as int?;
+  double? getDouble(String key) => _storage[key] as double?;
+  List<String>? getStringList(String key) => _storage[key] as List<String>?;
+  Future<bool> setString(String key, String value) async { _storage[key] = value; return true; }
+  Future<bool> setBool(String key, bool value) async { _storage[key] = value; return true; }
+  Future<bool> setInt(String key, int value) async { _storage[key] = value; return true; }
+  Future<bool> setDouble(String key, double value) async { _storage[key] = value; return true; }
+  Future<bool> setStringList(String key, List<String> value) async { _storage[key] = value; return true; }
+  Future<bool> remove(String key) async { _storage.remove(key); return true; }
+  Future<bool> clear() async { _storage.clear(); return true; }
+  bool containsKey(String key) => _storage.containsKey(key);
+  Set<String> getKeys() => _storage.keys.toSet();
+}
+''';
+
+    // Fallback plugin registrant for each package if not provided in rawFiles
+    for (final pkg in packageNames) {
+      final key = 'package:$pkg/dartnative_plugin_registrant.dart';
+      if (!result.containsKey(key)) {
+        result[key] = '''
+library dartnative_plugin_registrant;
+
+abstract final class DartNativePluginRegistrant {
+  static void registerAll() {}
+}
+''';
+      }
+    }
 
     return result;
   }
@@ -309,5 +559,24 @@ class AutoImportParser {
 
     final joined = resultSegments.join('/');
     return joined.isEmpty ? './' : joined;
+  }
+}
+
+/// AST visitor to identify the innermost BlockFunctionBody enclosing a target line number.
+class _EnclosingBodyFinder extends RecursiveAstVisitor<void> {
+  final int targetLine;
+  final dynamic lineInfo;
+  BlockFunctionBody? innermostBody;
+
+  _EnclosingBodyFinder(this.targetLine, this.lineInfo);
+
+  @override
+  void visitBlockFunctionBody(BlockFunctionBody node) {
+    final start = lineInfo.getLocation(node.offset).lineNumber;
+    final end = lineInfo.getLocation(node.end).lineNumber;
+    if (targetLine >= start && targetLine <= end) {
+      innermostBody = node;
+    }
+    super.visitBlockFunctionBody(node);
   }
 }

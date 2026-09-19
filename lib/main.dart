@@ -1,809 +1,490 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 
-import 'package:tom_d4rt/tom_d4rt.dart';
 import 'package:dartnative/dartnative.dart';
+import 'package:dartnative_go/dartnative_plugin_registrant.dart';
 
-import 'dartnative_plugin_registrant.dart';
-import 'src/interpreter/auto_import_parser.dart';
-import 'src/interpreter/d4rt_flutter_application.dart';
-import 'src/interpreter/dn_bridge.dart';
+import 'src/client/network_scanner.dart';
+import 'src/client/project_model.dart';
+import 'src/client/project_storage.dart';
+import 'src/devtool/devtool_overlay.dart';
+import 'src/runner/bundle_loader.dart';
+import 'src/runner/interpreter_runner.dart';
+import 'src/runner/live_connection.dart';
+import 'src/widgets/interpreter_error_view.dart';
+import 'src/widgets/project_splash_screen.dart';
 
-void main() {
-  // Platform bindings + FFI symbols
+void main(List<String> args) {
   DartNativePluginRegistrant.registerAll();
 
-  SystemChrome.defaultStyle = const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarBrightness: Brightness.light,
-    statusBarIconBrightness: Brightness.dark,
-    systemNavigationBarColor: Colors.transparent,
-    systemNavigationBarIconBrightness: Brightness.dark,
-  );
-
-  runApp(const DartNativeGoShell());
+  runApp(const DartNativeGo());
 }
 
-/// The top-level DartNative Go shell application
-class DartNativeGoShell extends StatefulWidget {
-  const DartNativeGoShell({super.key});
+class DartNativeGo extends StatefulWidget {
+  const DartNativeGo({super.key});
 
   @override
-  State<DartNativeGoShell> createState() => _DartNativeGoShellState();
+  State<DartNativeGo> createState() => _DartNativeGoState();
 }
 
-class _DartNativeGoShellState extends State<DartNativeGoShell> {
-  // Launcher / OTA state
+class _DartNativeGoState extends State<DartNativeGo> {
+  final DartGoNetworkScanner _scanner = DartGoNetworkScanner(
+    storage: ProjectStorage(),
+  );
+  final TextEditingController _urlController = TextEditingController();
+  List<DartGoProject> _projects = [];
+  StreamSubscription? _scannerSub;
+  bool _isLoading = true;
+
+  // Active Runner & Guest App State
   bool _isAppMounted = false;
-  int _counter = 0;
-  int _scriptVersion = 1;
-  int _reloadGeneration = 0;
-  D4rtFlutterApplication? _activeApplication;
-  bool _isLiveDevMode = false;
-  String _liveScriptSource = '';
-  Map<String, String> _liveSources = {};
-  WebSocket? _devSocket;
-  String? _launcherNotice;
-
-  late D4rt _interpreter;
-  Widget? _interpretedWidget;
+  bool _isLoadingBundle = false;
+  String _statusMessage = 'Connecting to project...';
   String? _errorMessage;
+  ProjectBundle? _activeBundle;
+  Widget? _interpretedWidget;
+  int _reloadGeneration = 0;
 
-  // -------------------------------------------------------------
-  // Script Version 1: Standard Light Theme Counter
-  // -------------------------------------------------------------
-  static const String _counterScriptV1 = '''
-import 'package:dartnative/dartnative.dart';
-
-buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset, VoidCallback onHotReload, VoidCallback onExit) {
-  return Scaffold(
-    key: ValueKey('counter_screen_v1'),
-    brightness: Brightness.light,
-    appBar: AppBar(
-      ios: AppBarIOSConfig(systemBar: false),
-      backgroundColor: Color(0xFFFFFFFF),
-      title: Text(
-        'Counter App (v1)',
-        style: TextStyle(
-          color: Color(0xFF111111),
-          fontSize: 17,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      actions: [
-        Button(
-          title: '🔥 Hot Reload',
-          variant: ButtonVariant.filled,
-          color: Color(0xFFFF9500),
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          onPressed: onHotReload,
-        ),
-        SizedBox(width: 8),
-        Button(
-          title: '✕ Exit',
-          variant: ButtonVariant.plain,
-          foregroundColor: Color(0xFF888888),
-          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          onPressed: onExit,
-        ),
-        SizedBox(width: 8),
-      ],
-    ),
-    backgroundColor: Color(0xFFF7F7F8),
-    body: Container(
-      alignment: Alignment.center,
-      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            color: Color(0xFFE8F2FF),
-            child: Text(
-              '📦 Interpreted Runtime • Version 1.0',
-              style: TextStyle(
-                color: Color(0xFF0066EE),
-                fontSize: 12,
-                fontWeight: FontWeight.semiBold,
-              ),
-            ),
-          ),
-          SizedBox(height: 24),
-          Text(
-            '\$count',
-            style: TextStyle(
-              color: Color(0xFF111111),
-              fontSize: 72,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Current Count Value',
-            style: TextStyle(
-              color: Color(0xFF88888E),
-              fontSize: 14,
-            ),
-          ),
-          SizedBox(height: 32),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Button(
-                title: '➖ Decrement',
-                variant: ButtonVariant.bordered,
-                color: Color(0xFFFFFFFF),
-                foregroundColor: Color(0xFF111111),
-                padding: EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                onPressed: onDec,
-              ),
-              SizedBox(width: 14),
-              Button(
-                title: '➕ Increment',
-                variant: ButtonVariant.filled,
-                color: Color(0xFF007AFF),
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                onPressed: onInc,
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
-          Button(
-            title: 'Reset to 0',
-            variant: ButtonVariant.plain,
-            foregroundColor: Color(0xFFFF3B30),
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            onPressed: onReset,
-          ),
-        ],
-      ),
-    ),
-  );
-}
-''';
-
-  // -------------------------------------------------------------
-  // Script Version 2: Hot Reloaded Dark/Cyan Theme (Step ±5)
-  // -------------------------------------------------------------
-  static const String _counterScriptV2 = '''
-import 'package:dartnative/dartnative.dart';
-
-buildUI(int count, VoidCallback onInc, VoidCallback onDec, VoidCallback onReset, VoidCallback onHotReload, VoidCallback onExit) {
-  return Scaffold(
-    key: ValueKey('counter_screen_v2'),
-    brightness: Brightness.dark,
-    appBar: AppBar(
-      ios: AppBarIOSConfig(systemBar: false),
-      backgroundColor: Color(0xFF16161A),
-      title: Text(
-        'Counter v2 (🔥 Reloaded!)',
-        style: TextStyle(
-          color: Color(0xFFFFFFFF),
-          fontSize: 17,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      actions: [
-        Button(
-          title: '🔥 Reload v1',
-          variant: ButtonVariant.filled,
-          color: Color(0xFFFF9500),
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          onPressed: onHotReload,
-        ),
-        SizedBox(width: 8),
-        Button(
-          title: '✕ Exit',
-          variant: ButtonVariant.plain,
-          foregroundColor: Color(0xFF999999),
-          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          onPressed: onExit,
-        ),
-        SizedBox(width: 8),
-      ],
-    ),
-    backgroundColor: Color(0xFF16161A),
-    body: Container(
-      alignment: Alignment.center,
-      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            color: Color(0xFF231E10),
-            child: Text(
-              '🔥 Hot Reloaded • Step is ±5 • State Preserved!',
-              style: TextStyle(
-                color: Color(0xFFFF9F0A),
-                fontSize: 12,
-                fontWeight: FontWeight.semiBold,
-              ),
-            ),
-          ),
-          SizedBox(height: 24),
-          Text(
-            '\$count',
-            style: TextStyle(
-              color: Color(0xFF00D2FF),
-              fontSize: 78,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Preserved Counter State across Code Reload',
-            style: TextStyle(
-              color: Color(0xFF9E9EA6),
-              fontSize: 14,
-            ),
-          ),
-          SizedBox(height: 32),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Button(
-                title: '➖ (-5)',
-                variant: ButtonVariant.bordered,
-                color: Color(0xFF24242A),
-                foregroundColor: Color(0xFFFFFFFF),
-                padding: EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-                onPressed: onDec,
-              ),
-              SizedBox(width: 14),
-              Button(
-                title: '➕ (+5)',
-                variant: ButtonVariant.filled,
-                color: Color(0xFF00D2FF),
-                foregroundColor: Color(0xFF000000),
-                padding: EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-                onPressed: onInc,
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
-          Button(
-            title: 'Reset to 0',
-            variant: ButtonVariant.plain,
-            foregroundColor: Color(0xFFFF453A),
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            onPressed: onReset,
-          ),
-        ],
-      ),
-    ),
-  );
-}
-''';
-
-  final List<String> _consoleLogs = [];
-
-  void _handleGuestLog(String message) {
-    // 1. Output to IDE debug console / device stdout
-    Zone.root.print('[GuestApp] $message');
-
-    // 2. Keep in local log history (last 100 entries)
-    _consoleLogs.add(message);
-    if (_consoleLogs.length > 100) {
-      _consoleLogs.removeAt(0);
-    }
-
-    // 3. Stream over WebSocket to the dev server terminal
-    if (_devSocket != null && _devSocket!.readyState == WebSocket.open) {
-      try {
-        _devSocket!.add(jsonEncode({
-          'type': 'log',
-          'level': 'INFO',
-          'message': message,
-          'timestamp': DateTime.now().millisecondsSinceEpoch,
-        }));
-      } catch (_) {}
-    }
-  }
+  final BundleLoader _bundleLoader = BundleLoader();
+  late InterpreterRunner _interpreterRunner;
+  LiveConnection? _liveConnection;
 
   @override
   void initState() {
     super.initState();
-    _initInterpreter();
-  }
-
-  void _initInterpreter() {
-    _interpreter = D4rt();
-    registerDartNativeBridges(_interpreter, onLog: _handleGuestLog);
-    _interpreter.registertopLevelFunction(
-      'exitToLauncher',
-      (visitor, positional, named, typeArgs) {
-        _unmountApp();
-        return null;
-      },
-      'package:dartnative/dartnative.dart',
-      signature: 'void exitToLauncher()',
+    _interpreterRunner = InterpreterRunner(
+      onLog: (msg) => _liveConnection?.sendDeviceLog(msg),
+      onExit: _unmountApp,
     );
-    _interpreter.registertopLevelFunction(
-      'D4rtFlutterApplication',
-      (visitor, positional, named, typeArgs) {
-        final rootWidget = unwrap<Widget>(named['root'], visitor: visitor);
-        return D4rtFlutterApplication(
-          root: rootWidget ??
-              const Scaffold(
-                body: Center(child: Text('Empty D4rtFlutterApplication root')),
-              ),
-          onMount: named['onMount'] != null
-              ? () => D4.callInterpreterCallback(visitor, named['onMount'], [])
-              : null,
-          onUnmount: named['onUnmount'] != null
-              ? () => D4.callInterpreterCallback(visitor, named['onUnmount'], [])
-              : null,
-        );
-      },
-      'package:dartnative/dartnative.dart',
-      signature: 'D4rtFlutterApplication({required Widget root, Function? onMount, Function? onUnmount})',
-    );
+    _initScanner();
   }
 
-  /// Mounts the local embedded counter demo
-  void _mountApp() {
-    _devSocket?.close();
-    _devSocket = null;
-    setState(() {
-      _isAppMounted = true;
-      _isLiveDevMode = false;
-      _counter = 0;
-      _scriptVersion = 1;
-      _errorMessage = null;
-      _launcherNotice = null;
-    });
-    _evaluateInterpretedUI();
-  }
-
-  /// Connects to the Live Dev Server at localhost:8088
-  Future<void> _mountLiveApp() async {
-    setState(() {
-      _launcherNotice = 'Connecting to dev server at http://localhost:8088/bundle.json...';
-    });
-
-    try {
-      final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 3);
-
-      // Fetch all project files as a multi-file bundle
-      await _fetchBundleAndSources(client);
-
-      // Connect WebSocket for automated Hot Reload
-      try {
-        _devSocket?.close();
-        final ws = await WebSocket.connect('ws://localhost:8088/ws').timeout(const Duration(seconds: 3));
-        _devSocket = ws;
-        ws.listen(
-          (message) async {
-            try {
-              final data = jsonDecode(message as String);
-              if (data['type'] == 'reload') {
-                print('[DartNative Go] 🔄 DevServer triggered Live Hot Reload!');
-                await _fetchBundleAndSources(client);
-                _evaluateInterpretedUI(isHotReload: true);
-              }
-            } catch (e) {
-              print('[DartNative Go] Live reload update error: $e');
-            }
-          },
-          onDone: () {
-            print('[DartNative Go] Dev server WebSocket closed');
-          },
-        );
-      } catch (e) {
-        print('[DartNative Go] WebSocket connection failed (HTTP bundle loaded): $e');
-      }
-
-      setState(() {
-        _isAppMounted = true;
-        _isLiveDevMode = true;
-        _counter = 0;
-        _errorMessage = null;
-        _launcherNotice = null;
-      });
-      _evaluateInterpretedUI();
-    } catch (e) {
-      print('[DartNative Go] Dev server connect error: $e');
-      setState(() {
-        _launcherNotice = 'Could not connect to Dev Server on localhost:8088.\nStart it with:\ndart run tool/dev_server.dart';
-      });
-    }
-  }
-
-  /// Fetches the project bundle from the dev server and populates [_liveSources]
-  Future<void> _fetchBundleAndSources(HttpClient client) async {
-    try {
-      final bundleReq = await client.getUrl(Uri.parse('http://localhost:8088/bundle.json'));
-      final bundleRes = await bundleReq.close();
-      if (bundleRes.statusCode == HttpStatus.ok) {
-        final jsonStr = await bundleRes.transform(utf8.decoder).join();
-        final Map<String, dynamic> rawMap = jsonDecode(jsonStr);
-        final rawFiles = <String, String>{};
-        rawMap.forEach((path, code) {
-          rawFiles[path] = code.toString();
+  Future<void> _initScanner() async {
+    _scannerSub = _scanner.projectsStream.listen((projects) {
+      if (mounted) {
+        setState(() {
+          _projects = projects;
+          _isLoading = false;
         });
-        _liveSources = AutoImportParser.buildVirtualSourceMap(rawFiles);
-        _liveScriptSource = _liveSources['package:guest_app/main.dart'] ??
-            _liveSources['main.dart'] ??
-            '';
-        return;
       }
-    } catch (_) {}
+    });
 
-    // Fallback to /app.dart if bundle.json is unavailable
-    final request = await client.getUrl(Uri.parse('http://localhost:8088/app.dart'));
-    final response = await request.close();
-    if (response.statusCode != HttpStatus.ok) {
-      throw HttpException('Server returned HTTP ${response.statusCode}');
+    await _scanner.start();
+    if (mounted) {
+      setState(() {
+        _projects = _scanner.currentProjects;
+        _isLoading = false;
+      });
     }
-    final source = await response.transform(utf8.decoder).join();
-    final rawFiles = {'main.dart': source};
-
-    // If local guest_app directory is present (e.g. simulator or host), populate multi-file sources
-    if (Directory('guest_app').existsSync()) {
-      try {
-        final guestDir = Directory('guest_app');
-        for (final entity in guestDir.listSync(recursive: true)) {
-          if (entity is File && entity.path.endsWith('.dart')) {
-            final relPath = entity.path
-                .replaceFirst('${guestDir.path}/', '')
-                .replaceAll(r'\', '/');
-            rawFiles[relPath] = entity.readAsStringSync();
-          }
-        }
-      } catch (_) {}
-    }
-
-    _liveSources = AutoImportParser.buildVirtualSourceMap(rawFiles);
-    _liveScriptSource = _liveSources['package:guest_app/main.dart'] ??
-        _liveSources['main.dart'] ??
-        source;
   }
 
-  /// Unmounts the app and returns to the Go Launcher screen
-  void _unmountApp() {
-    _devSocket?.close();
-    _devSocket = null;
+  @override
+  void dispose() {
+    _scannerSub?.cancel();
+    _scanner.dispose();
+    _urlController.dispose();
+    _liveConnection?.disconnect();
+    _bundleLoader.close();
+    _interpreterRunner.unmount();
+    super.dispose();
+  }
+
+  /// Launches a project given its server URL.
+  Future<void> _launchProject(String rawUrl, {String? fallbackAppName}) async {
+    final serverUrl = BundleLoader.normalizeUrl(rawUrl);
+    setState(() {
+      _isLoadingBundle = true;
+      _errorMessage = null;
+      _statusMessage = 'Connecting to dev server...';
+      _activeBundle = ProjectBundle(
+        appName: fallbackAppName ?? 'DartNative App',
+        serverUrl: serverUrl,
+        sources: const {},
+        entrypointCode: '',
+        entrypointLibrary: 'main.dart',
+      );
+    });
+
     try {
-      _activeApplication?.onUnmount?.call();
-    } catch (_) {}
-    _activeApplication = null;
+      setState(() {
+        _statusMessage = 'Loading project manifest & bundle...';
+      });
+
+      // 1. Fetch manifest & multi-file bundle
+      final bundle = await _bundleLoader.fetchBundle(serverUrl);
+      if (!mounted) return;
+
+      setState(() {
+        _activeBundle = bundle;
+        _statusMessage = 'Connecting live hot reload...';
+      });
+
+      // 2. Connect WebSocket for live hot reload and logs
+      _liveConnection?.disconnect();
+      _liveConnection = LiveConnection(
+        serverUrl: bundle.serverUrl,
+        onReload: (changed) => _reloadApp(changedFile: changed),
+        onBreakpoints: (bps) {
+          _interpreterRunner.debugController.setBreakpoints(bps);
+          _reloadApp();
+        },
+        onResume: () {
+          _interpreterRunner.debugController.resume();
+        },
+      );
+      await _liveConnection!.connect();
+
+      // 3. Compile and execute in the interpreter
+      setState(() {
+        _statusMessage = 'Compiling & mounting application...';
+      });
+
+      _interpreterRunner.currentServerUrl = bundle.serverUrl;
+      _interpreterRunner.initInterpreter();
+      final widget = _interpreterRunner.evaluate(
+        source: bundle.entrypointCode,
+        library: bundle.entrypointLibrary,
+        sources: bundle.sources,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _interpretedWidget = widget;
+        _isAppMounted = true;
+        _isLoadingBundle = false;
+        _reloadGeneration++;
+      });
+    } catch (e, stack) {
+      final err = e.toString();
+      print('🔴 [Interpreter Error] $err\n$stack');
+      _liveConnection?.sendDeviceLog(
+        '🔴 [Interpreter Error] $err',
+        level: 'ERROR',
+      );
+      if (!mounted) return;
+      setState(() {
+        _isLoadingBundle = false;
+        _isAppMounted = true;
+        _errorMessage = err;
+      });
+    }
+  }
+
+  /// Re-evaluates updated code upon Hot Reload.
+  Future<void> _reloadApp({String? changedFile}) async {
+    if (_activeBundle == null) return;
+    try {
+      final updatedBundle = await _bundleLoader.fetchBundle(
+        _activeBundle!.serverUrl,
+      );
+      if (!mounted) return;
+      _activeBundle = updatedBundle;
+
+      final widget = _interpreterRunner.evaluate(
+        source: updatedBundle.entrypointCode,
+        library: updatedBundle.entrypointLibrary,
+        sources: updatedBundle.sources,
+        isHotReload: true,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _interpretedWidget = widget;
+        _reloadGeneration++;
+        _errorMessage = null;
+      });
+    } catch (e, stack) {
+      final err = 'Hot Reload Error: $e';
+      print('🔴 [Hot Reload Error] $err\n$stack');
+      _liveConnection?.sendDeviceLog(
+        '🔴 [Hot Reload Error] $err',
+        level: 'ERROR',
+      );
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = err;
+      });
+    }
+  }
+
+  /// Unmounts the guest app and returns to the Go launcher screen.
+  void _unmountApp() {
+    _liveConnection?.disconnect();
+    _liveConnection = null;
+    _interpreterRunner.unmount();
+    if (!mounted) return;
     setState(() {
       _isAppMounted = false;
-      _isLiveDevMode = false;
+      _isLoadingBundle = false;
       _interpretedWidget = null;
       _errorMessage = null;
     });
   }
 
-  /// Evaluates the active script with current counter state & callbacks
-  void _evaluateInterpretedUI({bool isHotReload = false}) {
-    if (isHotReload) {
-      _reloadGeneration++;
-      try {
-        _activeApplication?.onUnmount?.call();
-      } catch (_) {}
-      _activeApplication = null;
-      // Step #3: Dispose prior interpreter session to drop ModuleLoader._moduleCache
-      // so all modified files (like reset_button.dart) are parsed fresh!
-      try {
-        _interpreter.dispose();
-      } catch (_) {}
-      _initInterpreter();
-    }
-
-    try {
-      final rawScript = _isLiveDevMode
-          ? _liveScriptSource
-          : (_scriptVersion == 1 ? _counterScriptV1 : _counterScriptV2);
-      final currentScript = AutoImportParser.processAndAutoImport(
-        rawScript,
-        currentFilePath: 'main.dart',
-        projectFiles: _isLiveDevMode ? _liveSources : null,
-      );
-      final step = _isLiveDevMode ? 1 : (_scriptVersion == 1 ? 1 : 5);
-
-      final Object? rawResult;
-      if (currentScript.contains(RegExp(r'\bmain\s*\('))) {
-        rawResult = runZoned(
-          () => _interpreter.execute(
-            source: currentScript,
-            name: 'main',
-            library: 'package:guest_app/main.dart',
-            sources: _isLiveDevMode ? _liveSources : null,
-          ),
-          zoneSpecification: ZoneSpecification(
-            print: (self, parent, zone, line) {
-              _handleGuestLog(line);
-            },
-          ),
-        );
-      } else {
-        // Pass the current state & action callbacks directly to the interpreted entrypoint
-        rawResult = runZoned(
-          () => _interpreter.execute(
-            source: currentScript,
-            name: 'buildUI',
-            library: 'package:guest_app/main.dart',
-            sources: _isLiveDevMode ? _liveSources : null,
-            positionalArgs: [
-              _counter,
-              () {
-                setState(() {
-                  _counter += step;
-                });
-                _evaluateInterpretedUI();
-              },
-              () {
-                setState(() {
-                  _counter -= step;
-                });
-                _evaluateInterpretedUI();
-              },
-              () {
-                setState(() {
-                  _counter = 0;
-                });
-                _evaluateInterpretedUI();
-              },
-              () {
-                if (!_isLiveDevMode) {
-                  _triggerHotReload();
-                }
-              },
-              () {
-                _unmountApp();
-              },
-            ],
-          ),
-          zoneSpecification: ZoneSpecification(
-            print: (self, parent, zone, line) {
-              _handleGuestLog(line);
-            },
-          ),
-        );
-      }
-
-      if (rawResult is D4rtFlutterApplication) {
-        _activeApplication = rawResult;
-        try {
-          rawResult.onMount?.call();
-        } catch (_) {}
-      }
-
-      final widget = unwrap<Widget>(rawResult, visitor: _interpreter.visitor);
-      if (widget == null) {
-        throw StateError(
-          'Evaluation succeeded, but could not resolve a Widget from the result ($rawResult).\n'
-          'Ensure your main() or buildUI() returns a Widget.',
-        );
-      }
-
-      // Settle window for asynchronous framework validation (~150ms)
-      Timer(const Duration(milliseconds: 150), () {
-        if (mounted && _errorMessage == null) {
-          // Settled cleanly
-        }
-      });
-
-      setState(() {
-        _interpretedWidget = widget;
-        _errorMessage = null;
-      });
-    } catch (e, st) {
-      print('[DartNative Go Evaluation Error]: $e\n$st');
-      setState(() {
-        _errorMessage = e.toString();
-      });
-    }
-  }
-
-  /// Simulates Hot Reload by switching to updated code while preserving state
-  void _triggerHotReload() {
-    print(
-      '[DartNative Go] Triggering Hot Reload. Preserving counter: $_counter',
-    );
-    setState(() {
-      _scriptVersion = _scriptVersion == 1 ? 2 : 1;
-    });
-    _evaluateInterpretedUI(isHotReload: true);
-  }
-
   @override
   Widget build(BuildContext context) {
-    // 1. If an interpreted app is mounted, display it directly
+    // 1. Loading state: Project Splash Screen while fetching bundle
+    if (_isLoadingBundle) {
+      return ProjectSplashScreen(
+        appName: _activeBundle?.appName ?? 'DartNative App',
+        splashUrl: _activeBundle?.splashUrl,
+        iconUrl: _activeBundle?.iconUrl,
+        backgroundColor: ProjectSplashScreen.parseHexColor(
+          _activeBundle?.splashBackgroundColor,
+        ),
+        statusMessage: _statusMessage,
+      );
+    }
+
+    // 2. Mounted state: Show guest app wrapped in DevToolOverlay (or error screen)
     if (_isAppMounted) {
       if (_errorMessage != null) {
-        return Scaffold(
-          appBar: AppBar(title: const Text('Interpreter Error')),
-          body: Container(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  'Evaluation Error:',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
+        return InterpreterErrorView(
+          errorMessage: _errorMessage!,
+          onGoHome: _unmountApp,
+          onRetry: () => _reloadApp(),
+          onLogToTerminal: (error) {
+            print('🔴 [Interpreter Error] $error');
+            _liveConnection?.sendDeviceLog(
+              '🔴 [Interpreter Error] $error',
+              level: 'ERROR',
+            );
+          },
+        );
+      }
+
+      return DevToolOverlay(
+        appName: _activeBundle?.appName ?? 'DartNative App',
+        appVersion: _activeBundle?.appVersion,
+        serverUrl: _activeBundle?.serverUrl ?? '',
+        isConnected: _liveConnection?.isConnected ?? false,
+        onGoHome: _unmountApp,
+        onReload: () => _reloadApp(),
+        child: KeyedSubtree(
+          key: ValueKey('guest_root_$_reloadGeneration'),
+          child:
+              _interpretedWidget ??
+              const Scaffold(
+                body: Center(child: Text('Evaluating widget...')),
+              ),
+        ),
+      );
+    }
+
+    // 3. Default state: Launcher Screen
+    return App(
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.dark(),
+      ),
+      home: Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          centerTitle: false,
+          actions: [
+            BarButtonItem(
+              fontIcon: CupertinoIcons.ellipsis,
+              titleStyle: const TextStyle(color: Colors.white),
+              menu: [
+                MenuAction(
+                  onTap: () {},
+                  icon: CupertinoIcons.sun_max,
+                  title: 'Change Theme',
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  _errorMessage!,
-                  style: const TextStyle(color: Colors.grey),
-                ),
-                const SizedBox(height: 24),
-                Button(
-                  title: 'Back to Launcher',
-                  variant: ButtonVariant.bordered,
-                  onPressed: _unmountApp,
+                MenuAction(
+                  onTap: () => _scanner.scanNow(),
+                  icon: CupertinoIcons.arrow_clockwise,
+                  title: 'Rescan Network',
                 ),
               ],
             ),
+          ],
+          leading: Image.asset(
+            'assets/dn-logo.png',
+            width: 40,
+            height: 40,
           ),
-        );
-      }
-
-      return KeyedSubtree(
-        key: ValueKey('guest_root_$_reloadGeneration'),
-        child: _interpretedWidget ??
-            const Scaffold(
-              body: Container(
-                alignment: Alignment.center,
-                child: Text('Evaluating widget...'),
+          title: Row(
+            children: [
+              const Text(
+                'DartNative Go',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-      );
-    }
-
-    // 2. Default state: DartNative Go Launcher screen (unmounted)
-    return _buildLauncherScreen();
-  }
-
-  /// The DartNative Go Launcher Screen (Unmounted State)
-  Widget _buildLauncherScreen() {
-    return Scaffold(
-      key: const ValueKey('launcher_screen'),
-      brightness: Brightness.light,
-      appBar: AppBar(
-        ios: const AppBarIOSConfig(systemBar: false),
-        title: const Text(
-          'DartNative Go',
-          style: TextStyle(
-            color: Color(0xFF111111),
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+            ],
           ),
         ),
-      ),
-      backgroundColor: const Color(0xFFF2F2F7),
-      body: Container(
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              '⚡️ DartNative Go',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF111111),
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
+        body: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Development Servers",
+                style: TextStyle(
+                  fontWeight: FontWeight.w400,
+                  color: Colors.white70,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Dynamic AST Runtime Sandbox',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF8E8E93), fontSize: 15),
-            ),
-            const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.all(20),
-              color: const Color(0xFFFFFFFF),
-              child: Column(
-                children: const [
-                  Text(
-                    'Ready to Mount Project',
-                    style: TextStyle(
-                      color: Color(0xFF111111),
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _urlController,
+                      decoration: const InputDecoration(
+                        hintText: 'Enter URL (e.g. 192.168.3.159:8088)',
+                        filled: true,
+                        fillColor: Color(0xFF0e1012),
+                      ),
+                      prefixIconPadding: const EdgeInsets.only(left: 10),
+                      prefixIcon: CupertinoIcons.link,
+                      prefixIconColor: Colors.white,
+                      clearButtonMode: ClearButtonMode.whileEditing,
+                      keyboardType: TextInputType.url,
+                      textInputAction: TextInputAction.go,
+                      onSubmitted: (value) async {
+                        if (value.trim().isNotEmpty) {
+                          final project = await _scanner.addManualProject(
+                            value,
+                          );
+                          _urlController.clear();
+                          _launchProject(
+                            project.url,
+                            fallbackAppName: project.appName,
+                          );
+                        }
+                      },
                     ),
                   ),
-                  SizedBox(height: 10),
-                  Text(
-                    'Target: Counter App Demo\nEngine: tom_d4rt + Automated Bridges (Modular AST)\nState: Unmounted',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color(0xFF6B6B70),
-                      fontSize: 13,
-                      height: 1.4,
-                    ),
+                  const SizedBox(width: 12),
+                  const Icon(
+                    CupertinoIcons.qrcode_viewfinder,
+                    size: 30,
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
-            if (_launcherNotice != null) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                color: const Color(0xFFFFF4E5),
-                child: Text(
-                  _launcherNotice!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFFB25E00),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            Button(
-              title: '⚡️ Connect to Live Dev Server (localhost:8088)',
-              variant: ButtonVariant.filled,
-              color: const Color(0xFF007AFF),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              onPressed: _mountLiveApp,
-            ),
-            const SizedBox(height: 12),
-            Button(
-              title: '🚀 Launch Embedded Demo (v1 ⇄ v2)',
-              variant: ButtonVariant.bordered,
-              color: const Color(0xFFFFFFFF),
-              foregroundColor: const Color(0xFF111111),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              onPressed: _mountApp,
-            ),
-            if (_consoleLogs.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                color: const Color(0xFF1E1E24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Recent Logs (from guest app):',
-                      style: TextStyle(
-                        color: Color(0xFF8E8E93),
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
+              const SizedBox(height: 50),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Recent Projects",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white70,
                     ),
-                    const SizedBox(height: 6),
-                    ..._consoleLogs.reversed.take(4).map(
-                          (log) => Text(
-                            '> $log',
-                            style: const TextStyle(
-                              color: Color(0xFF00D2FF),
-                              fontSize: 11,
-                              fontFamily: 'Courier',
+                  ),
+                  const SizedBox(height: 10),
+                  if (_projects.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Text(
+                        _isLoading
+                            ? "Scanning connected networks (8088..8098)..."
+                            : "No active or recent projects found.",
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.white38,
+                        ),
+                      ),
+                    )
+                  else
+                    ..._projects.map(
+                      (project) => Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            print(
+                              '[DartNativeGo] Selected project from list: ${project.appName} (${project.url})',
+                            );
+                            _urlController.text = project.url;
+                            _launchProject(
+                              project.url,
+                              fallbackAppName: project.appName,
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0e1012),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Image.asset(
+                                  'assets/dn-logo.png',
+                                  width: 40,
+                                  height: 40,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Text(
+                                            project.appName,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 15,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        project.url,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.white60,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (project.isActive)
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFF34C759),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                              ],
                             ),
                           ),
                         ),
-                  ],
-                ),
+                      ),
+                    ),
+                ],
               ),
             ],
-            const SizedBox(height: 16),
-            const Text(
-              'Real-time interpreted hot reload powered by tom_d4rt',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF8E8E93), fontSize: 12),
+          ),
+        ),
+        bottomNavigationBar: const BottomNavigationBar(
+          items: [
+            BottomNavigationBarItem(
+              icon: Icon(CupertinoIcons.house),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(CupertinoIcons.book_fill),
+              label: 'Learn',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(CupertinoIcons.gear_alt_fill),
+              label: 'Settings',
             ),
           ],
         ),

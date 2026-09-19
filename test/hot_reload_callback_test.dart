@@ -1,7 +1,5 @@
-import 'dart:async';
 import 'package:tom_d4rt/tom_d4rt.dart';
 import 'package:dartnative_go/src/interpreter/auto_import_parser.dart';
-import 'package:dartnative_go/src/interpreter/d4rt_flutter_application.dart';
 
 void main() {
   print('Testing Hot Reload Module Cache invalidation...');

@@ -69,10 +69,53 @@ class ResetButton extends StatefulWidget {
     'Should register package:guest_app alias',
   );
   assert(
-    virtualMap.containsKey('file:///reset_button.dart'),
-    'Should register file:/// alias',
+    virtualMap.containsKey('package:dartnative_ios/dartnative_ios.dart'),
+    'Should register package:dartnative_ios stub',
+  );
+  assert(
+    virtualMap.containsKey('package:dartnative_android/dartnative_android.dart'),
+    'Should register package:dartnative_android stub',
   );
   print('✓ Test 4 passed: Multi-file project auto-import & virtual source map');
+
+  // Test 5: Extracted widget with package import (e.g. package:example/home_screen.dart)
+  final extractedFiles = {
+    'main.dart': '''
+import 'package:example/home_screen.dart';
+
+void main() {
+  runApp(const HomeScreen());
+}
+''',
+    'home_screen.dart': '''
+import 'package:dartnative/dartnative.dart';
+
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+  @override
+  Widget build(BuildContext context) => const Text('Home');
+}
+''',
+  };
+
+  final exampleMap = AutoImportParser.buildVirtualSourceMap(
+    extractedFiles,
+    packageName: 'example',
+  );
+
+  assert(
+    exampleMap.containsKey('package:example/home_screen.dart'),
+    'Should register package:example/home_screen.dart alias',
+  );
+  assert(
+    exampleMap.containsKey('package:example/main.dart'),
+    'Should register package:example/main.dart alias',
+  );
+  assert(
+    exampleMap.containsKey('package:guest_app/home_screen.dart'),
+    'Should retain fallback package:guest_app/home_screen.dart alias',
+  );
+  print('✓ Test 5 passed: Extracted widget package:example/home_screen.dart import alias');
 
   print('\n🎉 All AutoImportParser tests passed successfully!');
 }

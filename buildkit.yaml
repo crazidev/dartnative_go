@@ -15,3 +15,13 @@ d4rtgen:
         - package:dartnative/dartnative.dart
       barrelImport: package:dartnative/dartnative.dart
       outputPath: lib/src/interpreter/dartnative_bridges.b.dart
+    - name: dartnative_webview
+      barrelFiles:
+        - package:dartnative_webview/dartnative_webview.dart
+      barrelImport: package:dartnative_webview/dartnative_webview.dart
+      outputPath: lib/src/interpreter/dartnative_webview_bridges.b.dart
+    - name: dartnative_share
+      barrelFiles:
+        - package:dartnative_share/dartnative_share.dart
+      barrelImport: package:dartnative_share/dartnative_share.dart
+      outputPath: lib/src/interpreter/dartnative_share_bridges.b.dart

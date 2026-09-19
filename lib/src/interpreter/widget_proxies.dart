@@ -4,6 +4,11 @@ import 'package:dartnative/dartnative.dart';
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
 
+import 'debug_controller.dart';
+import 'widget_generation_tracker.dart';
+
+export 'widget_generation_tracker.dart';
+
 /// Global log handler for interpreted guest code
 void Function(String message)? onGuestLog;
 
@@ -25,8 +30,20 @@ class InterpretedStatelessWidget extends StatelessWidget {
   final InterpreterVisitor visitor;
   final InterpretedInstance instance;
 
-  InterpretedStatelessWidget(this.visitor, this.instance, {super.key}) {
+  InterpretedStatelessWidget(this.visitor, this.instance, {Key? key})
+      : super(key: key ?? _resolveKey(instance)) {
     instance.nativeProxy = this;
+  }
+
+  static Key _resolveKey(InterpretedInstance instance) {
+    final gen = WidgetGenerationTracker.getGeneration(instance.klass.name);
+    try {
+      if (instance.hasInstanceMember('key')) {
+        final k = instance.get('key');
+        if (k is Key) return ValueKey('${k}_gen_$gen');
+      }
+    } catch (_) {}
+    return ValueKey('Stateless_${instance.klass.name}_gen_$gen');
   }
 
   @override
@@ -48,8 +65,20 @@ class InterpretedStatefulWidget extends StatefulWidget {
   final InterpreterVisitor visitor;
   final InterpretedInstance instance;
 
-  InterpretedStatefulWidget(this.visitor, this.instance, {super.key}) {
+  InterpretedStatefulWidget(this.visitor, this.instance, {Key? key})
+      : super(key: key ?? _resolveKey(instance)) {
     instance.nativeProxy = this;
+  }
+
+  static Key _resolveKey(InterpretedInstance instance) {
+    final gen = WidgetGenerationTracker.getGeneration(instance.klass.name);
+    try {
+      if (instance.hasInstanceMember('key')) {
+        final k = instance.get('key');
+        if (k is Key) return ValueKey('${k}_gen_$gen');
+      }
+    } catch (_) {}
+    return ValueKey('Stateful_${instance.klass.name}_gen_$gen');
   }
 
   @override
@@ -71,9 +100,9 @@ class InterpretedStatefulWidget extends StatefulWidget {
 
 /// Native proxy for interpreted classes that extend [State].
 class InterpretedStateProxy extends State<StatefulWidget> {
-  final InterpreterVisitor visitor;
-  final InterpretedInstance stateInstance;
-  final InterpretedStatefulWidget ownerWidget;
+  InterpreterVisitor visitor;
+  InterpretedInstance stateInstance;
+  InterpretedStatefulWidget ownerWidget;
 
   bool _isDispatchingInitState = false;
   bool _isDispatchingDidChangeDependencies = false;
@@ -81,10 +110,15 @@ class InterpretedStateProxy extends State<StatefulWidget> {
   bool _isDispatchingDispose = false;
 
   InterpretedStateProxy(this.visitor, this.stateInstance, this.ownerWidget) {
-    stateInstance.nativeProxy = this;
-    stateInstance.bridgedSuperObject = this;
-    stateInstance.nativeStateProxy = this;
-    stateInstance.interpretedStatefulWidget = ownerWidget.instance;
+    _wireStateInstance(stateInstance, ownerWidget.instance);
+  }
+
+  void _wireStateInstance(
+      InterpretedInstance state, InterpretedInstance widgetInstance) {
+    state.nativeProxy = this;
+    state.bridgedSuperObject = this;
+    state.nativeStateProxy = this;
+    state.interpretedStatefulWidget = widgetInstance;
   }
 
   @override
@@ -129,6 +163,14 @@ class InterpretedStateProxy extends State<StatefulWidget> {
   @override
   void setState(VoidCallback fn) {
     if (!mounted) return;
+    if (DebugController().isPaused) {
+      DebugController().waitIfPaused().then((_) {
+        if (mounted) {
+          setState(fn);
+        }
+      });
+      return;
+    }
     try {
       super.setState(fn);
     } catch (_) {
@@ -149,8 +191,33 @@ class InterpretedStateProxy extends State<StatefulWidget> {
     try {
       _runWithLogCapture(() {
         if (widget is InterpretedStatefulWidget) {
-          stateInstance.interpretedStatefulWidget =
-              (widget as InterpretedStatefulWidget).instance;
+          final newOwner = widget as InterpretedStatefulWidget;
+          final newVisitor = newOwner.visitor;
+          visitor = newVisitor;
+          ownerWidget = newOwner;
+
+          // Re-create state instance from updated class definition in the new interpreter,
+          // while preserving all existing state fields (like counter values).
+          try {
+            final createStateMethod =
+                newOwner.instance.get('createState', visitor: newVisitor);
+            if (createStateMethod is Callable) {
+              final newStateResult =
+                  createStateMethod.call(newVisitor, [], {});
+              if (newStateResult is InterpretedInstance) {
+                final oldState = stateInstance;
+                final newState = newStateResult;
+
+                _transferStateFields(oldState, newState, newVisitor);
+                _wireStateInstance(newState, newOwner.instance);
+
+                stateInstance = newState;
+              }
+            }
+          } catch (e) {
+            // Fallback: wire updated widget reference to existing state
+            stateInstance.interpretedStatefulWidget = newOwner.instance;
+          }
         }
         final method = stateInstance.klass.findInstanceMethod('didUpdateWidget');
         if (method != null) {
@@ -163,6 +230,36 @@ class InterpretedStateProxy extends State<StatefulWidget> {
     } finally {
       _isDispatchingDidUpdateWidget = false;
     }
+  }
+
+  /// Transfers all state fields from [oldState] to [newState] across reloads
+  void _transferStateFields(
+    InterpretedInstance oldState,
+    InterpretedInstance newState,
+    InterpreterVisitor currentVisitor,
+  ) {
+    try {
+      final fieldNames = oldState.klass.getInstanceFieldNames();
+      for (final fieldName in fieldNames) {
+        if (fieldName == 'widget' || fieldName == 'context') continue;
+        Object? val;
+        bool hasVal = false;
+        try {
+          val = oldState.getField(fieldName);
+          hasVal = true;
+        } catch (_) {
+          try {
+            val = oldState.get(fieldName, visitor: currentVisitor);
+            hasVal = true;
+          } catch (_) {}
+        }
+        if (hasVal) {
+          try {
+            newState.set(fieldName, val);
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
   }
 
   @override

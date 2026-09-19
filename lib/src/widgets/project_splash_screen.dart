@@ -1,0 +1,88 @@
+import 'package:dartnative/dartnative.dart';
+
+/// Renders the project splash screen while bundles and resources are being loaded.
+class ProjectSplashScreen extends StatelessWidget {
+  final String appName;
+  final String? splashUrl;
+  final String? iconUrl;
+  final Color backgroundColor;
+  final String statusMessage;
+
+  const ProjectSplashScreen({
+    super.key,
+    required this.appName,
+    this.splashUrl,
+    this.iconUrl,
+    this.backgroundColor = const Color(0xFF000000),
+    this.statusMessage = 'Loading project bundle...',
+  });
+
+  /// Helper to parse hex colors like '#000000' or '#112233'.
+  static Color parseHexColor(
+    String? hex, {
+    Color fallback = const Color(0xFF000000),
+  }) {
+    if (hex == null || hex.isEmpty) return fallback;
+    var h = hex.replaceFirst('#', '').trim();
+    if (h.length == 6) h = 'FF$h';
+    final val = int.tryParse(h, radix: 16);
+    return val != null ? Color(val) : fallback;
+  }
+
+  Widget _buildLogo() {
+    if (splashUrl != null && splashUrl!.isNotEmpty) {
+      return Image.network(
+        splashUrl!,
+        width: 100,
+        height: 100,
+        fit: BoxFit.contain,
+      );
+    }
+    if (iconUrl != null && iconUrl!.isNotEmpty) {
+      return Image.network(
+        iconUrl!,
+        width: 90,
+        height: 90,
+        fit: BoxFit.contain,
+      );
+    }
+    return Image.asset('assets/dn-logo.png', width: 90, height: 90);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: const ValueKey('project_splash_screen'),
+      backgroundColor: backgroundColor,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildLogo(),
+            const SizedBox(height: 24),
+            Text(
+              appName,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              statusMessage,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.white70,
+              ),
+            ),
+            const SizedBox(height: 28),
+            const CircularProgressIndicator(
+              color: Colors.white,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

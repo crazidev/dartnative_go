@@ -1,8 +1,37 @@
 # dartnative_go
 
-A **dartnative** app, scaffolded by `dn create`. It ships with correct iOS +
-Android runner glue (so it renders instead of white-screening) and is ready for a
-branded splash + app icon.
+A **dartnative** client runtime and development shell (similar to *Expo Go* for React Native), powered by `tom_d4rt`. It allows authoring, interpreting, and live hot-reloading multi-file DartNative apps dynamically over Wi-Fi / localhost.
+
+> 📖 **Architecture & Technical Details**: See [ARCHITECTURE.md](ARCHITECTURE.md) for a deep dive into the bridge architecture, widget proxies, lifecycle management, and dev server protocol.
+
+## DartNative Go CLI (`dart_go`)
+
+The `dart_go` CLI is the universal tool to start projects, validate native plugin compatibility, detect assets, and broadcast discovery beacons for the mobile app.
+
+### Install Globally
+Install the standalone `dart_go` binary globally so you can use it in any terminal and project:
+
+```sh
+dart run tool/install_global.dart
+```
+
+Once installed, use `dart_go` directly anywhere:
+```sh
+# Start the dev server in any DartNative project
+dart_go start
+
+# Check plugin compatibility and assets
+dart_go doctor
+
+# Check versions and supported native plugins
+dart_go version
+```
+
+### Key Features
+- **Plugin Version Validation**: Validates that all native plugins in `pubspec.yaml` match the versions compiled into DartNative Go runtime (e.g. `dartnative`, `dartnative_share`, `dartnative_webview` at `^1.0.0`).
+- **Asset Detection & Serving**: Auto-discovers app icons and splash screen configurations (`dartnative_splash`), serving them via `/assets/icon.png`, `/assets/splash.png`, and `/manifest.json`.
+- **Port Range & Multi-Port UDP Broadcast**: Automatically finds an available port across a range (`8088..8098`) and broadcasts discovery beacons across the local network so mobile clients can auto-connect.
+- **Terminal QR Code**: Prints an ANSI half-block QR code directly in the terminal for instant mobile camera connection.
 
 ## Run it
 

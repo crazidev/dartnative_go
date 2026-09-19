@@ -116,14 +116,20 @@
     - `yieldVoidCallbacks: true`: Wraps void bridged callbacks in an asynchronous micro-yield (`Future.delayed(Duration.zero)`) after calling the interpreted handler, returning a slice of the event loop to Flutter for smooth touch gestures and animations.
     - `generateDartscript: true` & `registrationClass: DartnativeGoBridges`: Generates [`lib/src/interpreter/dartscript.b.dart`](file:///Users/mac/Dev/projects/dartnative_go/lib/src/interpreter/dartscript.b.dart) to automatically register both primary and sub-package barrels (`src/core.dart`, `src/widgets.dart`, `src/framework.dart`) as well as RC-2 / GEN-079 relaxer factories.
 
-### Problem 7: Stale Closures / Callbacks Not Updating on Hot Reload
-* **Challenge**: When editing callbacks in imported submodules (e.g., updating `onPressed: () { print("onPressed: reset count 2"); }` in `reset_button.dart`), live hot reloads failed to take effect until a manual hot restart was performed.
+### Problem 7: Stale Closures / Callbacks & State Preservation on Hot Reload
+* **Challenge**: When editing callbacks or text in guest files (e.g., updating text in `main.dart` or editing `reset_button.dart`), earlier implementations either failed to update callbacks due to module caching or reset the entire widget state (reverting `_count` from 10 back to 0) by remounting the entire widget tree.
 * **Root Causes**:
-  1. `tom_d4rt`'s internal `ModuleLoader._moduleCache` retained previously parsed AST `CompilationUnit` objects for imported modules across `execute()` calls on the same interpreter instance.
-  2. Flutter's element reconciliation (`canUpdate`) preserved existing child state elements without triggering a re-render of their `build()` methods.
+  1. `tom_d4rt`'s internal module loader retained previously parsed AST units across calls on the same interpreter instance.
+  2. Remounting the root subtree with changing generational keys wiped out all Flutter `State` objects and destroyed guest state fields.
+  3. Re-evaluating code created fresh class definitions, while existing `State` objects in the element tree still pointed to old class method tables and stale bound method caches.
 * **Solution**:
-  - **Interpreter Session Disposal**: On reload, invoke `_interpreter.dispose()`, calling `releaseLoadedModules()` to purge `_moduleLoader._moduleCache` and re-parse all updated files from `_liveSources`.
-  - **Generational Remounting**: Increment `_reloadGeneration++` and mount the root inside `KeyedSubtree(key: ValueKey('guest_root_$_reloadGeneration'))`. This ensures that all widgets and state closures recreate with the newly parsed closures.
+  - **Interpreted State Preservation & Field Transfer**: In [`lib/src/interpreter/widget_proxies.dart`](file:///Users/mac/Dev/projects/dartnative_go/lib/src/interpreter/widget_proxies.dart), when `didUpdateWidget` is dispatched on hot reload:
+    - Instantiates a fresh `State` instance from the updated class definition in the new interpreter session.
+    - Copies all existing runtime state fields (e.g., `_count = 10`) from `oldState` into `newState` via `_transferStateFields`.
+    - Re-wires native proxies (`nativeProxy`, `bridgedSuperObject`, `nativeStateProxy`, `interpretedStatefulWidget`) to `newState`.
+    - Updates `visitor` and `ownerWidget`, dispatches `didUpdateWidget`, and calls `setState(() {})` to trigger an immediate rebuild with the new methods and preserved state.
+  - **Stable Element Subtree**: Kept the root `KeyedSubtree` key stable across hot reloads so Flutter's element reconciliation updates existing state elements in-place instead of discarding them.
+  - **Fresh Module Parsing**: On hot reload, `_interpreter.dispose()` drops module cache and `_initInterpreter()` reloads with `_liveSources`, feeding updated classes into the running tree.
 
 ### Problem 8: First-Class App Lifecycle & Safe `setState` Execution
 * **Challenge**: Complex guest applications create long-lived listeners, tickers, and streams that outlive a single widget frame, and mid-build `setState` calls can crash the engine.
