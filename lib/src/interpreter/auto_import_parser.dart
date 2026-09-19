@@ -194,6 +194,17 @@ class AutoImportParser {
     return index;
   }
 
+  /// Strips comments and string literals so identifier matching does not falsely match words in comments/strings.
+  static String stripCommentsAndStrings(String source) {
+    return source
+        .replaceAll(RegExp(r'/\*[\s\S]*?\*/'), ' ')
+        .replaceAll(RegExp(r'//.*'), ' ')
+        .replaceAll(RegExp(r"'''[\s\S]*?'''"), "''")
+        .replaceAll(RegExp(r'"""[\s\S]*?"""'), '""')
+        .replaceAll(RegExp(r"'([^'\\]|\\.)*'"), "''")
+        .replaceAll(RegExp(r'"([^"\\]|\\.)*"'), '""');
+  }
+
   /// Checks source code and automatically injects missing framework & project imports.
   ///
   /// Returns the enhanced source code.
@@ -204,6 +215,7 @@ class AutoImportParser {
   }) {
     final existingDirectives = parseDirectives(source);
     final existingUris = existingDirectives.map((d) => d.uri).toSet();
+    final cleanCode = stripCommentsAndStrings(source);
 
     final importsToAdd = <String>{};
 
@@ -217,7 +229,7 @@ class AutoImportParser {
 
     if (!hasDartNativeImport) {
       final usesDartNative = dartNativeSymbols.any(
-        (sym) => RegExp(r'\b' + RegExp.escape(sym) + r'\b').hasMatch(source),
+        (sym) => RegExp(r'\b' + RegExp.escape(sym) + r'\b').hasMatch(cleanCode),
       );
       if (usesDartNative) {
         importsToAdd.add("import 'package:dartnative/dartnative.dart';");
@@ -227,7 +239,7 @@ class AutoImportParser {
     // 2. Check for dart:math
     if (!existingUris.contains('dart:math')) {
       final usesMath = dartMathSymbols.any(
-        (sym) => RegExp(r'\b' + RegExp.escape(sym) + r'\b').hasMatch(source),
+        (sym) => RegExp(r'\b' + RegExp.escape(sym) + r'\b').hasMatch(cleanCode),
       );
       if (usesMath) {
         importsToAdd.add("import 'dart:math';");
@@ -237,26 +249,17 @@ class AutoImportParser {
     // 3. Check for dart:async
     if (!existingUris.contains('dart:async')) {
       final usesAsync = dartAsyncSymbols.any(
-        (sym) => RegExp(r'\b' + RegExp.escape(sym) + r'\b').hasMatch(source),
+        (sym) => RegExp(r'\b' + RegExp.escape(sym) + r'\b').hasMatch(cleanCode),
       );
       if (usesAsync) {
         importsToAdd.add("import 'dart:async';");
       }
     }
 
-    // 4. Check for dartnative_media_picker
-    // if (!existingUris.any((u) => u.contains('dartnative_media_picker'))) {
-    //   final usesMedia = dartMediaPickerSymbols.any((sym) =>
-    //       RegExp(r'\b' + RegExp.escape(sym) + r'\b').hasMatch(source));
-    //   if (usesMedia) {
-    //     importsToAdd.add("import 'package:dartnative_media_picker/dartnative_media_picker.dart';");
-    //   }
-    // }
-
     // 5. Check for dartnative_share
     if (!existingUris.any((u) => u.contains('dartnative_share'))) {
       final usesShare = dartShareSymbols.any(
-        (sym) => RegExp(r'\b' + RegExp.escape(sym) + r'\b').hasMatch(source),
+        (sym) => RegExp(r'\b' + RegExp.escape(sym) + r'\b').hasMatch(cleanCode),
       );
       if (usesShare) {
         importsToAdd.add(
@@ -265,15 +268,15 @@ class AutoImportParser {
       }
     }
 
-    // 4. Check for project-wide symbols from other files
+    // 6. Check for project-wide symbols from other files
     if (projectFiles != null && currentFilePath != null) {
       final symbolIndex = buildSymbolIndex(projectFiles);
       symbolIndex.forEach((symbol, definingPath) {
         if (definingPath != currentFilePath) {
-          // If the symbol is referenced in source
+          // If the symbol is referenced in clean source (not comment or string)
           final isReferenced = RegExp(
             r'\b' + RegExp.escape(symbol) + r'\b',
-          ).hasMatch(source);
+          ).hasMatch(cleanCode);
           if (isReferenced) {
             // Check if defining file or symbol is already imported
             final relImportPath = computeRelativePath(
@@ -299,14 +302,33 @@ class AutoImportParser {
       return source;
     }
 
-    // Prepend auto imports at the very top (or right after library directives)
-    final buffer = StringBuffer();
-    for (final imp in importsToAdd) {
-      buffer.writeln(imp);
+    final importsText = importsToAdd.join('\n');
+
+    // 1. Check if there is a library directive (must appear before imports)
+    final libraryMatch = RegExp(
+      r'^[ \t]*library(?:\s+[a-zA-Z0-9_.]+)?\s*;',
+      multiLine: true,
+    ).firstMatch(source);
+
+    if (libraryMatch != null) {
+      final insertIndex = libraryMatch.end;
+      final before = source.substring(0, insertIndex);
+      final after = source.substring(insertIndex);
+      return '$before\n\n$importsText\n$after';
     }
-    buffer.writeln();
-    buffer.write(source);
-    return buffer.toString();
+
+    // 2. Check if there is a shebang line
+    if (source.startsWith('#!')) {
+      final firstNewline = source.indexOf('\n');
+      if (firstNewline != -1) {
+        final shebang = source.substring(0, firstNewline + 1);
+        final rest = source.substring(firstNewline + 1);
+        return '$shebang\n$importsText\n\n$rest';
+      }
+    }
+
+    // 3. Otherwise prepend at the top
+    return '$importsText\n\n$source';
   }
 
   /// Instruments the given [source] code with breakpoint triggers.

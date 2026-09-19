@@ -140,7 +140,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
 
       _interpreterRunner.currentServerUrl = bundle.serverUrl;
       _interpreterRunner.initInterpreter();
-      final widget = _interpreterRunner.evaluate(
+      final widget = await _interpreterRunner.evaluate(
         source: bundle.entrypointCode,
         library: bundle.entrypointLibrary,
         sources: bundle.sources,
@@ -179,7 +179,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       if (!mounted) return;
       _activeBundle = updatedBundle;
 
-      final widget = _interpreterRunner.evaluate(
+      final widget = await _interpreterRunner.evaluate(
         source: updatedBundle.entrypointCode,
         library: updatedBundle.entrypointLibrary,
         sources: updatedBundle.sources,

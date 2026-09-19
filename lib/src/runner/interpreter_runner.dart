@@ -63,29 +63,25 @@ class InterpreterRunner {
     } catch (_) {}
 
     // 3. Intercept runApp(...) so standard entrypoints (void main() { runApp(App()); }) work
-    _interpreter.registertopLevelFunction(
-      'runApp',
-      (visitor, positional, named, typeArgs) {
-        if (positional.isNotEmpty) {
-          _capturedApp = unwrap<Widget>(positional[0], visitor: visitor);
-        }
-        return null;
-      },
-      'package:dartnative/dartnative.dart',
-      signature: 'void runApp(Widget app)',
-    );
+    void captureRunApp(visitor, positional, named, typeArgs) {
+      if (positional.isNotEmpty) {
+        _capturedApp = unwrap<Widget>(positional[0], visitor: visitor);
+      }
+    }
 
-    _interpreter.registertopLevelFunction(
-      'runApp',
-      (visitor, positional, named, typeArgs) {
-        if (positional.isNotEmpty) {
-          _capturedApp = unwrap<Widget>(positional[0], visitor: visitor);
-        }
-        return null;
-      },
+    for (final lib in [
+      'package:dartnative/dartnative.dart',
       'package:dartnative/src/framework.dart',
-      signature: 'void runApp(Widget app)',
-    );
+      'package:flutter/widgets.dart',
+      'package:flutter/material.dart',
+    ]) {
+      _interpreter.registertopLevelFunction(
+        'runApp',
+        captureRunApp,
+        lib,
+        signature: 'void runApp(Widget app)',
+      );
+    }
 
     // 4. Intercept registerNativeBindings so guest app calling DartNativePluginRegistrant.registerAll()
     // does not fail or attempt to re-register native host bindings
@@ -116,6 +112,33 @@ class InterpreterRunner {
       'package:dartnative/dartnative.dart',
       signature: 'void exitToLauncher()',
     );
+
+    // 4b. Register unawaited() from dart:async — fire-and-forget, discards
+    // the future's result. Without this the interpreter falls back to a
+    // "default bridged constructor" adapter which always returns null and
+    // throws a runtime error.
+    void registerUnawaited(String library) {
+      _interpreter.registertopLevelFunction(
+        'unawaited',
+        (visitor, positional, named, typeArgs) {
+          final arg = positional.isNotEmpty ? positional[0] : null;
+          if (arg is Future) {
+            arg.ignore();
+          }
+          return null;
+        },
+        library,
+        signature: 'void unawaited(Future<void> future)',
+      );
+    }
+
+    for (final lib in [
+      'dart:async',
+      'package:dartnative/dartnative.dart',
+      'package:dartnative/src/framework.dart',
+    ]) {
+      registerUnawaited(lib);
+    }
 
     // 5. Debugger and Breakpoint hooks
     _interpreter.registertopLevelFunction(
@@ -176,12 +199,12 @@ class InterpreterRunner {
   }
 
   /// Evaluates guest code from [source] and resolves the root [Widget].
-  Widget evaluate({
+  Future<Widget> evaluate({
     required String source,
     required String library,
     Map<String, String>? sources,
     bool isHotReload = false,
-  }) {
+  }) async {
     if (isHotReload) {
       try {
         _interpreter.dispose();
@@ -196,7 +219,7 @@ class InterpreterRunner {
       projectFiles: sources,
     );
 
-    final Object? rawResult = runZoned(
+    Object? rawResult = runZoned(
       () => _interpreter.execute(
         source: processedScript,
         name: 'main',
@@ -209,6 +232,10 @@ class InterpreterRunner {
         },
       ),
     );
+
+    if (rawResult is Future) {
+      rawResult = await rawResult;
+    }
 
     if (rawResult is D4rtFlutterApplication) {
       _activeApplication = rawResult;

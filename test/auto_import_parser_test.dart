@@ -117,5 +117,44 @@ class HomeScreen extends StatelessWidget {
   );
   print('✓ Test 5 passed: Extracted widget package:example/home_screen.dart import alias');
 
+  // Test 6: Library directive preservation when imports are added
+  final codeWithLibrary = '''
+/// Some documentation
+library my_custom_lib;
+
+class MyCustomWidget extends StatelessWidget {
+  Widget build(BuildContext context) => Container();
+}
+''';
+  final processedLib = AutoImportParser.processAndAutoImport(codeWithLibrary);
+  assert(
+    processedLib.indexOf('library my_custom_lib;') <
+        processedLib.indexOf("import 'package:dartnative/dartnative.dart';"),
+    'Library directive must appear before import directives:\n$processedLib',
+  );
+  print('✓ Test 6 passed: Injects imports AFTER library directive');
+
+  // Test 7: Comments and string literals do not trigger false auto-imports
+  final codeWithCommentsOnly = '''
+/// Table and column names for the local SQLite database.
+library;
+
+// ── Note ─────────────────────────────────────────────────────────────────
+const String noteTableName = 'Note';
+''';
+  final projectFilesWithNote = {
+    'notes_state.dart': 'class Note {}',
+  };
+  final processedCommentsOnly = AutoImportParser.processAndAutoImport(
+    codeWithCommentsOnly,
+    currentFilePath: 'tables.dart',
+    projectFiles: projectFilesWithNote,
+  );
+  assert(
+    !processedCommentsOnly.contains('notes_state.dart'),
+    'Should not inject import based on words in comments or strings:\n$processedCommentsOnly',
+  );
+  print('✓ Test 7 passed: Words in comments/strings do not trigger false auto-imports');
+
   print('\n🎉 All AutoImportParser tests passed successfully!');
 }
