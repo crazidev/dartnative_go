@@ -9,6 +9,11 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:lints/recommended.yaml
 
+analyzer:
+  errors:
+    depend_on_referenced_packages: ignore
+    invalid_use_of_internal_member: ignore
+
 formatter:
   trailing_commas: preserve
 

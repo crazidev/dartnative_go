@@ -66,9 +66,45 @@ const List<SupportedPlugin> kSupportedNativePlugins = [
   ),
   SupportedPlugin(
     name: 'dartnative_shared_preferences',
-    supportedConstraint: '^1.0.1',
+    supportedConstraint: '^1.0.0',
     isCore: false,
     description: 'Persistent key-value store for native settings and cache',
+  ),
+  SupportedPlugin(
+    name: 'dartnative_supabase',
+    supportedConstraint: '^1.0.0',
+    isCore: false,
+    description: 'Supabase client, authentication, database, and realtime',
+  ),
+  SupportedPlugin(
+    name: 'dartnative_social_sign_in',
+    supportedConstraint: '^1.0.0',
+    isCore: false,
+    description: 'Native Apple and Google social sign-in over FFI',
+  ),
+  SupportedPlugin(
+    name: 'dartnative_sqlite',
+    supportedConstraint: '^1.0.0',
+    isCore: false,
+    description: 'Embedded SQLite relational database',
+  ),
+  SupportedPlugin(
+    name: 'dartnative_path_provider',
+    supportedConstraint: '^1.0.0',
+    isCore: false,
+    description: 'Native file system and application directory path resolution',
+  ),
+  SupportedPlugin(
+    name: 'dartnative_keys',
+    supportedConstraint: '^1.0.0',
+    isCore: false,
+    description: 'Bundled runtime environment keys and secrets loader',
+  ),
+  SupportedPlugin(
+    name: 'dartnative_url_launcher',
+    supportedConstraint: '^1.0.0',
+    isCore: false,
+    description: 'System browser and external URL launcher',
   ),
 ];
 

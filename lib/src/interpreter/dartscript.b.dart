@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Dartscript registration for dartnative_go
-// Generated: 2026-09-18T09:05:05.122359 by tom_d4rt_generator 1.26.2
+// Generated: 2026-09-19T02:10:30.262867 by tom_d4rt_generator 1.26.2
 
 /// D4rt Bridge Registration for dartnative_go
 library;
@@ -9,6 +9,11 @@ import 'package:tom_d4rt/d4rt.dart';
 import 'dartnative_bridges.b.dart' as dartnative_ui_bridges;
 import 'dartnative_webview_bridges.b.dart' as dartnative_webview_bridges;
 import 'dartnative_share_bridges.b.dart' as dartnative_share_bridges;
+import 'dartnative_shared_preferences_bridges.b.dart' as dartnative_shared_preferences_bridges;
+import 'dartnative_path_provider_bridges.b.dart' as dartnative_path_provider_bridges;
+import 'dartnative_url_launcher_bridges.b.dart' as dartnative_url_launcher_bridges;
+import 'dartnative_splash_bridges.b.dart' as dartnative_splash_bridges;
+import 'crypto_bridges.b.dart' as crypto_bridges;
 import 'relaxers.b.dart' as relaxer_factories;
 
 /// Combined bridge registration for dartnative_go.
@@ -41,6 +46,46 @@ class DartnativeGoBridges {
     for (final barrel in dartnative_share_bridges.DartnativeShareBridge.subPackageBarrels()) {
       dartnative_share_bridges.DartnativeShareBridge.registerBridges(d4rt, barrel);
     }
+    dartnative_shared_preferences_bridges.DartnativeSharedPreferencesBridge.registerBridges(
+      d4rt,
+      'package:dartnative_shared_preferences/dartnative_shared_preferences.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel in dartnative_shared_preferences_bridges.DartnativeSharedPreferencesBridge.subPackageBarrels()) {
+      dartnative_shared_preferences_bridges.DartnativeSharedPreferencesBridge.registerBridges(d4rt, barrel);
+    }
+    dartnative_path_provider_bridges.DartnativePathProviderBridge.registerBridges(
+      d4rt,
+      'package:dartnative_path_provider/dartnative_path_provider.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel in dartnative_path_provider_bridges.DartnativePathProviderBridge.subPackageBarrels()) {
+      dartnative_path_provider_bridges.DartnativePathProviderBridge.registerBridges(d4rt, barrel);
+    }
+    dartnative_url_launcher_bridges.DartnativeUrlLauncherBridge.registerBridges(
+      d4rt,
+      'package:dartnative_url_launcher/dartnative_url_launcher.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel in dartnative_url_launcher_bridges.DartnativeUrlLauncherBridge.subPackageBarrels()) {
+      dartnative_url_launcher_bridges.DartnativeUrlLauncherBridge.registerBridges(d4rt, barrel);
+    }
+    dartnative_splash_bridges.DartnativeSplashBridge.registerBridges(
+      d4rt,
+      'package:dartnative_splash/dartnative_splash.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel in dartnative_splash_bridges.DartnativeSplashBridge.subPackageBarrels()) {
+      dartnative_splash_bridges.DartnativeSplashBridge.registerBridges(d4rt, barrel);
+    }
+    crypto_bridges.CryptoBridge.registerBridges(
+      d4rt,
+      'package:crypto/crypto.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel in crypto_bridges.CryptoBridge.subPackageBarrels()) {
+      crypto_bridges.CryptoBridge.registerBridges(d4rt, barrel);
+    }
 
     // RC-2: Register generic constructor factories
     relaxer_factories.registerGenericConstructors();
@@ -54,6 +99,11 @@ class DartnativeGoBridges {
     buffer.writeln(dartnative_ui_bridges.DartnativeUiBridge.getImportBlock());
     buffer.writeln(dartnative_webview_bridges.DartnativeWebviewBridge.getImportBlock());
     buffer.writeln(dartnative_share_bridges.DartnativeShareBridge.getImportBlock());
+    buffer.writeln(dartnative_shared_preferences_bridges.DartnativeSharedPreferencesBridge.getImportBlock());
+    buffer.writeln(dartnative_path_provider_bridges.DartnativePathProviderBridge.getImportBlock());
+    buffer.writeln(dartnative_url_launcher_bridges.DartnativeUrlLauncherBridge.getImportBlock());
+    buffer.writeln(dartnative_splash_bridges.DartnativeSplashBridge.getImportBlock());
+    buffer.writeln(crypto_bridges.CryptoBridge.getImportBlock());
     return buffer.toString();
   }
 }

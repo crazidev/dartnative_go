@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
-// Sources: 62 files
-// Generated: 2026-09-18T09:04:55.835331 by tom_d4rt_generator 1.26.2
+// Sources: 63 files
+// Generated: 2026-09-19T02:10:22.716253 by tom_d4rt_generator 1.26.2
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -56,24 +56,25 @@ import 'package:dartnative/src/widgets/native_alert.dart' as $dartnative_42;
 import 'package:dartnative/src/widgets/native_color_picker.dart' as $dartnative_43;
 import 'package:dartnative/src/widgets/native_date_picker.dart' as $dartnative_44;
 import 'package:dartnative/src/widgets/native_media_picker.dart' as $dartnative_45;
-import 'package:dartnative/src/widgets/progress_indicator.dart' as $dartnative_46;
-import 'package:dartnative/src/widgets/scaffold.dart' as $dartnative_47;
-import 'package:dartnative/src/widgets/scroll.dart' as $dartnative_48;
-import 'package:dartnative/src/widgets/search_bar.dart' as $dartnative_49;
-import 'package:dartnative/src/widgets/segmented_control.dart' as $dartnative_50;
-import 'package:dartnative/src/widgets/shimmer.dart' as $dartnative_51;
-import 'package:dartnative/src/widgets/slider.dart' as $dartnative_52;
-import 'package:dartnative/src/widgets/slider_menu.dart' as $dartnative_53;
-import 'package:dartnative/src/widgets/sliver.dart' as $dartnative_54;
-import 'package:dartnative/src/widgets/stack.dart' as $dartnative_55;
-import 'package:dartnative/src/widgets/switch_control.dart' as $dartnative_56;
-import 'package:dartnative/src/widgets/system_chrome.dart' as $dartnative_57;
-import 'package:dartnative/src/widgets/table.dart' as $dartnative_58;
-import 'package:dartnative/src/widgets/text.dart' as $dartnative_59;
-import 'package:dartnative/src/widgets/text_field.dart' as $dartnative_60;
-import 'package:dartnative/src/widgets/text_input_formatter.dart' as $dartnative_61;
-import 'package:dartnative/src/widgets/text_painter.dart' as $dartnative_62;
-import 'package:dartnative/src/widgets/visibility.dart' as $dartnative_63;
+import 'package:dartnative/src/widgets/page_view.dart' as $dartnative_46;
+import 'package:dartnative/src/widgets/progress_indicator.dart' as $dartnative_47;
+import 'package:dartnative/src/widgets/scaffold.dart' as $dartnative_48;
+import 'package:dartnative/src/widgets/scroll.dart' as $dartnative_49;
+import 'package:dartnative/src/widgets/search_bar.dart' as $dartnative_50;
+import 'package:dartnative/src/widgets/segmented_control.dart' as $dartnative_51;
+import 'package:dartnative/src/widgets/shimmer.dart' as $dartnative_52;
+import 'package:dartnative/src/widgets/slider.dart' as $dartnative_53;
+import 'package:dartnative/src/widgets/slider_menu.dart' as $dartnative_54;
+import 'package:dartnative/src/widgets/sliver.dart' as $dartnative_55;
+import 'package:dartnative/src/widgets/stack.dart' as $dartnative_56;
+import 'package:dartnative/src/widgets/switch_control.dart' as $dartnative_57;
+import 'package:dartnative/src/widgets/system_chrome.dart' as $dartnative_58;
+import 'package:dartnative/src/widgets/table.dart' as $dartnative_59;
+import 'package:dartnative/src/widgets/text.dart' as $dartnative_60;
+import 'package:dartnative/src/widgets/text_field.dart' as $dartnative_61;
+import 'package:dartnative/src/widgets/text_input_formatter.dart' as $dartnative_62;
+import 'package:dartnative/src/widgets/text_painter.dart' as $dartnative_63;
+import 'package:dartnative/src/widgets/visibility.dart' as $dartnative_64;
 import 'package:dartnative/flutter_compat.dart' as $aux_dartnative;
 
 /// Bridge class for dartnative_ui module.
@@ -286,6 +287,8 @@ class DartnativeUiBridge {
       _createImageCacheBridge(),
       _createFastListControllerBridge(),
       _createFastListBridge(),
+      _createPageControllerBridge(),
+      _createPageViewBridge(),
       _createFastGridControllerBridge(),
       _createFastGridBridge(),
       _createMasonryFastGridBridge(),
@@ -657,6 +660,8 @@ class DartnativeUiBridge {
       'ImageCache': _createImageCacheBridge,
       'FastListController': _createFastListControllerBridge,
       'FastList': _createFastListBridge,
+      'PageController': _createPageControllerBridge,
+      'PageView': _createPageViewBridge,
       'FastGridController': _createFastGridControllerBridge,
       'FastGrid': _createFastGridBridge,
       'MasonryFastGrid': _createMasonryFastGridBridge,
@@ -904,8 +909,8 @@ class DartnativeUiBridge {
       'Flexible': $dartnative_29.Flexible,
       'Expanded': $dartnative_29.Expanded,
       'Spacer': $dartnative_29.Spacer,
-      'Stack': $dartnative_55.Stack,
-      'Positioned': $dartnative_55.Positioned,
+      'Stack': $dartnative_56.Stack,
+      'Positioned': $dartnative_56.Positioned,
       'Container': $dartnative_23.Container,
       'DecoratedBox': $dartnative_23.DecoratedBox,
       'Padding': $dartnative_23.Padding,
@@ -916,15 +921,15 @@ class DartnativeUiBridge {
       'SafeArea': $dartnative_23.SafeArea,
       'Divider': $dartnative_23.Divider,
       'VerticalDivider': $dartnative_23.VerticalDivider,
-      'Opacity': $dartnative_63.Opacity,
-      'AnimatedOpacity': $dartnative_63.AnimatedOpacity,
-      'Visibility': $dartnative_63.Visibility,
-      'Offstage': $dartnative_63.Offstage,
-      'ClipRect': $dartnative_63.ClipRect,
-      'ClipRRect': $dartnative_63.ClipRRect,
-      'ClipRSuperellipse': $dartnative_63.ClipRSuperellipse,
-      'RepaintBoundary': $dartnative_63.RepaintBoundary,
-      'AspectRatio': $dartnative_63.AspectRatio,
+      'Opacity': $dartnative_64.Opacity,
+      'AnimatedOpacity': $dartnative_64.AnimatedOpacity,
+      'Visibility': $dartnative_64.Visibility,
+      'Offstage': $dartnative_64.Offstage,
+      'ClipRect': $dartnative_64.ClipRect,
+      'ClipRRect': $dartnative_64.ClipRRect,
+      'ClipRSuperellipse': $dartnative_64.ClipRSuperellipse,
+      'RepaintBoundary': $dartnative_64.RepaintBoundary,
+      'AspectRatio': $dartnative_64.AspectRatio,
       'Wrap': $dartnative_37.Wrap,
       'FractionallySizedBox': $dartnative_37.FractionallySizedBox,
       'IntrinsicWidth': $dartnative_37.IntrinsicWidth,
@@ -935,60 +940,60 @@ class DartnativeUiBridge {
       'IgnorePointer': $dartnative_37.IgnorePointer,
       'AbsorbPointer': $dartnative_37.AbsorbPointer,
       'IndexedStack': $dartnative_37.IndexedStack,
-      'Text': $dartnative_59.Text,
-      'RichText': $dartnative_59.RichText,
-      'InlineSpan': $dartnative_59.InlineSpan,
-      'GestureRecognizer': $dartnative_59.GestureRecognizer,
-      'TapGestureRecognizer': $dartnative_59.TapGestureRecognizer,
-      'TextSpan': $dartnative_59.TextSpan,
-      'TextAlignVertical': $dartnative_60.TextAlignVertical,
-      'TextField': $dartnative_60.TextField,
-      'TextInputFormatter': $dartnative_61.TextInputFormatter,
-      'FilteringTextInputFormatter': $dartnative_61.FilteringTextInputFormatter,
-      'LengthLimitingTextInputFormatter': $dartnative_61.LengthLimitingTextInputFormatter,
-      'ScrollView': $dartnative_48.ScrollView,
-      'SingleChildScrollView': $dartnative_48.SingleChildScrollView,
-      'ListView': $dartnative_48.ListView,
-      'ScrollPhysics': $dartnative_48.ScrollPhysics,
-      'BouncingScrollPhysics': $dartnative_48.BouncingScrollPhysics,
-      'ClampingScrollPhysics': $dartnative_48.ClampingScrollPhysics,
-      'NeverScrollableScrollPhysics': $dartnative_48.NeverScrollableScrollPhysics,
-      'AlwaysScrollableScrollPhysics': $dartnative_48.AlwaysScrollableScrollPhysics,
-      'SliverChildDelegate': $dartnative_54.SliverChildDelegate,
-      'SliverChildBuilderDelegate': $dartnative_54.SliverChildBuilderDelegate,
-      'SliverChildListDelegate': $dartnative_54.SliverChildListDelegate,
-      'SliverGridDelegate': $dartnative_54.SliverGridDelegate,
-      'SliverGridDelegateWithFixedCrossAxisCount': $dartnative_54.SliverGridDelegateWithFixedCrossAxisCount,
-      'SliverGridDelegateWithMaxCrossAxisExtent': $dartnative_54.SliverGridDelegateWithMaxCrossAxisExtent,
-      'CustomScrollView': $dartnative_54.CustomScrollView,
-      'SliverList': $dartnative_54.SliverList,
-      'SliverGrid': $dartnative_54.SliverGrid,
-      'SliverToBoxAdapter': $dartnative_54.SliverToBoxAdapter,
-      'SliverPadding': $dartnative_54.SliverPadding,
-      'SliverFillRemaining': $dartnative_54.SliverFillRemaining,
-      'SliverAppBar': $dartnative_54.SliverAppBar,
-      'FlexibleSpaceBar': $dartnative_54.FlexibleSpaceBar,
+      'Text': $dartnative_60.Text,
+      'RichText': $dartnative_60.RichText,
+      'InlineSpan': $dartnative_60.InlineSpan,
+      'GestureRecognizer': $dartnative_60.GestureRecognizer,
+      'TapGestureRecognizer': $dartnative_60.TapGestureRecognizer,
+      'TextSpan': $dartnative_60.TextSpan,
+      'TextAlignVertical': $dartnative_61.TextAlignVertical,
+      'TextField': $dartnative_61.TextField,
+      'TextInputFormatter': $dartnative_62.TextInputFormatter,
+      'FilteringTextInputFormatter': $dartnative_62.FilteringTextInputFormatter,
+      'LengthLimitingTextInputFormatter': $dartnative_62.LengthLimitingTextInputFormatter,
+      'ScrollView': $dartnative_49.ScrollView,
+      'SingleChildScrollView': $dartnative_49.SingleChildScrollView,
+      'ListView': $dartnative_49.ListView,
+      'ScrollPhysics': $dartnative_49.ScrollPhysics,
+      'BouncingScrollPhysics': $dartnative_49.BouncingScrollPhysics,
+      'ClampingScrollPhysics': $dartnative_49.ClampingScrollPhysics,
+      'NeverScrollableScrollPhysics': $dartnative_49.NeverScrollableScrollPhysics,
+      'AlwaysScrollableScrollPhysics': $dartnative_49.AlwaysScrollableScrollPhysics,
+      'SliverChildDelegate': $dartnative_55.SliverChildDelegate,
+      'SliverChildBuilderDelegate': $dartnative_55.SliverChildBuilderDelegate,
+      'SliverChildListDelegate': $dartnative_55.SliverChildListDelegate,
+      'SliverGridDelegate': $dartnative_55.SliverGridDelegate,
+      'SliverGridDelegateWithFixedCrossAxisCount': $dartnative_55.SliverGridDelegateWithFixedCrossAxisCount,
+      'SliverGridDelegateWithMaxCrossAxisExtent': $dartnative_55.SliverGridDelegateWithMaxCrossAxisExtent,
+      'CustomScrollView': $dartnative_55.CustomScrollView,
+      'SliverList': $dartnative_55.SliverList,
+      'SliverGrid': $dartnative_55.SliverGrid,
+      'SliverToBoxAdapter': $dartnative_55.SliverToBoxAdapter,
+      'SliverPadding': $dartnative_55.SliverPadding,
+      'SliverFillRemaining': $dartnative_55.SliverFillRemaining,
+      'SliverAppBar': $dartnative_55.SliverAppBar,
+      'FlexibleSpaceBar': $dartnative_55.FlexibleSpaceBar,
       'ShowNativeToast': $dartnative_11.ShowNativeToast,
-      'Scaffold': $dartnative_47.Scaffold,
-      'ScaffoldState': $dartnative_47.ScaffoldState,
-      'ScaffoldDrawerElement': $dartnative_47.ScaffoldDrawerElement,
-      'PreferredSizeWidget': $dartnative_47.PreferredSizeWidget,
-      'BackButton': $dartnative_47.BackButton,
-      'MenuAction': $dartnative_47.MenuAction,
-      'BarButtonItem': $dartnative_47.BarButtonItem,
-      'AppBarIOSConfig': $dartnative_47.AppBarIOSConfig,
-      'AppBar': $dartnative_47.AppBar,
-      'Drawer': $dartnative_47.Drawer,
-      'DrawerHeader': $dartnative_47.DrawerHeader,
-      'BottomSheet': $dartnative_47.BottomSheet,
-      'SnackBar': $dartnative_47.SnackBar,
-      'SnackBarAction': $dartnative_47.SnackBarAction,
-      'ScaffoldFeatureController': $dartnative_47.ScaffoldFeatureController,
-      'ScaffoldMessengerState': $dartnative_47.ScaffoldMessengerState,
-      'ScaffoldMessenger': $dartnative_47.ScaffoldMessenger,
-      'SlideOverStyle': $dartnative_53.SlideOverStyle,
-      'SliderMenuContainer': $dartnative_53.SliderMenuContainer,
-      'SliderMenuContainerState': $dartnative_53.SliderMenuContainerState,
+      'Scaffold': $dartnative_48.Scaffold,
+      'ScaffoldState': $dartnative_48.ScaffoldState,
+      'ScaffoldDrawerElement': $dartnative_48.ScaffoldDrawerElement,
+      'PreferredSizeWidget': $dartnative_48.PreferredSizeWidget,
+      'BackButton': $dartnative_48.BackButton,
+      'MenuAction': $dartnative_48.MenuAction,
+      'BarButtonItem': $dartnative_48.BarButtonItem,
+      'AppBarIOSConfig': $dartnative_48.AppBarIOSConfig,
+      'AppBar': $dartnative_48.AppBar,
+      'Drawer': $dartnative_48.Drawer,
+      'DrawerHeader': $dartnative_48.DrawerHeader,
+      'BottomSheet': $dartnative_48.BottomSheet,
+      'SnackBar': $dartnative_48.SnackBar,
+      'SnackBarAction': $dartnative_48.SnackBarAction,
+      'ScaffoldFeatureController': $dartnative_48.ScaffoldFeatureController,
+      'ScaffoldMessengerState': $dartnative_48.ScaffoldMessengerState,
+      'ScaffoldMessenger': $dartnative_48.ScaffoldMessenger,
+      'SlideOverStyle': $dartnative_54.SlideOverStyle,
+      'SliderMenuContainer': $dartnative_54.SliderMenuContainer,
+      'SliderMenuContainerState': $dartnative_54.SliderMenuContainerState,
       'IconData': $dartnative_35.IconData,
       'StaticIconProvider': $dartnative_35.StaticIconProvider,
       'Icon': $dartnative_19.Icon,
@@ -1027,6 +1032,8 @@ class DartnativeUiBridge {
       'ImageCache': $dartnative_36.ImageCache,
       'FastListController': $dartnative_28.FastListController,
       'FastList': $dartnative_28.FastList,
+      'PageController': $dartnative_46.PageController,
+      'PageView': $dartnative_46.PageView,
       'FastGridController': $dartnative_27.FastGridController,
       'FastGrid': $dartnative_27.FastGrid,
       'MasonryFastGrid': $dartnative_38.MasonryFastGrid,
@@ -1035,34 +1042,34 @@ class DartnativeUiBridge {
       'GridColumn': $dartnative_34.GridColumn,
       'MasonryGridView': $dartnative_34.MasonryGridView,
       'MasonryColumn': $dartnative_34.MasonryColumn,
-      'SystemUiOverlayStyle': $dartnative_57.SystemUiOverlayStyle,
-      'SystemChrome': $dartnative_57.SystemChrome,
+      'SystemUiOverlayStyle': $dartnative_58.SystemUiOverlayStyle,
+      'SystemChrome': $dartnative_58.SystemChrome,
       'TonalPalette': $dartnative_26.TonalPalette,
       'CorePalette': $dartnative_26.CorePalette,
       'DynamicColor': $dartnative_26.DynamicColor,
-      'SearchBar': $dartnative_49.SearchBar,
-      'NativeSearchBar': $dartnative_49.NativeSearchBar,
-      'SegmentedControl': $dartnative_50.SegmentedControl,
-      'AndroidSwitchStyle': $dartnative_56.AndroidSwitchStyle,
-      'Switch': $dartnative_56.Switch,
-      'SliderComponentShape': $dartnative_52.SliderComponentShape,
-      'RoundSliderThumbShape': $dartnative_52.RoundSliderThumbShape,
-      'RoundSliderOverlayShape': $dartnative_52.RoundSliderOverlayShape,
-      'SliderThemeData': $dartnative_52.SliderThemeData,
-      'SliderTheme': $dartnative_52.SliderTheme,
-      'AndroidSliderStyle': $dartnative_52.AndroidSliderStyle,
-      'Slider': $dartnative_52.Slider,
+      'SearchBar': $dartnative_50.SearchBar,
+      'NativeSearchBar': $dartnative_50.NativeSearchBar,
+      'SegmentedControl': $dartnative_51.SegmentedControl,
+      'AndroidSwitchStyle': $dartnative_57.AndroidSwitchStyle,
+      'Switch': $dartnative_57.Switch,
+      'SliderComponentShape': $dartnative_53.SliderComponentShape,
+      'RoundSliderThumbShape': $dartnative_53.RoundSliderThumbShape,
+      'RoundSliderOverlayShape': $dartnative_53.RoundSliderOverlayShape,
+      'SliderThemeData': $dartnative_53.SliderThemeData,
+      'SliderTheme': $dartnative_53.SliderTheme,
+      'AndroidSliderStyle': $dartnative_53.AndroidSliderStyle,
+      'Slider': $dartnative_53.Slider,
       'Button': $dartnative_18.Button,
       'BottomNavigationBarItem': $dartnative_16.BottomNavigationBarItem,
       'BottomNavigationBar': $dartnative_16.BottomNavigationBar,
       'MediaFile': $dartnative_45.MediaFile,
-      'AndroidProgressIndicatorStyle': $dartnative_46.AndroidProgressIndicatorStyle,
-      'CircularProgressIndicator': $dartnative_46.CircularProgressIndicator,
-      'LinearProgressIndicator': $dartnative_46.LinearProgressIndicator,
+      'AndroidProgressIndicatorStyle': $dartnative_47.AndroidProgressIndicatorStyle,
+      'CircularProgressIndicator': $dartnative_47.CircularProgressIndicator,
+      'LinearProgressIndicator': $dartnative_47.LinearProgressIndicator,
       'Checkbox': $dartnative_21.Checkbox,
       'Radio': $dartnative_21.Radio,
       'FloatingActionButton': $dartnative_30.FloatingActionButton,
-      'Shimmer': $dartnative_51.Shimmer,
+      'Shimmer': $dartnative_52.Shimmer,
       'Card': $dartnative_20.Card,
       'ListTile': $dartnative_20.ListTile,
       'Badge': $dartnative_20.Badge,
@@ -1072,13 +1079,13 @@ class DartnativeUiBridge {
       'AsyncSnapshot': $dartnative_17.AsyncSnapshot,
       'StreamBuilder': $dartnative_17.StreamBuilder,
       'FutureBuilder': $dartnative_17.FutureBuilder,
-      'TableColumnWidth': $dartnative_58.TableColumnWidth,
-      'FlexColumnWidth': $dartnative_58.FlexColumnWidth,
-      'FixedColumnWidth': $dartnative_58.FixedColumnWidth,
-      'IntrinsicColumnWidth': $dartnative_58.IntrinsicColumnWidth,
-      'TableBorder': $dartnative_58.TableBorder,
-      'TableRow': $dartnative_58.TableRow,
-      'Table': $dartnative_58.Table,
+      'TableColumnWidth': $dartnative_59.TableColumnWidth,
+      'FlexColumnWidth': $dartnative_59.FlexColumnWidth,
+      'FixedColumnWidth': $dartnative_59.FixedColumnWidth,
+      'IntrinsicColumnWidth': $dartnative_59.IntrinsicColumnWidth,
+      'TableBorder': $dartnative_59.TableBorder,
+      'TableRow': $dartnative_59.TableRow,
+      'Table': $dartnative_59.Table,
       'Animation': $dartnative_14.Animation,
       'AlwaysStoppedAnimation': $dartnative_14.AlwaysStoppedAnimation,
       'SpringDescription': $dartnative_14.SpringDescription,
@@ -1147,8 +1154,8 @@ class DartnativeUiBridge {
       'BinaryCanvasRecorder': $dartnative_25.BinaryCanvasRecorder,
       'ClipboardData': $dartnative_22.ClipboardData,
       'Clipboard': $dartnative_22.Clipboard,
-      'TextPainter': $dartnative_62.TextPainter,
-      'RenderParagraph': $dartnative_62.RenderParagraph,
+      'TextPainter': $dartnative_63.TextPainter,
+      'RenderParagraph': $dartnative_63.RenderParagraph,
       'BackdropFilter': $dartnative_15.BackdropFilter,
       'ImageFiltered': $dartnative_15.ImageFiltered,
       'GlassEffectContainer': $dartnative_33.GlassEffectContainer,
@@ -1398,6 +1405,8 @@ class DartnativeUiBridge {
       'ImageCache': 'package:dartnative/src/widgets/image.dart',
       'FastListController': 'package:dartnative/src/widgets/fast_list.dart',
       'FastList': 'package:dartnative/src/widgets/fast_list.dart',
+      'PageController': 'package:dartnative/src/widgets/page_view.dart',
+      'PageView': 'package:dartnative/src/widgets/page_view.dart',
       'FastGridController': 'package:dartnative/src/widgets/fast_grid.dart',
       'FastGrid': 'package:dartnative/src/widgets/fast_grid.dart',
       'MasonryFastGrid': 'package:dartnative/src/widgets/masonry_fast_grid.dart',
@@ -1694,6 +1703,8 @@ class DartnativeUiBridge {
       'FileImage': ['ImageProvider'],
       'MemoryImage': ['ImageProvider'],
       'FastList': ['Widget'],
+      'PageController': ['ChangeNotifier', 'Listenable'],
+      'PageView': ['StatefulWidget', 'Widget'],
       'FastGrid': ['Widget'],
       'MasonryFastGrid': ['Widget'],
       'GridView': ['Widget'],
@@ -1909,72 +1920,72 @@ class DartnativeUiBridge {
         name: 'FlexFit',
         values: $dartnative_29.FlexFit.values,
       ),
-      BridgedEnumDefinition<$dartnative_55.StackFit>(
+      BridgedEnumDefinition<$dartnative_56.StackFit>(
         name: 'StackFit',
-        values: $dartnative_55.StackFit.values,
+        values: $dartnative_56.StackFit.values,
       ),
       BridgedEnumDefinition<$dartnative_37.WrapCrossAlignment>(
         name: 'WrapCrossAlignment',
         values: $dartnative_37.WrapCrossAlignment.values,
       ),
-      BridgedEnumDefinition<$dartnative_60.TextInputType>(
+      BridgedEnumDefinition<$dartnative_61.TextInputType>(
         name: 'TextInputType',
-        values: $dartnative_60.TextInputType.values,
+        values: $dartnative_61.TextInputType.values,
         staticGetters: {
-          'defaultType': () => $dartnative_60.TextInputType.defaultType,
+          'defaultType': () => $dartnative_61.TextInputType.defaultType,
         },
       ),
-      BridgedEnumDefinition<$dartnative_60.TextCapitalization>(
+      BridgedEnumDefinition<$dartnative_61.TextCapitalization>(
         name: 'TextCapitalization',
-        values: $dartnative_60.TextCapitalization.values,
+        values: $dartnative_61.TextCapitalization.values,
       ),
-      BridgedEnumDefinition<$dartnative_60.TextInputAction>(
+      BridgedEnumDefinition<$dartnative_61.TextInputAction>(
         name: 'TextInputAction',
-        values: $dartnative_60.TextInputAction.values,
+        values: $dartnative_61.TextInputAction.values,
       ),
-      BridgedEnumDefinition<$dartnative_60.ReturnKeyType>(
+      BridgedEnumDefinition<$dartnative_61.ReturnKeyType>(
         name: 'ReturnKeyType',
-        values: $dartnative_60.ReturnKeyType.values,
+        values: $dartnative_61.ReturnKeyType.values,
       ),
-      BridgedEnumDefinition<$dartnative_60.AutovalidateMode>(
+      BridgedEnumDefinition<$dartnative_61.AutovalidateMode>(
         name: 'AutovalidateMode',
-        values: $dartnative_60.AutovalidateMode.values,
+        values: $dartnative_61.AutovalidateMode.values,
       ),
-      BridgedEnumDefinition<$dartnative_60.ClearButtonMode>(
+      BridgedEnumDefinition<$dartnative_61.ClearButtonMode>(
         name: 'ClearButtonMode',
-        values: $dartnative_60.ClearButtonMode.values,
+        values: $dartnative_61.ClearButtonMode.values,
       ),
-      BridgedEnumDefinition<$dartnative_48.ScrollViewKeyboardDismissBehavior>(
+      BridgedEnumDefinition<$dartnative_49.ScrollViewKeyboardDismissBehavior>(
         name: 'ScrollViewKeyboardDismissBehavior',
-        values: $dartnative_48.ScrollViewKeyboardDismissBehavior.values,
+        values: $dartnative_49.ScrollViewKeyboardDismissBehavior.values,
       ),
-      BridgedEnumDefinition<$dartnative_54.CollapseMode>(
+      BridgedEnumDefinition<$dartnative_55.CollapseMode>(
         name: 'CollapseMode',
-        values: $dartnative_54.CollapseMode.values,
+        values: $dartnative_55.CollapseMode.values,
       ),
       BridgedEnumDefinition<$dartnative_11.ToastPosition>(
         name: 'ToastPosition',
         values: $dartnative_11.ToastPosition.values,
       ),
-      BridgedEnumDefinition<$dartnative_47.MaterialAppBarSize>(
+      BridgedEnumDefinition<$dartnative_48.MaterialAppBarSize>(
         name: 'MaterialAppBarSize',
-        values: $dartnative_47.MaterialAppBarSize.values,
+        values: $dartnative_48.MaterialAppBarSize.values,
       ),
-      BridgedEnumDefinition<$dartnative_47.SnackBarClosedReason>(
+      BridgedEnumDefinition<$dartnative_48.SnackBarClosedReason>(
         name: 'SnackBarClosedReason',
-        values: $dartnative_47.SnackBarClosedReason.values,
+        values: $dartnative_48.SnackBarClosedReason.values,
       ),
-      BridgedEnumDefinition<$dartnative_53.SlideDirection>(
+      BridgedEnumDefinition<$dartnative_54.SlideDirection>(
         name: 'SlideDirection',
-        values: $dartnative_53.SlideDirection.values,
+        values: $dartnative_54.SlideDirection.values,
       ),
-      BridgedEnumDefinition<$dartnative_53.DrawerStyle>(
+      BridgedEnumDefinition<$dartnative_54.DrawerStyle>(
         name: 'DrawerStyle',
-        values: $dartnative_53.DrawerStyle.values,
+        values: $dartnative_54.DrawerStyle.values,
       ),
-      BridgedEnumDefinition<$dartnative_53.DrawerCorner>(
+      BridgedEnumDefinition<$dartnative_54.DrawerCorner>(
         name: 'DrawerCorner',
-        values: $dartnative_53.DrawerCorner.values,
+        values: $dartnative_54.DrawerCorner.values,
       ),
       BridgedEnumDefinition<$dartnative_32.HitTestBehavior>(
         name: 'HitTestBehavior',
@@ -1992,13 +2003,13 @@ class DartnativeUiBridge {
         name: 'ImageCachePolicy',
         values: $dartnative_36.ImageCachePolicy.values,
       ),
-      BridgedEnumDefinition<$dartnative_57.DeviceOrientation>(
+      BridgedEnumDefinition<$dartnative_58.DeviceOrientation>(
         name: 'DeviceOrientation',
-        values: $dartnative_57.DeviceOrientation.values,
+        values: $dartnative_58.DeviceOrientation.values,
       ),
-      BridgedEnumDefinition<$dartnative_57.SystemUiMode>(
+      BridgedEnumDefinition<$dartnative_58.SystemUiMode>(
         name: 'SystemUiMode',
-        values: $dartnative_57.SystemUiMode.values,
+        values: $dartnative_58.SystemUiMode.values,
       ),
       BridgedEnumDefinition<$dartnative_18.ButtonVariant>(
         name: 'ButtonVariant',
@@ -2016,9 +2027,9 @@ class DartnativeUiBridge {
         name: 'MediaPickerType',
         values: $dartnative_45.MediaPickerType.values,
       ),
-      BridgedEnumDefinition<$dartnative_51.ShimmerStyle>(
+      BridgedEnumDefinition<$dartnative_52.ShimmerStyle>(
         name: 'ShimmerStyle',
-        values: $dartnative_51.ShimmerStyle.values,
+        values: $dartnative_52.ShimmerStyle.values,
       ),
       BridgedEnumDefinition<$dartnative_17.ConnectionState>(
         name: 'ConnectionState',
@@ -2207,6 +2218,7 @@ class DartnativeUiBridge {
       (source: 'package:dartnative/src/widgets.dart', target: 'package:dartnative/src/widgets/focus.dart', show: null, hide: null),
       (source: 'package:dartnative/src/widgets.dart', target: 'package:dartnative/src/widgets/image.dart', show: null, hide: null),
       (source: 'package:dartnative/src/widgets.dart', target: 'package:dartnative/src/widgets/fast_list.dart', show: null, hide: null),
+      (source: 'package:dartnative/src/widgets.dart', target: 'package:dartnative/src/widgets/page_view.dart', show: null, hide: null),
       (source: 'package:dartnative/src/widgets.dart', target: 'package:dartnative/src/widgets/fast_grid.dart', show: null, hide: null),
       (source: 'package:dartnative/src/widgets.dart', target: 'package:dartnative/src/widgets/masonry_fast_grid.dart', show: null, hide: null),
       (source: 'package:dartnative/src/widgets.dart', target: 'package:dartnative/src/widgets/grid_view.dart', show: null, hide: null),
@@ -2323,12 +2335,12 @@ class DartnativeUiBridge {
       errors.add('Failed to register variable "immutable": $e');
     }
     try {
-      interpreter.registerGlobalVariable('kToolbarHeight', $dartnative_47.kToolbarHeight, importPath, sourceUri: 'package:dartnative/src/widgets/scaffold.dart');
+      interpreter.registerGlobalVariable('kToolbarHeight', $dartnative_48.kToolbarHeight, importPath, sourceUri: 'package:dartnative/src/widgets/scaffold.dart');
     } catch (e) {
       errors.add('Failed to register variable "kToolbarHeight": $e');
     }
     try {
-      interpreter.registerGlobalVariable('kBottomNavigationBarHeight', $dartnative_47.kBottomNavigationBarHeight, importPath, sourceUri: 'package:dartnative/src/widgets/scaffold.dart');
+      interpreter.registerGlobalVariable('kBottomNavigationBarHeight', $dartnative_48.kBottomNavigationBarHeight, importPath, sourceUri: 'package:dartnative/src/widgets/scaffold.dart');
     } catch (e) {
       errors.add('Failed to register variable "kBottomNavigationBarHeight": $e');
     }
@@ -2348,7 +2360,7 @@ class DartnativeUiBridge {
       errors.add('Failed to register variable "masonryFastGridBuildContext": $e');
     }
     try {
-      interpreter.registerGlobalVariable('kSliderDefaultInactiveTrackColor', $dartnative_52.kSliderDefaultInactiveTrackColor, importPath, sourceUri: 'package:dartnative/src/widgets/slider.dart');
+      interpreter.registerGlobalVariable('kSliderDefaultInactiveTrackColor', $dartnative_53.kSliderDefaultInactiveTrackColor, importPath, sourceUri: 'package:dartnative/src/widgets/slider.dart');
     } catch (e) {
       errors.add('Failed to register variable "kSliderDefaultInactiveTrackColor": $e');
     }
@@ -2423,7 +2435,7 @@ class DartnativeUiBridge {
         final duration = D4.getNamedArgWithDefault<Duration>(named, 'duration', const Duration(seconds: 3));
         final position = D4.getNamedArgWithDefault<$dartnative_11.ToastPosition>(named, 'position', $dartnative_11.ToastPosition.bottom);
         final iconName = D4.getNamedArgWithDefault<String>(named, 'iconName', '');
-        return $dartnative_47.showToast(context, message, backgroundColor: backgroundColor, textColor: textColor, duration: duration, position: position, iconName: iconName);
+        return $dartnative_48.showToast(context, message, backgroundColor: backgroundColor, textColor: textColor, duration: duration, position: position, iconName: iconName);
       },
       'precacheImage': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'precacheImage');
@@ -2718,6 +2730,7 @@ class DartnativeUiBridge {
       'package:dartnative/src/widgets/native_color_picker.dart',
       'package:dartnative/src/widgets/native_date_picker.dart',
       'package:dartnative/src/widgets/native_media_picker.dart',
+      'package:dartnative/src/widgets/page_view.dart',
       'package:dartnative/src/widgets/progress_indicator.dart',
       'package:dartnative/src/widgets/scaffold.dart',
       'package:dartnative/src/widgets/scroll.dart',
@@ -2880,7 +2893,7 @@ BridgedClass _createValueKeyBridge() {
           case int _: return $dartnative_3.ValueKey<int>(value);
           case String _: return $dartnative_3.ValueKey<String>(value);
           case bool _: return $dartnative_3.ValueKey<bool>(value);
-          case $dartnative_53.SliderMenuContainerState _: return $dartnative_3.ValueKey<$dartnative_53.SliderMenuContainerState>(value);
+          case $dartnative_54.SliderMenuContainerState _: return $dartnative_3.ValueKey<$dartnative_54.SliderMenuContainerState>(value);
           case $dartnative_14.AnimatedBuilder _: return $dartnative_3.ValueKey<$dartnative_14.AnimatedBuilder>(value);
           case $dartnative_14.AnimationController _: return $dartnative_3.ValueKey<$dartnative_14.AnimationController>(value);
           case $dartnative_14.CurvedAnimation _: return $dartnative_3.ValueKey<$dartnative_14.CurvedAnimation>(value);
@@ -2895,7 +2908,7 @@ BridgedClass _createValueKeyBridge() {
           case $dartnative_14.AnimatedContainer _: return $dartnative_3.ValueKey<$dartnative_14.AnimatedContainer>(value);
           case $dartnative_14.AnimatedCrossFade _: return $dartnative_3.ValueKey<$dartnative_14.AnimatedCrossFade>(value);
           case $dartnative_14.AnimatedDefaultTextStyle _: return $dartnative_3.ValueKey<$dartnative_14.AnimatedDefaultTextStyle>(value);
-          case $dartnative_63.AnimatedOpacity _: return $dartnative_3.ValueKey<$dartnative_63.AnimatedOpacity>(value);
+          case $dartnative_64.AnimatedOpacity _: return $dartnative_3.ValueKey<$dartnative_64.AnimatedOpacity>(value);
           case $dartnative_14.AnimatedPadding _: return $dartnative_3.ValueKey<$dartnative_14.AnimatedPadding>(value);
           case $dartnative_14.AnimatedPositioned _: return $dartnative_3.ValueKey<$dartnative_14.AnimatedPositioned>(value);
           case $dartnative_14.AnimatedRotation _: return $dartnative_3.ValueKey<$dartnative_14.AnimatedRotation>(value);
@@ -2905,25 +2918,25 @@ BridgedClass _createValueKeyBridge() {
           case $dartnative_14.AnimatedSwitcher _: return $dartnative_3.ValueKey<$dartnative_14.AnimatedSwitcher>(value);
           case $dartnative_14.AnimatedWidget _: return $dartnative_3.ValueKey<$dartnative_14.AnimatedWidget>(value);
           case $dartnative_6.App _: return $dartnative_3.ValueKey<$dartnative_6.App>(value);
-          case $dartnative_47.AppBar _: return $dartnative_3.ValueKey<$dartnative_47.AppBar>(value);
+          case $dartnative_48.AppBar _: return $dartnative_3.ValueKey<$dartnative_48.AppBar>(value);
           case $dartnative_20.Badge _: return $dartnative_3.ValueKey<$dartnative_20.Badge>(value);
-          case $dartnative_47.BarButtonItem _: return $dartnative_3.ValueKey<$dartnative_47.BarButtonItem>(value);
+          case $dartnative_48.BarButtonItem _: return $dartnative_3.ValueKey<$dartnative_48.BarButtonItem>(value);
           case $dartnative_3.Builder _: return $dartnative_3.ValueKey<$dartnative_3.Builder>(value);
           case $dartnative_20.Card _: return $dartnative_3.ValueKey<$dartnative_20.Card>(value);
           case $dartnative_23.Center _: return $dartnative_3.ValueKey<$dartnative_23.Center>(value);
           case $dartnative_20.CircleAvatar _: return $dartnative_3.ValueKey<$dartnative_20.CircleAvatar>(value);
           case $dartnative_37.ClipOval _: return $dartnative_3.ValueKey<$dartnative_37.ClipOval>(value);
-          case $dartnative_63.ClipRRect _: return $dartnative_3.ValueKey<$dartnative_63.ClipRRect>(value);
-          case $dartnative_63.ClipRSuperellipse _: return $dartnative_3.ValueKey<$dartnative_63.ClipRSuperellipse>(value);
-          case $dartnative_63.ClipRect _: return $dartnative_3.ValueKey<$dartnative_63.ClipRect>(value);
+          case $dartnative_64.ClipRRect _: return $dartnative_3.ValueKey<$dartnative_64.ClipRRect>(value);
+          case $dartnative_64.ClipRSuperellipse _: return $dartnative_3.ValueKey<$dartnative_64.ClipRSuperellipse>(value);
+          case $dartnative_64.ClipRect _: return $dartnative_3.ValueKey<$dartnative_64.ClipRect>(value);
           case $dartnative_14.ColorTween _: return $dartnative_3.ValueKey<$dartnative_14.ColorTween>(value);
           case $dartnative_29.Column _: return $dartnative_3.ValueKey<$dartnative_29.Column>(value);
           case $dartnative_13.Computed _: return $dartnative_3.ValueKey<$dartnative_13.Computed>(value);
           case $dartnative_6.DefaultTextStyle _: return $dartnative_3.ValueKey<$dartnative_6.DefaultTextStyle>(value);
           case $dartnative_6.Directionality _: return $dartnative_3.ValueKey<$dartnative_6.Directionality>(value);
           case $dartnative_23.Divider _: return $dartnative_3.ValueKey<$dartnative_23.Divider>(value);
-          case $dartnative_47.Drawer _: return $dartnative_3.ValueKey<$dartnative_47.Drawer>(value);
-          case $dartnative_47.DrawerHeader _: return $dartnative_3.ValueKey<$dartnative_47.DrawerHeader>(value);
+          case $dartnative_48.Drawer _: return $dartnative_3.ValueKey<$dartnative_48.Drawer>(value);
+          case $dartnative_48.DrawerHeader _: return $dartnative_3.ValueKey<$dartnative_48.DrawerHeader>(value);
           case $dartnative_29.Expanded _: return $dartnative_3.ValueKey<$dartnative_29.Expanded>(value);
           case $dartnative_31.FocusNode _: return $dartnative_3.ValueKey<$dartnative_31.FocusNode>(value);
           case $dartnative_31.FocusScopeNode _: return $dartnative_3.ValueKey<$dartnative_31.FocusScopeNode>(value);
@@ -2932,20 +2945,22 @@ BridgedClass _createValueKeyBridge() {
           case $dartnative_14.IntTween _: return $dartnative_3.ValueKey<$dartnative_14.IntTween>(value);
           case $dartnative_3.KeyedSubtree _: return $dartnative_3.ValueKey<$dartnative_3.KeyedSubtree>(value);
           case $dartnative_20.ListTile _: return $dartnative_3.ValueKey<$dartnative_20.ListTile>(value);
-          case $dartnative_63.Offstage _: return $dartnative_3.ValueKey<$dartnative_63.Offstage>(value);
+          case $dartnative_64.Offstage _: return $dartnative_3.ValueKey<$dartnative_64.Offstage>(value);
+          case $dartnative_46.PageController _: return $dartnative_3.ValueKey<$dartnative_46.PageController>(value);
+          case $dartnative_46.PageView _: return $dartnative_3.ValueKey<$dartnative_46.PageView>(value);
           case $dartnative_13.Provided _: return $dartnative_3.ValueKey<$dartnative_13.Provided>(value);
           case $dartnative_14.RectTween _: return $dartnative_3.ValueKey<$dartnative_14.RectTween>(value);
-          case $dartnative_62.RenderParagraph _: return $dartnative_3.ValueKey<$dartnative_62.RenderParagraph>(value);
+          case $dartnative_63.RenderParagraph _: return $dartnative_3.ValueKey<$dartnative_63.RenderParagraph>(value);
           case $dartnative_29.Row _: return $dartnative_3.ValueKey<$dartnative_29.Row>(value);
-          case $dartnative_47.ScaffoldDrawerElement _: return $dartnative_3.ValueKey<$dartnative_47.ScaffoldDrawerElement>(value);
+          case $dartnative_48.ScaffoldDrawerElement _: return $dartnative_3.ValueKey<$dartnative_48.ScaffoldDrawerElement>(value);
           case $dartnative_3.ScrollController _: return $dartnative_3.ValueKey<$dartnative_3.ScrollController>(value);
-          case $dartnative_49.SearchBar _: return $dartnative_3.ValueKey<$dartnative_49.SearchBar>(value);
+          case $dartnative_50.SearchBar _: return $dartnative_3.ValueKey<$dartnative_50.SearchBar>(value);
           case $dartnative_14.SingleTickerProviderStateMixin _: return $dartnative_3.ValueKey<$dartnative_14.SingleTickerProviderStateMixin>(value);
           case $dartnative_14.SizeTween _: return $dartnative_3.ValueKey<$dartnative_14.SizeTween>(value);
-          case $dartnative_53.SliderMenuContainer _: return $dartnative_3.ValueKey<$dartnative_53.SliderMenuContainer>(value);
-          case $dartnative_52.SliderTheme _: return $dartnative_3.ValueKey<$dartnative_52.SliderTheme>(value);
+          case $dartnative_54.SliderMenuContainer _: return $dartnative_3.ValueKey<$dartnative_54.SliderMenuContainer>(value);
+          case $dartnative_53.SliderTheme _: return $dartnative_3.ValueKey<$dartnative_53.SliderTheme>(value);
           case $dartnative_17.StreamBuilder _: return $dartnative_3.ValueKey<$dartnative_17.StreamBuilder>(value);
-          case $dartnative_58.Table _: return $dartnative_3.ValueKey<$dartnative_58.Table>(value);
+          case $dartnative_59.Table _: return $dartnative_3.ValueKey<$dartnative_59.Table>(value);
           case $dartnative_3.TextEditingController _: return $dartnative_3.ValueKey<$dartnative_3.TextEditingController>(value);
           case $dartnative_14.TickerProviderStateMixin _: return $dartnative_3.ValueKey<$dartnative_14.TickerProviderStateMixin>(value);
           case $dartnative_14.TweenAnimationBuilder _: return $dartnative_3.ValueKey<$dartnative_14.TweenAnimationBuilder>(value);
@@ -2956,44 +2971,44 @@ BridgedClass _createValueKeyBridge() {
           case $dartnative_23.Align _: return $dartnative_3.ValueKey<$dartnative_23.Align>(value);
           case $dartnative_9.Alignment _: return $dartnative_3.ValueKey<$dartnative_9.Alignment>(value);
           case $dartnative_9.AlignmentDirectional _: return $dartnative_3.ValueKey<$dartnative_9.AlignmentDirectional>(value);
-          case $dartnative_48.AlwaysScrollableScrollPhysics _: return $dartnative_3.ValueKey<$dartnative_48.AlwaysScrollableScrollPhysics>(value);
+          case $dartnative_49.AlwaysScrollableScrollPhysics _: return $dartnative_3.ValueKey<$dartnative_49.AlwaysScrollableScrollPhysics>(value);
           case $dartnative_14.Animation _: return $dartnative_3.ValueKey<$dartnative_14.Animation>(value);
           case $dartnative_6.AnnotatedRegion _: return $dartnative_3.ValueKey<$dartnative_6.AnnotatedRegion>(value);
-          case $dartnative_63.AspectRatio _: return $dartnative_3.ValueKey<$dartnative_63.AspectRatio>(value);
+          case $dartnative_64.AspectRatio _: return $dartnative_3.ValueKey<$dartnative_64.AspectRatio>(value);
           case $dartnative_36.AssetImage _: return $dartnative_3.ValueKey<$dartnative_36.AssetImage>(value);
-          case $dartnative_47.BackButton _: return $dartnative_3.ValueKey<$dartnative_47.BackButton>(value);
+          case $dartnative_48.BackButton _: return $dartnative_3.ValueKey<$dartnative_48.BackButton>(value);
           case $dartnative_15.BackdropFilter _: return $dartnative_3.ValueKey<$dartnative_15.BackdropFilter>(value);
           case $dartnative_25.BinaryCanvasRecorder _: return $dartnative_3.ValueKey<$dartnative_25.BinaryCanvasRecorder>(value);
           case $dartnative_25.BlurImageFilter _: return $dartnative_3.ValueKey<$dartnative_25.BlurImageFilter>(value);
           case $dartnative_9.Border _: return $dartnative_3.ValueKey<$dartnative_9.Border>(value);
           case $dartnative_16.BottomNavigationBar _: return $dartnative_3.ValueKey<$dartnative_16.BottomNavigationBar>(value);
-          case $dartnative_47.BottomSheet _: return $dartnative_3.ValueKey<$dartnative_47.BottomSheet>(value);
-          case $dartnative_48.BouncingScrollPhysics _: return $dartnative_3.ValueKey<$dartnative_48.BouncingScrollPhysics>(value);
+          case $dartnative_48.BottomSheet _: return $dartnative_3.ValueKey<$dartnative_48.BottomSheet>(value);
+          case $dartnative_49.BouncingScrollPhysics _: return $dartnative_3.ValueKey<$dartnative_49.BouncingScrollPhysics>(value);
           case $dartnative_9.BoxDecoration _: return $dartnative_3.ValueKey<$dartnative_9.BoxDecoration>(value);
           case $dartnative_18.Button _: return $dartnative_3.ValueKey<$dartnative_18.Button>(value);
           case $dartnative_3.ChangeNotifier _: return $dartnative_3.ValueKey<$dartnative_3.ChangeNotifier>(value);
           case $dartnative_21.Checkbox _: return $dartnative_3.ValueKey<$dartnative_21.Checkbox>(value);
           case $dartnative_9.CircleBorder _: return $dartnative_3.ValueKey<$dartnative_9.CircleBorder>(value);
-          case $dartnative_46.CircularProgressIndicator _: return $dartnative_3.ValueKey<$dartnative_46.CircularProgressIndicator>(value);
-          case $dartnative_48.ClampingScrollPhysics _: return $dartnative_3.ValueKey<$dartnative_48.ClampingScrollPhysics>(value);
+          case $dartnative_47.CircularProgressIndicator _: return $dartnative_3.ValueKey<$dartnative_47.CircularProgressIndicator>(value);
+          case $dartnative_49.ClampingScrollPhysics _: return $dartnative_3.ValueKey<$dartnative_49.ClampingScrollPhysics>(value);
           case $dartnative_37.ColoredBox _: return $dartnative_3.ValueKey<$dartnative_37.ColoredBox>(value);
           case $dartnative_23.ConstrainedBox _: return $dartnative_3.ValueKey<$dartnative_23.ConstrainedBox>(value);
           case $dartnative_23.Container _: return $dartnative_3.ValueKey<$dartnative_23.Container>(value);
           case $dartnative_25.CustomPaint _: return $dartnative_3.ValueKey<$dartnative_25.CustomPaint>(value);
-          case $dartnative_54.CustomScrollView _: return $dartnative_3.ValueKey<$dartnative_54.CustomScrollView>(value);
+          case $dartnative_55.CustomScrollView _: return $dartnative_3.ValueKey<$dartnative_55.CustomScrollView>(value);
           case $dartnative_23.DecoratedBox _: return $dartnative_3.ValueKey<$dartnative_23.DecoratedBox>(value);
           case $dartnative_9.EdgeInsets _: return $dartnative_3.ValueKey<$dartnative_9.EdgeInsets>(value);
           case $dartnative_9.EdgeInsetsDirectional _: return $dartnative_3.ValueKey<$dartnative_9.EdgeInsetsDirectional>(value);
           case $dartnative_27.FastGrid _: return $dartnative_3.ValueKey<$dartnative_27.FastGrid>(value);
           case $dartnative_28.FastList _: return $dartnative_3.ValueKey<$dartnative_28.FastList>(value);
           case $dartnative_36.FileImage _: return $dartnative_3.ValueKey<$dartnative_36.FileImage>(value);
-          case $dartnative_61.FilteringTextInputFormatter _: return $dartnative_3.ValueKey<$dartnative_61.FilteringTextInputFormatter>(value);
+          case $dartnative_62.FilteringTextInputFormatter _: return $dartnative_3.ValueKey<$dartnative_62.FilteringTextInputFormatter>(value);
           case $dartnative_37.FittedBox _: return $dartnative_3.ValueKey<$dartnative_37.FittedBox>(value);
-          case $dartnative_58.FixedColumnWidth _: return $dartnative_3.ValueKey<$dartnative_58.FixedColumnWidth>(value);
+          case $dartnative_59.FixedColumnWidth _: return $dartnative_3.ValueKey<$dartnative_59.FixedColumnWidth>(value);
           case $dartnative_29.Flex _: return $dartnative_3.ValueKey<$dartnative_29.Flex>(value);
-          case $dartnative_58.FlexColumnWidth _: return $dartnative_3.ValueKey<$dartnative_58.FlexColumnWidth>(value);
+          case $dartnative_59.FlexColumnWidth _: return $dartnative_3.ValueKey<$dartnative_59.FlexColumnWidth>(value);
           case $dartnative_29.Flexible _: return $dartnative_3.ValueKey<$dartnative_29.Flexible>(value);
-          case $dartnative_54.FlexibleSpaceBar _: return $dartnative_3.ValueKey<$dartnative_54.FlexibleSpaceBar>(value);
+          case $dartnative_55.FlexibleSpaceBar _: return $dartnative_3.ValueKey<$dartnative_55.FlexibleSpaceBar>(value);
           case $dartnative_30.FloatingActionButton _: return $dartnative_3.ValueKey<$dartnative_30.FloatingActionButton>(value);
           case $dartnative_31.Focus _: return $dartnative_3.ValueKey<$dartnative_31.Focus>(value);
           case $dartnative_31.FocusScope _: return $dartnative_3.ValueKey<$dartnative_31.FocusScope>(value);
@@ -3013,15 +3028,15 @@ BridgedClass _createValueKeyBridge() {
           case $dartnative_37.IndexedStack _: return $dartnative_3.ValueKey<$dartnative_37.IndexedStack>(value);
           case $dartnative_3.InheritedWidget _: return $dartnative_3.ValueKey<$dartnative_3.InheritedWidget>(value);
           case $dartnative_32.InkWell _: return $dartnative_3.ValueKey<$dartnative_32.InkWell>(value);
-          case $dartnative_58.IntrinsicColumnWidth _: return $dartnative_3.ValueKey<$dartnative_58.IntrinsicColumnWidth>(value);
+          case $dartnative_59.IntrinsicColumnWidth _: return $dartnative_3.ValueKey<$dartnative_59.IntrinsicColumnWidth>(value);
           case $dartnative_37.IntrinsicHeight _: return $dartnative_3.ValueKey<$dartnative_37.IntrinsicHeight>(value);
           case $dartnative_37.IntrinsicWidth _: return $dartnative_3.ValueKey<$dartnative_37.IntrinsicWidth>(value);
           case $dartnative_17.LayoutBuilder _: return $dartnative_3.ValueKey<$dartnative_17.LayoutBuilder>(value);
-          case $dartnative_61.LengthLimitingTextInputFormatter _: return $dartnative_3.ValueKey<$dartnative_61.LengthLimitingTextInputFormatter>(value);
+          case $dartnative_62.LengthLimitingTextInputFormatter _: return $dartnative_3.ValueKey<$dartnative_62.LengthLimitingTextInputFormatter>(value);
           case $dartnative_7.LicenseException _: return $dartnative_3.ValueKey<$dartnative_7.LicenseException>(value);
           case $dartnative_9.LinearGradient _: return $dartnative_3.ValueKey<$dartnative_9.LinearGradient>(value);
-          case $dartnative_46.LinearProgressIndicator _: return $dartnative_3.ValueKey<$dartnative_46.LinearProgressIndicator>(value);
-          case $dartnative_48.ListView _: return $dartnative_3.ValueKey<$dartnative_48.ListView>(value);
+          case $dartnative_47.LinearProgressIndicator _: return $dartnative_3.ValueKey<$dartnative_47.LinearProgressIndicator>(value);
+          case $dartnative_49.ListView _: return $dartnative_3.ValueKey<$dartnative_49.ListView>(value);
           case $dartnative_32.Listener _: return $dartnative_3.ValueKey<$dartnative_32.Listener>(value);
           case $dartnative_3.LocalKey _: return $dartnative_3.ValueKey<$dartnative_3.LocalKey>(value);
           case $dartnative_34.MasonryColumn _: return $dartnative_3.ValueKey<$dartnative_34.MasonryColumn>(value);
@@ -3029,11 +3044,11 @@ BridgedClass _createValueKeyBridge() {
           case $dartnative_34.MasonryGridView _: return $dartnative_3.ValueKey<$dartnative_34.MasonryGridView>(value);
           case $dartnative_9.MaterialColor _: return $dartnative_3.ValueKey<$dartnative_9.MaterialColor>(value);
           case $dartnative_36.MemoryImage _: return $dartnative_3.ValueKey<$dartnative_36.MemoryImage>(value);
-          case $dartnative_49.NativeSearchBar _: return $dartnative_3.ValueKey<$dartnative_49.NativeSearchBar>(value);
+          case $dartnative_50.NativeSearchBar _: return $dartnative_3.ValueKey<$dartnative_50.NativeSearchBar>(value);
           case $dartnative_25.NetworkCanvasImage _: return $dartnative_3.ValueKey<$dartnative_25.NetworkCanvasImage>(value);
           case $dartnative_36.NetworkImage _: return $dartnative_3.ValueKey<$dartnative_36.NetworkImage>(value);
-          case $dartnative_48.NeverScrollableScrollPhysics _: return $dartnative_3.ValueKey<$dartnative_48.NeverScrollableScrollPhysics>(value);
-          case $dartnative_63.Opacity _: return $dartnative_3.ValueKey<$dartnative_63.Opacity>(value);
+          case $dartnative_49.NeverScrollableScrollPhysics _: return $dartnative_3.ValueKey<$dartnative_49.NeverScrollableScrollPhysics>(value);
+          case $dartnative_64.Opacity _: return $dartnative_3.ValueKey<$dartnative_64.Opacity>(value);
           case $dartnative_9.OutlineInputBorder _: return $dartnative_3.ValueKey<$dartnative_9.OutlineInputBorder>(value);
           case $dartnative_23.Padding _: return $dartnative_3.ValueKey<$dartnative_23.Padding>(value);
           case $dartnative_6.PageRoute _: return $dartnative_3.ValueKey<$dartnative_6.PageRoute>(value);
@@ -3046,64 +3061,64 @@ BridgedClass _createValueKeyBridge() {
           case $dartnative_25.PathLineTo _: return $dartnative_3.ValueKey<$dartnative_25.PathLineTo>(value);
           case $dartnative_25.PathMoveTo _: return $dartnative_3.ValueKey<$dartnative_25.PathMoveTo>(value);
           case $dartnative_6.PopScope _: return $dartnative_3.ValueKey<$dartnative_6.PopScope>(value);
-          case $dartnative_55.Positioned _: return $dartnative_3.ValueKey<$dartnative_55.Positioned>(value);
-          case $dartnative_47.PreferredSizeWidget _: return $dartnative_3.ValueKey<$dartnative_47.PreferredSizeWidget>(value);
+          case $dartnative_56.Positioned _: return $dartnative_3.ValueKey<$dartnative_56.Positioned>(value);
+          case $dartnative_48.PreferredSizeWidget _: return $dartnative_3.ValueKey<$dartnative_48.PreferredSizeWidget>(value);
           case $dartnative_9.RadialGradient _: return $dartnative_3.ValueKey<$dartnative_9.RadialGradient>(value);
           case $dartnative_21.Radio _: return $dartnative_3.ValueKey<$dartnative_21.Radio>(value);
           case $dartnative_9.RenderBox _: return $dartnative_3.ValueKey<$dartnative_9.RenderBox>(value);
-          case $dartnative_63.RepaintBoundary _: return $dartnative_3.ValueKey<$dartnative_63.RepaintBoundary>(value);
-          case $dartnative_59.RichText _: return $dartnative_3.ValueKey<$dartnative_59.RichText>(value);
-          case $dartnative_52.RoundSliderOverlayShape _: return $dartnative_3.ValueKey<$dartnative_52.RoundSliderOverlayShape>(value);
-          case $dartnative_52.RoundSliderThumbShape _: return $dartnative_3.ValueKey<$dartnative_52.RoundSliderThumbShape>(value);
+          case $dartnative_64.RepaintBoundary _: return $dartnative_3.ValueKey<$dartnative_64.RepaintBoundary>(value);
+          case $dartnative_60.RichText _: return $dartnative_3.ValueKey<$dartnative_60.RichText>(value);
+          case $dartnative_53.RoundSliderOverlayShape _: return $dartnative_3.ValueKey<$dartnative_53.RoundSliderOverlayShape>(value);
+          case $dartnative_53.RoundSliderThumbShape _: return $dartnative_3.ValueKey<$dartnative_53.RoundSliderThumbShape>(value);
           case $dartnative_9.RoundedRectangleBorder _: return $dartnative_3.ValueKey<$dartnative_9.RoundedRectangleBorder>(value);
           case $dartnative_9.RoundedSuperellipseBorder _: return $dartnative_3.ValueKey<$dartnative_9.RoundedSuperellipseBorder>(value);
           case $dartnative_23.SafeArea _: return $dartnative_3.ValueKey<$dartnative_23.SafeArea>(value);
-          case $dartnative_47.Scaffold _: return $dartnative_3.ValueKey<$dartnative_47.Scaffold>(value);
-          case $dartnative_48.ScrollView _: return $dartnative_3.ValueKey<$dartnative_48.ScrollView>(value);
-          case $dartnative_50.SegmentedControl _: return $dartnative_3.ValueKey<$dartnative_50.SegmentedControl>(value);
+          case $dartnative_48.Scaffold _: return $dartnative_3.ValueKey<$dartnative_48.Scaffold>(value);
+          case $dartnative_49.ScrollView _: return $dartnative_3.ValueKey<$dartnative_49.ScrollView>(value);
+          case $dartnative_51.SegmentedControl _: return $dartnative_3.ValueKey<$dartnative_51.SegmentedControl>(value);
           case $dartnative_9.ShapeDecoration _: return $dartnative_3.ValueKey<$dartnative_9.ShapeDecoration>(value);
-          case $dartnative_51.Shimmer _: return $dartnative_3.ValueKey<$dartnative_51.Shimmer>(value);
+          case $dartnative_52.Shimmer _: return $dartnative_3.ValueKey<$dartnative_52.Shimmer>(value);
           case $dartnative_11.ShowNativeToast _: return $dartnative_3.ValueKey<$dartnative_11.ShowNativeToast>(value);
           case $dartnative_13.Signal _: return $dartnative_3.ValueKey<$dartnative_13.Signal>(value);
-          case $dartnative_48.SingleChildScrollView _: return $dartnative_3.ValueKey<$dartnative_48.SingleChildScrollView>(value);
+          case $dartnative_49.SingleChildScrollView _: return $dartnative_3.ValueKey<$dartnative_49.SingleChildScrollView>(value);
           case $dartnative_23.SizedBox _: return $dartnative_3.ValueKey<$dartnative_23.SizedBox>(value);
-          case $dartnative_52.Slider _: return $dartnative_3.ValueKey<$dartnative_52.Slider>(value);
-          case $dartnative_54.SliverAppBar _: return $dartnative_3.ValueKey<$dartnative_54.SliverAppBar>(value);
-          case $dartnative_54.SliverChildBuilderDelegate _: return $dartnative_3.ValueKey<$dartnative_54.SliverChildBuilderDelegate>(value);
-          case $dartnative_54.SliverChildListDelegate _: return $dartnative_3.ValueKey<$dartnative_54.SliverChildListDelegate>(value);
-          case $dartnative_54.SliverFillRemaining _: return $dartnative_3.ValueKey<$dartnative_54.SliverFillRemaining>(value);
-          case $dartnative_54.SliverGrid _: return $dartnative_3.ValueKey<$dartnative_54.SliverGrid>(value);
-          case $dartnative_54.SliverGridDelegateWithFixedCrossAxisCount _: return $dartnative_3.ValueKey<$dartnative_54.SliverGridDelegateWithFixedCrossAxisCount>(value);
-          case $dartnative_54.SliverGridDelegateWithMaxCrossAxisExtent _: return $dartnative_3.ValueKey<$dartnative_54.SliverGridDelegateWithMaxCrossAxisExtent>(value);
-          case $dartnative_54.SliverList _: return $dartnative_3.ValueKey<$dartnative_54.SliverList>(value);
-          case $dartnative_54.SliverPadding _: return $dartnative_3.ValueKey<$dartnative_54.SliverPadding>(value);
-          case $dartnative_54.SliverToBoxAdapter _: return $dartnative_3.ValueKey<$dartnative_54.SliverToBoxAdapter>(value);
-          case $dartnative_47.SnackBar _: return $dartnative_3.ValueKey<$dartnative_47.SnackBar>(value);
+          case $dartnative_53.Slider _: return $dartnative_3.ValueKey<$dartnative_53.Slider>(value);
+          case $dartnative_55.SliverAppBar _: return $dartnative_3.ValueKey<$dartnative_55.SliverAppBar>(value);
+          case $dartnative_55.SliverChildBuilderDelegate _: return $dartnative_3.ValueKey<$dartnative_55.SliverChildBuilderDelegate>(value);
+          case $dartnative_55.SliverChildListDelegate _: return $dartnative_3.ValueKey<$dartnative_55.SliverChildListDelegate>(value);
+          case $dartnative_55.SliverFillRemaining _: return $dartnative_3.ValueKey<$dartnative_55.SliverFillRemaining>(value);
+          case $dartnative_55.SliverGrid _: return $dartnative_3.ValueKey<$dartnative_55.SliverGrid>(value);
+          case $dartnative_55.SliverGridDelegateWithFixedCrossAxisCount _: return $dartnative_3.ValueKey<$dartnative_55.SliverGridDelegateWithFixedCrossAxisCount>(value);
+          case $dartnative_55.SliverGridDelegateWithMaxCrossAxisExtent _: return $dartnative_3.ValueKey<$dartnative_55.SliverGridDelegateWithMaxCrossAxisExtent>(value);
+          case $dartnative_55.SliverList _: return $dartnative_3.ValueKey<$dartnative_55.SliverList>(value);
+          case $dartnative_55.SliverPadding _: return $dartnative_3.ValueKey<$dartnative_55.SliverPadding>(value);
+          case $dartnative_55.SliverToBoxAdapter _: return $dartnative_3.ValueKey<$dartnative_55.SliverToBoxAdapter>(value);
+          case $dartnative_48.SnackBar _: return $dartnative_3.ValueKey<$dartnative_48.SnackBar>(value);
           case $dartnative_29.Spacer _: return $dartnative_3.ValueKey<$dartnative_29.Spacer>(value);
-          case $dartnative_55.Stack _: return $dartnative_3.ValueKey<$dartnative_55.Stack>(value);
+          case $dartnative_56.Stack _: return $dartnative_3.ValueKey<$dartnative_56.Stack>(value);
           case $dartnative_9.StadiumBorder _: return $dartnative_3.ValueKey<$dartnative_9.StadiumBorder>(value);
           case $dartnative_3.StatefulWidget _: return $dartnative_3.ValueKey<$dartnative_3.StatefulWidget>(value);
           case $dartnative_3.StatelessWidget _: return $dartnative_3.ValueKey<$dartnative_3.StatelessWidget>(value);
-          case $dartnative_56.Switch _: return $dartnative_3.ValueKey<$dartnative_56.Switch>(value);
-          case $dartnative_59.TapGestureRecognizer _: return $dartnative_3.ValueKey<$dartnative_59.TapGestureRecognizer>(value);
-          case $dartnative_59.Text _: return $dartnative_3.ValueKey<$dartnative_59.Text>(value);
-          case $dartnative_60.TextField _: return $dartnative_3.ValueKey<$dartnative_60.TextField>(value);
+          case $dartnative_57.Switch _: return $dartnative_3.ValueKey<$dartnative_57.Switch>(value);
+          case $dartnative_60.TapGestureRecognizer _: return $dartnative_3.ValueKey<$dartnative_60.TapGestureRecognizer>(value);
+          case $dartnative_60.Text _: return $dartnative_3.ValueKey<$dartnative_60.Text>(value);
+          case $dartnative_61.TextField _: return $dartnative_3.ValueKey<$dartnative_61.TextField>(value);
           case $dartnative_3.TextSelection _: return $dartnative_3.ValueKey<$dartnative_3.TextSelection>(value);
-          case $dartnative_59.TextSpan _: return $dartnative_3.ValueKey<$dartnative_59.TextSpan>(value);
+          case $dartnative_60.TextSpan _: return $dartnative_3.ValueKey<$dartnative_60.TextSpan>(value);
           case $dartnative_14.TickerFuture _: return $dartnative_3.ValueKey<$dartnative_14.TickerFuture>(value);
           case $dartnative_14.Transform _: return $dartnative_3.ValueKey<$dartnative_14.Transform>(value);
           case $dartnative_14.Tween _: return $dartnative_3.ValueKey<$dartnative_14.Tween>(value);
           case $dartnative_14.TweenSequence _: return $dartnative_3.ValueKey<$dartnative_14.TweenSequence>(value);
           case $dartnative_9.UnderlineInputBorder _: return $dartnative_3.ValueKey<$dartnative_9.UnderlineInputBorder>(value);
           case $dartnative_3.ValueListenable _: return $dartnative_3.ValueKey<$dartnative_3.ValueListenable>(value);
-          case $dartnative_63.Visibility _: return $dartnative_3.ValueKey<$dartnative_63.Visibility>(value);
+          case $dartnative_64.Visibility _: return $dartnative_3.ValueKey<$dartnative_64.Visibility>(value);
           case $dartnative_37.Wrap _: return $dartnative_3.ValueKey<$dartnative_37.Wrap>(value);
           case $dartnative_9.AlignmentGeometry _: return $dartnative_3.ValueKey<$dartnative_9.AlignmentGeometry>(value);
-          case $dartnative_46.AndroidProgressIndicatorStyle _: return $dartnative_3.ValueKey<$dartnative_46.AndroidProgressIndicatorStyle>(value);
-          case $dartnative_52.AndroidSliderStyle _: return $dartnative_3.ValueKey<$dartnative_52.AndroidSliderStyle>(value);
-          case $dartnative_56.AndroidSwitchStyle _: return $dartnative_3.ValueKey<$dartnative_56.AndroidSwitchStyle>(value);
+          case $dartnative_47.AndroidProgressIndicatorStyle _: return $dartnative_3.ValueKey<$dartnative_47.AndroidProgressIndicatorStyle>(value);
+          case $dartnative_53.AndroidSliderStyle _: return $dartnative_3.ValueKey<$dartnative_53.AndroidSliderStyle>(value);
+          case $dartnative_57.AndroidSwitchStyle _: return $dartnative_3.ValueKey<$dartnative_57.AndroidSwitchStyle>(value);
           case $dartnative_14.Animatable _: return $dartnative_3.ValueKey<$dartnative_14.Animatable>(value);
-          case $dartnative_47.AppBarIOSConfig _: return $dartnative_3.ValueKey<$dartnative_47.AppBarIOSConfig>(value);
+          case $dartnative_48.AppBarIOSConfig _: return $dartnative_3.ValueKey<$dartnative_48.AppBarIOSConfig>(value);
           case $dartnative_17.AsyncSnapshot _: return $dartnative_3.ValueKey<$dartnative_17.AsyncSnapshot>(value);
           case $dartnative_9.BorderRadius _: return $dartnative_3.ValueKey<$dartnative_9.BorderRadius>(value);
           case $dartnative_9.BorderSide _: return $dartnative_3.ValueKey<$dartnative_9.BorderSide>(value);
@@ -3142,13 +3157,13 @@ BridgedClass _createValueKeyBridge() {
           case $dartnative_9.FontFeature _: return $dartnative_3.ValueKey<$dartnative_9.FontFeature>(value);
           case $dartnative_9.FontVariation _: return $dartnative_3.ValueKey<$dartnative_9.FontVariation>(value);
           case $dartnative_3.FrameTiming _: return $dartnative_3.ValueKey<$dartnative_3.FrameTiming>(value);
-          case $dartnative_59.GestureRecognizer _: return $dartnative_3.ValueKey<$dartnative_59.GestureRecognizer>(value);
+          case $dartnative_60.GestureRecognizer _: return $dartnative_3.ValueKey<$dartnative_60.GestureRecognizer>(value);
           case $dartnative_9.Gradient _: return $dartnative_3.ValueKey<$dartnative_9.Gradient>(value);
           case $dartnative_6.HapticFeedback _: return $dartnative_3.ValueKey<$dartnative_6.HapticFeedback>(value);
           case $dartnative_35.IconData _: return $dartnative_3.ValueKey<$dartnative_35.IconData>(value);
           case $dartnative_36.ImageCache _: return $dartnative_3.ValueKey<$dartnative_36.ImageCache>(value);
           case $dartnative_36.ImageProvider _: return $dartnative_3.ValueKey<$dartnative_36.ImageProvider>(value);
-          case $dartnative_59.InlineSpan _: return $dartnative_3.ValueKey<$dartnative_59.InlineSpan>(value);
+          case $dartnative_60.InlineSpan _: return $dartnative_3.ValueKey<$dartnative_60.InlineSpan>(value);
           case $dartnative_9.InputBorder _: return $dartnative_3.ValueKey<$dartnative_9.InputBorder>(value);
           case $dartnative_9.InputDecoration _: return $dartnative_3.ValueKey<$dartnative_9.InputDecoration>(value);
           case $dartnative_3.Key _: return $dartnative_3.ValueKey<$dartnative_3.Key>(value);
@@ -3162,7 +3177,7 @@ BridgedClass _createValueKeyBridge() {
           case $dartnative_45.MediaFile _: return $dartnative_3.ValueKey<$dartnative_45.MediaFile>(value);
           case $dartnative_6.MediaQuery _: return $dartnative_3.ValueKey<$dartnative_6.MediaQuery>(value);
           case $dartnative_6.MediaQueryData _: return $dartnative_3.ValueKey<$dartnative_6.MediaQueryData>(value);
-          case $dartnative_47.MenuAction _: return $dartnative_3.ValueKey<$dartnative_47.MenuAction>(value);
+          case $dartnative_48.MenuAction _: return $dartnative_3.ValueKey<$dartnative_48.MenuAction>(value);
           case $dartnative_6.ModalRoute _: return $dartnative_3.ValueKey<$dartnative_6.ModalRoute>(value);
           case $dartnative_1.NativeBindings _: return $dartnative_3.ValueKey<$dartnative_1.NativeBindings>(value);
           case $dartnative_6.Navigator _: return $dartnative_3.ValueKey<$dartnative_6.Navigator>(value);
@@ -3185,15 +3200,15 @@ BridgedClass _createValueKeyBridge() {
           case $dartnative_3.RenderObject _: return $dartnative_3.ValueKey<$dartnative_3.RenderObject>(value);
           case $dartnative_6.Route _: return $dartnative_3.ValueKey<$dartnative_6.Route>(value);
           case $dartnative_6.RouteTransition _: return $dartnative_3.ValueKey<$dartnative_6.RouteTransition>(value);
-          case $dartnative_47.ScaffoldFeatureController _: return $dartnative_3.ValueKey<$dartnative_47.ScaffoldFeatureController>(value);
-          case $dartnative_47.ScaffoldMessenger _: return $dartnative_3.ValueKey<$dartnative_47.ScaffoldMessenger>(value);
-          case $dartnative_47.ScaffoldMessengerState _: return $dartnative_3.ValueKey<$dartnative_47.ScaffoldMessengerState>(value);
-          case $dartnative_47.ScaffoldState _: return $dartnative_3.ValueKey<$dartnative_47.ScaffoldState>(value);
+          case $dartnative_48.ScaffoldFeatureController _: return $dartnative_3.ValueKey<$dartnative_48.ScaffoldFeatureController>(value);
+          case $dartnative_48.ScaffoldMessenger _: return $dartnative_3.ValueKey<$dartnative_48.ScaffoldMessenger>(value);
+          case $dartnative_48.ScaffoldMessengerState _: return $dartnative_3.ValueKey<$dartnative_48.ScaffoldMessengerState>(value);
+          case $dartnative_48.ScaffoldState _: return $dartnative_3.ValueKey<$dartnative_48.ScaffoldState>(value);
           case $dartnative_32.ScaleEndDetails _: return $dartnative_3.ValueKey<$dartnative_32.ScaleEndDetails>(value);
           case $dartnative_32.ScaleStartDetails _: return $dartnative_3.ValueKey<$dartnative_32.ScaleStartDetails>(value);
           case $dartnative_32.ScaleUpdateDetails _: return $dartnative_3.ValueKey<$dartnative_32.ScaleUpdateDetails>(value);
           case $dartnative_3.SchedulerBinding _: return $dartnative_3.ValueKey<$dartnative_3.SchedulerBinding>(value);
-          case $dartnative_48.ScrollPhysics _: return $dartnative_3.ValueKey<$dartnative_48.ScrollPhysics>(value);
+          case $dartnative_49.ScrollPhysics _: return $dartnative_3.ValueKey<$dartnative_49.ScrollPhysics>(value);
           case $dartnative_3.ScrollPosition _: return $dartnative_3.ValueKey<$dartnative_3.ScrollPosition>(value);
           case $dartnative_25.Shader _: return $dartnative_3.ValueKey<$dartnative_25.Shader>(value);
           case $dartnative_9.Shadow _: return $dartnative_3.ValueKey<$dartnative_9.Shadow>(value);
@@ -3201,29 +3216,29 @@ BridgedClass _createValueKeyBridge() {
           case $dartnative_6.SheetHeader _: return $dartnative_3.ValueKey<$dartnative_6.SheetHeader>(value);
           case $dartnative_6.SheetHeaderController _: return $dartnative_3.ValueKey<$dartnative_6.SheetHeaderController>(value);
           case $dartnative_9.Size _: return $dartnative_3.ValueKey<$dartnative_9.Size>(value);
-          case $dartnative_53.SlideOverStyle _: return $dartnative_3.ValueKey<$dartnative_53.SlideOverStyle>(value);
-          case $dartnative_52.SliderComponentShape _: return $dartnative_3.ValueKey<$dartnative_52.SliderComponentShape>(value);
-          case $dartnative_52.SliderThemeData _: return $dartnative_3.ValueKey<$dartnative_52.SliderThemeData>(value);
-          case $dartnative_54.SliverChildDelegate _: return $dartnative_3.ValueKey<$dartnative_54.SliverChildDelegate>(value);
-          case $dartnative_54.SliverGridDelegate _: return $dartnative_3.ValueKey<$dartnative_54.SliverGridDelegate>(value);
-          case $dartnative_47.SnackBarAction _: return $dartnative_3.ValueKey<$dartnative_47.SnackBarAction>(value);
+          case $dartnative_54.SlideOverStyle _: return $dartnative_3.ValueKey<$dartnative_54.SlideOverStyle>(value);
+          case $dartnative_53.SliderComponentShape _: return $dartnative_3.ValueKey<$dartnative_53.SliderComponentShape>(value);
+          case $dartnative_53.SliderThemeData _: return $dartnative_3.ValueKey<$dartnative_53.SliderThemeData>(value);
+          case $dartnative_55.SliverChildDelegate _: return $dartnative_3.ValueKey<$dartnative_55.SliverChildDelegate>(value);
+          case $dartnative_55.SliverGridDelegate _: return $dartnative_3.ValueKey<$dartnative_55.SliverGridDelegate>(value);
+          case $dartnative_48.SnackBarAction _: return $dartnative_3.ValueKey<$dartnative_48.SnackBarAction>(value);
           case $dartnative_14.SpringDescription _: return $dartnative_3.ValueKey<$dartnative_14.SpringDescription>(value);
           case $dartnative_3.State _: return $dartnative_3.ValueKey<$dartnative_3.State>(value);
           case $dartnative_35.StaticIconProvider _: return $dartnative_3.ValueKey<$dartnative_35.StaticIconProvider>(value);
           case $dartnative_6.StrutStyle _: return $dartnative_3.ValueKey<$dartnative_6.StrutStyle>(value);
-          case $dartnative_57.SystemChrome _: return $dartnative_3.ValueKey<$dartnative_57.SystemChrome>(value);
+          case $dartnative_58.SystemChrome _: return $dartnative_3.ValueKey<$dartnative_58.SystemChrome>(value);
           case $dartnative_6.SystemNavigator _: return $dartnative_3.ValueKey<$dartnative_6.SystemNavigator>(value);
-          case $dartnative_57.SystemUiOverlayStyle _: return $dartnative_3.ValueKey<$dartnative_57.SystemUiOverlayStyle>(value);
-          case $dartnative_58.TableBorder _: return $dartnative_3.ValueKey<$dartnative_58.TableBorder>(value);
-          case $dartnative_58.TableColumnWidth _: return $dartnative_3.ValueKey<$dartnative_58.TableColumnWidth>(value);
-          case $dartnative_58.TableRow _: return $dartnative_3.ValueKey<$dartnative_58.TableRow>(value);
+          case $dartnative_58.SystemUiOverlayStyle _: return $dartnative_3.ValueKey<$dartnative_58.SystemUiOverlayStyle>(value);
+          case $dartnative_59.TableBorder _: return $dartnative_3.ValueKey<$dartnative_59.TableBorder>(value);
+          case $dartnative_59.TableColumnWidth _: return $dartnative_3.ValueKey<$dartnative_59.TableColumnWidth>(value);
+          case $dartnative_59.TableRow _: return $dartnative_3.ValueKey<$dartnative_59.TableRow>(value);
           case $dartnative_32.TapDownDetails _: return $dartnative_3.ValueKey<$dartnative_32.TapDownDetails>(value);
           case $dartnative_32.TapUpDetails _: return $dartnative_3.ValueKey<$dartnative_32.TapUpDetails>(value);
-          case $dartnative_60.TextAlignVertical _: return $dartnative_3.ValueKey<$dartnative_60.TextAlignVertical>(value);
+          case $dartnative_61.TextAlignVertical _: return $dartnative_3.ValueKey<$dartnative_61.TextAlignVertical>(value);
           case $dartnative_25.TextBox _: return $dartnative_3.ValueKey<$dartnative_25.TextBox>(value);
           case $dartnative_3.TextEditingValue _: return $dartnative_3.ValueKey<$dartnative_3.TextEditingValue>(value);
-          case $dartnative_61.TextInputFormatter _: return $dartnative_3.ValueKey<$dartnative_61.TextInputFormatter>(value);
-          case $dartnative_62.TextPainter _: return $dartnative_3.ValueKey<$dartnative_62.TextPainter>(value);
+          case $dartnative_62.TextInputFormatter _: return $dartnative_3.ValueKey<$dartnative_62.TextInputFormatter>(value);
+          case $dartnative_63.TextPainter _: return $dartnative_3.ValueKey<$dartnative_63.TextPainter>(value);
           case $dartnative_9.TextPosition _: return $dartnative_3.ValueKey<$dartnative_9.TextPosition>(value);
           case $dartnative_3.TextRange _: return $dartnative_3.ValueKey<$dartnative_3.TextRange>(value);
           case $dartnative_9.TextStyle _: return $dartnative_3.ValueKey<$dartnative_9.TextStyle>(value);
@@ -3641,6 +3656,14 @@ BridgedClass _createBuildContextBridge() {
         final t = D4.validateTarget<$dartnative_3.BuildContext>(target, 'BuildContext');
         return t.dependOnInheritedWidgetOfExactType();
       },
+      'getInheritedWidgetOfExactType': (visitor, target, positional, named, typeArgs) {
+        final _interceptor = D4.findBridgedMethodInterceptor('Element', 'getInheritedWidgetOfExactType');
+        if (_interceptor != null) {
+          return _interceptor(visitor, target, positional, named, typeArgs);
+        }
+        final t = D4.validateTarget<$dartnative_3.BuildContext>(target, 'BuildContext');
+        return t.getInheritedWidgetOfExactType();
+      },
       'findRenderObject': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$dartnative_3.BuildContext>(target, 'BuildContext');
         return t.findRenderObject();
@@ -3658,6 +3681,7 @@ BridgedClass _createBuildContextBridge() {
     },
     methodSignatures: {
       'dependOnInheritedWidgetOfExactType': 'T? dependOnInheritedWidgetOfExactType()',
+      'getInheritedWidgetOfExactType': 'T? getInheritedWidgetOfExactType()',
       'findRenderObject': 'RenderObject? findRenderObject()',
       'visitChildElements': 'void visitChildElements(void Function(BuildContext element) visitor)',
     },
@@ -3885,7 +3909,7 @@ BridgedClass _createValueNotifierBridge() {
           case int _: return $dartnative_3.ValueNotifier<int>(value);
           case String _: return $dartnative_3.ValueNotifier<String>(value);
           case bool _: return $dartnative_3.ValueNotifier<bool>(value);
-          case $dartnative_53.SliderMenuContainerState _: return $dartnative_3.ValueNotifier<$dartnative_53.SliderMenuContainerState>(value);
+          case $dartnative_54.SliderMenuContainerState _: return $dartnative_3.ValueNotifier<$dartnative_54.SliderMenuContainerState>(value);
           case $dartnative_14.AnimatedBuilder _: return $dartnative_3.ValueNotifier<$dartnative_14.AnimatedBuilder>(value);
           case $dartnative_14.AnimationController _: return $dartnative_3.ValueNotifier<$dartnative_14.AnimationController>(value);
           case $dartnative_14.CurvedAnimation _: return $dartnative_3.ValueNotifier<$dartnative_14.CurvedAnimation>(value);
@@ -3899,7 +3923,7 @@ BridgedClass _createValueNotifierBridge() {
           case $dartnative_14.AnimatedContainer _: return $dartnative_3.ValueNotifier<$dartnative_14.AnimatedContainer>(value);
           case $dartnative_14.AnimatedCrossFade _: return $dartnative_3.ValueNotifier<$dartnative_14.AnimatedCrossFade>(value);
           case $dartnative_14.AnimatedDefaultTextStyle _: return $dartnative_3.ValueNotifier<$dartnative_14.AnimatedDefaultTextStyle>(value);
-          case $dartnative_63.AnimatedOpacity _: return $dartnative_3.ValueNotifier<$dartnative_63.AnimatedOpacity>(value);
+          case $dartnative_64.AnimatedOpacity _: return $dartnative_3.ValueNotifier<$dartnative_64.AnimatedOpacity>(value);
           case $dartnative_14.AnimatedPadding _: return $dartnative_3.ValueNotifier<$dartnative_14.AnimatedPadding>(value);
           case $dartnative_14.AnimatedPositioned _: return $dartnative_3.ValueNotifier<$dartnative_14.AnimatedPositioned>(value);
           case $dartnative_14.AnimatedRotation _: return $dartnative_3.ValueNotifier<$dartnative_14.AnimatedRotation>(value);
@@ -3909,25 +3933,25 @@ BridgedClass _createValueNotifierBridge() {
           case $dartnative_14.AnimatedSwitcher _: return $dartnative_3.ValueNotifier<$dartnative_14.AnimatedSwitcher>(value);
           case $dartnative_14.AnimatedWidget _: return $dartnative_3.ValueNotifier<$dartnative_14.AnimatedWidget>(value);
           case $dartnative_6.App _: return $dartnative_3.ValueNotifier<$dartnative_6.App>(value);
-          case $dartnative_47.AppBar _: return $dartnative_3.ValueNotifier<$dartnative_47.AppBar>(value);
+          case $dartnative_48.AppBar _: return $dartnative_3.ValueNotifier<$dartnative_48.AppBar>(value);
           case $dartnative_20.Badge _: return $dartnative_3.ValueNotifier<$dartnative_20.Badge>(value);
-          case $dartnative_47.BarButtonItem _: return $dartnative_3.ValueNotifier<$dartnative_47.BarButtonItem>(value);
+          case $dartnative_48.BarButtonItem _: return $dartnative_3.ValueNotifier<$dartnative_48.BarButtonItem>(value);
           case $dartnative_3.Builder _: return $dartnative_3.ValueNotifier<$dartnative_3.Builder>(value);
           case $dartnative_20.Card _: return $dartnative_3.ValueNotifier<$dartnative_20.Card>(value);
           case $dartnative_23.Center _: return $dartnative_3.ValueNotifier<$dartnative_23.Center>(value);
           case $dartnative_20.CircleAvatar _: return $dartnative_3.ValueNotifier<$dartnative_20.CircleAvatar>(value);
           case $dartnative_37.ClipOval _: return $dartnative_3.ValueNotifier<$dartnative_37.ClipOval>(value);
-          case $dartnative_63.ClipRRect _: return $dartnative_3.ValueNotifier<$dartnative_63.ClipRRect>(value);
-          case $dartnative_63.ClipRSuperellipse _: return $dartnative_3.ValueNotifier<$dartnative_63.ClipRSuperellipse>(value);
-          case $dartnative_63.ClipRect _: return $dartnative_3.ValueNotifier<$dartnative_63.ClipRect>(value);
+          case $dartnative_64.ClipRRect _: return $dartnative_3.ValueNotifier<$dartnative_64.ClipRRect>(value);
+          case $dartnative_64.ClipRSuperellipse _: return $dartnative_3.ValueNotifier<$dartnative_64.ClipRSuperellipse>(value);
+          case $dartnative_64.ClipRect _: return $dartnative_3.ValueNotifier<$dartnative_64.ClipRect>(value);
           case $dartnative_14.ColorTween _: return $dartnative_3.ValueNotifier<$dartnative_14.ColorTween>(value);
           case $dartnative_29.Column _: return $dartnative_3.ValueNotifier<$dartnative_29.Column>(value);
           case $dartnative_13.Computed _: return $dartnative_3.ValueNotifier<$dartnative_13.Computed>(value);
           case $dartnative_6.DefaultTextStyle _: return $dartnative_3.ValueNotifier<$dartnative_6.DefaultTextStyle>(value);
           case $dartnative_6.Directionality _: return $dartnative_3.ValueNotifier<$dartnative_6.Directionality>(value);
           case $dartnative_23.Divider _: return $dartnative_3.ValueNotifier<$dartnative_23.Divider>(value);
-          case $dartnative_47.Drawer _: return $dartnative_3.ValueNotifier<$dartnative_47.Drawer>(value);
-          case $dartnative_47.DrawerHeader _: return $dartnative_3.ValueNotifier<$dartnative_47.DrawerHeader>(value);
+          case $dartnative_48.Drawer _: return $dartnative_3.ValueNotifier<$dartnative_48.Drawer>(value);
+          case $dartnative_48.DrawerHeader _: return $dartnative_3.ValueNotifier<$dartnative_48.DrawerHeader>(value);
           case $dartnative_29.Expanded _: return $dartnative_3.ValueNotifier<$dartnative_29.Expanded>(value);
           case $dartnative_31.FocusNode _: return $dartnative_3.ValueNotifier<$dartnative_31.FocusNode>(value);
           case $dartnative_31.FocusScopeNode _: return $dartnative_3.ValueNotifier<$dartnative_31.FocusScopeNode>(value);
@@ -3936,20 +3960,22 @@ BridgedClass _createValueNotifierBridge() {
           case $dartnative_14.IntTween _: return $dartnative_3.ValueNotifier<$dartnative_14.IntTween>(value);
           case $dartnative_3.KeyedSubtree _: return $dartnative_3.ValueNotifier<$dartnative_3.KeyedSubtree>(value);
           case $dartnative_20.ListTile _: return $dartnative_3.ValueNotifier<$dartnative_20.ListTile>(value);
-          case $dartnative_63.Offstage _: return $dartnative_3.ValueNotifier<$dartnative_63.Offstage>(value);
+          case $dartnative_64.Offstage _: return $dartnative_3.ValueNotifier<$dartnative_64.Offstage>(value);
+          case $dartnative_46.PageController _: return $dartnative_3.ValueNotifier<$dartnative_46.PageController>(value);
+          case $dartnative_46.PageView _: return $dartnative_3.ValueNotifier<$dartnative_46.PageView>(value);
           case $dartnative_13.Provided _: return $dartnative_3.ValueNotifier<$dartnative_13.Provided>(value);
           case $dartnative_14.RectTween _: return $dartnative_3.ValueNotifier<$dartnative_14.RectTween>(value);
-          case $dartnative_62.RenderParagraph _: return $dartnative_3.ValueNotifier<$dartnative_62.RenderParagraph>(value);
+          case $dartnative_63.RenderParagraph _: return $dartnative_3.ValueNotifier<$dartnative_63.RenderParagraph>(value);
           case $dartnative_29.Row _: return $dartnative_3.ValueNotifier<$dartnative_29.Row>(value);
-          case $dartnative_47.ScaffoldDrawerElement _: return $dartnative_3.ValueNotifier<$dartnative_47.ScaffoldDrawerElement>(value);
+          case $dartnative_48.ScaffoldDrawerElement _: return $dartnative_3.ValueNotifier<$dartnative_48.ScaffoldDrawerElement>(value);
           case $dartnative_3.ScrollController _: return $dartnative_3.ValueNotifier<$dartnative_3.ScrollController>(value);
-          case $dartnative_49.SearchBar _: return $dartnative_3.ValueNotifier<$dartnative_49.SearchBar>(value);
+          case $dartnative_50.SearchBar _: return $dartnative_3.ValueNotifier<$dartnative_50.SearchBar>(value);
           case $dartnative_14.SingleTickerProviderStateMixin _: return $dartnative_3.ValueNotifier<$dartnative_14.SingleTickerProviderStateMixin>(value);
           case $dartnative_14.SizeTween _: return $dartnative_3.ValueNotifier<$dartnative_14.SizeTween>(value);
-          case $dartnative_53.SliderMenuContainer _: return $dartnative_3.ValueNotifier<$dartnative_53.SliderMenuContainer>(value);
-          case $dartnative_52.SliderTheme _: return $dartnative_3.ValueNotifier<$dartnative_52.SliderTheme>(value);
+          case $dartnative_54.SliderMenuContainer _: return $dartnative_3.ValueNotifier<$dartnative_54.SliderMenuContainer>(value);
+          case $dartnative_53.SliderTheme _: return $dartnative_3.ValueNotifier<$dartnative_53.SliderTheme>(value);
           case $dartnative_17.StreamBuilder _: return $dartnative_3.ValueNotifier<$dartnative_17.StreamBuilder>(value);
-          case $dartnative_58.Table _: return $dartnative_3.ValueNotifier<$dartnative_58.Table>(value);
+          case $dartnative_59.Table _: return $dartnative_3.ValueNotifier<$dartnative_59.Table>(value);
           case $dartnative_3.TextEditingController _: return $dartnative_3.ValueNotifier<$dartnative_3.TextEditingController>(value);
           case $dartnative_14.TickerProviderStateMixin _: return $dartnative_3.ValueNotifier<$dartnative_14.TickerProviderStateMixin>(value);
           case $dartnative_14.TweenAnimationBuilder _: return $dartnative_3.ValueNotifier<$dartnative_14.TweenAnimationBuilder>(value);
@@ -3961,44 +3987,44 @@ BridgedClass _createValueNotifierBridge() {
           case $dartnative_23.Align _: return $dartnative_3.ValueNotifier<$dartnative_23.Align>(value);
           case $dartnative_9.Alignment _: return $dartnative_3.ValueNotifier<$dartnative_9.Alignment>(value);
           case $dartnative_9.AlignmentDirectional _: return $dartnative_3.ValueNotifier<$dartnative_9.AlignmentDirectional>(value);
-          case $dartnative_48.AlwaysScrollableScrollPhysics _: return $dartnative_3.ValueNotifier<$dartnative_48.AlwaysScrollableScrollPhysics>(value);
+          case $dartnative_49.AlwaysScrollableScrollPhysics _: return $dartnative_3.ValueNotifier<$dartnative_49.AlwaysScrollableScrollPhysics>(value);
           case $dartnative_14.Animation _: return $dartnative_3.ValueNotifier<$dartnative_14.Animation>(value);
           case $dartnative_6.AnnotatedRegion _: return $dartnative_3.ValueNotifier<$dartnative_6.AnnotatedRegion>(value);
-          case $dartnative_63.AspectRatio _: return $dartnative_3.ValueNotifier<$dartnative_63.AspectRatio>(value);
+          case $dartnative_64.AspectRatio _: return $dartnative_3.ValueNotifier<$dartnative_64.AspectRatio>(value);
           case $dartnative_36.AssetImage _: return $dartnative_3.ValueNotifier<$dartnative_36.AssetImage>(value);
-          case $dartnative_47.BackButton _: return $dartnative_3.ValueNotifier<$dartnative_47.BackButton>(value);
+          case $dartnative_48.BackButton _: return $dartnative_3.ValueNotifier<$dartnative_48.BackButton>(value);
           case $dartnative_15.BackdropFilter _: return $dartnative_3.ValueNotifier<$dartnative_15.BackdropFilter>(value);
           case $dartnative_25.BinaryCanvasRecorder _: return $dartnative_3.ValueNotifier<$dartnative_25.BinaryCanvasRecorder>(value);
           case $dartnative_25.BlurImageFilter _: return $dartnative_3.ValueNotifier<$dartnative_25.BlurImageFilter>(value);
           case $dartnative_9.Border _: return $dartnative_3.ValueNotifier<$dartnative_9.Border>(value);
           case $dartnative_16.BottomNavigationBar _: return $dartnative_3.ValueNotifier<$dartnative_16.BottomNavigationBar>(value);
-          case $dartnative_47.BottomSheet _: return $dartnative_3.ValueNotifier<$dartnative_47.BottomSheet>(value);
-          case $dartnative_48.BouncingScrollPhysics _: return $dartnative_3.ValueNotifier<$dartnative_48.BouncingScrollPhysics>(value);
+          case $dartnative_48.BottomSheet _: return $dartnative_3.ValueNotifier<$dartnative_48.BottomSheet>(value);
+          case $dartnative_49.BouncingScrollPhysics _: return $dartnative_3.ValueNotifier<$dartnative_49.BouncingScrollPhysics>(value);
           case $dartnative_9.BoxDecoration _: return $dartnative_3.ValueNotifier<$dartnative_9.BoxDecoration>(value);
           case $dartnative_18.Button _: return $dartnative_3.ValueNotifier<$dartnative_18.Button>(value);
           case $dartnative_3.ChangeNotifier _: return $dartnative_3.ValueNotifier<$dartnative_3.ChangeNotifier>(value);
           case $dartnative_21.Checkbox _: return $dartnative_3.ValueNotifier<$dartnative_21.Checkbox>(value);
           case $dartnative_9.CircleBorder _: return $dartnative_3.ValueNotifier<$dartnative_9.CircleBorder>(value);
-          case $dartnative_46.CircularProgressIndicator _: return $dartnative_3.ValueNotifier<$dartnative_46.CircularProgressIndicator>(value);
-          case $dartnative_48.ClampingScrollPhysics _: return $dartnative_3.ValueNotifier<$dartnative_48.ClampingScrollPhysics>(value);
+          case $dartnative_47.CircularProgressIndicator _: return $dartnative_3.ValueNotifier<$dartnative_47.CircularProgressIndicator>(value);
+          case $dartnative_49.ClampingScrollPhysics _: return $dartnative_3.ValueNotifier<$dartnative_49.ClampingScrollPhysics>(value);
           case $dartnative_37.ColoredBox _: return $dartnative_3.ValueNotifier<$dartnative_37.ColoredBox>(value);
           case $dartnative_23.ConstrainedBox _: return $dartnative_3.ValueNotifier<$dartnative_23.ConstrainedBox>(value);
           case $dartnative_23.Container _: return $dartnative_3.ValueNotifier<$dartnative_23.Container>(value);
           case $dartnative_25.CustomPaint _: return $dartnative_3.ValueNotifier<$dartnative_25.CustomPaint>(value);
-          case $dartnative_54.CustomScrollView _: return $dartnative_3.ValueNotifier<$dartnative_54.CustomScrollView>(value);
+          case $dartnative_55.CustomScrollView _: return $dartnative_3.ValueNotifier<$dartnative_55.CustomScrollView>(value);
           case $dartnative_23.DecoratedBox _: return $dartnative_3.ValueNotifier<$dartnative_23.DecoratedBox>(value);
           case $dartnative_9.EdgeInsets _: return $dartnative_3.ValueNotifier<$dartnative_9.EdgeInsets>(value);
           case $dartnative_9.EdgeInsetsDirectional _: return $dartnative_3.ValueNotifier<$dartnative_9.EdgeInsetsDirectional>(value);
           case $dartnative_27.FastGrid _: return $dartnative_3.ValueNotifier<$dartnative_27.FastGrid>(value);
           case $dartnative_28.FastList _: return $dartnative_3.ValueNotifier<$dartnative_28.FastList>(value);
           case $dartnative_36.FileImage _: return $dartnative_3.ValueNotifier<$dartnative_36.FileImage>(value);
-          case $dartnative_61.FilteringTextInputFormatter _: return $dartnative_3.ValueNotifier<$dartnative_61.FilteringTextInputFormatter>(value);
+          case $dartnative_62.FilteringTextInputFormatter _: return $dartnative_3.ValueNotifier<$dartnative_62.FilteringTextInputFormatter>(value);
           case $dartnative_37.FittedBox _: return $dartnative_3.ValueNotifier<$dartnative_37.FittedBox>(value);
-          case $dartnative_58.FixedColumnWidth _: return $dartnative_3.ValueNotifier<$dartnative_58.FixedColumnWidth>(value);
+          case $dartnative_59.FixedColumnWidth _: return $dartnative_3.ValueNotifier<$dartnative_59.FixedColumnWidth>(value);
           case $dartnative_29.Flex _: return $dartnative_3.ValueNotifier<$dartnative_29.Flex>(value);
-          case $dartnative_58.FlexColumnWidth _: return $dartnative_3.ValueNotifier<$dartnative_58.FlexColumnWidth>(value);
+          case $dartnative_59.FlexColumnWidth _: return $dartnative_3.ValueNotifier<$dartnative_59.FlexColumnWidth>(value);
           case $dartnative_29.Flexible _: return $dartnative_3.ValueNotifier<$dartnative_29.Flexible>(value);
-          case $dartnative_54.FlexibleSpaceBar _: return $dartnative_3.ValueNotifier<$dartnative_54.FlexibleSpaceBar>(value);
+          case $dartnative_55.FlexibleSpaceBar _: return $dartnative_3.ValueNotifier<$dartnative_55.FlexibleSpaceBar>(value);
           case $dartnative_30.FloatingActionButton _: return $dartnative_3.ValueNotifier<$dartnative_30.FloatingActionButton>(value);
           case $dartnative_31.Focus _: return $dartnative_3.ValueNotifier<$dartnative_31.Focus>(value);
           case $dartnative_31.FocusScope _: return $dartnative_3.ValueNotifier<$dartnative_31.FocusScope>(value);
@@ -4018,15 +4044,15 @@ BridgedClass _createValueNotifierBridge() {
           case $dartnative_37.IndexedStack _: return $dartnative_3.ValueNotifier<$dartnative_37.IndexedStack>(value);
           case $dartnative_3.InheritedWidget _: return $dartnative_3.ValueNotifier<$dartnative_3.InheritedWidget>(value);
           case $dartnative_32.InkWell _: return $dartnative_3.ValueNotifier<$dartnative_32.InkWell>(value);
-          case $dartnative_58.IntrinsicColumnWidth _: return $dartnative_3.ValueNotifier<$dartnative_58.IntrinsicColumnWidth>(value);
+          case $dartnative_59.IntrinsicColumnWidth _: return $dartnative_3.ValueNotifier<$dartnative_59.IntrinsicColumnWidth>(value);
           case $dartnative_37.IntrinsicHeight _: return $dartnative_3.ValueNotifier<$dartnative_37.IntrinsicHeight>(value);
           case $dartnative_37.IntrinsicWidth _: return $dartnative_3.ValueNotifier<$dartnative_37.IntrinsicWidth>(value);
           case $dartnative_17.LayoutBuilder _: return $dartnative_3.ValueNotifier<$dartnative_17.LayoutBuilder>(value);
-          case $dartnative_61.LengthLimitingTextInputFormatter _: return $dartnative_3.ValueNotifier<$dartnative_61.LengthLimitingTextInputFormatter>(value);
+          case $dartnative_62.LengthLimitingTextInputFormatter _: return $dartnative_3.ValueNotifier<$dartnative_62.LengthLimitingTextInputFormatter>(value);
           case $dartnative_7.LicenseException _: return $dartnative_3.ValueNotifier<$dartnative_7.LicenseException>(value);
           case $dartnative_9.LinearGradient _: return $dartnative_3.ValueNotifier<$dartnative_9.LinearGradient>(value);
-          case $dartnative_46.LinearProgressIndicator _: return $dartnative_3.ValueNotifier<$dartnative_46.LinearProgressIndicator>(value);
-          case $dartnative_48.ListView _: return $dartnative_3.ValueNotifier<$dartnative_48.ListView>(value);
+          case $dartnative_47.LinearProgressIndicator _: return $dartnative_3.ValueNotifier<$dartnative_47.LinearProgressIndicator>(value);
+          case $dartnative_49.ListView _: return $dartnative_3.ValueNotifier<$dartnative_49.ListView>(value);
           case $dartnative_32.Listener _: return $dartnative_3.ValueNotifier<$dartnative_32.Listener>(value);
           case $dartnative_3.LocalKey _: return $dartnative_3.ValueNotifier<$dartnative_3.LocalKey>(value);
           case $dartnative_34.MasonryColumn _: return $dartnative_3.ValueNotifier<$dartnative_34.MasonryColumn>(value);
@@ -4034,11 +4060,11 @@ BridgedClass _createValueNotifierBridge() {
           case $dartnative_34.MasonryGridView _: return $dartnative_3.ValueNotifier<$dartnative_34.MasonryGridView>(value);
           case $dartnative_9.MaterialColor _: return $dartnative_3.ValueNotifier<$dartnative_9.MaterialColor>(value);
           case $dartnative_36.MemoryImage _: return $dartnative_3.ValueNotifier<$dartnative_36.MemoryImage>(value);
-          case $dartnative_49.NativeSearchBar _: return $dartnative_3.ValueNotifier<$dartnative_49.NativeSearchBar>(value);
+          case $dartnative_50.NativeSearchBar _: return $dartnative_3.ValueNotifier<$dartnative_50.NativeSearchBar>(value);
           case $dartnative_25.NetworkCanvasImage _: return $dartnative_3.ValueNotifier<$dartnative_25.NetworkCanvasImage>(value);
           case $dartnative_36.NetworkImage _: return $dartnative_3.ValueNotifier<$dartnative_36.NetworkImage>(value);
-          case $dartnative_48.NeverScrollableScrollPhysics _: return $dartnative_3.ValueNotifier<$dartnative_48.NeverScrollableScrollPhysics>(value);
-          case $dartnative_63.Opacity _: return $dartnative_3.ValueNotifier<$dartnative_63.Opacity>(value);
+          case $dartnative_49.NeverScrollableScrollPhysics _: return $dartnative_3.ValueNotifier<$dartnative_49.NeverScrollableScrollPhysics>(value);
+          case $dartnative_64.Opacity _: return $dartnative_3.ValueNotifier<$dartnative_64.Opacity>(value);
           case $dartnative_9.OutlineInputBorder _: return $dartnative_3.ValueNotifier<$dartnative_9.OutlineInputBorder>(value);
           case $dartnative_23.Padding _: return $dartnative_3.ValueNotifier<$dartnative_23.Padding>(value);
           case $dartnative_6.PageRoute _: return $dartnative_3.ValueNotifier<$dartnative_6.PageRoute>(value);
@@ -4051,64 +4077,64 @@ BridgedClass _createValueNotifierBridge() {
           case $dartnative_25.PathLineTo _: return $dartnative_3.ValueNotifier<$dartnative_25.PathLineTo>(value);
           case $dartnative_25.PathMoveTo _: return $dartnative_3.ValueNotifier<$dartnative_25.PathMoveTo>(value);
           case $dartnative_6.PopScope _: return $dartnative_3.ValueNotifier<$dartnative_6.PopScope>(value);
-          case $dartnative_55.Positioned _: return $dartnative_3.ValueNotifier<$dartnative_55.Positioned>(value);
-          case $dartnative_47.PreferredSizeWidget _: return $dartnative_3.ValueNotifier<$dartnative_47.PreferredSizeWidget>(value);
+          case $dartnative_56.Positioned _: return $dartnative_3.ValueNotifier<$dartnative_56.Positioned>(value);
+          case $dartnative_48.PreferredSizeWidget _: return $dartnative_3.ValueNotifier<$dartnative_48.PreferredSizeWidget>(value);
           case $dartnative_9.RadialGradient _: return $dartnative_3.ValueNotifier<$dartnative_9.RadialGradient>(value);
           case $dartnative_21.Radio _: return $dartnative_3.ValueNotifier<$dartnative_21.Radio>(value);
           case $dartnative_9.RenderBox _: return $dartnative_3.ValueNotifier<$dartnative_9.RenderBox>(value);
-          case $dartnative_63.RepaintBoundary _: return $dartnative_3.ValueNotifier<$dartnative_63.RepaintBoundary>(value);
-          case $dartnative_59.RichText _: return $dartnative_3.ValueNotifier<$dartnative_59.RichText>(value);
-          case $dartnative_52.RoundSliderOverlayShape _: return $dartnative_3.ValueNotifier<$dartnative_52.RoundSliderOverlayShape>(value);
-          case $dartnative_52.RoundSliderThumbShape _: return $dartnative_3.ValueNotifier<$dartnative_52.RoundSliderThumbShape>(value);
+          case $dartnative_64.RepaintBoundary _: return $dartnative_3.ValueNotifier<$dartnative_64.RepaintBoundary>(value);
+          case $dartnative_60.RichText _: return $dartnative_3.ValueNotifier<$dartnative_60.RichText>(value);
+          case $dartnative_53.RoundSliderOverlayShape _: return $dartnative_3.ValueNotifier<$dartnative_53.RoundSliderOverlayShape>(value);
+          case $dartnative_53.RoundSliderThumbShape _: return $dartnative_3.ValueNotifier<$dartnative_53.RoundSliderThumbShape>(value);
           case $dartnative_9.RoundedRectangleBorder _: return $dartnative_3.ValueNotifier<$dartnative_9.RoundedRectangleBorder>(value);
           case $dartnative_9.RoundedSuperellipseBorder _: return $dartnative_3.ValueNotifier<$dartnative_9.RoundedSuperellipseBorder>(value);
           case $dartnative_23.SafeArea _: return $dartnative_3.ValueNotifier<$dartnative_23.SafeArea>(value);
-          case $dartnative_47.Scaffold _: return $dartnative_3.ValueNotifier<$dartnative_47.Scaffold>(value);
-          case $dartnative_48.ScrollView _: return $dartnative_3.ValueNotifier<$dartnative_48.ScrollView>(value);
-          case $dartnative_50.SegmentedControl _: return $dartnative_3.ValueNotifier<$dartnative_50.SegmentedControl>(value);
+          case $dartnative_48.Scaffold _: return $dartnative_3.ValueNotifier<$dartnative_48.Scaffold>(value);
+          case $dartnative_49.ScrollView _: return $dartnative_3.ValueNotifier<$dartnative_49.ScrollView>(value);
+          case $dartnative_51.SegmentedControl _: return $dartnative_3.ValueNotifier<$dartnative_51.SegmentedControl>(value);
           case $dartnative_9.ShapeDecoration _: return $dartnative_3.ValueNotifier<$dartnative_9.ShapeDecoration>(value);
-          case $dartnative_51.Shimmer _: return $dartnative_3.ValueNotifier<$dartnative_51.Shimmer>(value);
+          case $dartnative_52.Shimmer _: return $dartnative_3.ValueNotifier<$dartnative_52.Shimmer>(value);
           case $dartnative_11.ShowNativeToast _: return $dartnative_3.ValueNotifier<$dartnative_11.ShowNativeToast>(value);
           case $dartnative_13.Signal _: return $dartnative_3.ValueNotifier<$dartnative_13.Signal>(value);
-          case $dartnative_48.SingleChildScrollView _: return $dartnative_3.ValueNotifier<$dartnative_48.SingleChildScrollView>(value);
+          case $dartnative_49.SingleChildScrollView _: return $dartnative_3.ValueNotifier<$dartnative_49.SingleChildScrollView>(value);
           case $dartnative_23.SizedBox _: return $dartnative_3.ValueNotifier<$dartnative_23.SizedBox>(value);
-          case $dartnative_52.Slider _: return $dartnative_3.ValueNotifier<$dartnative_52.Slider>(value);
-          case $dartnative_54.SliverAppBar _: return $dartnative_3.ValueNotifier<$dartnative_54.SliverAppBar>(value);
-          case $dartnative_54.SliverChildBuilderDelegate _: return $dartnative_3.ValueNotifier<$dartnative_54.SliverChildBuilderDelegate>(value);
-          case $dartnative_54.SliverChildListDelegate _: return $dartnative_3.ValueNotifier<$dartnative_54.SliverChildListDelegate>(value);
-          case $dartnative_54.SliverFillRemaining _: return $dartnative_3.ValueNotifier<$dartnative_54.SliverFillRemaining>(value);
-          case $dartnative_54.SliverGrid _: return $dartnative_3.ValueNotifier<$dartnative_54.SliverGrid>(value);
-          case $dartnative_54.SliverGridDelegateWithFixedCrossAxisCount _: return $dartnative_3.ValueNotifier<$dartnative_54.SliverGridDelegateWithFixedCrossAxisCount>(value);
-          case $dartnative_54.SliverGridDelegateWithMaxCrossAxisExtent _: return $dartnative_3.ValueNotifier<$dartnative_54.SliverGridDelegateWithMaxCrossAxisExtent>(value);
-          case $dartnative_54.SliverList _: return $dartnative_3.ValueNotifier<$dartnative_54.SliverList>(value);
-          case $dartnative_54.SliverPadding _: return $dartnative_3.ValueNotifier<$dartnative_54.SliverPadding>(value);
-          case $dartnative_54.SliverToBoxAdapter _: return $dartnative_3.ValueNotifier<$dartnative_54.SliverToBoxAdapter>(value);
-          case $dartnative_47.SnackBar _: return $dartnative_3.ValueNotifier<$dartnative_47.SnackBar>(value);
+          case $dartnative_53.Slider _: return $dartnative_3.ValueNotifier<$dartnative_53.Slider>(value);
+          case $dartnative_55.SliverAppBar _: return $dartnative_3.ValueNotifier<$dartnative_55.SliverAppBar>(value);
+          case $dartnative_55.SliverChildBuilderDelegate _: return $dartnative_3.ValueNotifier<$dartnative_55.SliverChildBuilderDelegate>(value);
+          case $dartnative_55.SliverChildListDelegate _: return $dartnative_3.ValueNotifier<$dartnative_55.SliverChildListDelegate>(value);
+          case $dartnative_55.SliverFillRemaining _: return $dartnative_3.ValueNotifier<$dartnative_55.SliverFillRemaining>(value);
+          case $dartnative_55.SliverGrid _: return $dartnative_3.ValueNotifier<$dartnative_55.SliverGrid>(value);
+          case $dartnative_55.SliverGridDelegateWithFixedCrossAxisCount _: return $dartnative_3.ValueNotifier<$dartnative_55.SliverGridDelegateWithFixedCrossAxisCount>(value);
+          case $dartnative_55.SliverGridDelegateWithMaxCrossAxisExtent _: return $dartnative_3.ValueNotifier<$dartnative_55.SliverGridDelegateWithMaxCrossAxisExtent>(value);
+          case $dartnative_55.SliverList _: return $dartnative_3.ValueNotifier<$dartnative_55.SliverList>(value);
+          case $dartnative_55.SliverPadding _: return $dartnative_3.ValueNotifier<$dartnative_55.SliverPadding>(value);
+          case $dartnative_55.SliverToBoxAdapter _: return $dartnative_3.ValueNotifier<$dartnative_55.SliverToBoxAdapter>(value);
+          case $dartnative_48.SnackBar _: return $dartnative_3.ValueNotifier<$dartnative_48.SnackBar>(value);
           case $dartnative_29.Spacer _: return $dartnative_3.ValueNotifier<$dartnative_29.Spacer>(value);
-          case $dartnative_55.Stack _: return $dartnative_3.ValueNotifier<$dartnative_55.Stack>(value);
+          case $dartnative_56.Stack _: return $dartnative_3.ValueNotifier<$dartnative_56.Stack>(value);
           case $dartnative_9.StadiumBorder _: return $dartnative_3.ValueNotifier<$dartnative_9.StadiumBorder>(value);
           case $dartnative_3.StatefulWidget _: return $dartnative_3.ValueNotifier<$dartnative_3.StatefulWidget>(value);
           case $dartnative_3.StatelessWidget _: return $dartnative_3.ValueNotifier<$dartnative_3.StatelessWidget>(value);
-          case $dartnative_56.Switch _: return $dartnative_3.ValueNotifier<$dartnative_56.Switch>(value);
-          case $dartnative_59.TapGestureRecognizer _: return $dartnative_3.ValueNotifier<$dartnative_59.TapGestureRecognizer>(value);
-          case $dartnative_59.Text _: return $dartnative_3.ValueNotifier<$dartnative_59.Text>(value);
-          case $dartnative_60.TextField _: return $dartnative_3.ValueNotifier<$dartnative_60.TextField>(value);
+          case $dartnative_57.Switch _: return $dartnative_3.ValueNotifier<$dartnative_57.Switch>(value);
+          case $dartnative_60.TapGestureRecognizer _: return $dartnative_3.ValueNotifier<$dartnative_60.TapGestureRecognizer>(value);
+          case $dartnative_60.Text _: return $dartnative_3.ValueNotifier<$dartnative_60.Text>(value);
+          case $dartnative_61.TextField _: return $dartnative_3.ValueNotifier<$dartnative_61.TextField>(value);
           case $dartnative_3.TextSelection _: return $dartnative_3.ValueNotifier<$dartnative_3.TextSelection>(value);
-          case $dartnative_59.TextSpan _: return $dartnative_3.ValueNotifier<$dartnative_59.TextSpan>(value);
+          case $dartnative_60.TextSpan _: return $dartnative_3.ValueNotifier<$dartnative_60.TextSpan>(value);
           case $dartnative_14.TickerFuture _: return $dartnative_3.ValueNotifier<$dartnative_14.TickerFuture>(value);
           case $dartnative_14.Transform _: return $dartnative_3.ValueNotifier<$dartnative_14.Transform>(value);
           case $dartnative_14.Tween _: return $dartnative_3.ValueNotifier<$dartnative_14.Tween>(value);
           case $dartnative_14.TweenSequence _: return $dartnative_3.ValueNotifier<$dartnative_14.TweenSequence>(value);
           case $dartnative_9.UnderlineInputBorder _: return $dartnative_3.ValueNotifier<$dartnative_9.UnderlineInputBorder>(value);
           case $dartnative_3.ValueListenable _: return $dartnative_3.ValueNotifier<$dartnative_3.ValueListenable>(value);
-          case $dartnative_63.Visibility _: return $dartnative_3.ValueNotifier<$dartnative_63.Visibility>(value);
+          case $dartnative_64.Visibility _: return $dartnative_3.ValueNotifier<$dartnative_64.Visibility>(value);
           case $dartnative_37.Wrap _: return $dartnative_3.ValueNotifier<$dartnative_37.Wrap>(value);
           case $dartnative_9.AlignmentGeometry _: return $dartnative_3.ValueNotifier<$dartnative_9.AlignmentGeometry>(value);
-          case $dartnative_46.AndroidProgressIndicatorStyle _: return $dartnative_3.ValueNotifier<$dartnative_46.AndroidProgressIndicatorStyle>(value);
-          case $dartnative_52.AndroidSliderStyle _: return $dartnative_3.ValueNotifier<$dartnative_52.AndroidSliderStyle>(value);
-          case $dartnative_56.AndroidSwitchStyle _: return $dartnative_3.ValueNotifier<$dartnative_56.AndroidSwitchStyle>(value);
+          case $dartnative_47.AndroidProgressIndicatorStyle _: return $dartnative_3.ValueNotifier<$dartnative_47.AndroidProgressIndicatorStyle>(value);
+          case $dartnative_53.AndroidSliderStyle _: return $dartnative_3.ValueNotifier<$dartnative_53.AndroidSliderStyle>(value);
+          case $dartnative_57.AndroidSwitchStyle _: return $dartnative_3.ValueNotifier<$dartnative_57.AndroidSwitchStyle>(value);
           case $dartnative_14.Animatable _: return $dartnative_3.ValueNotifier<$dartnative_14.Animatable>(value);
-          case $dartnative_47.AppBarIOSConfig _: return $dartnative_3.ValueNotifier<$dartnative_47.AppBarIOSConfig>(value);
+          case $dartnative_48.AppBarIOSConfig _: return $dartnative_3.ValueNotifier<$dartnative_48.AppBarIOSConfig>(value);
           case $dartnative_17.AsyncSnapshot _: return $dartnative_3.ValueNotifier<$dartnative_17.AsyncSnapshot>(value);
           case $dartnative_9.BorderRadius _: return $dartnative_3.ValueNotifier<$dartnative_9.BorderRadius>(value);
           case $dartnative_9.BorderSide _: return $dartnative_3.ValueNotifier<$dartnative_9.BorderSide>(value);
@@ -4147,13 +4173,13 @@ BridgedClass _createValueNotifierBridge() {
           case $dartnative_9.FontFeature _: return $dartnative_3.ValueNotifier<$dartnative_9.FontFeature>(value);
           case $dartnative_9.FontVariation _: return $dartnative_3.ValueNotifier<$dartnative_9.FontVariation>(value);
           case $dartnative_3.FrameTiming _: return $dartnative_3.ValueNotifier<$dartnative_3.FrameTiming>(value);
-          case $dartnative_59.GestureRecognizer _: return $dartnative_3.ValueNotifier<$dartnative_59.GestureRecognizer>(value);
+          case $dartnative_60.GestureRecognizer _: return $dartnative_3.ValueNotifier<$dartnative_60.GestureRecognizer>(value);
           case $dartnative_9.Gradient _: return $dartnative_3.ValueNotifier<$dartnative_9.Gradient>(value);
           case $dartnative_6.HapticFeedback _: return $dartnative_3.ValueNotifier<$dartnative_6.HapticFeedback>(value);
           case $dartnative_35.IconData _: return $dartnative_3.ValueNotifier<$dartnative_35.IconData>(value);
           case $dartnative_36.ImageCache _: return $dartnative_3.ValueNotifier<$dartnative_36.ImageCache>(value);
           case $dartnative_36.ImageProvider _: return $dartnative_3.ValueNotifier<$dartnative_36.ImageProvider>(value);
-          case $dartnative_59.InlineSpan _: return $dartnative_3.ValueNotifier<$dartnative_59.InlineSpan>(value);
+          case $dartnative_60.InlineSpan _: return $dartnative_3.ValueNotifier<$dartnative_60.InlineSpan>(value);
           case $dartnative_9.InputBorder _: return $dartnative_3.ValueNotifier<$dartnative_9.InputBorder>(value);
           case $dartnative_9.InputDecoration _: return $dartnative_3.ValueNotifier<$dartnative_9.InputDecoration>(value);
           case $dartnative_3.Key _: return $dartnative_3.ValueNotifier<$dartnative_3.Key>(value);
@@ -4167,7 +4193,7 @@ BridgedClass _createValueNotifierBridge() {
           case $dartnative_45.MediaFile _: return $dartnative_3.ValueNotifier<$dartnative_45.MediaFile>(value);
           case $dartnative_6.MediaQuery _: return $dartnative_3.ValueNotifier<$dartnative_6.MediaQuery>(value);
           case $dartnative_6.MediaQueryData _: return $dartnative_3.ValueNotifier<$dartnative_6.MediaQueryData>(value);
-          case $dartnative_47.MenuAction _: return $dartnative_3.ValueNotifier<$dartnative_47.MenuAction>(value);
+          case $dartnative_48.MenuAction _: return $dartnative_3.ValueNotifier<$dartnative_48.MenuAction>(value);
           case $dartnative_6.ModalRoute _: return $dartnative_3.ValueNotifier<$dartnative_6.ModalRoute>(value);
           case $dartnative_1.NativeBindings _: return $dartnative_3.ValueNotifier<$dartnative_1.NativeBindings>(value);
           case $dartnative_6.Navigator _: return $dartnative_3.ValueNotifier<$dartnative_6.Navigator>(value);
@@ -4190,15 +4216,15 @@ BridgedClass _createValueNotifierBridge() {
           case $dartnative_3.RenderObject _: return $dartnative_3.ValueNotifier<$dartnative_3.RenderObject>(value);
           case $dartnative_6.Route _: return $dartnative_3.ValueNotifier<$dartnative_6.Route>(value);
           case $dartnative_6.RouteTransition _: return $dartnative_3.ValueNotifier<$dartnative_6.RouteTransition>(value);
-          case $dartnative_47.ScaffoldFeatureController _: return $dartnative_3.ValueNotifier<$dartnative_47.ScaffoldFeatureController>(value);
-          case $dartnative_47.ScaffoldMessenger _: return $dartnative_3.ValueNotifier<$dartnative_47.ScaffoldMessenger>(value);
-          case $dartnative_47.ScaffoldMessengerState _: return $dartnative_3.ValueNotifier<$dartnative_47.ScaffoldMessengerState>(value);
-          case $dartnative_47.ScaffoldState _: return $dartnative_3.ValueNotifier<$dartnative_47.ScaffoldState>(value);
+          case $dartnative_48.ScaffoldFeatureController _: return $dartnative_3.ValueNotifier<$dartnative_48.ScaffoldFeatureController>(value);
+          case $dartnative_48.ScaffoldMessenger _: return $dartnative_3.ValueNotifier<$dartnative_48.ScaffoldMessenger>(value);
+          case $dartnative_48.ScaffoldMessengerState _: return $dartnative_3.ValueNotifier<$dartnative_48.ScaffoldMessengerState>(value);
+          case $dartnative_48.ScaffoldState _: return $dartnative_3.ValueNotifier<$dartnative_48.ScaffoldState>(value);
           case $dartnative_32.ScaleEndDetails _: return $dartnative_3.ValueNotifier<$dartnative_32.ScaleEndDetails>(value);
           case $dartnative_32.ScaleStartDetails _: return $dartnative_3.ValueNotifier<$dartnative_32.ScaleStartDetails>(value);
           case $dartnative_32.ScaleUpdateDetails _: return $dartnative_3.ValueNotifier<$dartnative_32.ScaleUpdateDetails>(value);
           case $dartnative_3.SchedulerBinding _: return $dartnative_3.ValueNotifier<$dartnative_3.SchedulerBinding>(value);
-          case $dartnative_48.ScrollPhysics _: return $dartnative_3.ValueNotifier<$dartnative_48.ScrollPhysics>(value);
+          case $dartnative_49.ScrollPhysics _: return $dartnative_3.ValueNotifier<$dartnative_49.ScrollPhysics>(value);
           case $dartnative_3.ScrollPosition _: return $dartnative_3.ValueNotifier<$dartnative_3.ScrollPosition>(value);
           case $dartnative_25.Shader _: return $dartnative_3.ValueNotifier<$dartnative_25.Shader>(value);
           case $dartnative_9.Shadow _: return $dartnative_3.ValueNotifier<$dartnative_9.Shadow>(value);
@@ -4206,29 +4232,29 @@ BridgedClass _createValueNotifierBridge() {
           case $dartnative_6.SheetHeader _: return $dartnative_3.ValueNotifier<$dartnative_6.SheetHeader>(value);
           case $dartnative_6.SheetHeaderController _: return $dartnative_3.ValueNotifier<$dartnative_6.SheetHeaderController>(value);
           case $dartnative_9.Size _: return $dartnative_3.ValueNotifier<$dartnative_9.Size>(value);
-          case $dartnative_53.SlideOverStyle _: return $dartnative_3.ValueNotifier<$dartnative_53.SlideOverStyle>(value);
-          case $dartnative_52.SliderComponentShape _: return $dartnative_3.ValueNotifier<$dartnative_52.SliderComponentShape>(value);
-          case $dartnative_52.SliderThemeData _: return $dartnative_3.ValueNotifier<$dartnative_52.SliderThemeData>(value);
-          case $dartnative_54.SliverChildDelegate _: return $dartnative_3.ValueNotifier<$dartnative_54.SliverChildDelegate>(value);
-          case $dartnative_54.SliverGridDelegate _: return $dartnative_3.ValueNotifier<$dartnative_54.SliverGridDelegate>(value);
-          case $dartnative_47.SnackBarAction _: return $dartnative_3.ValueNotifier<$dartnative_47.SnackBarAction>(value);
+          case $dartnative_54.SlideOverStyle _: return $dartnative_3.ValueNotifier<$dartnative_54.SlideOverStyle>(value);
+          case $dartnative_53.SliderComponentShape _: return $dartnative_3.ValueNotifier<$dartnative_53.SliderComponentShape>(value);
+          case $dartnative_53.SliderThemeData _: return $dartnative_3.ValueNotifier<$dartnative_53.SliderThemeData>(value);
+          case $dartnative_55.SliverChildDelegate _: return $dartnative_3.ValueNotifier<$dartnative_55.SliverChildDelegate>(value);
+          case $dartnative_55.SliverGridDelegate _: return $dartnative_3.ValueNotifier<$dartnative_55.SliverGridDelegate>(value);
+          case $dartnative_48.SnackBarAction _: return $dartnative_3.ValueNotifier<$dartnative_48.SnackBarAction>(value);
           case $dartnative_14.SpringDescription _: return $dartnative_3.ValueNotifier<$dartnative_14.SpringDescription>(value);
           case $dartnative_3.State _: return $dartnative_3.ValueNotifier<$dartnative_3.State>(value);
           case $dartnative_35.StaticIconProvider _: return $dartnative_3.ValueNotifier<$dartnative_35.StaticIconProvider>(value);
           case $dartnative_6.StrutStyle _: return $dartnative_3.ValueNotifier<$dartnative_6.StrutStyle>(value);
-          case $dartnative_57.SystemChrome _: return $dartnative_3.ValueNotifier<$dartnative_57.SystemChrome>(value);
+          case $dartnative_58.SystemChrome _: return $dartnative_3.ValueNotifier<$dartnative_58.SystemChrome>(value);
           case $dartnative_6.SystemNavigator _: return $dartnative_3.ValueNotifier<$dartnative_6.SystemNavigator>(value);
-          case $dartnative_57.SystemUiOverlayStyle _: return $dartnative_3.ValueNotifier<$dartnative_57.SystemUiOverlayStyle>(value);
-          case $dartnative_58.TableBorder _: return $dartnative_3.ValueNotifier<$dartnative_58.TableBorder>(value);
-          case $dartnative_58.TableColumnWidth _: return $dartnative_3.ValueNotifier<$dartnative_58.TableColumnWidth>(value);
-          case $dartnative_58.TableRow _: return $dartnative_3.ValueNotifier<$dartnative_58.TableRow>(value);
+          case $dartnative_58.SystemUiOverlayStyle _: return $dartnative_3.ValueNotifier<$dartnative_58.SystemUiOverlayStyle>(value);
+          case $dartnative_59.TableBorder _: return $dartnative_3.ValueNotifier<$dartnative_59.TableBorder>(value);
+          case $dartnative_59.TableColumnWidth _: return $dartnative_3.ValueNotifier<$dartnative_59.TableColumnWidth>(value);
+          case $dartnative_59.TableRow _: return $dartnative_3.ValueNotifier<$dartnative_59.TableRow>(value);
           case $dartnative_32.TapDownDetails _: return $dartnative_3.ValueNotifier<$dartnative_32.TapDownDetails>(value);
           case $dartnative_32.TapUpDetails _: return $dartnative_3.ValueNotifier<$dartnative_32.TapUpDetails>(value);
-          case $dartnative_60.TextAlignVertical _: return $dartnative_3.ValueNotifier<$dartnative_60.TextAlignVertical>(value);
+          case $dartnative_61.TextAlignVertical _: return $dartnative_3.ValueNotifier<$dartnative_61.TextAlignVertical>(value);
           case $dartnative_25.TextBox _: return $dartnative_3.ValueNotifier<$dartnative_25.TextBox>(value);
           case $dartnative_3.TextEditingValue _: return $dartnative_3.ValueNotifier<$dartnative_3.TextEditingValue>(value);
-          case $dartnative_61.TextInputFormatter _: return $dartnative_3.ValueNotifier<$dartnative_61.TextInputFormatter>(value);
-          case $dartnative_62.TextPainter _: return $dartnative_3.ValueNotifier<$dartnative_62.TextPainter>(value);
+          case $dartnative_62.TextInputFormatter _: return $dartnative_3.ValueNotifier<$dartnative_62.TextInputFormatter>(value);
+          case $dartnative_63.TextPainter _: return $dartnative_3.ValueNotifier<$dartnative_63.TextPainter>(value);
           case $dartnative_9.TextPosition _: return $dartnative_3.ValueNotifier<$dartnative_9.TextPosition>(value);
           case $dartnative_3.TextRange _: return $dartnative_3.ValueNotifier<$dartnative_3.TextRange>(value);
           case $dartnative_9.TextStyle _: return $dartnative_3.ValueNotifier<$dartnative_9.TextStyle>(value);
@@ -5003,6 +5029,11 @@ BridgedClass _createWidgetsBindingObserverBridge() {
         t.didChangeMetrics();
         return null;
       },
+      'didChangePlatformBrightness': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_3.WidgetsBindingObserver>(target, 'WidgetsBindingObserver');
+        t.didChangePlatformBrightness();
+        return null;
+      },
       'didHaveMemoryPressure': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$dartnative_3.WidgetsBindingObserver>(target, 'WidgetsBindingObserver');
         t.didHaveMemoryPressure();
@@ -5015,6 +5046,7 @@ BridgedClass _createWidgetsBindingObserverBridge() {
     methodSignatures: {
       'didChangeAppLifecycleState': 'void didChangeAppLifecycleState(AppLifecycleState state)',
       'didChangeMetrics': 'void didChangeMetrics()',
+      'didChangePlatformBrightness': 'void didChangePlatformBrightness()',
       'didHaveMemoryPressure': 'void didHaveMemoryPressure()',
     },
   );
@@ -5072,6 +5104,11 @@ BridgedClass _createWidgetsBindingBridge() {
         t.dispatchMetricsChanged();
         return null;
       },
+      'dispatchPlatformBrightnessChanged': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_3.WidgetsBinding>(target, 'WidgetsBinding');
+        t.dispatchPlatformBrightnessChanged();
+        return null;
+      },
       'handleMemoryPressure': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$dartnative_3.WidgetsBinding>(target, 'WidgetsBinding');
         t.handleMemoryPressure();
@@ -5087,6 +5124,7 @@ BridgedClass _createWidgetsBindingBridge() {
       'addPostFrameCallback': 'void addPostFrameCallback(void Function(Duration timeStamp) callback)',
       'handleAppLifecycleStateChanged': 'void handleAppLifecycleStateChanged(AppLifecycleState state)',
       'dispatchMetricsChanged': 'void dispatchMetricsChanged()',
+      'dispatchPlatformBrightnessChanged': 'void dispatchPlatformBrightnessChanged()',
       'handleMemoryPressure': 'void handleMemoryPressure()',
     },
     getterSignatures: {
@@ -7765,9 +7803,9 @@ BridgedClass _createSpacerBridge() {
 
 BridgedClass _createStackBridge() {
   return BridgedClass(
-    nativeType: $dartnative_55.Stack,
+    nativeType: $dartnative_56.Stack,
     name: 'Stack',
-    isAssignable: (v) => v is $dartnative_55.Stack,
+    isAssignable: (v) => v is $dartnative_56.Stack,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -7776,17 +7814,17 @@ BridgedClass _createStackBridge() {
             ? D4.coerceList<$dartnative_3.Widget>(named['children'], 'children')
             : const <$dartnative_3.Widget>[];
         final alignment = D4.getNamedArgWithDefault<$dartnative_9.AlignmentGeometry>(named, 'alignment', $dartnative_9.Alignment.topLeft);
-        final fit = D4.getNamedArgWithDefault<$dartnative_55.StackFit>(named, 'fit', $dartnative_55.StackFit.loose);
+        final fit = D4.getNamedArgWithDefault<$dartnative_56.StackFit>(named, 'fit', $dartnative_56.StackFit.loose);
         final clipBehavior = D4.getNamedArgWithDefault<$dartnative_32.Clip>(named, 'clipBehavior', $dartnative_32.Clip.none);
-        return $dartnative_55.Stack(key: key, children: children, alignment: alignment, fit: fit, clipBehavior: clipBehavior);
+        return $dartnative_56.Stack(key: key, children: children, alignment: alignment, fit: fit, clipBehavior: clipBehavior);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_55.Stack>(target, 'Stack').key,
-      'children': (visitor, target) => D4.validateTarget<$dartnative_55.Stack>(target, 'Stack').children,
-      'alignment': (visitor, target) => D4.validateTarget<$dartnative_55.Stack>(target, 'Stack').alignment,
-      'fit': (visitor, target) => D4.validateTarget<$dartnative_55.Stack>(target, 'Stack').fit,
-      'clipBehavior': (visitor, target) => D4.validateTarget<$dartnative_55.Stack>(target, 'Stack').clipBehavior,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_56.Stack>(target, 'Stack').key,
+      'children': (visitor, target) => D4.validateTarget<$dartnative_56.Stack>(target, 'Stack').children,
+      'alignment': (visitor, target) => D4.validateTarget<$dartnative_56.Stack>(target, 'Stack').alignment,
+      'fit': (visitor, target) => D4.validateTarget<$dartnative_56.Stack>(target, 'Stack').fit,
+      'clipBehavior': (visitor, target) => D4.validateTarget<$dartnative_56.Stack>(target, 'Stack').clipBehavior,
     },
     constructorSignatures: {
       '': 'const Stack({Key? key, List<Widget> children = const [], AlignmentGeometry alignment = Alignment.topLeft, StackFit fit = StackFit.loose, Clip clipBehavior = Clip.none})',
@@ -7807,9 +7845,9 @@ BridgedClass _createStackBridge() {
 
 BridgedClass _createPositionedBridge() {
   return BridgedClass(
-    nativeType: $dartnative_55.Positioned,
+    nativeType: $dartnative_56.Positioned,
     name: 'Positioned',
-    isAssignable: (v) => v is $dartnative_55.Positioned,
+    isAssignable: (v) => v is $dartnative_56.Positioned,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -7821,23 +7859,23 @@ BridgedClass _createPositionedBridge() {
         final bottom = D4.getOptionalNamedArg<double?>(named, 'bottom');
         final width = D4.getOptionalNamedArg<double?>(named, 'width');
         final height = D4.getOptionalNamedArg<double?>(named, 'height');
-        return $dartnative_55.Positioned(key: key, child: child, left: left, top: top, right: right, bottom: bottom, width: width, height: height);
+        return $dartnative_56.Positioned(key: key, child: child, left: left, top: top, right: right, bottom: bottom, width: width, height: height);
       },
       'fill': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
         final child = D4.getRequiredNamedArg<$dartnative_3.Widget>(named, 'child', 'Positioned');
-        return $dartnative_55.Positioned.fill(key: key, child: child);
+        return $dartnative_56.Positioned.fill(key: key, child: child);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_55.Positioned>(target, 'Positioned').key,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_55.Positioned>(target, 'Positioned').child,
-      'left': (visitor, target) => D4.validateTarget<$dartnative_55.Positioned>(target, 'Positioned').left,
-      'top': (visitor, target) => D4.validateTarget<$dartnative_55.Positioned>(target, 'Positioned').top,
-      'right': (visitor, target) => D4.validateTarget<$dartnative_55.Positioned>(target, 'Positioned').right,
-      'bottom': (visitor, target) => D4.validateTarget<$dartnative_55.Positioned>(target, 'Positioned').bottom,
-      'width': (visitor, target) => D4.validateTarget<$dartnative_55.Positioned>(target, 'Positioned').width,
-      'height': (visitor, target) => D4.validateTarget<$dartnative_55.Positioned>(target, 'Positioned').height,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_56.Positioned>(target, 'Positioned').key,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_56.Positioned>(target, 'Positioned').child,
+      'left': (visitor, target) => D4.validateTarget<$dartnative_56.Positioned>(target, 'Positioned').left,
+      'top': (visitor, target) => D4.validateTarget<$dartnative_56.Positioned>(target, 'Positioned').top,
+      'right': (visitor, target) => D4.validateTarget<$dartnative_56.Positioned>(target, 'Positioned').right,
+      'bottom': (visitor, target) => D4.validateTarget<$dartnative_56.Positioned>(target, 'Positioned').bottom,
+      'width': (visitor, target) => D4.validateTarget<$dartnative_56.Positioned>(target, 'Positioned').width,
+      'height': (visitor, target) => D4.validateTarget<$dartnative_56.Positioned>(target, 'Positioned').height,
     },
     constructorSignatures: {
       '': 'const Positioned({Key? key, required Widget child, double? left, double? top, double? right, double? bottom, double? width, double? height})',
@@ -8308,22 +8346,22 @@ BridgedClass _createVerticalDividerBridge() {
 
 BridgedClass _createOpacityBridge() {
   return BridgedClass(
-    nativeType: $dartnative_63.Opacity,
+    nativeType: $dartnative_64.Opacity,
     name: 'Opacity',
-    isAssignable: (v) => v is $dartnative_63.Opacity,
+    isAssignable: (v) => v is $dartnative_64.Opacity,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
         final opacity = D4.getRequiredNamedArg<double>(named, 'opacity', 'Opacity');
         final child = D4.getRequiredNamedArg<$dartnative_3.Widget>(named, 'child', 'Opacity');
-        return $dartnative_63.Opacity(key: key, opacity: opacity, child: child);
+        return $dartnative_64.Opacity(key: key, opacity: opacity, child: child);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_63.Opacity>(target, 'Opacity').key,
-      'opacity': (visitor, target) => D4.validateTarget<$dartnative_63.Opacity>(target, 'Opacity').opacity,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_63.Opacity>(target, 'Opacity').child,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_64.Opacity>(target, 'Opacity').key,
+      'opacity': (visitor, target) => D4.validateTarget<$dartnative_64.Opacity>(target, 'Opacity').opacity,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_64.Opacity>(target, 'Opacity').child,
     },
     constructorSignatures: {
       '': 'const Opacity({Key? key, required double opacity, required Widget child})',
@@ -8342,9 +8380,9 @@ BridgedClass _createOpacityBridge() {
 
 BridgedClass _createAnimatedOpacityBridge() {
   return BridgedClass(
-    nativeType: $dartnative_63.AnimatedOpacity,
+    nativeType: $dartnative_64.AnimatedOpacity,
     name: 'AnimatedOpacity',
-    isAssignable: (v) => v is $dartnative_63.AnimatedOpacity,
+    isAssignable: (v) => v is $dartnative_64.AnimatedOpacity,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
@@ -8354,20 +8392,20 @@ BridgedClass _createAnimatedOpacityBridge() {
         final curve = D4.getNamedArgWithDefault<$dartnative_3.Curve>(named, 'curve', $dartnative_3.Curves.linear);
         final child = D4.getRequiredNamedArg<$dartnative_3.Widget>(named, 'child', 'AnimatedOpacity');
         final onEndRaw = named['onEnd'];
-        return $dartnative_63.AnimatedOpacity(key: key, opacity: opacity, duration: duration, curve: curve, child: child, onEnd: onEndRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onEndRaw, []); });
+        return $dartnative_64.AnimatedOpacity(key: key, opacity: opacity, duration: duration, curve: curve, child: child, onEnd: onEndRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onEndRaw, []); });
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_63.AnimatedOpacity>(target, 'AnimatedOpacity').key,
-      'opacity': (visitor, target) => D4.validateTarget<$dartnative_63.AnimatedOpacity>(target, 'AnimatedOpacity').opacity,
-      'duration': (visitor, target) => D4.validateTarget<$dartnative_63.AnimatedOpacity>(target, 'AnimatedOpacity').duration,
-      'curve': (visitor, target) => D4.validateTarget<$dartnative_63.AnimatedOpacity>(target, 'AnimatedOpacity').curve,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_63.AnimatedOpacity>(target, 'AnimatedOpacity').child,
-      'onEnd': (visitor, target) => D4.validateTarget<$dartnative_63.AnimatedOpacity>(target, 'AnimatedOpacity').onEnd,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_64.AnimatedOpacity>(target, 'AnimatedOpacity').key,
+      'opacity': (visitor, target) => D4.validateTarget<$dartnative_64.AnimatedOpacity>(target, 'AnimatedOpacity').opacity,
+      'duration': (visitor, target) => D4.validateTarget<$dartnative_64.AnimatedOpacity>(target, 'AnimatedOpacity').duration,
+      'curve': (visitor, target) => D4.validateTarget<$dartnative_64.AnimatedOpacity>(target, 'AnimatedOpacity').curve,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_64.AnimatedOpacity>(target, 'AnimatedOpacity').child,
+      'onEnd': (visitor, target) => D4.validateTarget<$dartnative_64.AnimatedOpacity>(target, 'AnimatedOpacity').onEnd,
     },
     methods: {
       'createState': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_63.AnimatedOpacity>(target, 'AnimatedOpacity');
+        final t = D4.validateTarget<$dartnative_64.AnimatedOpacity>(target, 'AnimatedOpacity');
         return t.createState();
       },
     },
@@ -8394,9 +8432,9 @@ BridgedClass _createAnimatedOpacityBridge() {
 
 BridgedClass _createVisibilityBridge() {
   return BridgedClass(
-    nativeType: $dartnative_63.Visibility,
+    nativeType: $dartnative_64.Visibility,
     name: 'Visibility',
-    isAssignable: (v) => v is $dartnative_63.Visibility,
+    isAssignable: (v) => v is $dartnative_64.Visibility,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -8409,19 +8447,19 @@ BridgedClass _createVisibilityBridge() {
         final maintainSize = D4.getNamedArgWithDefault<bool>(named, 'maintainSize', false);
         final maintainSemantics = D4.getNamedArgWithDefault<bool>(named, 'maintainSemantics', false);
         final maintainInteractivity = D4.getNamedArgWithDefault<bool>(named, 'maintainInteractivity', false);
-        return $dartnative_63.Visibility(key: key, child: child, visible: visible, replacement: replacement, maintainState: maintainState, maintainAnimation: maintainAnimation, maintainSize: maintainSize, maintainSemantics: maintainSemantics, maintainInteractivity: maintainInteractivity);
+        return $dartnative_64.Visibility(key: key, child: child, visible: visible, replacement: replacement, maintainState: maintainState, maintainAnimation: maintainAnimation, maintainSize: maintainSize, maintainSemantics: maintainSemantics, maintainInteractivity: maintainInteractivity);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_63.Visibility>(target, 'Visibility').key,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_63.Visibility>(target, 'Visibility').child,
-      'visible': (visitor, target) => D4.validateTarget<$dartnative_63.Visibility>(target, 'Visibility').visible,
-      'replacement': (visitor, target) => D4.validateTarget<$dartnative_63.Visibility>(target, 'Visibility').replacement,
-      'maintainState': (visitor, target) => D4.validateTarget<$dartnative_63.Visibility>(target, 'Visibility').maintainState,
-      'maintainAnimation': (visitor, target) => D4.validateTarget<$dartnative_63.Visibility>(target, 'Visibility').maintainAnimation,
-      'maintainSize': (visitor, target) => D4.validateTarget<$dartnative_63.Visibility>(target, 'Visibility').maintainSize,
-      'maintainSemantics': (visitor, target) => D4.validateTarget<$dartnative_63.Visibility>(target, 'Visibility').maintainSemantics,
-      'maintainInteractivity': (visitor, target) => D4.validateTarget<$dartnative_63.Visibility>(target, 'Visibility').maintainInteractivity,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_64.Visibility>(target, 'Visibility').key,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_64.Visibility>(target, 'Visibility').child,
+      'visible': (visitor, target) => D4.validateTarget<$dartnative_64.Visibility>(target, 'Visibility').visible,
+      'replacement': (visitor, target) => D4.validateTarget<$dartnative_64.Visibility>(target, 'Visibility').replacement,
+      'maintainState': (visitor, target) => D4.validateTarget<$dartnative_64.Visibility>(target, 'Visibility').maintainState,
+      'maintainAnimation': (visitor, target) => D4.validateTarget<$dartnative_64.Visibility>(target, 'Visibility').maintainAnimation,
+      'maintainSize': (visitor, target) => D4.validateTarget<$dartnative_64.Visibility>(target, 'Visibility').maintainSize,
+      'maintainSemantics': (visitor, target) => D4.validateTarget<$dartnative_64.Visibility>(target, 'Visibility').maintainSemantics,
+      'maintainInteractivity': (visitor, target) => D4.validateTarget<$dartnative_64.Visibility>(target, 'Visibility').maintainInteractivity,
     },
     constructorSignatures: {
       '': 'const Visibility({Key? key, required Widget child, bool visible = true, Widget replacement = const SizedBox.shrink(), bool maintainState = false, bool maintainAnimation = false, bool maintainSize = false, bool maintainSemantics = false, bool maintainInteractivity = false})',
@@ -8446,26 +8484,26 @@ BridgedClass _createVisibilityBridge() {
 
 BridgedClass _createOffstageBridge() {
   return BridgedClass(
-    nativeType: $dartnative_63.Offstage,
+    nativeType: $dartnative_64.Offstage,
     name: 'Offstage',
-    isAssignable: (v) => v is $dartnative_63.Offstage,
+    isAssignable: (v) => v is $dartnative_64.Offstage,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
         final offstage = D4.getNamedArgWithDefault<bool>(named, 'offstage', true);
         final child = D4.getRequiredNamedArg<$dartnative_3.Widget>(named, 'child', 'Offstage');
-        return $dartnative_63.Offstage(key: key, offstage: offstage, child: child);
+        return $dartnative_64.Offstage(key: key, offstage: offstage, child: child);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_63.Offstage>(target, 'Offstage').key,
-      'offstage': (visitor, target) => D4.validateTarget<$dartnative_63.Offstage>(target, 'Offstage').offstage,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_63.Offstage>(target, 'Offstage').child,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_64.Offstage>(target, 'Offstage').key,
+      'offstage': (visitor, target) => D4.validateTarget<$dartnative_64.Offstage>(target, 'Offstage').offstage,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_64.Offstage>(target, 'Offstage').child,
     },
     methods: {
       'build': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_63.Offstage>(target, 'Offstage');
+        final t = D4.validateTarget<$dartnative_64.Offstage>(target, 'Offstage');
         D4.requireMinArgs(positional, 1, 'build');
         final context = D4.getRequiredArg<$dartnative_3.BuildContext>(positional, 0, 'context', 'build');
         return (t as dynamic).build(context);
@@ -8491,24 +8529,24 @@ BridgedClass _createOffstageBridge() {
 
 BridgedClass _createClipRectBridge() {
   return BridgedClass(
-    nativeType: $dartnative_63.ClipRect,
+    nativeType: $dartnative_64.ClipRect,
     name: 'ClipRect',
-    isAssignable: (v) => v is $dartnative_63.ClipRect,
+    isAssignable: (v) => v is $dartnative_64.ClipRect,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
         final child = D4.getRequiredNamedArg<$dartnative_3.Widget>(named, 'child', 'ClipRect');
-        return $dartnative_63.ClipRect(key: key, child: child);
+        return $dartnative_64.ClipRect(key: key, child: child);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_63.ClipRect>(target, 'ClipRect').key,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_63.ClipRect>(target, 'ClipRect').child,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_64.ClipRect>(target, 'ClipRect').key,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_64.ClipRect>(target, 'ClipRect').child,
     },
     methods: {
       'build': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_63.ClipRect>(target, 'ClipRect');
+        final t = D4.validateTarget<$dartnative_64.ClipRect>(target, 'ClipRect');
         D4.requireMinArgs(positional, 1, 'build');
         final context = D4.getRequiredArg<$dartnative_3.BuildContext>(positional, 0, 'context', 'build');
         return (t as dynamic).build(context);
@@ -8533,26 +8571,26 @@ BridgedClass _createClipRectBridge() {
 
 BridgedClass _createClipRRectBridge() {
   return BridgedClass(
-    nativeType: $dartnative_63.ClipRRect,
+    nativeType: $dartnative_64.ClipRRect,
     name: 'ClipRRect',
-    isAssignable: (v) => v is $dartnative_63.ClipRRect,
+    isAssignable: (v) => v is $dartnative_64.ClipRRect,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
         final borderRadius = D4.getOptionalNamedArg<$dartnative_9.BorderRadius?>(named, 'borderRadius');
         final child = D4.getRequiredNamedArg<$dartnative_3.Widget>(named, 'child', 'ClipRRect');
-        return $dartnative_63.ClipRRect(key: key, borderRadius: borderRadius, child: child);
+        return $dartnative_64.ClipRRect(key: key, borderRadius: borderRadius, child: child);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_63.ClipRRect>(target, 'ClipRRect').key,
-      'borderRadius': (visitor, target) => D4.validateTarget<$dartnative_63.ClipRRect>(target, 'ClipRRect').borderRadius,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_63.ClipRRect>(target, 'ClipRRect').child,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_64.ClipRRect>(target, 'ClipRRect').key,
+      'borderRadius': (visitor, target) => D4.validateTarget<$dartnative_64.ClipRRect>(target, 'ClipRRect').borderRadius,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_64.ClipRRect>(target, 'ClipRRect').child,
     },
     methods: {
       'build': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_63.ClipRRect>(target, 'ClipRRect');
+        final t = D4.validateTarget<$dartnative_64.ClipRRect>(target, 'ClipRRect');
         D4.requireMinArgs(positional, 1, 'build');
         final context = D4.getRequiredArg<$dartnative_3.BuildContext>(positional, 0, 'context', 'build');
         return (t as dynamic).build(context);
@@ -8578,26 +8616,26 @@ BridgedClass _createClipRRectBridge() {
 
 BridgedClass _createClipRSuperellipseBridge() {
   return BridgedClass(
-    nativeType: $dartnative_63.ClipRSuperellipse,
+    nativeType: $dartnative_64.ClipRSuperellipse,
     name: 'ClipRSuperellipse',
-    isAssignable: (v) => v is $dartnative_63.ClipRSuperellipse,
+    isAssignable: (v) => v is $dartnative_64.ClipRSuperellipse,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
         final borderRadius = D4.getNamedArgWithDefault<$dartnative_9.BorderRadius>(named, 'borderRadius', $dartnative_9.BorderRadius.zero);
         final child = D4.getRequiredNamedArg<$dartnative_3.Widget>(named, 'child', 'ClipRSuperellipse');
-        return $dartnative_63.ClipRSuperellipse(key: key, borderRadius: borderRadius, child: child);
+        return $dartnative_64.ClipRSuperellipse(key: key, borderRadius: borderRadius, child: child);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_63.ClipRSuperellipse>(target, 'ClipRSuperellipse').key,
-      'borderRadius': (visitor, target) => D4.validateTarget<$dartnative_63.ClipRSuperellipse>(target, 'ClipRSuperellipse').borderRadius,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_63.ClipRSuperellipse>(target, 'ClipRSuperellipse').child,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_64.ClipRSuperellipse>(target, 'ClipRSuperellipse').key,
+      'borderRadius': (visitor, target) => D4.validateTarget<$dartnative_64.ClipRSuperellipse>(target, 'ClipRSuperellipse').borderRadius,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_64.ClipRSuperellipse>(target, 'ClipRSuperellipse').child,
     },
     methods: {
       'build': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_63.ClipRSuperellipse>(target, 'ClipRSuperellipse');
+        final t = D4.validateTarget<$dartnative_64.ClipRSuperellipse>(target, 'ClipRSuperellipse');
         D4.requireMinArgs(positional, 1, 'build');
         final context = D4.getRequiredArg<$dartnative_3.BuildContext>(positional, 0, 'context', 'build');
         return (t as dynamic).build(context);
@@ -8623,20 +8661,20 @@ BridgedClass _createClipRSuperellipseBridge() {
 
 BridgedClass _createRepaintBoundaryBridge() {
   return BridgedClass(
-    nativeType: $dartnative_63.RepaintBoundary,
+    nativeType: $dartnative_64.RepaintBoundary,
     name: 'RepaintBoundary',
-    isAssignable: (v) => v is $dartnative_63.RepaintBoundary,
+    isAssignable: (v) => v is $dartnative_64.RepaintBoundary,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
         final child = D4.getRequiredNamedArg<$dartnative_3.Widget>(named, 'child', 'RepaintBoundary');
-        return $dartnative_63.RepaintBoundary(key: key, child: child);
+        return $dartnative_64.RepaintBoundary(key: key, child: child);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_63.RepaintBoundary>(target, 'RepaintBoundary').key,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_63.RepaintBoundary>(target, 'RepaintBoundary').child,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_64.RepaintBoundary>(target, 'RepaintBoundary').key,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_64.RepaintBoundary>(target, 'RepaintBoundary').child,
     },
     constructorSignatures: {
       '': 'const RepaintBoundary({Key? key, required Widget child})',
@@ -8654,22 +8692,22 @@ BridgedClass _createRepaintBoundaryBridge() {
 
 BridgedClass _createAspectRatioBridge() {
   return BridgedClass(
-    nativeType: $dartnative_63.AspectRatio,
+    nativeType: $dartnative_64.AspectRatio,
     name: 'AspectRatio',
-    isAssignable: (v) => v is $dartnative_63.AspectRatio,
+    isAssignable: (v) => v is $dartnative_64.AspectRatio,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
         final aspectRatio = D4.getRequiredNamedArg<double>(named, 'aspectRatio', 'AspectRatio');
         final child = D4.getRequiredNamedArg<$dartnative_3.Widget>(named, 'child', 'AspectRatio');
-        return $dartnative_63.AspectRatio(key: key, aspectRatio: aspectRatio, child: child);
+        return $dartnative_64.AspectRatio(key: key, aspectRatio: aspectRatio, child: child);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_63.AspectRatio>(target, 'AspectRatio').key,
-      'aspectRatio': (visitor, target) => D4.validateTarget<$dartnative_63.AspectRatio>(target, 'AspectRatio').aspectRatio,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_63.AspectRatio>(target, 'AspectRatio').child,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_64.AspectRatio>(target, 'AspectRatio').key,
+      'aspectRatio': (visitor, target) => D4.validateTarget<$dartnative_64.AspectRatio>(target, 'AspectRatio').aspectRatio,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_64.AspectRatio>(target, 'AspectRatio').child,
     },
     constructorSignatures: {
       '': 'const AspectRatio({Key? key, required double aspectRatio, required Widget child})',
@@ -9068,9 +9106,9 @@ BridgedClass _createIndexedStackBridge() {
 
 BridgedClass _createTextBridge() {
   return BridgedClass(
-    nativeType: $dartnative_59.Text,
+    nativeType: $dartnative_60.Text,
     name: 'Text',
-    isAssignable: (v) => v is $dartnative_59.Text,
+    isAssignable: (v) => v is $dartnative_60.Text,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -9085,20 +9123,20 @@ BridgedClass _createTextBridge() {
         final softWrap = D4.getOptionalNamedArg<bool?>(named, 'softWrap');
         final selectable = D4.getNamedArgWithDefault<bool>(named, 'selectable', false);
         final detectLinks = D4.getNamedArgWithDefault<bool>(named, 'detectLinks', false);
-        return $dartnative_59.Text(data, key: key, style: style, textAlign: textAlign, textDirection: textDirection, overflow: overflow, maxLines: maxLines, softWrap: softWrap, selectable: selectable, detectLinks: detectLinks);
+        return $dartnative_60.Text(data, key: key, style: style, textAlign: textAlign, textDirection: textDirection, overflow: overflow, maxLines: maxLines, softWrap: softWrap, selectable: selectable, detectLinks: detectLinks);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_59.Text>(target, 'Text').key,
-      'data': (visitor, target) => D4.validateTarget<$dartnative_59.Text>(target, 'Text').data,
-      'style': (visitor, target) => D4.validateTarget<$dartnative_59.Text>(target, 'Text').style,
-      'textAlign': (visitor, target) => D4.validateTarget<$dartnative_59.Text>(target, 'Text').textAlign,
-      'textDirection': (visitor, target) => D4.validateTarget<$dartnative_59.Text>(target, 'Text').textDirection,
-      'overflow': (visitor, target) => D4.validateTarget<$dartnative_59.Text>(target, 'Text').overflow,
-      'maxLines': (visitor, target) => D4.validateTarget<$dartnative_59.Text>(target, 'Text').maxLines,
-      'softWrap': (visitor, target) => D4.validateTarget<$dartnative_59.Text>(target, 'Text').softWrap,
-      'selectable': (visitor, target) => D4.validateTarget<$dartnative_59.Text>(target, 'Text').selectable,
-      'detectLinks': (visitor, target) => D4.validateTarget<$dartnative_59.Text>(target, 'Text').detectLinks,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_60.Text>(target, 'Text').key,
+      'data': (visitor, target) => D4.validateTarget<$dartnative_60.Text>(target, 'Text').data,
+      'style': (visitor, target) => D4.validateTarget<$dartnative_60.Text>(target, 'Text').style,
+      'textAlign': (visitor, target) => D4.validateTarget<$dartnative_60.Text>(target, 'Text').textAlign,
+      'textDirection': (visitor, target) => D4.validateTarget<$dartnative_60.Text>(target, 'Text').textDirection,
+      'overflow': (visitor, target) => D4.validateTarget<$dartnative_60.Text>(target, 'Text').overflow,
+      'maxLines': (visitor, target) => D4.validateTarget<$dartnative_60.Text>(target, 'Text').maxLines,
+      'softWrap': (visitor, target) => D4.validateTarget<$dartnative_60.Text>(target, 'Text').softWrap,
+      'selectable': (visitor, target) => D4.validateTarget<$dartnative_60.Text>(target, 'Text').selectable,
+      'detectLinks': (visitor, target) => D4.validateTarget<$dartnative_60.Text>(target, 'Text').detectLinks,
     },
     constructorSignatures: {
       '': 'const Text(String data, {Key? key, TextStyle? style, TextAlign? textAlign, TextDirection? textDirection, TextOverflow? overflow, int? maxLines, bool? softWrap, bool selectable = false, bool detectLinks = false})',
@@ -9124,26 +9162,26 @@ BridgedClass _createTextBridge() {
 
 BridgedClass _createRichTextBridge() {
   return BridgedClass(
-    nativeType: $dartnative_59.RichText,
+    nativeType: $dartnative_60.RichText,
     name: 'RichText',
-    isAssignable: (v) => v is $dartnative_59.RichText,
+    isAssignable: (v) => v is $dartnative_60.RichText,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
-        final text = D4.getRequiredNamedArg<$dartnative_59.InlineSpan>(named, 'text', 'RichText');
+        final text = D4.getRequiredNamedArg<$dartnative_60.InlineSpan>(named, 'text', 'RichText');
         final textAlign = D4.getOptionalNamedArg<$dartnative_9.TextAlign?>(named, 'textAlign');
         final maxLines = D4.getOptionalNamedArg<int?>(named, 'maxLines');
         final overflow = D4.getOptionalNamedArg<$dartnative_9.TextOverflow?>(named, 'overflow');
-        return $dartnative_59.RichText(key: key, text: text, textAlign: textAlign, maxLines: maxLines, overflow: overflow);
+        return $dartnative_60.RichText(key: key, text: text, textAlign: textAlign, maxLines: maxLines, overflow: overflow);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_59.RichText>(target, 'RichText').key,
-      'text': (visitor, target) => D4.validateTarget<$dartnative_59.RichText>(target, 'RichText').text,
-      'textAlign': (visitor, target) => D4.validateTarget<$dartnative_59.RichText>(target, 'RichText').textAlign,
-      'maxLines': (visitor, target) => D4.validateTarget<$dartnative_59.RichText>(target, 'RichText').maxLines,
-      'overflow': (visitor, target) => D4.validateTarget<$dartnative_59.RichText>(target, 'RichText').overflow,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_60.RichText>(target, 'RichText').key,
+      'text': (visitor, target) => D4.validateTarget<$dartnative_60.RichText>(target, 'RichText').text,
+      'textAlign': (visitor, target) => D4.validateTarget<$dartnative_60.RichText>(target, 'RichText').textAlign,
+      'maxLines': (visitor, target) => D4.validateTarget<$dartnative_60.RichText>(target, 'RichText').maxLines,
+      'overflow': (visitor, target) => D4.validateTarget<$dartnative_60.RichText>(target, 'RichText').overflow,
     },
     constructorSignatures: {
       '': 'const RichText({Key? key, required InlineSpan text, TextAlign? textAlign, int? maxLines, TextOverflow? overflow})',
@@ -9164,9 +9202,9 @@ BridgedClass _createRichTextBridge() {
 
 BridgedClass _createInlineSpanBridge() {
   return BridgedClass(
-    nativeType: $dartnative_59.InlineSpan,
+    nativeType: $dartnative_60.InlineSpan,
     name: 'InlineSpan',
-    isAssignable: (v) => v is $dartnative_59.InlineSpan,
+    isAssignable: (v) => v is $dartnative_60.InlineSpan,
     isAbstract: true,
     constructors: {
     },
@@ -9179,9 +9217,9 @@ BridgedClass _createInlineSpanBridge() {
 
 BridgedClass _createGestureRecognizerBridge() {
   return BridgedClass(
-    nativeType: $dartnative_59.GestureRecognizer,
+    nativeType: $dartnative_60.GestureRecognizer,
     name: 'GestureRecognizer',
-    isAssignable: (v) => v is $dartnative_59.GestureRecognizer,
+    isAssignable: (v) => v is $dartnative_60.GestureRecognizer,
     isAbstract: true,
     constructors: {
     },
@@ -9194,23 +9232,23 @@ BridgedClass _createGestureRecognizerBridge() {
 
 BridgedClass _createTapGestureRecognizerBridge() {
   return BridgedClass(
-    nativeType: $dartnative_59.TapGestureRecognizer,
+    nativeType: $dartnative_60.TapGestureRecognizer,
     name: 'TapGestureRecognizer',
-    isAssignable: (v) => v is $dartnative_59.TapGestureRecognizer,
+    isAssignable: (v) => v is $dartnative_60.TapGestureRecognizer,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final onTapRaw = named['onTap'];
-        return $dartnative_59.TapGestureRecognizer(onTap: onTapRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onTapRaw, []); });
+        return $dartnative_60.TapGestureRecognizer(onTap: onTapRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onTapRaw, []); });
       },
     },
     getters: {
-      'onTap': (visitor, target) => D4.validateTarget<$dartnative_59.TapGestureRecognizer>(target, 'TapGestureRecognizer').onTap,
+      'onTap': (visitor, target) => D4.validateTarget<$dartnative_60.TapGestureRecognizer>(target, 'TapGestureRecognizer').onTap,
     },
     setters: {
       'onTap': (visitor, target, value) {
         final onTapRaw = D4.extractBridgedArgOrNull<dynamic>(value, 'onTap');
-        D4.validateTarget<$dartnative_59.TapGestureRecognizer>(target, 'TapGestureRecognizer').onTap = onTapRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onTapRaw, []); };
+        D4.validateTarget<$dartnative_60.TapGestureRecognizer>(target, 'TapGestureRecognizer').onTap = onTapRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onTapRaw, []); };
       },
     },
     constructorSignatures: {
@@ -9231,24 +9269,24 @@ BridgedClass _createTapGestureRecognizerBridge() {
 
 BridgedClass _createTextSpanBridge() {
   return BridgedClass(
-    nativeType: $dartnative_59.TextSpan,
+    nativeType: $dartnative_60.TextSpan,
     name: 'TextSpan',
-    isAssignable: (v) => v is $dartnative_59.TextSpan,
+    isAssignable: (v) => v is $dartnative_60.TextSpan,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final text = D4.getOptionalNamedArg<String?>(named, 'text');
-        final children = D4.coerceListOrNull<$dartnative_59.InlineSpan>(named['children'], 'children');
+        final children = D4.coerceListOrNull<$dartnative_60.InlineSpan>(named['children'], 'children');
         final style = D4.getOptionalNamedArg<$dartnative_9.TextStyle?>(named, 'style');
-        final recognizer = D4.getOptionalNamedArg<$dartnative_59.GestureRecognizer?>(named, 'recognizer');
-        return $dartnative_59.TextSpan(text: text, children: children, style: style, recognizer: recognizer);
+        final recognizer = D4.getOptionalNamedArg<$dartnative_60.GestureRecognizer?>(named, 'recognizer');
+        return $dartnative_60.TextSpan(text: text, children: children, style: style, recognizer: recognizer);
       },
     },
     getters: {
-      'text': (visitor, target) => D4.validateTarget<$dartnative_59.TextSpan>(target, 'TextSpan').text,
-      'children': (visitor, target) => D4.validateTarget<$dartnative_59.TextSpan>(target, 'TextSpan').children,
-      'style': (visitor, target) => D4.validateTarget<$dartnative_59.TextSpan>(target, 'TextSpan').style,
-      'recognizer': (visitor, target) => D4.validateTarget<$dartnative_59.TextSpan>(target, 'TextSpan').recognizer,
+      'text': (visitor, target) => D4.validateTarget<$dartnative_60.TextSpan>(target, 'TextSpan').text,
+      'children': (visitor, target) => D4.validateTarget<$dartnative_60.TextSpan>(target, 'TextSpan').children,
+      'style': (visitor, target) => D4.validateTarget<$dartnative_60.TextSpan>(target, 'TextSpan').style,
+      'recognizer': (visitor, target) => D4.validateTarget<$dartnative_60.TextSpan>(target, 'TextSpan').recognizer,
     },
     constructorSignatures: {
       '': 'TextSpan({String? text, List<InlineSpan>? children, TextStyle? style, GestureRecognizer? recognizer})',
@@ -9268,22 +9306,22 @@ BridgedClass _createTextSpanBridge() {
 
 BridgedClass _createTextAlignVerticalBridge() {
   return BridgedClass(
-    nativeType: $dartnative_60.TextAlignVertical,
+    nativeType: $dartnative_61.TextAlignVertical,
     name: 'TextAlignVertical',
-    isAssignable: (v) => v is $dartnative_60.TextAlignVertical,
+    isAssignable: (v) => v is $dartnative_61.TextAlignVertical,
     constructors: {
       '': (visitor, positional, named) {
         final y = D4.getRequiredNamedArg<double>(named, 'y', 'TextAlignVertical');
-        return $dartnative_60.TextAlignVertical(y: y);
+        return $dartnative_61.TextAlignVertical(y: y);
       },
     },
     getters: {
-      'y': (visitor, target) => D4.validateTarget<$dartnative_60.TextAlignVertical>(target, 'TextAlignVertical').y,
-      'hashCode': (visitor, target) => D4.validateTarget<$dartnative_60.TextAlignVertical>(target, 'TextAlignVertical').hashCode,
+      'y': (visitor, target) => D4.validateTarget<$dartnative_61.TextAlignVertical>(target, 'TextAlignVertical').y,
+      'hashCode': (visitor, target) => D4.validateTarget<$dartnative_61.TextAlignVertical>(target, 'TextAlignVertical').hashCode,
     },
     methods: {
       '==': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_60.TextAlignVertical>(target, 'TextAlignVertical');
+        final t = D4.validateTarget<$dartnative_61.TextAlignVertical>(target, 'TextAlignVertical');
         // GEN-103: Dart spec — non-null == null is always false.
         if (positional.isEmpty || positional[0] == null) return false;
         final other = D4.getRequiredArg<Object>(positional, 0, 'other', 'operator==');
@@ -9291,9 +9329,9 @@ BridgedClass _createTextAlignVerticalBridge() {
       },
     },
     staticGetters: {
-      'top': (visitor) => $dartnative_60.TextAlignVertical.top,
-      'center': (visitor) => $dartnative_60.TextAlignVertical.center,
-      'bottom': (visitor) => $dartnative_60.TextAlignVertical.bottom,
+      'top': (visitor) => $dartnative_61.TextAlignVertical.top,
+      'center': (visitor) => $dartnative_61.TextAlignVertical.center,
+      'bottom': (visitor) => $dartnative_61.TextAlignVertical.bottom,
     },
     constructorSignatures: {
       '': 'const TextAlignVertical({required double y})',
@@ -9316,9 +9354,9 @@ BridgedClass _createTextAlignVerticalBridge() {
 
 BridgedClass _createTextFieldBridge() {
   return BridgedClass(
-    nativeType: $dartnative_60.TextField,
+    nativeType: $dartnative_61.TextField,
     name: 'TextField',
-    isAssignable: (v) => v is $dartnative_60.TextField,
+    isAssignable: (v) => v is $dartnative_61.TextField,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -9326,16 +9364,16 @@ BridgedClass _createTextFieldBridge() {
         final controller = D4.getOptionalNamedArg<$dartnative_3.TextEditingController?>(named, 'controller');
         final focusNode = D4.getOptionalNamedArg<$dartnative_31.FocusNode?>(named, 'focusNode');
         final decoration = D4.getNamedArgWithDefault<$dartnative_9.InputDecoration?>(named, 'decoration', const $dartnative_9.InputDecoration());
-        final keyboardType = D4.getNamedArgWithDefault<$dartnative_60.TextInputType>(named, 'keyboardType', $dartnative_60.TextInputType.text);
-        final textInputAction = D4.getOptionalNamedArg<$dartnative_60.TextInputAction?>(named, 'textInputAction');
-        final textCapitalization = D4.getNamedArgWithDefault<$dartnative_60.TextCapitalization>(named, 'textCapitalization', $dartnative_60.TextCapitalization.none);
+        final keyboardType = D4.getNamedArgWithDefault<$dartnative_61.TextInputType>(named, 'keyboardType', $dartnative_61.TextInputType.text);
+        final textInputAction = D4.getOptionalNamedArg<$dartnative_61.TextInputAction?>(named, 'textInputAction');
+        final textCapitalization = D4.getNamedArgWithDefault<$dartnative_61.TextCapitalization>(named, 'textCapitalization', $dartnative_61.TextCapitalization.none);
         final style = D4.getOptionalNamedArg<$dartnative_9.TextStyle?>(named, 'style');
         final textAlign = D4.getNamedArgWithDefault<$dartnative_9.TextAlign>(named, 'textAlign', $dartnative_9.TextAlign.start);
-        final textAlignVertical = D4.getOptionalNamedArg<$dartnative_60.TextAlignVertical?>(named, 'textAlignVertical');
+        final textAlignVertical = D4.getOptionalNamedArg<$dartnative_61.TextAlignVertical?>(named, 'textAlignVertical');
         final maxLines = D4.getNamedArgWithDefault<int?>(named, 'maxLines', 1);
         final minLines = D4.getOptionalNamedArg<int?>(named, 'minLines');
         final maxLength = D4.getOptionalNamedArg<int?>(named, 'maxLength');
-        final inputFormatters = D4.coerceListOrNull<$dartnative_61.TextInputFormatter>(named['inputFormatters'], 'inputFormatters');
+        final inputFormatters = D4.coerceListOrNull<$dartnative_62.TextInputFormatter>(named['inputFormatters'], 'inputFormatters');
         final obscureText = D4.getNamedArgWithDefault<bool>(named, 'obscureText', false);
         final autocorrect = D4.getNamedArgWithDefault<bool>(named, 'autocorrect', true);
         final autofocus = D4.getNamedArgWithDefault<bool>(named, 'autofocus', false);
@@ -9355,49 +9393,49 @@ BridgedClass _createTextFieldBridge() {
         final suffixIconSize = D4.getNamedArgWithDefault<double>(named, 'suffixIconSize', 20);
         final suffixIconColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'suffixIconColor');
         final suffixIconPadding = D4.getOptionalNamedArg<$dartnative_9.EdgeInsets?>(named, 'suffixIconPadding');
-        final clearButtonMode = D4.getNamedArgWithDefault<$dartnative_60.ClearButtonMode>(named, 'clearButtonMode', $dartnative_60.ClearButtonMode.never);
+        final clearButtonMode = D4.getNamedArgWithDefault<$dartnative_61.ClearButtonMode>(named, 'clearButtonMode', $dartnative_61.ClearButtonMode.never);
         final clearIcon = D4.getOptionalNamedArg<$dartnative_35.IconData?>(named, 'clearIcon');
         final clearIconColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'clearIconColor');
-        return $dartnative_60.TextField(key: key, controller: controller, focusNode: focusNode, decoration: decoration, keyboardType: keyboardType, textInputAction: textInputAction, textCapitalization: textCapitalization, style: style, textAlign: textAlign, textAlignVertical: textAlignVertical, maxLines: maxLines, minLines: minLines, maxLength: maxLength, inputFormatters: inputFormatters, obscureText: obscureText, autocorrect: autocorrect, autofocus: autofocus, readOnly: readOnly, enabled: enabled, cursorColor: cursorColor, onChanged: onChangedRaw == null ? null : (String p0) { D4.callInterpreterCallback(visitor!, onChangedRaw, [p0]); }, onSubmitted: onSubmittedRaw == null ? null : (String p0) { D4.callInterpreterCallback(visitor!, onSubmittedRaw, [p0]); }, onTap: onTapRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onTapRaw, []); }, onEditingComplete: onEditingCompleteRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onEditingCompleteRaw, []); }, buildCounter: buildCounterRaw == null ? null : ($dartnative_3.BuildContext p0, {required int currentLength, required bool isFocused, required int? maxLength}) { return D4.extractBridgedArg<$dartnative_3.Widget?>(D4.callInterpreterCallback(visitor!, buildCounterRaw, [p0], {'currentLength': currentLength, 'isFocused': isFocused, 'maxLength': maxLength}), 'callback', visitor) as $dartnative_3.Widget?; }, prefixIcon: prefixIcon, prefixIconSize: prefixIconSize, prefixIconColor: prefixIconColor, prefixIconPadding: prefixIconPadding, suffixIcon: suffixIcon, suffixIconSize: suffixIconSize, suffixIconColor: suffixIconColor, suffixIconPadding: suffixIconPadding, clearButtonMode: clearButtonMode, clearIcon: clearIcon, clearIconColor: clearIconColor);
+        return $dartnative_61.TextField(key: key, controller: controller, focusNode: focusNode, decoration: decoration, keyboardType: keyboardType, textInputAction: textInputAction, textCapitalization: textCapitalization, style: style, textAlign: textAlign, textAlignVertical: textAlignVertical, maxLines: maxLines, minLines: minLines, maxLength: maxLength, inputFormatters: inputFormatters, obscureText: obscureText, autocorrect: autocorrect, autofocus: autofocus, readOnly: readOnly, enabled: enabled, cursorColor: cursorColor, onChanged: onChangedRaw == null ? null : (String p0) { D4.callInterpreterCallback(visitor!, onChangedRaw, [p0]); }, onSubmitted: onSubmittedRaw == null ? null : (String p0) { D4.callInterpreterCallback(visitor!, onSubmittedRaw, [p0]); }, onTap: onTapRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onTapRaw, []); }, onEditingComplete: onEditingCompleteRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onEditingCompleteRaw, []); }, buildCounter: buildCounterRaw == null ? null : ($dartnative_3.BuildContext p0, {required int currentLength, required bool isFocused, required int? maxLength}) { return D4.extractBridgedArg<$dartnative_3.Widget?>(D4.callInterpreterCallback(visitor!, buildCounterRaw, [p0], {'currentLength': currentLength, 'isFocused': isFocused, 'maxLength': maxLength}), 'callback', visitor) as $dartnative_3.Widget?; }, prefixIcon: prefixIcon, prefixIconSize: prefixIconSize, prefixIconColor: prefixIconColor, prefixIconPadding: prefixIconPadding, suffixIcon: suffixIcon, suffixIconSize: suffixIconSize, suffixIconColor: suffixIconColor, suffixIconPadding: suffixIconPadding, clearButtonMode: clearButtonMode, clearIcon: clearIcon, clearIconColor: clearIconColor);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').key,
-      'controller': (visitor, target) => (D4.validateTarget<$dartnative_60.TextField>(target, 'TextField') as dynamic).controller,
-      'focusNode': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').focusNode,
-      'decoration': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').decoration,
-      'keyboardType': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').keyboardType,
-      'textInputAction': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').textInputAction,
-      'textCapitalization': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').textCapitalization,
-      'style': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').style,
-      'textAlign': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').textAlign,
-      'textAlignVertical': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').textAlignVertical,
-      'maxLines': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').maxLines,
-      'minLines': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').minLines,
-      'maxLength': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').maxLength,
-      'inputFormatters': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').inputFormatters,
-      'obscureText': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').obscureText,
-      'autocorrect': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').autocorrect,
-      'autofocus': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').autofocus,
-      'readOnly': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').readOnly,
-      'enabled': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').enabled,
-      'cursorColor': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').cursorColor,
-      'onChanged': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').onChanged,
-      'onSubmitted': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').onSubmitted,
-      'onTap': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').onTap,
-      'onEditingComplete': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').onEditingComplete,
-      'prefixIcon': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').prefixIcon,
-      'prefixIconSize': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').prefixIconSize,
-      'prefixIconColor': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').prefixIconColor,
-      'prefixIconPadding': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').prefixIconPadding,
-      'suffixIcon': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').suffixIcon,
-      'suffixIconSize': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').suffixIconSize,
-      'suffixIconColor': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').suffixIconColor,
-      'suffixIconPadding': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').suffixIconPadding,
-      'clearButtonMode': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').clearButtonMode,
-      'clearIcon': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').clearIcon,
-      'clearIconColor': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').clearIconColor,
-      'buildCounter': (visitor, target) => D4.validateTarget<$dartnative_60.TextField>(target, 'TextField').buildCounter,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').key,
+      'controller': (visitor, target) => (D4.validateTarget<$dartnative_61.TextField>(target, 'TextField') as dynamic).controller,
+      'focusNode': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').focusNode,
+      'decoration': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').decoration,
+      'keyboardType': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').keyboardType,
+      'textInputAction': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').textInputAction,
+      'textCapitalization': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').textCapitalization,
+      'style': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').style,
+      'textAlign': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').textAlign,
+      'textAlignVertical': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').textAlignVertical,
+      'maxLines': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').maxLines,
+      'minLines': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').minLines,
+      'maxLength': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').maxLength,
+      'inputFormatters': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').inputFormatters,
+      'obscureText': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').obscureText,
+      'autocorrect': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').autocorrect,
+      'autofocus': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').autofocus,
+      'readOnly': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').readOnly,
+      'enabled': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').enabled,
+      'cursorColor': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').cursorColor,
+      'onChanged': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').onChanged,
+      'onSubmitted': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').onSubmitted,
+      'onTap': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').onTap,
+      'onEditingComplete': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').onEditingComplete,
+      'prefixIcon': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').prefixIcon,
+      'prefixIconSize': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').prefixIconSize,
+      'prefixIconColor': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').prefixIconColor,
+      'prefixIconPadding': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').prefixIconPadding,
+      'suffixIcon': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').suffixIcon,
+      'suffixIconSize': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').suffixIconSize,
+      'suffixIconColor': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').suffixIconColor,
+      'suffixIconPadding': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').suffixIconPadding,
+      'clearButtonMode': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').clearButtonMode,
+      'clearIcon': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').clearIcon,
+      'clearIconColor': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').clearIconColor,
+      'buildCounter': (visitor, target) => D4.validateTarget<$dartnative_61.TextField>(target, 'TextField').buildCounter,
     },
     constructorSignatures: {
       '': 'const TextField({Key? key, TextEditingController? controller, FocusNode? focusNode, InputDecoration? decoration = const InputDecoration(), TextInputType keyboardType = TextInputType.text, TextInputAction? textInputAction, TextCapitalization textCapitalization = TextCapitalization.none, TextStyle? style, TextAlign textAlign = TextAlign.start, TextAlignVertical? textAlignVertical, int? maxLines = 1, int? minLines, int? maxLength, List<TextInputFormatter>? inputFormatters, bool obscureText = false, bool autocorrect = true, bool autofocus = false, bool readOnly = false, bool enabled = true, Color? cursorColor, ValueChanged<String>? onChanged, void Function(String)? onSubmitted, VoidCallback? onTap, VoidCallback? onEditingComplete, Widget? Function(BuildContext, {required int currentLength, required bool isFocused, required int? maxLength})? buildCounter, IconData? prefixIcon, double prefixIconSize = 20, Color? prefixIconColor, EdgeInsets? prefixIconPadding, IconData? suffixIcon, double suffixIconSize = 20, Color? suffixIconColor, EdgeInsets? suffixIconPadding, ClearButtonMode clearButtonMode = ClearButtonMode.never, IconData? clearIcon, Color? clearIconColor})',
@@ -9449,15 +9487,15 @@ BridgedClass _createTextFieldBridge() {
 
 BridgedClass _createTextInputFormatterBridge() {
   return BridgedClass(
-    nativeType: $dartnative_61.TextInputFormatter,
+    nativeType: $dartnative_62.TextInputFormatter,
     name: 'TextInputFormatter',
-    isAssignable: (v) => v is $dartnative_61.TextInputFormatter,
+    isAssignable: (v) => v is $dartnative_62.TextInputFormatter,
     isAbstract: true,
     constructors: {
     },
     methods: {
       'formatEditUpdate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_61.TextInputFormatter>(target, 'TextInputFormatter');
+        final t = D4.validateTarget<$dartnative_62.TextInputFormatter>(target, 'TextInputFormatter');
         D4.requireMinArgs(positional, 2, 'formatEditUpdate');
         final oldValue = D4.getRequiredArg<$dartnative_3.TextEditingValue>(positional, 0, 'oldValue', 'formatEditUpdate');
         final newValue = D4.getRequiredArg<$dartnative_3.TextEditingValue>(positional, 1, 'newValue', 'formatEditUpdate');
@@ -9472,7 +9510,7 @@ BridgedClass _createTextInputFormatterBridge() {
         }
         final formatFunctionRaw = positional[0];
         final formatFunction = (($dartnative_3.TextEditingValue p0, $dartnative_3.TextEditingValue p1) { return D4.extractBridgedArg<$dartnative_3.TextEditingValue>(D4.callInterpreterCallback(visitor!, formatFunctionRaw, [p0, p1]), 'callback', visitor) as $dartnative_3.TextEditingValue; }) as $dartnative_3.TextEditingValue Function($dartnative_3.TextEditingValue, $dartnative_3.TextEditingValue);
-        return $dartnative_61.TextInputFormatter.withFunction(formatFunction);
+        return $dartnative_62.TextInputFormatter.withFunction(formatFunction);
       },
     },
     methodSignatures: {
@@ -9490,9 +9528,9 @@ BridgedClass _createTextInputFormatterBridge() {
 
 BridgedClass _createFilteringTextInputFormatterBridge() {
   return BridgedClass(
-    nativeType: $dartnative_61.FilteringTextInputFormatter,
+    nativeType: $dartnative_62.FilteringTextInputFormatter,
     name: 'FilteringTextInputFormatter',
-    isAssignable: (v) => v is $dartnative_61.FilteringTextInputFormatter,
+    isAssignable: (v) => v is $dartnative_62.FilteringTextInputFormatter,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -9500,29 +9538,29 @@ BridgedClass _createFilteringTextInputFormatterBridge() {
         final filterPattern = D4.getRequiredArg<Pattern>(positional, 0, 'filterPattern', 'FilteringTextInputFormatter');
         final allow = D4.getRequiredNamedArg<bool>(named, 'allow', 'FilteringTextInputFormatter');
         final replacementString = D4.getNamedArgWithDefault<String>(named, 'replacementString', '');
-        return $dartnative_61.FilteringTextInputFormatter(filterPattern, allow: allow, replacementString: replacementString);
+        return $dartnative_62.FilteringTextInputFormatter(filterPattern, allow: allow, replacementString: replacementString);
       },
       'allow': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'FilteringTextInputFormatter');
         final filterPattern = D4.getRequiredArg<Pattern>(positional, 0, 'filterPattern', 'FilteringTextInputFormatter');
         final replacementString = D4.getNamedArgWithDefault<String>(named, 'replacementString', '');
-        return $dartnative_61.FilteringTextInputFormatter.allow(filterPattern, replacementString: replacementString);
+        return $dartnative_62.FilteringTextInputFormatter.allow(filterPattern, replacementString: replacementString);
       },
       'deny': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'FilteringTextInputFormatter');
         final filterPattern = D4.getRequiredArg<Pattern>(positional, 0, 'filterPattern', 'FilteringTextInputFormatter');
         final replacementString = D4.getNamedArgWithDefault<String>(named, 'replacementString', '');
-        return $dartnative_61.FilteringTextInputFormatter.deny(filterPattern, replacementString: replacementString);
+        return $dartnative_62.FilteringTextInputFormatter.deny(filterPattern, replacementString: replacementString);
       },
     },
     getters: {
-      'filterPattern': (visitor, target) => D4.validateTarget<$dartnative_61.FilteringTextInputFormatter>(target, 'FilteringTextInputFormatter').filterPattern,
-      'allow': (visitor, target) => D4.validateTarget<$dartnative_61.FilteringTextInputFormatter>(target, 'FilteringTextInputFormatter').allow,
-      'replacementString': (visitor, target) => D4.validateTarget<$dartnative_61.FilteringTextInputFormatter>(target, 'FilteringTextInputFormatter').replacementString,
+      'filterPattern': (visitor, target) => D4.validateTarget<$dartnative_62.FilteringTextInputFormatter>(target, 'FilteringTextInputFormatter').filterPattern,
+      'allow': (visitor, target) => D4.validateTarget<$dartnative_62.FilteringTextInputFormatter>(target, 'FilteringTextInputFormatter').allow,
+      'replacementString': (visitor, target) => D4.validateTarget<$dartnative_62.FilteringTextInputFormatter>(target, 'FilteringTextInputFormatter').replacementString,
     },
     methods: {
       'formatEditUpdate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_61.FilteringTextInputFormatter>(target, 'FilteringTextInputFormatter');
+        final t = D4.validateTarget<$dartnative_62.FilteringTextInputFormatter>(target, 'FilteringTextInputFormatter');
         D4.requireMinArgs(positional, 2, 'formatEditUpdate');
         final oldValue = D4.getRequiredArg<$dartnative_3.TextEditingValue>(positional, 0, 'oldValue', 'formatEditUpdate');
         final newValue = D4.getRequiredArg<$dartnative_3.TextEditingValue>(positional, 1, 'newValue', 'formatEditUpdate');
@@ -9530,8 +9568,8 @@ BridgedClass _createFilteringTextInputFormatterBridge() {
       },
     },
     staticGetters: {
-      'digitsOnly': (visitor) => $dartnative_61.FilteringTextInputFormatter.digitsOnly,
-      'singleLineFormatter': (visitor) => $dartnative_61.FilteringTextInputFormatter.singleLineFormatter,
+      'digitsOnly': (visitor) => $dartnative_62.FilteringTextInputFormatter.digitsOnly,
+      'singleLineFormatter': (visitor) => $dartnative_62.FilteringTextInputFormatter.singleLineFormatter,
     },
     constructorSignatures: {
       '': 'FilteringTextInputFormatter(Pattern filterPattern, {required bool allow, String replacementString = \'\'})',
@@ -9559,23 +9597,23 @@ BridgedClass _createFilteringTextInputFormatterBridge() {
 
 BridgedClass _createLengthLimitingTextInputFormatterBridge() {
   return BridgedClass(
-    nativeType: $dartnative_61.LengthLimitingTextInputFormatter,
+    nativeType: $dartnative_62.LengthLimitingTextInputFormatter,
     name: 'LengthLimitingTextInputFormatter',
-    isAssignable: (v) => v is $dartnative_61.LengthLimitingTextInputFormatter,
+    isAssignable: (v) => v is $dartnative_62.LengthLimitingTextInputFormatter,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'LengthLimitingTextInputFormatter');
         final maxLength = D4.getRequiredArg<int?>(positional, 0, 'maxLength', 'LengthLimitingTextInputFormatter');
-        return $dartnative_61.LengthLimitingTextInputFormatter(maxLength);
+        return $dartnative_62.LengthLimitingTextInputFormatter(maxLength);
       },
     },
     getters: {
-      'maxLength': (visitor, target) => D4.validateTarget<$dartnative_61.LengthLimitingTextInputFormatter>(target, 'LengthLimitingTextInputFormatter').maxLength,
+      'maxLength': (visitor, target) => D4.validateTarget<$dartnative_62.LengthLimitingTextInputFormatter>(target, 'LengthLimitingTextInputFormatter').maxLength,
     },
     methods: {
       'formatEditUpdate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_61.LengthLimitingTextInputFormatter>(target, 'LengthLimitingTextInputFormatter');
+        final t = D4.validateTarget<$dartnative_62.LengthLimitingTextInputFormatter>(target, 'LengthLimitingTextInputFormatter');
         D4.requireMinArgs(positional, 2, 'formatEditUpdate');
         final oldValue = D4.getRequiredArg<$dartnative_3.TextEditingValue>(positional, 0, 'oldValue', 'formatEditUpdate');
         final newValue = D4.getRequiredArg<$dartnative_3.TextEditingValue>(positional, 1, 'newValue', 'formatEditUpdate');
@@ -9587,7 +9625,7 @@ BridgedClass _createLengthLimitingTextInputFormatterBridge() {
         D4.requireMinArgs(positional, 2, 'truncate');
         final value = D4.getRequiredArg<$dartnative_3.TextEditingValue>(positional, 0, 'value', 'truncate');
         final maxLength = D4.getRequiredArg<int>(positional, 1, 'maxLength', 'truncate');
-        return $dartnative_61.LengthLimitingTextInputFormatter.truncate(value, maxLength);
+        return $dartnative_62.LengthLimitingTextInputFormatter.truncate(value, maxLength);
       },
     },
     constructorSignatures: {
@@ -9611,15 +9649,15 @@ BridgedClass _createLengthLimitingTextInputFormatterBridge() {
 
 BridgedClass _createScrollViewBridge() {
   return BridgedClass(
-    nativeType: $dartnative_48.ScrollView,
+    nativeType: $dartnative_49.ScrollView,
     name: 'ScrollView',
-    isAssignable: (v) => v is $dartnative_48.ScrollView,
+    isAssignable: (v) => v is $dartnative_49.ScrollView,
     hierarchyDepth: 1,
     isAbstract: true,
     constructors: {
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_48.ScrollView>(target, 'ScrollView').key,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_49.ScrollView>(target, 'ScrollView').key,
     },
     getterSignatures: {
       'key': 'Key? get key',
@@ -9633,9 +9671,9 @@ BridgedClass _createScrollViewBridge() {
 
 BridgedClass _createSingleChildScrollViewBridge() {
   return BridgedClass(
-    nativeType: $dartnative_48.SingleChildScrollView,
+    nativeType: $dartnative_49.SingleChildScrollView,
     name: 'SingleChildScrollView',
-    isAssignable: (v) => v is $dartnative_48.SingleChildScrollView,
+    isAssignable: (v) => v is $dartnative_49.SingleChildScrollView,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -9645,20 +9683,20 @@ BridgedClass _createSingleChildScrollViewBridge() {
         final reverse = D4.getNamedArgWithDefault<bool>(named, 'reverse', false);
         final padding = D4.getOptionalNamedArg<$dartnative_9.EdgeInsetsGeometry?>(named, 'padding');
         final controller = D4.getOptionalNamedArg<$dartnative_3.ScrollController?>(named, 'controller');
-        final physics = D4.getOptionalNamedArg<$dartnative_48.ScrollPhysics?>(named, 'physics');
+        final physics = D4.getOptionalNamedArg<$dartnative_49.ScrollPhysics?>(named, 'physics');
         final showScrollBar = D4.getNamedArgWithDefault<bool>(named, 'showScrollBar', false);
-        return $dartnative_48.SingleChildScrollView(key: key, child: child, scrollDirection: scrollDirection, reverse: reverse, padding: padding, controller: controller, physics: physics, showScrollBar: showScrollBar);
+        return $dartnative_49.SingleChildScrollView(key: key, child: child, scrollDirection: scrollDirection, reverse: reverse, padding: padding, controller: controller, physics: physics, showScrollBar: showScrollBar);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_48.SingleChildScrollView>(target, 'SingleChildScrollView').key,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_48.SingleChildScrollView>(target, 'SingleChildScrollView').child,
-      'scrollDirection': (visitor, target) => D4.validateTarget<$dartnative_48.SingleChildScrollView>(target, 'SingleChildScrollView').scrollDirection,
-      'reverse': (visitor, target) => D4.validateTarget<$dartnative_48.SingleChildScrollView>(target, 'SingleChildScrollView').reverse,
-      'padding': (visitor, target) => D4.validateTarget<$dartnative_48.SingleChildScrollView>(target, 'SingleChildScrollView').padding,
-      'controller': (visitor, target) => (D4.validateTarget<$dartnative_48.SingleChildScrollView>(target, 'SingleChildScrollView') as dynamic).controller,
-      'physics': (visitor, target) => D4.validateTarget<$dartnative_48.SingleChildScrollView>(target, 'SingleChildScrollView').physics,
-      'showScrollBar': (visitor, target) => D4.validateTarget<$dartnative_48.SingleChildScrollView>(target, 'SingleChildScrollView').showScrollBar,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_49.SingleChildScrollView>(target, 'SingleChildScrollView').key,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_49.SingleChildScrollView>(target, 'SingleChildScrollView').child,
+      'scrollDirection': (visitor, target) => D4.validateTarget<$dartnative_49.SingleChildScrollView>(target, 'SingleChildScrollView').scrollDirection,
+      'reverse': (visitor, target) => D4.validateTarget<$dartnative_49.SingleChildScrollView>(target, 'SingleChildScrollView').reverse,
+      'padding': (visitor, target) => D4.validateTarget<$dartnative_49.SingleChildScrollView>(target, 'SingleChildScrollView').padding,
+      'controller': (visitor, target) => (D4.validateTarget<$dartnative_49.SingleChildScrollView>(target, 'SingleChildScrollView') as dynamic).controller,
+      'physics': (visitor, target) => D4.validateTarget<$dartnative_49.SingleChildScrollView>(target, 'SingleChildScrollView').physics,
+      'showScrollBar': (visitor, target) => D4.validateTarget<$dartnative_49.SingleChildScrollView>(target, 'SingleChildScrollView').showScrollBar,
     },
     constructorSignatures: {
       '': 'const SingleChildScrollView({Key? key, required Widget child, Axis scrollDirection = Axis.vertical, bool reverse = false, EdgeInsetsGeometry? padding, ScrollController? controller, ScrollPhysics? physics, bool showScrollBar = false})',
@@ -9682,9 +9720,9 @@ BridgedClass _createSingleChildScrollViewBridge() {
 
 BridgedClass _createListViewBridge() {
   return BridgedClass(
-    nativeType: $dartnative_48.ListView,
+    nativeType: $dartnative_49.ListView,
     name: 'ListView',
-    isAssignable: (v) => v is $dartnative_48.ListView,
+    isAssignable: (v) => v is $dartnative_49.ListView,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -9699,10 +9737,10 @@ BridgedClass _createListViewBridge() {
         final reverse = D4.getNamedArgWithDefault<bool>(named, 'reverse', false);
         final shrinkWrap = D4.getNamedArgWithDefault<bool>(named, 'shrinkWrap', false);
         final itemExtent = D4.getOptionalNamedArg<double?>(named, 'itemExtent');
-        final keyboardDismissBehavior = D4.getNamedArgWithDefault<$dartnative_48.ScrollViewKeyboardDismissBehavior>(named, 'keyboardDismissBehavior', $dartnative_48.ScrollViewKeyboardDismissBehavior.manual);
-        final physics = D4.getOptionalNamedArg<$dartnative_48.ScrollPhysics?>(named, 'physics');
+        final keyboardDismissBehavior = D4.getNamedArgWithDefault<$dartnative_49.ScrollViewKeyboardDismissBehavior>(named, 'keyboardDismissBehavior', $dartnative_49.ScrollViewKeyboardDismissBehavior.manual);
+        final physics = D4.getOptionalNamedArg<$dartnative_49.ScrollPhysics?>(named, 'physics');
         final showScrollBar = D4.getNamedArgWithDefault<bool>(named, 'showScrollBar', false);
-        return $dartnative_48.ListView(key: key, children: children, controller: controller, listController: listController, padding: padding, scrollDirection: scrollDirection, reverse: reverse, shrinkWrap: shrinkWrap, itemExtent: itemExtent, keyboardDismissBehavior: keyboardDismissBehavior, physics: physics, showScrollBar: showScrollBar);
+        return $dartnative_49.ListView(key: key, children: children, controller: controller, listController: listController, padding: padding, scrollDirection: scrollDirection, reverse: reverse, shrinkWrap: shrinkWrap, itemExtent: itemExtent, keyboardDismissBehavior: keyboardDismissBehavior, physics: physics, showScrollBar: showScrollBar);
       },
       'builder': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
@@ -9718,28 +9756,28 @@ BridgedClass _createListViewBridge() {
         final reverse = D4.getNamedArgWithDefault<bool>(named, 'reverse', false);
         final shrinkWrap = D4.getNamedArgWithDefault<bool>(named, 'shrinkWrap', false);
         final itemExtent = D4.getOptionalNamedArg<double?>(named, 'itemExtent');
-        final keyboardDismissBehavior = D4.getNamedArgWithDefault<$dartnative_48.ScrollViewKeyboardDismissBehavior>(named, 'keyboardDismissBehavior', $dartnative_48.ScrollViewKeyboardDismissBehavior.manual);
-        final physics = D4.getOptionalNamedArg<$dartnative_48.ScrollPhysics?>(named, 'physics');
+        final keyboardDismissBehavior = D4.getNamedArgWithDefault<$dartnative_49.ScrollViewKeyboardDismissBehavior>(named, 'keyboardDismissBehavior', $dartnative_49.ScrollViewKeyboardDismissBehavior.manual);
+        final physics = D4.getOptionalNamedArg<$dartnative_49.ScrollPhysics?>(named, 'physics');
         final showScrollBar = D4.getNamedArgWithDefault<bool>(named, 'showScrollBar', false);
-        return $dartnative_48.ListView.builder(key: key, itemCount: itemCount, itemBuilder: itemBuilderRaw == null ? null : (($dartnative_3.BuildContext p0, int p1) { return D4.extractBridgedArg<$dartnative_3.Widget>(D4.callInterpreterCallback(visitor!, itemBuilderRaw, [p0, p1]), 'callback', visitor) as $dartnative_3.Widget; }) as $dartnative_3.Widget Function($dartnative_3.BuildContext, int), controller: controller, listController: listController, padding: padding, scrollDirection: scrollDirection, reverse: reverse, shrinkWrap: shrinkWrap, itemExtent: itemExtent, keyboardDismissBehavior: keyboardDismissBehavior, physics: physics, showScrollBar: showScrollBar);
+        return $dartnative_49.ListView.builder(key: key, itemCount: itemCount, itemBuilder: itemBuilderRaw == null ? null : (($dartnative_3.BuildContext p0, int p1) { return D4.extractBridgedArg<$dartnative_3.Widget>(D4.callInterpreterCallback(visitor!, itemBuilderRaw, [p0, p1]), 'callback', visitor) as $dartnative_3.Widget; }) as $dartnative_3.Widget Function($dartnative_3.BuildContext, int), controller: controller, listController: listController, padding: padding, scrollDirection: scrollDirection, reverse: reverse, shrinkWrap: shrinkWrap, itemExtent: itemExtent, keyboardDismissBehavior: keyboardDismissBehavior, physics: physics, showScrollBar: showScrollBar);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_48.ListView>(target, 'ListView').key,
-      'children': (visitor, target) => D4.validateTarget<$dartnative_48.ListView>(target, 'ListView').children,
-      'controller': (visitor, target) => (D4.validateTarget<$dartnative_48.ListView>(target, 'ListView') as dynamic).controller,
-      'listController': (visitor, target) => D4.validateTarget<$dartnative_48.ListView>(target, 'ListView').listController,
-      'padding': (visitor, target) => D4.validateTarget<$dartnative_48.ListView>(target, 'ListView').padding,
-      'scrollDirection': (visitor, target) => D4.validateTarget<$dartnative_48.ListView>(target, 'ListView').scrollDirection,
-      'reverse': (visitor, target) => D4.validateTarget<$dartnative_48.ListView>(target, 'ListView').reverse,
-      'shrinkWrap': (visitor, target) => D4.validateTarget<$dartnative_48.ListView>(target, 'ListView').shrinkWrap,
-      'itemCount': (visitor, target) => D4.validateTarget<$dartnative_48.ListView>(target, 'ListView').itemCount,
-      'itemBuilder': (visitor, target) => D4.validateTarget<$dartnative_48.ListView>(target, 'ListView').itemBuilder,
-      'itemExtent': (visitor, target) => D4.validateTarget<$dartnative_48.ListView>(target, 'ListView').itemExtent,
-      'keyboardDismissBehavior': (visitor, target) => D4.validateTarget<$dartnative_48.ListView>(target, 'ListView').keyboardDismissBehavior,
-      'physics': (visitor, target) => D4.validateTarget<$dartnative_48.ListView>(target, 'ListView').physics,
-      'showScrollBar': (visitor, target) => D4.validateTarget<$dartnative_48.ListView>(target, 'ListView').showScrollBar,
-      'isBuilder': (visitor, target) => D4.validateTarget<$dartnative_48.ListView>(target, 'ListView').isBuilder,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_49.ListView>(target, 'ListView').key,
+      'children': (visitor, target) => D4.validateTarget<$dartnative_49.ListView>(target, 'ListView').children,
+      'controller': (visitor, target) => (D4.validateTarget<$dartnative_49.ListView>(target, 'ListView') as dynamic).controller,
+      'listController': (visitor, target) => D4.validateTarget<$dartnative_49.ListView>(target, 'ListView').listController,
+      'padding': (visitor, target) => D4.validateTarget<$dartnative_49.ListView>(target, 'ListView').padding,
+      'scrollDirection': (visitor, target) => D4.validateTarget<$dartnative_49.ListView>(target, 'ListView').scrollDirection,
+      'reverse': (visitor, target) => D4.validateTarget<$dartnative_49.ListView>(target, 'ListView').reverse,
+      'shrinkWrap': (visitor, target) => D4.validateTarget<$dartnative_49.ListView>(target, 'ListView').shrinkWrap,
+      'itemCount': (visitor, target) => D4.validateTarget<$dartnative_49.ListView>(target, 'ListView').itemCount,
+      'itemBuilder': (visitor, target) => D4.validateTarget<$dartnative_49.ListView>(target, 'ListView').itemBuilder,
+      'itemExtent': (visitor, target) => D4.validateTarget<$dartnative_49.ListView>(target, 'ListView').itemExtent,
+      'keyboardDismissBehavior': (visitor, target) => D4.validateTarget<$dartnative_49.ListView>(target, 'ListView').keyboardDismissBehavior,
+      'physics': (visitor, target) => D4.validateTarget<$dartnative_49.ListView>(target, 'ListView').physics,
+      'showScrollBar': (visitor, target) => D4.validateTarget<$dartnative_49.ListView>(target, 'ListView').showScrollBar,
+      'isBuilder': (visitor, target) => D4.validateTarget<$dartnative_49.ListView>(target, 'ListView').isBuilder,
     },
     constructorSignatures: {
       '': 'const ListView({Key? key, List<Widget>? children = const [], ScrollController? controller, ListController? listController, EdgeInsetsGeometry? padding, Axis scrollDirection = Axis.vertical, bool reverse = false, bool shrinkWrap = false, double? itemExtent, ScrollViewKeyboardDismissBehavior keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual, ScrollPhysics? physics, bool showScrollBar = false})',
@@ -9771,9 +9809,9 @@ BridgedClass _createListViewBridge() {
 
 BridgedClass _createScrollPhysicsBridge() {
   return BridgedClass(
-    nativeType: $dartnative_48.ScrollPhysics,
+    nativeType: $dartnative_49.ScrollPhysics,
     name: 'ScrollPhysics',
-    isAssignable: (v) => v is $dartnative_48.ScrollPhysics,
+    isAssignable: (v) => v is $dartnative_49.ScrollPhysics,
     isAbstract: true,
     constructors: {
     },
@@ -9786,13 +9824,13 @@ BridgedClass _createScrollPhysicsBridge() {
 
 BridgedClass _createBouncingScrollPhysicsBridge() {
   return BridgedClass(
-    nativeType: $dartnative_48.BouncingScrollPhysics,
+    nativeType: $dartnative_49.BouncingScrollPhysics,
     name: 'BouncingScrollPhysics',
-    isAssignable: (v) => v is $dartnative_48.BouncingScrollPhysics,
+    isAssignable: (v) => v is $dartnative_49.BouncingScrollPhysics,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        return $dartnative_48.BouncingScrollPhysics();
+        return $dartnative_49.BouncingScrollPhysics();
       },
     },
     constructorSignatures: {
@@ -9807,13 +9845,13 @@ BridgedClass _createBouncingScrollPhysicsBridge() {
 
 BridgedClass _createClampingScrollPhysicsBridge() {
   return BridgedClass(
-    nativeType: $dartnative_48.ClampingScrollPhysics,
+    nativeType: $dartnative_49.ClampingScrollPhysics,
     name: 'ClampingScrollPhysics',
-    isAssignable: (v) => v is $dartnative_48.ClampingScrollPhysics,
+    isAssignable: (v) => v is $dartnative_49.ClampingScrollPhysics,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        return $dartnative_48.ClampingScrollPhysics();
+        return $dartnative_49.ClampingScrollPhysics();
       },
     },
     constructorSignatures: {
@@ -9828,13 +9866,13 @@ BridgedClass _createClampingScrollPhysicsBridge() {
 
 BridgedClass _createNeverScrollableScrollPhysicsBridge() {
   return BridgedClass(
-    nativeType: $dartnative_48.NeverScrollableScrollPhysics,
+    nativeType: $dartnative_49.NeverScrollableScrollPhysics,
     name: 'NeverScrollableScrollPhysics',
-    isAssignable: (v) => v is $dartnative_48.NeverScrollableScrollPhysics,
+    isAssignable: (v) => v is $dartnative_49.NeverScrollableScrollPhysics,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        return $dartnative_48.NeverScrollableScrollPhysics();
+        return $dartnative_49.NeverScrollableScrollPhysics();
       },
     },
     constructorSignatures: {
@@ -9849,13 +9887,13 @@ BridgedClass _createNeverScrollableScrollPhysicsBridge() {
 
 BridgedClass _createAlwaysScrollableScrollPhysicsBridge() {
   return BridgedClass(
-    nativeType: $dartnative_48.AlwaysScrollableScrollPhysics,
+    nativeType: $dartnative_49.AlwaysScrollableScrollPhysics,
     name: 'AlwaysScrollableScrollPhysics',
-    isAssignable: (v) => v is $dartnative_48.AlwaysScrollableScrollPhysics,
+    isAssignable: (v) => v is $dartnative_49.AlwaysScrollableScrollPhysics,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        return $dartnative_48.AlwaysScrollableScrollPhysics();
+        return $dartnative_49.AlwaysScrollableScrollPhysics();
       },
     },
     constructorSignatures: {
@@ -9870,9 +9908,9 @@ BridgedClass _createAlwaysScrollableScrollPhysicsBridge() {
 
 BridgedClass _createSliverChildDelegateBridge() {
   return BridgedClass(
-    nativeType: $dartnative_54.SliverChildDelegate,
+    nativeType: $dartnative_55.SliverChildDelegate,
     name: 'SliverChildDelegate',
-    isAssignable: (v) => v is $dartnative_54.SliverChildDelegate,
+    isAssignable: (v) => v is $dartnative_55.SliverChildDelegate,
     isAbstract: true,
     constructors: {
     },
@@ -9885,9 +9923,9 @@ BridgedClass _createSliverChildDelegateBridge() {
 
 BridgedClass _createSliverChildBuilderDelegateBridge() {
   return BridgedClass(
-    nativeType: $dartnative_54.SliverChildBuilderDelegate,
+    nativeType: $dartnative_55.SliverChildBuilderDelegate,
     name: 'SliverChildBuilderDelegate',
-    isAssignable: (v) => v is $dartnative_54.SliverChildBuilderDelegate,
+    isAssignable: (v) => v is $dartnative_55.SliverChildBuilderDelegate,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -9900,15 +9938,15 @@ BridgedClass _createSliverChildBuilderDelegateBridge() {
         final addAutomaticKeepAlives = D4.getNamedArgWithDefault<bool>(named, 'addAutomaticKeepAlives', true);
         final addRepaintBoundaries = D4.getNamedArgWithDefault<bool>(named, 'addRepaintBoundaries', true);
         final addSemanticIndexes = D4.getNamedArgWithDefault<bool>(named, 'addSemanticIndexes', true);
-        return $dartnative_54.SliverChildBuilderDelegate((($dartnative_3.BuildContext p0, int p1) { return D4.extractBridgedArg<$dartnative_3.Widget>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]), 'callback', visitor) as $dartnative_3.Widget; }) as $dartnative_3.Widget Function($dartnative_3.BuildContext, int), childCount: childCount, addAutomaticKeepAlives: addAutomaticKeepAlives, addRepaintBoundaries: addRepaintBoundaries, addSemanticIndexes: addSemanticIndexes);
+        return $dartnative_55.SliverChildBuilderDelegate((($dartnative_3.BuildContext p0, int p1) { return D4.extractBridgedArg<$dartnative_3.Widget>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]), 'callback', visitor) as $dartnative_3.Widget; }) as $dartnative_3.Widget Function($dartnative_3.BuildContext, int), childCount: childCount, addAutomaticKeepAlives: addAutomaticKeepAlives, addRepaintBoundaries: addRepaintBoundaries, addSemanticIndexes: addSemanticIndexes);
       },
     },
     getters: {
-      'builder': (visitor, target) => D4.validateTarget<$dartnative_54.SliverChildBuilderDelegate>(target, 'SliverChildBuilderDelegate').builder,
-      'childCount': (visitor, target) => D4.validateTarget<$dartnative_54.SliverChildBuilderDelegate>(target, 'SliverChildBuilderDelegate').childCount,
-      'addAutomaticKeepAlives': (visitor, target) => D4.validateTarget<$dartnative_54.SliverChildBuilderDelegate>(target, 'SliverChildBuilderDelegate').addAutomaticKeepAlives,
-      'addRepaintBoundaries': (visitor, target) => D4.validateTarget<$dartnative_54.SliverChildBuilderDelegate>(target, 'SliverChildBuilderDelegate').addRepaintBoundaries,
-      'addSemanticIndexes': (visitor, target) => D4.validateTarget<$dartnative_54.SliverChildBuilderDelegate>(target, 'SliverChildBuilderDelegate').addSemanticIndexes,
+      'builder': (visitor, target) => D4.validateTarget<$dartnative_55.SliverChildBuilderDelegate>(target, 'SliverChildBuilderDelegate').builder,
+      'childCount': (visitor, target) => D4.validateTarget<$dartnative_55.SliverChildBuilderDelegate>(target, 'SliverChildBuilderDelegate').childCount,
+      'addAutomaticKeepAlives': (visitor, target) => D4.validateTarget<$dartnative_55.SliverChildBuilderDelegate>(target, 'SliverChildBuilderDelegate').addAutomaticKeepAlives,
+      'addRepaintBoundaries': (visitor, target) => D4.validateTarget<$dartnative_55.SliverChildBuilderDelegate>(target, 'SliverChildBuilderDelegate').addRepaintBoundaries,
+      'addSemanticIndexes': (visitor, target) => D4.validateTarget<$dartnative_55.SliverChildBuilderDelegate>(target, 'SliverChildBuilderDelegate').addSemanticIndexes,
     },
     constructorSignatures: {
       '': 'const SliverChildBuilderDelegate(IndexedWidgetBuilder builder, {int? childCount, bool addAutomaticKeepAlives = true, bool addRepaintBoundaries = true, bool addSemanticIndexes = true})',
@@ -9929,9 +9967,9 @@ BridgedClass _createSliverChildBuilderDelegateBridge() {
 
 BridgedClass _createSliverChildListDelegateBridge() {
   return BridgedClass(
-    nativeType: $dartnative_54.SliverChildListDelegate,
+    nativeType: $dartnative_55.SliverChildListDelegate,
     name: 'SliverChildListDelegate',
-    isAssignable: (v) => v is $dartnative_54.SliverChildListDelegate,
+    isAssignable: (v) => v is $dartnative_55.SliverChildListDelegate,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -9943,14 +9981,14 @@ BridgedClass _createSliverChildListDelegateBridge() {
         final addAutomaticKeepAlives = D4.getNamedArgWithDefault<bool>(named, 'addAutomaticKeepAlives', true);
         final addRepaintBoundaries = D4.getNamedArgWithDefault<bool>(named, 'addRepaintBoundaries', true);
         final addSemanticIndexes = D4.getNamedArgWithDefault<bool>(named, 'addSemanticIndexes', true);
-        return $dartnative_54.SliverChildListDelegate(children, addAutomaticKeepAlives: addAutomaticKeepAlives, addRepaintBoundaries: addRepaintBoundaries, addSemanticIndexes: addSemanticIndexes);
+        return $dartnative_55.SliverChildListDelegate(children, addAutomaticKeepAlives: addAutomaticKeepAlives, addRepaintBoundaries: addRepaintBoundaries, addSemanticIndexes: addSemanticIndexes);
       },
     },
     getters: {
-      'children': (visitor, target) => D4.validateTarget<$dartnative_54.SliverChildListDelegate>(target, 'SliverChildListDelegate').children,
-      'addAutomaticKeepAlives': (visitor, target) => D4.validateTarget<$dartnative_54.SliverChildListDelegate>(target, 'SliverChildListDelegate').addAutomaticKeepAlives,
-      'addRepaintBoundaries': (visitor, target) => D4.validateTarget<$dartnative_54.SliverChildListDelegate>(target, 'SliverChildListDelegate').addRepaintBoundaries,
-      'addSemanticIndexes': (visitor, target) => D4.validateTarget<$dartnative_54.SliverChildListDelegate>(target, 'SliverChildListDelegate').addSemanticIndexes,
+      'children': (visitor, target) => D4.validateTarget<$dartnative_55.SliverChildListDelegate>(target, 'SliverChildListDelegate').children,
+      'addAutomaticKeepAlives': (visitor, target) => D4.validateTarget<$dartnative_55.SliverChildListDelegate>(target, 'SliverChildListDelegate').addAutomaticKeepAlives,
+      'addRepaintBoundaries': (visitor, target) => D4.validateTarget<$dartnative_55.SliverChildListDelegate>(target, 'SliverChildListDelegate').addRepaintBoundaries,
+      'addSemanticIndexes': (visitor, target) => D4.validateTarget<$dartnative_55.SliverChildListDelegate>(target, 'SliverChildListDelegate').addSemanticIndexes,
     },
     constructorSignatures: {
       '': 'const SliverChildListDelegate(List<Widget> children, {bool addAutomaticKeepAlives = true, bool addRepaintBoundaries = true, bool addSemanticIndexes = true})',
@@ -9970,9 +10008,9 @@ BridgedClass _createSliverChildListDelegateBridge() {
 
 BridgedClass _createSliverGridDelegateBridge() {
   return BridgedClass(
-    nativeType: $dartnative_54.SliverGridDelegate,
+    nativeType: $dartnative_55.SliverGridDelegate,
     name: 'SliverGridDelegate',
-    isAssignable: (v) => v is $dartnative_54.SliverGridDelegate,
+    isAssignable: (v) => v is $dartnative_55.SliverGridDelegate,
     isAbstract: true,
     constructors: {
     },
@@ -9985,9 +10023,9 @@ BridgedClass _createSliverGridDelegateBridge() {
 
 BridgedClass _createSliverGridDelegateWithFixedCrossAxisCountBridge() {
   return BridgedClass(
-    nativeType: $dartnative_54.SliverGridDelegateWithFixedCrossAxisCount,
+    nativeType: $dartnative_55.SliverGridDelegateWithFixedCrossAxisCount,
     name: 'SliverGridDelegateWithFixedCrossAxisCount',
-    isAssignable: (v) => v is $dartnative_54.SliverGridDelegateWithFixedCrossAxisCount,
+    isAssignable: (v) => v is $dartnative_55.SliverGridDelegateWithFixedCrossAxisCount,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -9996,15 +10034,15 @@ BridgedClass _createSliverGridDelegateWithFixedCrossAxisCountBridge() {
         final crossAxisSpacing = D4.getNamedArgWithDefault<double>(named, 'crossAxisSpacing', 0.0);
         final childAspectRatio = D4.getNamedArgWithDefault<double>(named, 'childAspectRatio', 1.0);
         final mainAxisExtent = D4.getOptionalNamedArg<double?>(named, 'mainAxisExtent');
-        return $dartnative_54.SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: crossAxisCount, mainAxisSpacing: mainAxisSpacing, crossAxisSpacing: crossAxisSpacing, childAspectRatio: childAspectRatio, mainAxisExtent: mainAxisExtent);
+        return $dartnative_55.SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: crossAxisCount, mainAxisSpacing: mainAxisSpacing, crossAxisSpacing: crossAxisSpacing, childAspectRatio: childAspectRatio, mainAxisExtent: mainAxisExtent);
       },
     },
     getters: {
-      'crossAxisCount': (visitor, target) => D4.validateTarget<$dartnative_54.SliverGridDelegateWithFixedCrossAxisCount>(target, 'SliverGridDelegateWithFixedCrossAxisCount').crossAxisCount,
-      'mainAxisSpacing': (visitor, target) => D4.validateTarget<$dartnative_54.SliverGridDelegateWithFixedCrossAxisCount>(target, 'SliverGridDelegateWithFixedCrossAxisCount').mainAxisSpacing,
-      'crossAxisSpacing': (visitor, target) => D4.validateTarget<$dartnative_54.SliverGridDelegateWithFixedCrossAxisCount>(target, 'SliverGridDelegateWithFixedCrossAxisCount').crossAxisSpacing,
-      'childAspectRatio': (visitor, target) => D4.validateTarget<$dartnative_54.SliverGridDelegateWithFixedCrossAxisCount>(target, 'SliverGridDelegateWithFixedCrossAxisCount').childAspectRatio,
-      'mainAxisExtent': (visitor, target) => D4.validateTarget<$dartnative_54.SliverGridDelegateWithFixedCrossAxisCount>(target, 'SliverGridDelegateWithFixedCrossAxisCount').mainAxisExtent,
+      'crossAxisCount': (visitor, target) => D4.validateTarget<$dartnative_55.SliverGridDelegateWithFixedCrossAxisCount>(target, 'SliverGridDelegateWithFixedCrossAxisCount').crossAxisCount,
+      'mainAxisSpacing': (visitor, target) => D4.validateTarget<$dartnative_55.SliverGridDelegateWithFixedCrossAxisCount>(target, 'SliverGridDelegateWithFixedCrossAxisCount').mainAxisSpacing,
+      'crossAxisSpacing': (visitor, target) => D4.validateTarget<$dartnative_55.SliverGridDelegateWithFixedCrossAxisCount>(target, 'SliverGridDelegateWithFixedCrossAxisCount').crossAxisSpacing,
+      'childAspectRatio': (visitor, target) => D4.validateTarget<$dartnative_55.SliverGridDelegateWithFixedCrossAxisCount>(target, 'SliverGridDelegateWithFixedCrossAxisCount').childAspectRatio,
+      'mainAxisExtent': (visitor, target) => D4.validateTarget<$dartnative_55.SliverGridDelegateWithFixedCrossAxisCount>(target, 'SliverGridDelegateWithFixedCrossAxisCount').mainAxisExtent,
     },
     constructorSignatures: {
       '': 'const SliverGridDelegateWithFixedCrossAxisCount({required int crossAxisCount, double mainAxisSpacing = 0.0, double crossAxisSpacing = 0.0, double childAspectRatio = 1.0, double? mainAxisExtent})',
@@ -10025,9 +10063,9 @@ BridgedClass _createSliverGridDelegateWithFixedCrossAxisCountBridge() {
 
 BridgedClass _createSliverGridDelegateWithMaxCrossAxisExtentBridge() {
   return BridgedClass(
-    nativeType: $dartnative_54.SliverGridDelegateWithMaxCrossAxisExtent,
+    nativeType: $dartnative_55.SliverGridDelegateWithMaxCrossAxisExtent,
     name: 'SliverGridDelegateWithMaxCrossAxisExtent',
-    isAssignable: (v) => v is $dartnative_54.SliverGridDelegateWithMaxCrossAxisExtent,
+    isAssignable: (v) => v is $dartnative_55.SliverGridDelegateWithMaxCrossAxisExtent,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -10036,15 +10074,15 @@ BridgedClass _createSliverGridDelegateWithMaxCrossAxisExtentBridge() {
         final crossAxisSpacing = D4.getNamedArgWithDefault<double>(named, 'crossAxisSpacing', 0.0);
         final childAspectRatio = D4.getNamedArgWithDefault<double>(named, 'childAspectRatio', 1.0);
         final mainAxisExtent = D4.getOptionalNamedArg<double?>(named, 'mainAxisExtent');
-        return $dartnative_54.SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: maxCrossAxisExtent, mainAxisSpacing: mainAxisSpacing, crossAxisSpacing: crossAxisSpacing, childAspectRatio: childAspectRatio, mainAxisExtent: mainAxisExtent);
+        return $dartnative_55.SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: maxCrossAxisExtent, mainAxisSpacing: mainAxisSpacing, crossAxisSpacing: crossAxisSpacing, childAspectRatio: childAspectRatio, mainAxisExtent: mainAxisExtent);
       },
     },
     getters: {
-      'maxCrossAxisExtent': (visitor, target) => D4.validateTarget<$dartnative_54.SliverGridDelegateWithMaxCrossAxisExtent>(target, 'SliverGridDelegateWithMaxCrossAxisExtent').maxCrossAxisExtent,
-      'mainAxisSpacing': (visitor, target) => D4.validateTarget<$dartnative_54.SliverGridDelegateWithMaxCrossAxisExtent>(target, 'SliverGridDelegateWithMaxCrossAxisExtent').mainAxisSpacing,
-      'crossAxisSpacing': (visitor, target) => D4.validateTarget<$dartnative_54.SliverGridDelegateWithMaxCrossAxisExtent>(target, 'SliverGridDelegateWithMaxCrossAxisExtent').crossAxisSpacing,
-      'childAspectRatio': (visitor, target) => D4.validateTarget<$dartnative_54.SliverGridDelegateWithMaxCrossAxisExtent>(target, 'SliverGridDelegateWithMaxCrossAxisExtent').childAspectRatio,
-      'mainAxisExtent': (visitor, target) => D4.validateTarget<$dartnative_54.SliverGridDelegateWithMaxCrossAxisExtent>(target, 'SliverGridDelegateWithMaxCrossAxisExtent').mainAxisExtent,
+      'maxCrossAxisExtent': (visitor, target) => D4.validateTarget<$dartnative_55.SliverGridDelegateWithMaxCrossAxisExtent>(target, 'SliverGridDelegateWithMaxCrossAxisExtent').maxCrossAxisExtent,
+      'mainAxisSpacing': (visitor, target) => D4.validateTarget<$dartnative_55.SliverGridDelegateWithMaxCrossAxisExtent>(target, 'SliverGridDelegateWithMaxCrossAxisExtent').mainAxisSpacing,
+      'crossAxisSpacing': (visitor, target) => D4.validateTarget<$dartnative_55.SliverGridDelegateWithMaxCrossAxisExtent>(target, 'SliverGridDelegateWithMaxCrossAxisExtent').crossAxisSpacing,
+      'childAspectRatio': (visitor, target) => D4.validateTarget<$dartnative_55.SliverGridDelegateWithMaxCrossAxisExtent>(target, 'SliverGridDelegateWithMaxCrossAxisExtent').childAspectRatio,
+      'mainAxisExtent': (visitor, target) => D4.validateTarget<$dartnative_55.SliverGridDelegateWithMaxCrossAxisExtent>(target, 'SliverGridDelegateWithMaxCrossAxisExtent').mainAxisExtent,
     },
     constructorSignatures: {
       '': 'const SliverGridDelegateWithMaxCrossAxisExtent({required double maxCrossAxisExtent, double mainAxisSpacing = 0.0, double crossAxisSpacing = 0.0, double childAspectRatio = 1.0, double? mainAxisExtent})',
@@ -10065,9 +10103,9 @@ BridgedClass _createSliverGridDelegateWithMaxCrossAxisExtentBridge() {
 
 BridgedClass _createCustomScrollViewBridge() {
   return BridgedClass(
-    nativeType: $dartnative_54.CustomScrollView,
+    nativeType: $dartnative_55.CustomScrollView,
     name: 'CustomScrollView',
-    isAssignable: (v) => v is $dartnative_54.CustomScrollView,
+    isAssignable: (v) => v is $dartnative_55.CustomScrollView,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -10077,28 +10115,28 @@ BridgedClass _createCustomScrollViewBridge() {
             : const <$dartnative_3.Widget>[];
         final controller = D4.getOptionalNamedArg<$dartnative_3.ScrollController?>(named, 'controller');
         final listController = D4.getOptionalNamedArg<$dartnative_3.ListController?>(named, 'listController');
-        final physics = D4.getOptionalNamedArg<$dartnative_48.ScrollPhysics?>(named, 'physics');
+        final physics = D4.getOptionalNamedArg<$dartnative_49.ScrollPhysics?>(named, 'physics');
         final scrollDirection = D4.getNamedArgWithDefault<$dartnative_29.Axis>(named, 'scrollDirection', $dartnative_29.Axis.vertical);
         final reverse = D4.getNamedArgWithDefault<bool>(named, 'reverse', false);
         final shrinkWrap = D4.getNamedArgWithDefault<bool>(named, 'shrinkWrap', false);
         final padding = D4.getOptionalNamedArg<$dartnative_9.EdgeInsetsGeometry?>(named, 'padding');
-        final keyboardDismissBehavior = D4.getNamedArgWithDefault<$dartnative_48.ScrollViewKeyboardDismissBehavior>(named, 'keyboardDismissBehavior', $dartnative_48.ScrollViewKeyboardDismissBehavior.manual);
+        final keyboardDismissBehavior = D4.getNamedArgWithDefault<$dartnative_49.ScrollViewKeyboardDismissBehavior>(named, 'keyboardDismissBehavior', $dartnative_49.ScrollViewKeyboardDismissBehavior.manual);
         final showScrollBar = D4.getNamedArgWithDefault<bool>(named, 'showScrollBar', false);
-        return $dartnative_54.CustomScrollView(key: key, slivers: slivers, controller: controller, listController: listController, physics: physics, scrollDirection: scrollDirection, reverse: reverse, shrinkWrap: shrinkWrap, padding: padding, keyboardDismissBehavior: keyboardDismissBehavior, showScrollBar: showScrollBar);
+        return $dartnative_55.CustomScrollView(key: key, slivers: slivers, controller: controller, listController: listController, physics: physics, scrollDirection: scrollDirection, reverse: reverse, shrinkWrap: shrinkWrap, padding: padding, keyboardDismissBehavior: keyboardDismissBehavior, showScrollBar: showScrollBar);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_54.CustomScrollView>(target, 'CustomScrollView').key,
-      'slivers': (visitor, target) => D4.validateTarget<$dartnative_54.CustomScrollView>(target, 'CustomScrollView').slivers,
-      'controller': (visitor, target) => (D4.validateTarget<$dartnative_54.CustomScrollView>(target, 'CustomScrollView') as dynamic).controller,
-      'listController': (visitor, target) => D4.validateTarget<$dartnative_54.CustomScrollView>(target, 'CustomScrollView').listController,
-      'physics': (visitor, target) => D4.validateTarget<$dartnative_54.CustomScrollView>(target, 'CustomScrollView').physics,
-      'scrollDirection': (visitor, target) => D4.validateTarget<$dartnative_54.CustomScrollView>(target, 'CustomScrollView').scrollDirection,
-      'reverse': (visitor, target) => D4.validateTarget<$dartnative_54.CustomScrollView>(target, 'CustomScrollView').reverse,
-      'shrinkWrap': (visitor, target) => D4.validateTarget<$dartnative_54.CustomScrollView>(target, 'CustomScrollView').shrinkWrap,
-      'padding': (visitor, target) => D4.validateTarget<$dartnative_54.CustomScrollView>(target, 'CustomScrollView').padding,
-      'keyboardDismissBehavior': (visitor, target) => D4.validateTarget<$dartnative_54.CustomScrollView>(target, 'CustomScrollView').keyboardDismissBehavior,
-      'showScrollBar': (visitor, target) => D4.validateTarget<$dartnative_54.CustomScrollView>(target, 'CustomScrollView').showScrollBar,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_55.CustomScrollView>(target, 'CustomScrollView').key,
+      'slivers': (visitor, target) => D4.validateTarget<$dartnative_55.CustomScrollView>(target, 'CustomScrollView').slivers,
+      'controller': (visitor, target) => (D4.validateTarget<$dartnative_55.CustomScrollView>(target, 'CustomScrollView') as dynamic).controller,
+      'listController': (visitor, target) => D4.validateTarget<$dartnative_55.CustomScrollView>(target, 'CustomScrollView').listController,
+      'physics': (visitor, target) => D4.validateTarget<$dartnative_55.CustomScrollView>(target, 'CustomScrollView').physics,
+      'scrollDirection': (visitor, target) => D4.validateTarget<$dartnative_55.CustomScrollView>(target, 'CustomScrollView').scrollDirection,
+      'reverse': (visitor, target) => D4.validateTarget<$dartnative_55.CustomScrollView>(target, 'CustomScrollView').reverse,
+      'shrinkWrap': (visitor, target) => D4.validateTarget<$dartnative_55.CustomScrollView>(target, 'CustomScrollView').shrinkWrap,
+      'padding': (visitor, target) => D4.validateTarget<$dartnative_55.CustomScrollView>(target, 'CustomScrollView').padding,
+      'keyboardDismissBehavior': (visitor, target) => D4.validateTarget<$dartnative_55.CustomScrollView>(target, 'CustomScrollView').keyboardDismissBehavior,
+      'showScrollBar': (visitor, target) => D4.validateTarget<$dartnative_55.CustomScrollView>(target, 'CustomScrollView').showScrollBar,
     },
     constructorSignatures: {
       '': 'const CustomScrollView({Key? key, List<Widget> slivers = const [], ScrollController? controller, ListController? listController, ScrollPhysics? physics, Axis scrollDirection = Axis.vertical, bool reverse = false, bool shrinkWrap = false, EdgeInsetsGeometry? padding, ScrollViewKeyboardDismissBehavior keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual, bool showScrollBar = false})',
@@ -10125,15 +10163,15 @@ BridgedClass _createCustomScrollViewBridge() {
 
 BridgedClass _createSliverListBridge() {
   return BridgedClass(
-    nativeType: $dartnative_54.SliverList,
+    nativeType: $dartnative_55.SliverList,
     name: 'SliverList',
-    isAssignable: (v) => v is $dartnative_54.SliverList,
+    isAssignable: (v) => v is $dartnative_55.SliverList,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
-        final delegate = D4.getRequiredNamedArg<$dartnative_54.SliverChildDelegate>(named, 'delegate', 'SliverList');
-        return $dartnative_54.SliverList(key: key, delegate: delegate);
+        final delegate = D4.getRequiredNamedArg<$dartnative_55.SliverChildDelegate>(named, 'delegate', 'SliverList');
+        return $dartnative_55.SliverList(key: key, delegate: delegate);
       },
       'builder': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
@@ -10142,7 +10180,7 @@ BridgedClass _createSliverListBridge() {
         }
         final itemBuilderRaw = named['itemBuilder'];
         final itemCount = D4.getOptionalNamedArg<int?>(named, 'itemCount');
-        return $dartnative_54.SliverList.builder(key: key, itemBuilder: (($dartnative_3.BuildContext p0, int p1) { return D4.extractBridgedArg<$dartnative_3.Widget>(D4.callInterpreterCallback(visitor!, itemBuilderRaw, [p0, p1]), 'callback', visitor) as $dartnative_3.Widget; }) as $dartnative_3.Widget Function($dartnative_3.BuildContext, int), itemCount: itemCount);
+        return $dartnative_55.SliverList.builder(key: key, itemBuilder: (($dartnative_3.BuildContext p0, int p1) { return D4.extractBridgedArg<$dartnative_3.Widget>(D4.callInterpreterCallback(visitor!, itemBuilderRaw, [p0, p1]), 'callback', visitor) as $dartnative_3.Widget; }) as $dartnative_3.Widget Function($dartnative_3.BuildContext, int), itemCount: itemCount);
       },
       'list': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
@@ -10150,12 +10188,12 @@ BridgedClass _createSliverListBridge() {
           throw ArgumentError('SliverList: Missing required named argument "children"');
         }
         final children = D4.coerceList<$dartnative_3.Widget>(named['children'], 'children');
-        return $dartnative_54.SliverList.list(key: key, children: children);
+        return $dartnative_55.SliverList.list(key: key, children: children);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_54.SliverList>(target, 'SliverList').key,
-      'delegate': (visitor, target) => D4.validateTarget<$dartnative_54.SliverList>(target, 'SliverList').delegate,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_55.SliverList>(target, 'SliverList').key,
+      'delegate': (visitor, target) => D4.validateTarget<$dartnative_55.SliverList>(target, 'SliverList').delegate,
     },
     constructorSignatures: {
       '': 'const SliverList({Key? key, required SliverChildDelegate delegate})',
@@ -10175,16 +10213,16 @@ BridgedClass _createSliverListBridge() {
 
 BridgedClass _createSliverGridBridge() {
   return BridgedClass(
-    nativeType: $dartnative_54.SliverGrid,
+    nativeType: $dartnative_55.SliverGrid,
     name: 'SliverGrid',
-    isAssignable: (v) => v is $dartnative_54.SliverGrid,
+    isAssignable: (v) => v is $dartnative_55.SliverGrid,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
-        final delegate = D4.getRequiredNamedArg<$dartnative_54.SliverChildDelegate>(named, 'delegate', 'SliverGrid');
-        final gridDelegate = D4.getRequiredNamedArg<$dartnative_54.SliverGridDelegate>(named, 'gridDelegate', 'SliverGrid');
-        return $dartnative_54.SliverGrid(key: key, delegate: delegate, gridDelegate: gridDelegate);
+        final delegate = D4.getRequiredNamedArg<$dartnative_55.SliverChildDelegate>(named, 'delegate', 'SliverGrid');
+        final gridDelegate = D4.getRequiredNamedArg<$dartnative_55.SliverGridDelegate>(named, 'gridDelegate', 'SliverGrid');
+        return $dartnative_55.SliverGrid(key: key, delegate: delegate, gridDelegate: gridDelegate);
       },
       'count': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
@@ -10196,7 +10234,7 @@ BridgedClass _createSliverGridBridge() {
           throw ArgumentError('SliverGrid: Missing required named argument "children"');
         }
         final children = D4.coerceList<$dartnative_3.Widget>(named['children'], 'children');
-        return $dartnative_54.SliverGrid.count(key: key, crossAxisCount: crossAxisCount, mainAxisSpacing: mainAxisSpacing, crossAxisSpacing: crossAxisSpacing, childAspectRatio: childAspectRatio, children: children);
+        return $dartnative_55.SliverGrid.count(key: key, crossAxisCount: crossAxisCount, mainAxisSpacing: mainAxisSpacing, crossAxisSpacing: crossAxisSpacing, childAspectRatio: childAspectRatio, children: children);
       },
       'extent': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
@@ -10208,13 +10246,13 @@ BridgedClass _createSliverGridBridge() {
           throw ArgumentError('SliverGrid: Missing required named argument "children"');
         }
         final children = D4.coerceList<$dartnative_3.Widget>(named['children'], 'children');
-        return $dartnative_54.SliverGrid.extent(key: key, maxCrossAxisExtent: maxCrossAxisExtent, mainAxisSpacing: mainAxisSpacing, crossAxisSpacing: crossAxisSpacing, childAspectRatio: childAspectRatio, children: children);
+        return $dartnative_55.SliverGrid.extent(key: key, maxCrossAxisExtent: maxCrossAxisExtent, mainAxisSpacing: mainAxisSpacing, crossAxisSpacing: crossAxisSpacing, childAspectRatio: childAspectRatio, children: children);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_54.SliverGrid>(target, 'SliverGrid').key,
-      'delegate': (visitor, target) => D4.validateTarget<$dartnative_54.SliverGrid>(target, 'SliverGrid').delegate,
-      'gridDelegate': (visitor, target) => D4.validateTarget<$dartnative_54.SliverGrid>(target, 'SliverGrid').gridDelegate,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_55.SliverGrid>(target, 'SliverGrid').key,
+      'delegate': (visitor, target) => D4.validateTarget<$dartnative_55.SliverGrid>(target, 'SliverGrid').delegate,
+      'gridDelegate': (visitor, target) => D4.validateTarget<$dartnative_55.SliverGrid>(target, 'SliverGrid').gridDelegate,
     },
     constructorSignatures: {
       '': 'const SliverGrid({Key? key, required SliverChildDelegate delegate, required SliverGridDelegate gridDelegate})',
@@ -10235,20 +10273,20 @@ BridgedClass _createSliverGridBridge() {
 
 BridgedClass _createSliverToBoxAdapterBridge() {
   return BridgedClass(
-    nativeType: $dartnative_54.SliverToBoxAdapter,
+    nativeType: $dartnative_55.SliverToBoxAdapter,
     name: 'SliverToBoxAdapter',
-    isAssignable: (v) => v is $dartnative_54.SliverToBoxAdapter,
+    isAssignable: (v) => v is $dartnative_55.SliverToBoxAdapter,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
         final child = D4.getOptionalNamedArg<$dartnative_3.Widget?>(named, 'child');
-        return $dartnative_54.SliverToBoxAdapter(key: key, child: child);
+        return $dartnative_55.SliverToBoxAdapter(key: key, child: child);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_54.SliverToBoxAdapter>(target, 'SliverToBoxAdapter').key,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_54.SliverToBoxAdapter>(target, 'SliverToBoxAdapter').child,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_55.SliverToBoxAdapter>(target, 'SliverToBoxAdapter').key,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_55.SliverToBoxAdapter>(target, 'SliverToBoxAdapter').child,
     },
     constructorSignatures: {
       '': 'const SliverToBoxAdapter({Key? key, Widget? child})',
@@ -10266,22 +10304,22 @@ BridgedClass _createSliverToBoxAdapterBridge() {
 
 BridgedClass _createSliverPaddingBridge() {
   return BridgedClass(
-    nativeType: $dartnative_54.SliverPadding,
+    nativeType: $dartnative_55.SliverPadding,
     name: 'SliverPadding',
-    isAssignable: (v) => v is $dartnative_54.SliverPadding,
+    isAssignable: (v) => v is $dartnative_55.SliverPadding,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
         final padding = D4.getRequiredNamedArg<$dartnative_9.EdgeInsetsGeometry>(named, 'padding', 'SliverPadding');
         final sliver = D4.getRequiredNamedArg<$dartnative_3.Widget>(named, 'sliver', 'SliverPadding');
-        return $dartnative_54.SliverPadding(key: key, padding: padding, sliver: sliver);
+        return $dartnative_55.SliverPadding(key: key, padding: padding, sliver: sliver);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_54.SliverPadding>(target, 'SliverPadding').key,
-      'padding': (visitor, target) => D4.validateTarget<$dartnative_54.SliverPadding>(target, 'SliverPadding').padding,
-      'sliver': (visitor, target) => D4.validateTarget<$dartnative_54.SliverPadding>(target, 'SliverPadding').sliver,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_55.SliverPadding>(target, 'SliverPadding').key,
+      'padding': (visitor, target) => D4.validateTarget<$dartnative_55.SliverPadding>(target, 'SliverPadding').padding,
+      'sliver': (visitor, target) => D4.validateTarget<$dartnative_55.SliverPadding>(target, 'SliverPadding').sliver,
     },
     constructorSignatures: {
       '': 'const SliverPadding({Key? key, required EdgeInsetsGeometry padding, required Widget sliver})',
@@ -10300,9 +10338,9 @@ BridgedClass _createSliverPaddingBridge() {
 
 BridgedClass _createSliverFillRemainingBridge() {
   return BridgedClass(
-    nativeType: $dartnative_54.SliverFillRemaining,
+    nativeType: $dartnative_55.SliverFillRemaining,
     name: 'SliverFillRemaining',
-    isAssignable: (v) => v is $dartnative_54.SliverFillRemaining,
+    isAssignable: (v) => v is $dartnative_55.SliverFillRemaining,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -10310,14 +10348,14 @@ BridgedClass _createSliverFillRemainingBridge() {
         final child = D4.getOptionalNamedArg<$dartnative_3.Widget?>(named, 'child');
         final hasScrollBody = D4.getNamedArgWithDefault<bool>(named, 'hasScrollBody', true);
         final fillOverscroll = D4.getNamedArgWithDefault<bool>(named, 'fillOverscroll', false);
-        return $dartnative_54.SliverFillRemaining(key: key, child: child, hasScrollBody: hasScrollBody, fillOverscroll: fillOverscroll);
+        return $dartnative_55.SliverFillRemaining(key: key, child: child, hasScrollBody: hasScrollBody, fillOverscroll: fillOverscroll);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_54.SliverFillRemaining>(target, 'SliverFillRemaining').key,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_54.SliverFillRemaining>(target, 'SliverFillRemaining').child,
-      'hasScrollBody': (visitor, target) => D4.validateTarget<$dartnative_54.SliverFillRemaining>(target, 'SliverFillRemaining').hasScrollBody,
-      'fillOverscroll': (visitor, target) => D4.validateTarget<$dartnative_54.SliverFillRemaining>(target, 'SliverFillRemaining').fillOverscroll,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_55.SliverFillRemaining>(target, 'SliverFillRemaining').key,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_55.SliverFillRemaining>(target, 'SliverFillRemaining').child,
+      'hasScrollBody': (visitor, target) => D4.validateTarget<$dartnative_55.SliverFillRemaining>(target, 'SliverFillRemaining').hasScrollBody,
+      'fillOverscroll': (visitor, target) => D4.validateTarget<$dartnative_55.SliverFillRemaining>(target, 'SliverFillRemaining').fillOverscroll,
     },
     constructorSignatures: {
       '': 'const SliverFillRemaining({Key? key, Widget? child, bool hasScrollBody = true, bool fillOverscroll = false})',
@@ -10337,9 +10375,9 @@ BridgedClass _createSliverFillRemainingBridge() {
 
 BridgedClass _createSliverAppBarBridge() {
   return BridgedClass(
-    nativeType: $dartnative_54.SliverAppBar,
+    nativeType: $dartnative_55.SliverAppBar,
     name: 'SliverAppBar',
-    isAssignable: (v) => v is $dartnative_54.SliverAppBar,
+    isAssignable: (v) => v is $dartnative_55.SliverAppBar,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -10358,25 +10396,25 @@ BridgedClass _createSliverAppBarBridge() {
         final elevation = D4.getOptionalNamedArg<double?>(named, 'elevation');
         final forceElevated = D4.getNamedArgWithDefault<bool>(named, 'forceElevated', false);
         final toolbarHeight = D4.getOptionalNamedArg<double?>(named, 'toolbarHeight');
-        return $dartnative_54.SliverAppBar(key: key, leading: leading, title: title, actions: actions, flexibleSpace: flexibleSpace, backgroundColor: backgroundColor, expandedHeight: expandedHeight, collapsedHeight: collapsedHeight, floating: floating, pinned: pinned, snap: snap, automaticallyImplyLeading: automaticallyImplyLeading, elevation: elevation, forceElevated: forceElevated, toolbarHeight: toolbarHeight);
+        return $dartnative_55.SliverAppBar(key: key, leading: leading, title: title, actions: actions, flexibleSpace: flexibleSpace, backgroundColor: backgroundColor, expandedHeight: expandedHeight, collapsedHeight: collapsedHeight, floating: floating, pinned: pinned, snap: snap, automaticallyImplyLeading: automaticallyImplyLeading, elevation: elevation, forceElevated: forceElevated, toolbarHeight: toolbarHeight);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_54.SliverAppBar>(target, 'SliverAppBar').key,
-      'leading': (visitor, target) => D4.validateTarget<$dartnative_54.SliverAppBar>(target, 'SliverAppBar').leading,
-      'title': (visitor, target) => D4.validateTarget<$dartnative_54.SliverAppBar>(target, 'SliverAppBar').title,
-      'actions': (visitor, target) => D4.validateTarget<$dartnative_54.SliverAppBar>(target, 'SliverAppBar').actions,
-      'flexibleSpace': (visitor, target) => D4.validateTarget<$dartnative_54.SliverAppBar>(target, 'SliverAppBar').flexibleSpace,
-      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_54.SliverAppBar>(target, 'SliverAppBar').backgroundColor,
-      'expandedHeight': (visitor, target) => D4.validateTarget<$dartnative_54.SliverAppBar>(target, 'SliverAppBar').expandedHeight,
-      'collapsedHeight': (visitor, target) => D4.validateTarget<$dartnative_54.SliverAppBar>(target, 'SliverAppBar').collapsedHeight,
-      'floating': (visitor, target) => D4.validateTarget<$dartnative_54.SliverAppBar>(target, 'SliverAppBar').floating,
-      'pinned': (visitor, target) => D4.validateTarget<$dartnative_54.SliverAppBar>(target, 'SliverAppBar').pinned,
-      'snap': (visitor, target) => D4.validateTarget<$dartnative_54.SliverAppBar>(target, 'SliverAppBar').snap,
-      'automaticallyImplyLeading': (visitor, target) => D4.validateTarget<$dartnative_54.SliverAppBar>(target, 'SliverAppBar').automaticallyImplyLeading,
-      'elevation': (visitor, target) => D4.validateTarget<$dartnative_54.SliverAppBar>(target, 'SliverAppBar').elevation,
-      'forceElevated': (visitor, target) => D4.validateTarget<$dartnative_54.SliverAppBar>(target, 'SliverAppBar').forceElevated,
-      'toolbarHeight': (visitor, target) => D4.validateTarget<$dartnative_54.SliverAppBar>(target, 'SliverAppBar').toolbarHeight,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_55.SliverAppBar>(target, 'SliverAppBar').key,
+      'leading': (visitor, target) => D4.validateTarget<$dartnative_55.SliverAppBar>(target, 'SliverAppBar').leading,
+      'title': (visitor, target) => D4.validateTarget<$dartnative_55.SliverAppBar>(target, 'SliverAppBar').title,
+      'actions': (visitor, target) => D4.validateTarget<$dartnative_55.SliverAppBar>(target, 'SliverAppBar').actions,
+      'flexibleSpace': (visitor, target) => D4.validateTarget<$dartnative_55.SliverAppBar>(target, 'SliverAppBar').flexibleSpace,
+      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_55.SliverAppBar>(target, 'SliverAppBar').backgroundColor,
+      'expandedHeight': (visitor, target) => D4.validateTarget<$dartnative_55.SliverAppBar>(target, 'SliverAppBar').expandedHeight,
+      'collapsedHeight': (visitor, target) => D4.validateTarget<$dartnative_55.SliverAppBar>(target, 'SliverAppBar').collapsedHeight,
+      'floating': (visitor, target) => D4.validateTarget<$dartnative_55.SliverAppBar>(target, 'SliverAppBar').floating,
+      'pinned': (visitor, target) => D4.validateTarget<$dartnative_55.SliverAppBar>(target, 'SliverAppBar').pinned,
+      'snap': (visitor, target) => D4.validateTarget<$dartnative_55.SliverAppBar>(target, 'SliverAppBar').snap,
+      'automaticallyImplyLeading': (visitor, target) => D4.validateTarget<$dartnative_55.SliverAppBar>(target, 'SliverAppBar').automaticallyImplyLeading,
+      'elevation': (visitor, target) => D4.validateTarget<$dartnative_55.SliverAppBar>(target, 'SliverAppBar').elevation,
+      'forceElevated': (visitor, target) => D4.validateTarget<$dartnative_55.SliverAppBar>(target, 'SliverAppBar').forceElevated,
+      'toolbarHeight': (visitor, target) => D4.validateTarget<$dartnative_55.SliverAppBar>(target, 'SliverAppBar').toolbarHeight,
     },
     constructorSignatures: {
       '': 'const SliverAppBar({Key? key, Widget? leading, Widget? title, List<Widget>? actions, Widget? flexibleSpace, Color? backgroundColor, double? expandedHeight, double? collapsedHeight, bool floating = false, bool pinned = false, bool snap = false, bool automaticallyImplyLeading = true, double? elevation, bool forceElevated = false, double? toolbarHeight})',
@@ -10407,9 +10445,9 @@ BridgedClass _createSliverAppBarBridge() {
 
 BridgedClass _createFlexibleSpaceBarBridge() {
   return BridgedClass(
-    nativeType: $dartnative_54.FlexibleSpaceBar,
+    nativeType: $dartnative_55.FlexibleSpaceBar,
     name: 'FlexibleSpaceBar',
-    isAssignable: (v) => v is $dartnative_54.FlexibleSpaceBar,
+    isAssignable: (v) => v is $dartnative_55.FlexibleSpaceBar,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -10418,17 +10456,17 @@ BridgedClass _createFlexibleSpaceBarBridge() {
         final background = D4.getOptionalNamedArg<$dartnative_3.Widget?>(named, 'background');
         final centerTitle = D4.getOptionalNamedArg<bool?>(named, 'centerTitle');
         final titlePadding = D4.getOptionalNamedArg<$dartnative_9.EdgeInsetsGeometry?>(named, 'titlePadding');
-        final collapseMode = D4.getNamedArgWithDefault<$dartnative_54.CollapseMode>(named, 'collapseMode', $dartnative_54.CollapseMode.parallax);
-        return $dartnative_54.FlexibleSpaceBar(key: key, title: title, background: background, centerTitle: centerTitle, titlePadding: titlePadding, collapseMode: collapseMode);
+        final collapseMode = D4.getNamedArgWithDefault<$dartnative_55.CollapseMode>(named, 'collapseMode', $dartnative_55.CollapseMode.parallax);
+        return $dartnative_55.FlexibleSpaceBar(key: key, title: title, background: background, centerTitle: centerTitle, titlePadding: titlePadding, collapseMode: collapseMode);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_54.FlexibleSpaceBar>(target, 'FlexibleSpaceBar').key,
-      'title': (visitor, target) => D4.validateTarget<$dartnative_54.FlexibleSpaceBar>(target, 'FlexibleSpaceBar').title,
-      'background': (visitor, target) => D4.validateTarget<$dartnative_54.FlexibleSpaceBar>(target, 'FlexibleSpaceBar').background,
-      'centerTitle': (visitor, target) => D4.validateTarget<$dartnative_54.FlexibleSpaceBar>(target, 'FlexibleSpaceBar').centerTitle,
-      'titlePadding': (visitor, target) => D4.validateTarget<$dartnative_54.FlexibleSpaceBar>(target, 'FlexibleSpaceBar').titlePadding,
-      'collapseMode': (visitor, target) => D4.validateTarget<$dartnative_54.FlexibleSpaceBar>(target, 'FlexibleSpaceBar').collapseMode,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_55.FlexibleSpaceBar>(target, 'FlexibleSpaceBar').key,
+      'title': (visitor, target) => D4.validateTarget<$dartnative_55.FlexibleSpaceBar>(target, 'FlexibleSpaceBar').title,
+      'background': (visitor, target) => D4.validateTarget<$dartnative_55.FlexibleSpaceBar>(target, 'FlexibleSpaceBar').background,
+      'centerTitle': (visitor, target) => D4.validateTarget<$dartnative_55.FlexibleSpaceBar>(target, 'FlexibleSpaceBar').centerTitle,
+      'titlePadding': (visitor, target) => D4.validateTarget<$dartnative_55.FlexibleSpaceBar>(target, 'FlexibleSpaceBar').titlePadding,
+      'collapseMode': (visitor, target) => D4.validateTarget<$dartnative_55.FlexibleSpaceBar>(target, 'FlexibleSpaceBar').collapseMode,
     },
     constructorSignatures: {
       '': 'const FlexibleSpaceBar({Key? key, Widget? title, Widget? background, bool? centerTitle, EdgeInsetsGeometry? titlePadding, CollapseMode collapseMode = CollapseMode.parallax})',
@@ -10494,15 +10532,15 @@ BridgedClass _createShowNativeToastBridge() {
 
 BridgedClass _createScaffoldBridge() {
   return BridgedClass(
-    nativeType: $dartnative_47.Scaffold,
+    nativeType: $dartnative_48.Scaffold,
     name: 'Scaffold',
-    isAssignable: (v) => v is $dartnative_47.Scaffold,
+    isAssignable: (v) => v is $dartnative_48.Scaffold,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
         final body = D4.getOptionalNamedArg<$dartnative_3.Widget?>(named, 'body');
-        final appBar = D4.getOptionalNamedArg<$dartnative_47.PreferredSizeWidget?>(named, 'appBar');
+        final appBar = D4.getOptionalNamedArg<$dartnative_48.PreferredSizeWidget?>(named, 'appBar');
         final bottomNavigationBar = D4.getOptionalNamedArg<$dartnative_3.Widget?>(named, 'bottomNavigationBar');
         final floatingActionButton = D4.getOptionalNamedArg<$dartnative_3.Widget?>(named, 'floatingActionButton');
         final backgroundColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'backgroundColor');
@@ -10514,41 +10552,41 @@ BridgedClass _createScaffoldBridge() {
         final bottomAccessory = D4.getOptionalNamedArg<$dartnative_3.Widget?>(named, 'bottomAccessory');
         final drawer = D4.getOptionalNamedArg<$dartnative_3.Widget?>(named, 'drawer');
         final drawerEnableOpenDragGesture = D4.getNamedArgWithDefault<bool>(named, 'drawerEnableOpenDragGesture', true);
-        final drawerStyle = D4.getNamedArgWithDefault<$dartnative_53.DrawerStyle>(named, 'drawerStyle', $dartnative_53.DrawerStyle.push);
-        final slideOverStyle = D4.getNamedArgWithDefault<$dartnative_53.SlideOverStyle>(named, 'slideOverStyle', const $dartnative_53.SlideOverStyle());
+        final drawerStyle = D4.getNamedArgWithDefault<$dartnative_54.DrawerStyle>(named, 'drawerStyle', $dartnative_54.DrawerStyle.push);
+        final slideOverStyle = D4.getNamedArgWithDefault<$dartnative_54.SlideOverStyle>(named, 'slideOverStyle', const $dartnative_54.SlideOverStyle());
         final onDrawerChangedRaw = named['onDrawerChanged'];
-        return $dartnative_47.Scaffold(key: key, body: body, appBar: appBar, bottomNavigationBar: bottomNavigationBar, floatingActionButton: floatingActionButton, backgroundColor: backgroundColor, resizeToAvoidBottomInset: resizeToAvoidBottomInset, extendBodyBehindAppBar: extendBodyBehindAppBar, extendBody: extendBody, brightness: brightness, bottomInputBar: bottomInputBar, bottomAccessory: bottomAccessory, drawer: drawer, drawerEnableOpenDragGesture: drawerEnableOpenDragGesture, drawerStyle: drawerStyle, slideOverStyle: slideOverStyle, onDrawerChanged: onDrawerChangedRaw == null ? null : (bool p0) { D4.callInterpreterCallback(visitor!, onDrawerChangedRaw, [p0]); });
+        return $dartnative_48.Scaffold(key: key, body: body, appBar: appBar, bottomNavigationBar: bottomNavigationBar, floatingActionButton: floatingActionButton, backgroundColor: backgroundColor, resizeToAvoidBottomInset: resizeToAvoidBottomInset, extendBodyBehindAppBar: extendBodyBehindAppBar, extendBody: extendBody, brightness: brightness, bottomInputBar: bottomInputBar, bottomAccessory: bottomAccessory, drawer: drawer, drawerEnableOpenDragGesture: drawerEnableOpenDragGesture, drawerStyle: drawerStyle, slideOverStyle: slideOverStyle, onDrawerChanged: onDrawerChangedRaw == null ? null : (bool p0) { D4.callInterpreterCallback(visitor!, onDrawerChangedRaw, [p0]); });
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_47.Scaffold>(target, 'Scaffold').key,
-      'body': (visitor, target) => D4.validateTarget<$dartnative_47.Scaffold>(target, 'Scaffold').body,
-      'appBar': (visitor, target) => D4.validateTarget<$dartnative_47.Scaffold>(target, 'Scaffold').appBar,
-      'bottomNavigationBar': (visitor, target) => D4.validateTarget<$dartnative_47.Scaffold>(target, 'Scaffold').bottomNavigationBar,
-      'floatingActionButton': (visitor, target) => D4.validateTarget<$dartnative_47.Scaffold>(target, 'Scaffold').floatingActionButton,
-      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_47.Scaffold>(target, 'Scaffold').backgroundColor,
-      'resizeToAvoidBottomInset': (visitor, target) => D4.validateTarget<$dartnative_47.Scaffold>(target, 'Scaffold').resizeToAvoidBottomInset,
-      'extendBodyBehindAppBar': (visitor, target) => D4.validateTarget<$dartnative_47.Scaffold>(target, 'Scaffold').extendBodyBehindAppBar,
-      'extendBody': (visitor, target) => D4.validateTarget<$dartnative_47.Scaffold>(target, 'Scaffold').extendBody,
-      'brightness': (visitor, target) => D4.validateTarget<$dartnative_47.Scaffold>(target, 'Scaffold').brightness,
-      'bottomInputBar': (visitor, target) => D4.validateTarget<$dartnative_47.Scaffold>(target, 'Scaffold').bottomInputBar,
-      'bottomAccessory': (visitor, target) => D4.validateTarget<$dartnative_47.Scaffold>(target, 'Scaffold').bottomAccessory,
-      'drawer': (visitor, target) => D4.validateTarget<$dartnative_47.Scaffold>(target, 'Scaffold').drawer,
-      'drawerEnableOpenDragGesture': (visitor, target) => D4.validateTarget<$dartnative_47.Scaffold>(target, 'Scaffold').drawerEnableOpenDragGesture,
-      'drawerStyle': (visitor, target) => D4.validateTarget<$dartnative_47.Scaffold>(target, 'Scaffold').drawerStyle,
-      'slideOverStyle': (visitor, target) => D4.validateTarget<$dartnative_47.Scaffold>(target, 'Scaffold').slideOverStyle,
-      'onDrawerChanged': (visitor, target) => D4.validateTarget<$dartnative_47.Scaffold>(target, 'Scaffold').onDrawerChanged,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_48.Scaffold>(target, 'Scaffold').key,
+      'body': (visitor, target) => D4.validateTarget<$dartnative_48.Scaffold>(target, 'Scaffold').body,
+      'appBar': (visitor, target) => D4.validateTarget<$dartnative_48.Scaffold>(target, 'Scaffold').appBar,
+      'bottomNavigationBar': (visitor, target) => D4.validateTarget<$dartnative_48.Scaffold>(target, 'Scaffold').bottomNavigationBar,
+      'floatingActionButton': (visitor, target) => D4.validateTarget<$dartnative_48.Scaffold>(target, 'Scaffold').floatingActionButton,
+      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_48.Scaffold>(target, 'Scaffold').backgroundColor,
+      'resizeToAvoidBottomInset': (visitor, target) => D4.validateTarget<$dartnative_48.Scaffold>(target, 'Scaffold').resizeToAvoidBottomInset,
+      'extendBodyBehindAppBar': (visitor, target) => D4.validateTarget<$dartnative_48.Scaffold>(target, 'Scaffold').extendBodyBehindAppBar,
+      'extendBody': (visitor, target) => D4.validateTarget<$dartnative_48.Scaffold>(target, 'Scaffold').extendBody,
+      'brightness': (visitor, target) => D4.validateTarget<$dartnative_48.Scaffold>(target, 'Scaffold').brightness,
+      'bottomInputBar': (visitor, target) => D4.validateTarget<$dartnative_48.Scaffold>(target, 'Scaffold').bottomInputBar,
+      'bottomAccessory': (visitor, target) => D4.validateTarget<$dartnative_48.Scaffold>(target, 'Scaffold').bottomAccessory,
+      'drawer': (visitor, target) => D4.validateTarget<$dartnative_48.Scaffold>(target, 'Scaffold').drawer,
+      'drawerEnableOpenDragGesture': (visitor, target) => D4.validateTarget<$dartnative_48.Scaffold>(target, 'Scaffold').drawerEnableOpenDragGesture,
+      'drawerStyle': (visitor, target) => D4.validateTarget<$dartnative_48.Scaffold>(target, 'Scaffold').drawerStyle,
+      'slideOverStyle': (visitor, target) => D4.validateTarget<$dartnative_48.Scaffold>(target, 'Scaffold').slideOverStyle,
+      'onDrawerChanged': (visitor, target) => D4.validateTarget<$dartnative_48.Scaffold>(target, 'Scaffold').onDrawerChanged,
     },
     staticMethods: {
       'of': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'of');
         final context = D4.getRequiredArg<$dartnative_3.BuildContext>(positional, 0, 'context', 'of');
-        return $dartnative_47.Scaffold.of(context);
+        return $dartnative_48.Scaffold.of(context);
       },
       'maybeOf': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'maybeOf');
         final context = D4.getRequiredArg<$dartnative_3.BuildContext>(positional, 0, 'context', 'maybeOf');
-        return $dartnative_47.Scaffold.maybeOf(context);
+        return $dartnative_48.Scaffold.maybeOf(context);
       },
     },
     constructorSignatures: {
@@ -10586,27 +10624,27 @@ BridgedClass _createScaffoldBridge() {
 
 BridgedClass _createScaffoldStateBridge() {
   return BridgedClass(
-    nativeType: $dartnative_47.ScaffoldState,
+    nativeType: $dartnative_48.ScaffoldState,
     name: 'ScaffoldState',
-    isAssignable: (v) => v is $dartnative_47.ScaffoldState,
+    isAssignable: (v) => v is $dartnative_48.ScaffoldState,
     constructors: {
     },
     getters: {
-      'isDrawerOpen': (visitor, target) => D4.validateTarget<$dartnative_47.ScaffoldState>(target, 'ScaffoldState').isDrawerOpen,
+      'isDrawerOpen': (visitor, target) => D4.validateTarget<$dartnative_48.ScaffoldState>(target, 'ScaffoldState').isDrawerOpen,
     },
     methods: {
       'openDrawer': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldState>(target, 'ScaffoldState');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldState>(target, 'ScaffoldState');
         t.openDrawer();
         return null;
       },
       'closeDrawer': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldState>(target, 'ScaffoldState');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldState>(target, 'ScaffoldState');
         t.closeDrawer();
         return null;
       },
       'toggleDrawer': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldState>(target, 'ScaffoldState');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldState>(target, 'ScaffoldState');
         t.toggleDrawer();
         return null;
       },
@@ -10628,45 +10666,45 @@ BridgedClass _createScaffoldStateBridge() {
 
 BridgedClass _createScaffoldDrawerElementBridge() {
   return BridgedClass(
-    nativeType: $dartnative_47.ScaffoldDrawerElement,
+    nativeType: $dartnative_48.ScaffoldDrawerElement,
     name: 'ScaffoldDrawerElement',
-    isAssignable: (v) => v is $dartnative_47.ScaffoldDrawerElement,
+    isAssignable: (v) => v is $dartnative_48.ScaffoldDrawerElement,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'ScaffoldDrawerElement');
         final widget = D4.getRequiredArg<$dartnative_3.Widget>(positional, 0, 'widget', 'ScaffoldDrawerElement');
-        return $dartnative_47.ScaffoldDrawerElement(widget);
+        return $dartnative_48.ScaffoldDrawerElement(widget);
       },
     },
     getters: {
-      'isDrawerOpen': (visitor, target) => D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement').isDrawerOpen,
-      'children': (visitor, target) => D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement').children,
-      'widget': (visitor, target) => D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement').widget,
-      'parent': (visitor, target) => D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement').parent,
-      'isInsetSensitive': (visitor, target) => D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement').isInsetSensitive,
-      'viewId': (visitor, target) => D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement').viewId,
-      'reconciler': (visitor, target) => D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement').reconciler,
-      'mounted': (visitor, target) => D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement').mounted,
+      'isDrawerOpen': (visitor, target) => D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement').isDrawerOpen,
+      'children': (visitor, target) => D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement').children,
+      'widget': (visitor, target) => D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement').widget,
+      'parent': (visitor, target) => D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement').parent,
+      'isInsetSensitive': (visitor, target) => D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement').isInsetSensitive,
+      'viewId': (visitor, target) => D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement').viewId,
+      'reconciler': (visitor, target) => D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement').reconciler,
+      'mounted': (visitor, target) => D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement').mounted,
     },
     methods: {
       'openDrawer': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
         t.openDrawer();
         return null;
       },
       'closeDrawer': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
         t.closeDrawer();
         return null;
       },
       'toggleDrawer': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
         t.toggleDrawer();
         return null;
       },
       'mount': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
         D4.requireMinArgs(positional, 2, 'mount');
         final parent = D4.getRequiredArg<$dartnative_10.Element?>(positional, 0, 'parent', 'mount');
         final reconciler = D4.getRequiredArg<$dartnative_10.UIKitReconciler>(positional, 1, 'reconciler', 'mount');
@@ -10674,19 +10712,19 @@ BridgedClass _createScaffoldDrawerElementBridge() {
         return null;
       },
       'update': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
         D4.requireMinArgs(positional, 1, 'update');
         final newWidget = D4.getRequiredArg<$dartnative_3.Widget>(positional, 0, 'newWidget', 'update');
         t.update(newWidget);
         return null;
       },
       'rebuild': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
         t.rebuild();
         return null;
       },
       'replaceChild': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
         D4.requireMinArgs(positional, 2, 'replaceChild');
         final oldChild = D4.getRequiredArg<$dartnative_10.Element>(positional, 0, 'oldChild', 'replaceChild');
         final newChild = D4.getRequiredArg<$dartnative_10.Element>(positional, 1, 'newChild', 'replaceChild');
@@ -10694,7 +10732,7 @@ BridgedClass _createScaffoldDrawerElementBridge() {
         return null;
       },
       'addSubscription': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
         D4.requireMinArgs(positional, 1, 'addSubscription');
         if (positional.isEmpty) {
           throw ArgumentError('addSubscription: Missing required argument "teardown" at position 0');
@@ -10708,15 +10746,23 @@ BridgedClass _createScaffoldDrawerElementBridge() {
         if (_interceptor != null) {
           return _interceptor(visitor, target, positional, named, typeArgs);
         }
-        final t = D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
         return t.dependOnInheritedWidgetOfExactType();
       },
+      'getInheritedWidgetOfExactType': (visitor, target, positional, named, typeArgs) {
+        final _interceptor = D4.findBridgedMethodInterceptor('Element', 'getInheritedWidgetOfExactType');
+        if (_interceptor != null) {
+          return _interceptor(visitor, target, positional, named, typeArgs);
+        }
+        final t = D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
+        return t.getInheritedWidgetOfExactType();
+      },
       'findRenderObject': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
         return t.findRenderObject();
       },
       'visitChildElements': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
         D4.requireMinArgs(positional, 1, 'visitChildElements');
         if (positional.isEmpty) {
           throw ArgumentError('visitChildElements: Missing required argument "visitor" at position 0');
@@ -10726,24 +10772,24 @@ BridgedClass _createScaffoldDrawerElementBridge() {
         return null;
       },
       'unmount': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
         (t as dynamic).unmount();
         return null;
       },
       'emitMutation': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
         D4.requireMinArgs(positional, 1, 'emitMutation');
         final mutation = D4.getRequiredArg<$dartnative_11.ViewMutation>(positional, 0, 'mutation', 'emitMutation');
         t.emitMutation(mutation);
         return null;
       },
       'markDirty': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
         t.markDirty();
         return null;
       },
       'notifyDependencyChanged': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldDrawerElement>(target, 'ScaffoldDrawerElement');
         t.notifyDependencyChanged();
         return null;
       },
@@ -10761,6 +10807,7 @@ BridgedClass _createScaffoldDrawerElementBridge() {
       'replaceChild': 'void replaceChild(Element oldChild, Element newChild)',
       'addSubscription': 'void addSubscription(VoidCallback teardown)',
       'dependOnInheritedWidgetOfExactType': 'T? dependOnInheritedWidgetOfExactType()',
+      'getInheritedWidgetOfExactType': 'T? getInheritedWidgetOfExactType()',
       'findRenderObject': 'RenderObject? findRenderObject()',
       'visitChildElements': 'void visitChildElements(void Function(BuildContext element) visitor)',
       'unmount': 'void unmount()',
@@ -10787,16 +10834,16 @@ BridgedClass _createScaffoldDrawerElementBridge() {
 
 BridgedClass _createPreferredSizeWidgetBridge() {
   return BridgedClass(
-    nativeType: $dartnative_47.PreferredSizeWidget,
+    nativeType: $dartnative_48.PreferredSizeWidget,
     name: 'PreferredSizeWidget',
-    isAssignable: (v) => v is $dartnative_47.PreferredSizeWidget,
+    isAssignable: (v) => v is $dartnative_48.PreferredSizeWidget,
     hierarchyDepth: 1,
     isAbstract: true,
     constructors: {
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_47.PreferredSizeWidget>(target, 'PreferredSizeWidget').key,
-      'preferredSize': (visitor, target) => D4.validateTarget<$dartnative_47.PreferredSizeWidget>(target, 'PreferredSizeWidget').preferredSize,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_48.PreferredSizeWidget>(target, 'PreferredSizeWidget').key,
+      'preferredSize': (visitor, target) => D4.validateTarget<$dartnative_48.PreferredSizeWidget>(target, 'PreferredSizeWidget').preferredSize,
     },
     getterSignatures: {
       'key': 'Key? get key',
@@ -10811,9 +10858,9 @@ BridgedClass _createPreferredSizeWidgetBridge() {
 
 BridgedClass _createBackButtonBridge() {
   return BridgedClass(
-    nativeType: $dartnative_47.BackButton,
+    nativeType: $dartnative_48.BackButton,
     name: 'BackButton',
-    isAssignable: (v) => v is $dartnative_47.BackButton,
+    isAssignable: (v) => v is $dartnative_48.BackButton,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -10828,21 +10875,21 @@ BridgedClass _createBackButtonBridge() {
         final padding = D4.getOptionalNamedArg<$dartnative_9.EdgeInsetsDirectional?>(named, 'padding');
         final tint = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'tint');
         final glassVariant = D4.getOptionalNamedArg<$dartnative_18.ButtonVariant?>(named, 'glassVariant');
-        return $dartnative_47.BackButton(key: key, icon: icon, iconSize: iconSize, iconWeight: iconWeight, iconColor: iconColor, title: title, titleStyle: titleStyle, onTap: onTapRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onTapRaw, []); }, padding: padding, tint: tint, glassVariant: glassVariant);
+        return $dartnative_48.BackButton(key: key, icon: icon, iconSize: iconSize, iconWeight: iconWeight, iconColor: iconColor, title: title, titleStyle: titleStyle, onTap: onTapRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onTapRaw, []); }, padding: padding, tint: tint, glassVariant: glassVariant);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_47.BackButton>(target, 'BackButton').key,
-      'icon': (visitor, target) => D4.validateTarget<$dartnative_47.BackButton>(target, 'BackButton').icon,
-      'iconSize': (visitor, target) => D4.validateTarget<$dartnative_47.BackButton>(target, 'BackButton').iconSize,
-      'iconWeight': (visitor, target) => D4.validateTarget<$dartnative_47.BackButton>(target, 'BackButton').iconWeight,
-      'iconColor': (visitor, target) => D4.validateTarget<$dartnative_47.BackButton>(target, 'BackButton').iconColor,
-      'title': (visitor, target) => D4.validateTarget<$dartnative_47.BackButton>(target, 'BackButton').title,
-      'titleStyle': (visitor, target) => D4.validateTarget<$dartnative_47.BackButton>(target, 'BackButton').titleStyle,
-      'onTap': (visitor, target) => D4.validateTarget<$dartnative_47.BackButton>(target, 'BackButton').onTap,
-      'padding': (visitor, target) => D4.validateTarget<$dartnative_47.BackButton>(target, 'BackButton').padding,
-      'tint': (visitor, target) => D4.validateTarget<$dartnative_47.BackButton>(target, 'BackButton').tint,
-      'glassVariant': (visitor, target) => D4.validateTarget<$dartnative_47.BackButton>(target, 'BackButton').glassVariant,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_48.BackButton>(target, 'BackButton').key,
+      'icon': (visitor, target) => D4.validateTarget<$dartnative_48.BackButton>(target, 'BackButton').icon,
+      'iconSize': (visitor, target) => D4.validateTarget<$dartnative_48.BackButton>(target, 'BackButton').iconSize,
+      'iconWeight': (visitor, target) => D4.validateTarget<$dartnative_48.BackButton>(target, 'BackButton').iconWeight,
+      'iconColor': (visitor, target) => D4.validateTarget<$dartnative_48.BackButton>(target, 'BackButton').iconColor,
+      'title': (visitor, target) => D4.validateTarget<$dartnative_48.BackButton>(target, 'BackButton').title,
+      'titleStyle': (visitor, target) => D4.validateTarget<$dartnative_48.BackButton>(target, 'BackButton').titleStyle,
+      'onTap': (visitor, target) => D4.validateTarget<$dartnative_48.BackButton>(target, 'BackButton').onTap,
+      'padding': (visitor, target) => D4.validateTarget<$dartnative_48.BackButton>(target, 'BackButton').padding,
+      'tint': (visitor, target) => D4.validateTarget<$dartnative_48.BackButton>(target, 'BackButton').tint,
+      'glassVariant': (visitor, target) => D4.validateTarget<$dartnative_48.BackButton>(target, 'BackButton').glassVariant,
     },
     constructorSignatures: {
       '': 'const BackButton({Key? key, String? icon, double? iconSize, FontWeight? iconWeight, Color? iconColor, String? title, TextStyle? titleStyle, VoidCallback? onTap, EdgeInsetsDirectional? padding, Color? tint, ButtonVariant? glassVariant})',
@@ -10869,9 +10916,9 @@ BridgedClass _createBackButtonBridge() {
 
 BridgedClass _createMenuActionBridge() {
   return BridgedClass(
-    nativeType: $dartnative_47.MenuAction,
+    nativeType: $dartnative_48.MenuAction,
     name: 'MenuAction',
-    isAssignable: (v) => v is $dartnative_47.MenuAction,
+    isAssignable: (v) => v is $dartnative_48.MenuAction,
     constructors: {
       '': (visitor, positional, named) {
         final title = D4.getRequiredNamedArg<String>(named, 'title', 'MenuAction');
@@ -10881,14 +10928,14 @@ BridgedClass _createMenuActionBridge() {
         }
         final onTapRaw = named['onTap'];
         final destructive = D4.getNamedArgWithDefault<bool>(named, 'destructive', false);
-        return $dartnative_47.MenuAction(title: title, icon: icon, onTap: () { D4.callInterpreterCallback(visitor!, onTapRaw, []); }, destructive: destructive);
+        return $dartnative_48.MenuAction(title: title, icon: icon, onTap: () { D4.callInterpreterCallback(visitor!, onTapRaw, []); }, destructive: destructive);
       },
     },
     getters: {
-      'title': (visitor, target) => D4.validateTarget<$dartnative_47.MenuAction>(target, 'MenuAction').title,
-      'icon': (visitor, target) => D4.validateTarget<$dartnative_47.MenuAction>(target, 'MenuAction').icon,
-      'onTap': (visitor, target) => D4.validateTarget<$dartnative_47.MenuAction>(target, 'MenuAction').onTap,
-      'destructive': (visitor, target) => D4.validateTarget<$dartnative_47.MenuAction>(target, 'MenuAction').destructive,
+      'title': (visitor, target) => D4.validateTarget<$dartnative_48.MenuAction>(target, 'MenuAction').title,
+      'icon': (visitor, target) => D4.validateTarget<$dartnative_48.MenuAction>(target, 'MenuAction').icon,
+      'onTap': (visitor, target) => D4.validateTarget<$dartnative_48.MenuAction>(target, 'MenuAction').onTap,
+      'destructive': (visitor, target) => D4.validateTarget<$dartnative_48.MenuAction>(target, 'MenuAction').destructive,
     },
     constructorSignatures: {
       '': 'const MenuAction({required String title, IconData? icon, required VoidCallback onTap, bool destructive = false})',
@@ -10908,9 +10955,9 @@ BridgedClass _createMenuActionBridge() {
 
 BridgedClass _createBarButtonItemBridge() {
   return BridgedClass(
-    nativeType: $dartnative_47.BarButtonItem,
+    nativeType: $dartnative_48.BarButtonItem,
     name: 'BarButtonItem',
-    isAssignable: (v) => v is $dartnative_47.BarButtonItem,
+    isAssignable: (v) => v is $dartnative_48.BarButtonItem,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
@@ -10920,24 +10967,24 @@ BridgedClass _createBarButtonItemBridge() {
         final onPressedRaw = named['onPressed'];
         final icon = D4.getOptionalNamedArg<String?>(named, 'icon');
         final fontIcon = D4.getOptionalNamedArg<$dartnative_35.IconData?>(named, 'fontIcon');
-        final menu = D4.coerceListOrNull<$dartnative_47.MenuAction>(named['menu'], 'menu');
+        final menu = D4.coerceListOrNull<$dartnative_48.MenuAction>(named['menu'], 'menu');
         final prominent = D4.getNamedArgWithDefault<bool>(named, 'prominent', false);
-        return $dartnative_47.BarButtonItem(key: key, title: title, titleStyle: titleStyle, onPressed: onPressedRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onPressedRaw, []); }, icon: icon, fontIcon: fontIcon, menu: menu, prominent: prominent);
+        return $dartnative_48.BarButtonItem(key: key, title: title, titleStyle: titleStyle, onPressed: onPressedRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onPressedRaw, []); }, icon: icon, fontIcon: fontIcon, menu: menu, prominent: prominent);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_47.BarButtonItem>(target, 'BarButtonItem').key,
-      'title': (visitor, target) => D4.validateTarget<$dartnative_47.BarButtonItem>(target, 'BarButtonItem').title,
-      'titleStyle': (visitor, target) => D4.validateTarget<$dartnative_47.BarButtonItem>(target, 'BarButtonItem').titleStyle,
-      'onPressed': (visitor, target) => D4.validateTarget<$dartnative_47.BarButtonItem>(target, 'BarButtonItem').onPressed,
-      'icon': (visitor, target) => D4.validateTarget<$dartnative_47.BarButtonItem>(target, 'BarButtonItem').icon,
-      'fontIcon': (visitor, target) => D4.validateTarget<$dartnative_47.BarButtonItem>(target, 'BarButtonItem').fontIcon,
-      'menu': (visitor, target) => D4.validateTarget<$dartnative_47.BarButtonItem>(target, 'BarButtonItem').menu,
-      'prominent': (visitor, target) => D4.validateTarget<$dartnative_47.BarButtonItem>(target, 'BarButtonItem').prominent,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_48.BarButtonItem>(target, 'BarButtonItem').key,
+      'title': (visitor, target) => D4.validateTarget<$dartnative_48.BarButtonItem>(target, 'BarButtonItem').title,
+      'titleStyle': (visitor, target) => D4.validateTarget<$dartnative_48.BarButtonItem>(target, 'BarButtonItem').titleStyle,
+      'onPressed': (visitor, target) => D4.validateTarget<$dartnative_48.BarButtonItem>(target, 'BarButtonItem').onPressed,
+      'icon': (visitor, target) => D4.validateTarget<$dartnative_48.BarButtonItem>(target, 'BarButtonItem').icon,
+      'fontIcon': (visitor, target) => D4.validateTarget<$dartnative_48.BarButtonItem>(target, 'BarButtonItem').fontIcon,
+      'menu': (visitor, target) => D4.validateTarget<$dartnative_48.BarButtonItem>(target, 'BarButtonItem').menu,
+      'prominent': (visitor, target) => D4.validateTarget<$dartnative_48.BarButtonItem>(target, 'BarButtonItem').prominent,
     },
     methods: {
       'build': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.BarButtonItem>(target, 'BarButtonItem');
+        final t = D4.validateTarget<$dartnative_48.BarButtonItem>(target, 'BarButtonItem');
         D4.requireMinArgs(positional, 1, 'build');
         final context = D4.getRequiredArg<$dartnative_3.BuildContext>(positional, 0, 'context', 'build');
         return (t as dynamic).build(context);
@@ -10968,17 +11015,17 @@ BridgedClass _createBarButtonItemBridge() {
 
 BridgedClass _createAppBarIOSConfigBridge() {
   return BridgedClass(
-    nativeType: $dartnative_47.AppBarIOSConfig,
+    nativeType: $dartnative_48.AppBarIOSConfig,
     name: 'AppBarIOSConfig',
-    isAssignable: (v) => v is $dartnative_47.AppBarIOSConfig,
+    isAssignable: (v) => v is $dartnative_48.AppBarIOSConfig,
     constructors: {
       '': (visitor, positional, named) {
         final systemBar = D4.getOptionalNamedArg<bool?>(named, 'systemBar');
-        return $dartnative_47.AppBarIOSConfig(systemBar: systemBar);
+        return $dartnative_48.AppBarIOSConfig(systemBar: systemBar);
       },
     },
     getters: {
-      'systemBar': (visitor, target) => D4.validateTarget<$dartnative_47.AppBarIOSConfig>(target, 'AppBarIOSConfig').systemBar,
+      'systemBar': (visitor, target) => D4.validateTarget<$dartnative_48.AppBarIOSConfig>(target, 'AppBarIOSConfig').systemBar,
     },
     constructorSignatures: {
       '': 'const AppBarIOSConfig({bool? systemBar})',
@@ -10995,9 +11042,9 @@ BridgedClass _createAppBarIOSConfigBridge() {
 
 BridgedClass _createAppBarBridge() {
   return BridgedClass(
-    nativeType: $dartnative_47.AppBar,
+    nativeType: $dartnative_48.AppBar,
     name: 'AppBar',
-    isAssignable: (v) => v is $dartnative_47.AppBar,
+    isAssignable: (v) => v is $dartnative_48.AppBar,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
@@ -11015,35 +11062,35 @@ BridgedClass _createAppBarBridge() {
         final titleGlassBackground = D4.getNamedArgWithDefault<bool>(named, 'titleGlassBackground', false);
         final subtitle = D4.getOptionalNamedArg<$dartnative_3.Widget?>(named, 'subtitle');
         final largeTitle = D4.getOptionalNamedArg<$dartnative_3.Widget?>(named, 'largeTitle');
-        final largeTitleSize = D4.getNamedArgWithDefault<$dartnative_47.MaterialAppBarSize>(named, 'largeTitleSize', $dartnative_47.MaterialAppBarSize.medium);
-        final searchBar = D4.getOptionalNamedArg<$dartnative_49.SearchBar?>(named, 'searchBar');
+        final largeTitleSize = D4.getNamedArgWithDefault<$dartnative_48.MaterialAppBarSize>(named, 'largeTitleSize', $dartnative_48.MaterialAppBarSize.medium);
+        final searchBar = D4.getOptionalNamedArg<$dartnative_50.SearchBar?>(named, 'searchBar');
         final actionsGlassBackground = D4.getNamedArgWithDefault<bool>(named, 'actionsGlassBackground', true);
         final brightness = D4.getOptionalNamedArg<$dartnative_9.Brightness?>(named, 'brightness');
-        final ios = D4.getOptionalNamedArg<$dartnative_47.AppBarIOSConfig?>(named, 'ios');
-        return $dartnative_47.AppBar(key: key, leading: leading, title: title, actions: actions, backgroundColor: backgroundColor, automaticallyImplyLeading: automaticallyImplyLeading, showBackTitle: showBackTitle, centerTitle: centerTitle, titleSpacing: titleSpacing, toolbarHeight: toolbarHeight, actionsPadding: actionsPadding, titleGlassBackground: titleGlassBackground, subtitle: subtitle, largeTitle: largeTitle, largeTitleSize: largeTitleSize, searchBar: searchBar, actionsGlassBackground: actionsGlassBackground, brightness: brightness, ios: ios);
+        final ios = D4.getOptionalNamedArg<$dartnative_48.AppBarIOSConfig?>(named, 'ios');
+        return $dartnative_48.AppBar(key: key, leading: leading, title: title, actions: actions, backgroundColor: backgroundColor, automaticallyImplyLeading: automaticallyImplyLeading, showBackTitle: showBackTitle, centerTitle: centerTitle, titleSpacing: titleSpacing, toolbarHeight: toolbarHeight, actionsPadding: actionsPadding, titleGlassBackground: titleGlassBackground, subtitle: subtitle, largeTitle: largeTitle, largeTitleSize: largeTitleSize, searchBar: searchBar, actionsGlassBackground: actionsGlassBackground, brightness: brightness, ios: ios);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').key,
-      'preferredSize': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').preferredSize,
-      'leading': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').leading,
-      'title': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').title,
-      'actions': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').actions,
-      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').backgroundColor,
-      'automaticallyImplyLeading': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').automaticallyImplyLeading,
-      'showBackTitle': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').showBackTitle,
-      'toolbarHeight': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').toolbarHeight,
-      'actionsPadding': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').actionsPadding,
-      'titleGlassBackground': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').titleGlassBackground,
-      'centerTitle': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').centerTitle,
-      'titleSpacing': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').titleSpacing,
-      'subtitle': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').subtitle,
-      'largeTitle': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').largeTitle,
-      'searchBar': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').searchBar,
-      'largeTitleSize': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').largeTitleSize,
-      'actionsGlassBackground': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').actionsGlassBackground,
-      'brightness': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').brightness,
-      'ios': (visitor, target) => D4.validateTarget<$dartnative_47.AppBar>(target, 'AppBar').ios,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').key,
+      'preferredSize': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').preferredSize,
+      'leading': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').leading,
+      'title': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').title,
+      'actions': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').actions,
+      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').backgroundColor,
+      'automaticallyImplyLeading': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').automaticallyImplyLeading,
+      'showBackTitle': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').showBackTitle,
+      'toolbarHeight': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').toolbarHeight,
+      'actionsPadding': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').actionsPadding,
+      'titleGlassBackground': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').titleGlassBackground,
+      'centerTitle': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').centerTitle,
+      'titleSpacing': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').titleSpacing,
+      'subtitle': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').subtitle,
+      'largeTitle': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').largeTitle,
+      'searchBar': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').searchBar,
+      'largeTitleSize': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').largeTitleSize,
+      'actionsGlassBackground': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').actionsGlassBackground,
+      'brightness': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').brightness,
+      'ios': (visitor, target) => D4.validateTarget<$dartnative_48.AppBar>(target, 'AppBar').ios,
     },
     constructorSignatures: {
       '': 'const AppBar({Key? key, Widget? leading, Widget? title, List<Widget>? actions, Color? backgroundColor, bool automaticallyImplyLeading = true, bool showBackTitle = false, bool? centerTitle, double? titleSpacing, double? toolbarHeight, EdgeInsetsDirectional? actionsPadding, bool titleGlassBackground = false, Widget? subtitle, Widget? largeTitle, MaterialAppBarSize largeTitleSize = MaterialAppBarSize.medium, SearchBar? searchBar, bool actionsGlassBackground = true, Brightness? brightness, AppBarIOSConfig? ios})',
@@ -11079,9 +11126,9 @@ BridgedClass _createAppBarBridge() {
 
 BridgedClass _createDrawerBridge() {
   return BridgedClass(
-    nativeType: $dartnative_47.Drawer,
+    nativeType: $dartnative_48.Drawer,
     name: 'Drawer',
-    isAssignable: (v) => v is $dartnative_47.Drawer,
+    isAssignable: (v) => v is $dartnative_48.Drawer,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
@@ -11089,18 +11136,18 @@ BridgedClass _createDrawerBridge() {
         final child = D4.getOptionalNamedArg<$dartnative_3.Widget?>(named, 'child');
         final width = D4.getOptionalNamedArg<double?>(named, 'width');
         final backgroundColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'backgroundColor');
-        return $dartnative_47.Drawer(key: key, child: child, width: width, backgroundColor: backgroundColor);
+        return $dartnative_48.Drawer(key: key, child: child, width: width, backgroundColor: backgroundColor);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_47.Drawer>(target, 'Drawer').key,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_47.Drawer>(target, 'Drawer').child,
-      'width': (visitor, target) => D4.validateTarget<$dartnative_47.Drawer>(target, 'Drawer').width,
-      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_47.Drawer>(target, 'Drawer').backgroundColor,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_48.Drawer>(target, 'Drawer').key,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_48.Drawer>(target, 'Drawer').child,
+      'width': (visitor, target) => D4.validateTarget<$dartnative_48.Drawer>(target, 'Drawer').width,
+      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_48.Drawer>(target, 'Drawer').backgroundColor,
     },
     methods: {
       'build': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.Drawer>(target, 'Drawer');
+        final t = D4.validateTarget<$dartnative_48.Drawer>(target, 'Drawer');
         D4.requireMinArgs(positional, 1, 'build');
         final context = D4.getRequiredArg<$dartnative_3.BuildContext>(positional, 0, 'context', 'build');
         return (t as dynamic).build(context);
@@ -11127,9 +11174,9 @@ BridgedClass _createDrawerBridge() {
 
 BridgedClass _createDrawerHeaderBridge() {
   return BridgedClass(
-    nativeType: $dartnative_47.DrawerHeader,
+    nativeType: $dartnative_48.DrawerHeader,
     name: 'DrawerHeader',
-    isAssignable: (v) => v is $dartnative_47.DrawerHeader,
+    isAssignable: (v) => v is $dartnative_48.DrawerHeader,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
@@ -11138,19 +11185,19 @@ BridgedClass _createDrawerHeaderBridge() {
         final decoration = D4.getOptionalNamedArg<$dartnative_9.Decoration?>(named, 'decoration');
         final padding = D4.getNamedArgWithDefault<$dartnative_9.EdgeInsetsGeometry>(named, 'padding', const $dartnative_9.EdgeInsets.fromLTRB(16, 16, 16, 8));
         final margin = D4.getNamedArgWithDefault<$dartnative_9.EdgeInsetsGeometry>(named, 'margin', const $dartnative_9.EdgeInsets.only(bottom: 8));
-        return $dartnative_47.DrawerHeader(key: key, child: child, decoration: decoration, padding: padding, margin: margin);
+        return $dartnative_48.DrawerHeader(key: key, child: child, decoration: decoration, padding: padding, margin: margin);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_47.DrawerHeader>(target, 'DrawerHeader').key,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_47.DrawerHeader>(target, 'DrawerHeader').child,
-      'decoration': (visitor, target) => D4.validateTarget<$dartnative_47.DrawerHeader>(target, 'DrawerHeader').decoration,
-      'padding': (visitor, target) => D4.validateTarget<$dartnative_47.DrawerHeader>(target, 'DrawerHeader').padding,
-      'margin': (visitor, target) => D4.validateTarget<$dartnative_47.DrawerHeader>(target, 'DrawerHeader').margin,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_48.DrawerHeader>(target, 'DrawerHeader').key,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_48.DrawerHeader>(target, 'DrawerHeader').child,
+      'decoration': (visitor, target) => D4.validateTarget<$dartnative_48.DrawerHeader>(target, 'DrawerHeader').decoration,
+      'padding': (visitor, target) => D4.validateTarget<$dartnative_48.DrawerHeader>(target, 'DrawerHeader').padding,
+      'margin': (visitor, target) => D4.validateTarget<$dartnative_48.DrawerHeader>(target, 'DrawerHeader').margin,
     },
     methods: {
       'build': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.DrawerHeader>(target, 'DrawerHeader');
+        final t = D4.validateTarget<$dartnative_48.DrawerHeader>(target, 'DrawerHeader');
         D4.requireMinArgs(positional, 1, 'build');
         final context = D4.getRequiredArg<$dartnative_3.BuildContext>(positional, 0, 'context', 'build');
         return (t as dynamic).build(context);
@@ -11178,9 +11225,9 @@ BridgedClass _createDrawerHeaderBridge() {
 
 BridgedClass _createBottomSheetBridge() {
   return BridgedClass(
-    nativeType: $dartnative_47.BottomSheet,
+    nativeType: $dartnative_48.BottomSheet,
     name: 'BottomSheet',
-    isAssignable: (v) => v is $dartnative_47.BottomSheet,
+    isAssignable: (v) => v is $dartnative_48.BottomSheet,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -11191,17 +11238,17 @@ BridgedClass _createBottomSheetBridge() {
         final backgroundColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'backgroundColor');
         final elevation = D4.getOptionalNamedArg<double?>(named, 'elevation');
         final shape = D4.getOptionalNamedArg<$dartnative_9.ShapeBorder?>(named, 'shape');
-        return $dartnative_47.BottomSheet(key: key, child: child, onClosing: onClosingRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onClosingRaw, []); }, enableDrag: enableDrag, backgroundColor: backgroundColor, elevation: elevation, shape: shape);
+        return $dartnative_48.BottomSheet(key: key, child: child, onClosing: onClosingRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onClosingRaw, []); }, enableDrag: enableDrag, backgroundColor: backgroundColor, elevation: elevation, shape: shape);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_47.BottomSheet>(target, 'BottomSheet').key,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_47.BottomSheet>(target, 'BottomSheet').child,
-      'onClosing': (visitor, target) => D4.validateTarget<$dartnative_47.BottomSheet>(target, 'BottomSheet').onClosing,
-      'enableDrag': (visitor, target) => D4.validateTarget<$dartnative_47.BottomSheet>(target, 'BottomSheet').enableDrag,
-      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_47.BottomSheet>(target, 'BottomSheet').backgroundColor,
-      'elevation': (visitor, target) => D4.validateTarget<$dartnative_47.BottomSheet>(target, 'BottomSheet').elevation,
-      'shape': (visitor, target) => D4.validateTarget<$dartnative_47.BottomSheet>(target, 'BottomSheet').shape,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_48.BottomSheet>(target, 'BottomSheet').key,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_48.BottomSheet>(target, 'BottomSheet').child,
+      'onClosing': (visitor, target) => D4.validateTarget<$dartnative_48.BottomSheet>(target, 'BottomSheet').onClosing,
+      'enableDrag': (visitor, target) => D4.validateTarget<$dartnative_48.BottomSheet>(target, 'BottomSheet').enableDrag,
+      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_48.BottomSheet>(target, 'BottomSheet').backgroundColor,
+      'elevation': (visitor, target) => D4.validateTarget<$dartnative_48.BottomSheet>(target, 'BottomSheet').elevation,
+      'shape': (visitor, target) => D4.validateTarget<$dartnative_48.BottomSheet>(target, 'BottomSheet').shape,
     },
     constructorSignatures: {
       '': 'const BottomSheet({Key? key, required Widget child, VoidCallback? onClosing, bool enableDrag = true, Color? backgroundColor, double? elevation, ShapeBorder? shape})',
@@ -11224,9 +11271,9 @@ BridgedClass _createBottomSheetBridge() {
 
 BridgedClass _createSnackBarBridge() {
   return BridgedClass(
-    nativeType: $dartnative_47.SnackBar,
+    nativeType: $dartnative_48.SnackBar,
     name: 'SnackBar',
-    isAssignable: (v) => v is $dartnative_47.SnackBar,
+    isAssignable: (v) => v is $dartnative_48.SnackBar,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -11234,16 +11281,16 @@ BridgedClass _createSnackBarBridge() {
         final content = D4.getRequiredNamedArg<$dartnative_3.Widget>(named, 'content', 'SnackBar');
         final backgroundColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'backgroundColor');
         final duration = D4.getNamedArgWithDefault<Duration>(named, 'duration', const Duration(seconds: 4));
-        final action = D4.getOptionalNamedArg<$dartnative_47.SnackBarAction?>(named, 'action');
-        return $dartnative_47.SnackBar(key: key, content: content, backgroundColor: backgroundColor, duration: duration, action: action);
+        final action = D4.getOptionalNamedArg<$dartnative_48.SnackBarAction?>(named, 'action');
+        return $dartnative_48.SnackBar(key: key, content: content, backgroundColor: backgroundColor, duration: duration, action: action);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_47.SnackBar>(target, 'SnackBar').key,
-      'content': (visitor, target) => D4.validateTarget<$dartnative_47.SnackBar>(target, 'SnackBar').content,
-      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_47.SnackBar>(target, 'SnackBar').backgroundColor,
-      'duration': (visitor, target) => D4.validateTarget<$dartnative_47.SnackBar>(target, 'SnackBar').duration,
-      'action': (visitor, target) => D4.validateTarget<$dartnative_47.SnackBar>(target, 'SnackBar').action,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_48.SnackBar>(target, 'SnackBar').key,
+      'content': (visitor, target) => D4.validateTarget<$dartnative_48.SnackBar>(target, 'SnackBar').content,
+      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_48.SnackBar>(target, 'SnackBar').backgroundColor,
+      'duration': (visitor, target) => D4.validateTarget<$dartnative_48.SnackBar>(target, 'SnackBar').duration,
+      'action': (visitor, target) => D4.validateTarget<$dartnative_48.SnackBar>(target, 'SnackBar').action,
     },
     constructorSignatures: {
       '': 'const SnackBar({Key? key, required Widget content, Color? backgroundColor, Duration duration = const Duration(seconds: 4), SnackBarAction? action})',
@@ -11264,9 +11311,9 @@ BridgedClass _createSnackBarBridge() {
 
 BridgedClass _createSnackBarActionBridge() {
   return BridgedClass(
-    nativeType: $dartnative_47.SnackBarAction,
+    nativeType: $dartnative_48.SnackBarAction,
     name: 'SnackBarAction',
-    isAssignable: (v) => v is $dartnative_47.SnackBarAction,
+    isAssignable: (v) => v is $dartnative_48.SnackBarAction,
     constructors: {
       '': (visitor, positional, named) {
         final label = D4.getRequiredNamedArg<String>(named, 'label', 'SnackBarAction');
@@ -11274,12 +11321,12 @@ BridgedClass _createSnackBarActionBridge() {
           throw ArgumentError('SnackBarAction: Missing required named argument "onPressed"');
         }
         final onPressedRaw = named['onPressed'];
-        return $dartnative_47.SnackBarAction(label: label, onPressed: () { D4.callInterpreterCallback(visitor!, onPressedRaw, []); });
+        return $dartnative_48.SnackBarAction(label: label, onPressed: () { D4.callInterpreterCallback(visitor!, onPressedRaw, []); });
       },
     },
     getters: {
-      'label': (visitor, target) => D4.validateTarget<$dartnative_47.SnackBarAction>(target, 'SnackBarAction').label,
-      'onPressed': (visitor, target) => D4.validateTarget<$dartnative_47.SnackBarAction>(target, 'SnackBarAction').onPressed,
+      'label': (visitor, target) => D4.validateTarget<$dartnative_48.SnackBarAction>(target, 'SnackBarAction').label,
+      'onPressed': (visitor, target) => D4.validateTarget<$dartnative_48.SnackBarAction>(target, 'SnackBarAction').onPressed,
     },
     constructorSignatures: {
       '': 'const SnackBarAction({required String label, required VoidCallback onPressed})',
@@ -11297,9 +11344,9 @@ BridgedClass _createSnackBarActionBridge() {
 
 BridgedClass _createScaffoldFeatureControllerBridge() {
   return BridgedClass(
-    nativeType: $dartnative_47.ScaffoldFeatureController,
+    nativeType: $dartnative_48.ScaffoldFeatureController,
     name: 'ScaffoldFeatureController',
-    isAssignable: (v) => v is $dartnative_47.ScaffoldFeatureController,
+    isAssignable: (v) => v is $dartnative_48.ScaffoldFeatureController,
     constructors: {
     },
   );
@@ -11311,16 +11358,16 @@ BridgedClass _createScaffoldFeatureControllerBridge() {
 
 BridgedClass _createScaffoldMessengerStateBridge() {
   return BridgedClass(
-    nativeType: $dartnative_47.ScaffoldMessengerState,
+    nativeType: $dartnative_48.ScaffoldMessengerState,
     name: 'ScaffoldMessengerState',
-    isAssignable: (v) => v is $dartnative_47.ScaffoldMessengerState,
+    isAssignable: (v) => v is $dartnative_48.ScaffoldMessengerState,
     constructors: {
     },
     methods: {
       'showSnackBar': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_47.ScaffoldMessengerState>(target, 'ScaffoldMessengerState');
+        final t = D4.validateTarget<$dartnative_48.ScaffoldMessengerState>(target, 'ScaffoldMessengerState');
         D4.requireMinArgs(positional, 1, 'showSnackBar');
-        final snackBar = D4.getRequiredArg<$dartnative_47.SnackBar>(positional, 0, 'snackBar', 'showSnackBar');
+        final snackBar = D4.getRequiredArg<$dartnative_48.SnackBar>(positional, 0, 'snackBar', 'showSnackBar');
         return t.showSnackBar(snackBar);
       },
     },
@@ -11336,9 +11383,9 @@ BridgedClass _createScaffoldMessengerStateBridge() {
 
 BridgedClass _createScaffoldMessengerBridge() {
   return BridgedClass(
-    nativeType: $dartnative_47.ScaffoldMessenger,
+    nativeType: $dartnative_48.ScaffoldMessenger,
     name: 'ScaffoldMessenger',
-    isAssignable: (v) => v is $dartnative_47.ScaffoldMessenger,
+    isAssignable: (v) => v is $dartnative_48.ScaffoldMessenger,
     isAbstract: true,
     constructors: {
     },
@@ -11346,7 +11393,7 @@ BridgedClass _createScaffoldMessengerBridge() {
       'of': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'of');
         final context = D4.getRequiredArg<$dartnative_3.BuildContext>(positional, 0, 'context', 'of');
-        return $dartnative_47.ScaffoldMessenger.of(context);
+        return $dartnative_48.ScaffoldMessenger.of(context);
       },
     },
     staticMethodSignatures: {
@@ -11361,21 +11408,21 @@ BridgedClass _createScaffoldMessengerBridge() {
 
 BridgedClass _createSlideOverStyleBridge() {
   return BridgedClass(
-    nativeType: $dartnative_53.SlideOverStyle,
+    nativeType: $dartnative_54.SlideOverStyle,
     name: 'SlideOverStyle',
-    isAssignable: (v) => v is $dartnative_53.SlideOverStyle,
+    isAssignable: (v) => v is $dartnative_54.SlideOverStyle,
     constructors: {
       '': (visitor, positional, named) {
         final shadow = D4.getOptionalNamedArg<$dartnative_9.BoxShadow?>(named, 'shadow');
-        final corner = D4.getNamedArgWithDefault<$dartnative_53.DrawerCorner>(named, 'corner', $dartnative_53.DrawerCorner.rounded);
+        final corner = D4.getNamedArgWithDefault<$dartnative_54.DrawerCorner>(named, 'corner', $dartnative_54.DrawerCorner.rounded);
         final radius = D4.getOptionalNamedArg<double?>(named, 'radius');
-        return $dartnative_53.SlideOverStyle(shadow: shadow, corner: corner, radius: radius);
+        return $dartnative_54.SlideOverStyle(shadow: shadow, corner: corner, radius: radius);
       },
     },
     getters: {
-      'shadow': (visitor, target) => D4.validateTarget<$dartnative_53.SlideOverStyle>(target, 'SlideOverStyle').shadow,
-      'corner': (visitor, target) => D4.validateTarget<$dartnative_53.SlideOverStyle>(target, 'SlideOverStyle').corner,
-      'radius': (visitor, target) => D4.validateTarget<$dartnative_53.SlideOverStyle>(target, 'SlideOverStyle').radius,
+      'shadow': (visitor, target) => D4.validateTarget<$dartnative_54.SlideOverStyle>(target, 'SlideOverStyle').shadow,
+      'corner': (visitor, target) => D4.validateTarget<$dartnative_54.SlideOverStyle>(target, 'SlideOverStyle').corner,
+      'radius': (visitor, target) => D4.validateTarget<$dartnative_54.SlideOverStyle>(target, 'SlideOverStyle').radius,
     },
     constructorSignatures: {
       '': 'const SlideOverStyle({BoxShadow? shadow, DrawerCorner corner = DrawerCorner.rounded, double? radius})',
@@ -11394,13 +11441,13 @@ BridgedClass _createSlideOverStyleBridge() {
 
 BridgedClass _createSliderMenuContainerBridge() {
   return BridgedClass(
-    nativeType: $dartnative_53.SliderMenuContainer,
+    nativeType: $dartnative_54.SliderMenuContainer,
     name: 'SliderMenuContainer',
-    isAssignable: (v) => v is $dartnative_53.SliderMenuContainer,
+    isAssignable: (v) => v is $dartnative_54.SliderMenuContainer,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
-        final sliderKey = D4.getRequiredNamedArg<$dartnative_3.GlobalKey<$dartnative_53.SliderMenuContainerState>>(named, 'sliderKey', 'SliderMenuContainer');
+        final sliderKey = D4.getRequiredNamedArg<$dartnative_3.GlobalKey<$dartnative_54.SliderMenuContainerState>>(named, 'sliderKey', 'SliderMenuContainer');
         final sliderMain = D4.getRequiredNamedArg<$dartnative_3.Widget>(named, 'sliderMain', 'SliderMenuContainer');
         final sliderMenu = D4.getRequiredNamedArg<$dartnative_3.Widget>(named, 'sliderMenu', 'SliderMenuContainer');
         final isDraggable = D4.getNamedArgWithDefault<bool>(named, 'isDraggable', false);
@@ -11408,41 +11455,41 @@ BridgedClass _createSliderMenuContainerBridge() {
         final settleCurve = D4.getNamedArgWithDefault<$dartnative_3.Curve>(named, 'settleCurve', $dartnative_3.Curves.easeOut);
         final sliderMenuOpenSize = D4.getNamedArgWithDefault<double>(named, 'sliderMenuOpenSize', 270);
         final sliderMenuCloseSize = D4.getNamedArgWithDefault<double>(named, 'sliderMenuCloseSize', 0);
-        final style = D4.getNamedArgWithDefault<$dartnative_53.DrawerStyle>(named, 'style', $dartnative_53.DrawerStyle.push);
-        final slideOverStyle = D4.getNamedArgWithDefault<$dartnative_53.SlideOverStyle>(named, 'slideOverStyle', const $dartnative_53.SlideOverStyle());
+        final style = D4.getNamedArgWithDefault<$dartnative_54.DrawerStyle>(named, 'style', $dartnative_54.DrawerStyle.push);
+        final slideOverStyle = D4.getNamedArgWithDefault<$dartnative_54.SlideOverStyle>(named, 'slideOverStyle', const $dartnative_54.SlideOverStyle());
         final slideOverBackgroundColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'slideOverBackgroundColor');
         final onOpenChangedRaw = named['onOpenChanged'];
         final brightness = D4.getOptionalNamedArg<$dartnative_9.Brightness?>(named, 'brightness');
         if (!named.containsKey('slideDirection')) {
-          return $dartnative_53.SliderMenuContainer(sliderKey: sliderKey, sliderMain: sliderMain, sliderMenu: sliderMenu, isDraggable: isDraggable, animationDuration: animationDuration, settleCurve: settleCurve, sliderMenuOpenSize: sliderMenuOpenSize, sliderMenuCloseSize: sliderMenuCloseSize, style: style, slideOverStyle: slideOverStyle, slideOverBackgroundColor: slideOverBackgroundColor, onOpenChanged: onOpenChangedRaw == null ? null : (bool p0) { D4.callInterpreterCallback(visitor!, onOpenChangedRaw, [p0]); }, brightness: brightness);
+          return $dartnative_54.SliderMenuContainer(sliderKey: sliderKey, sliderMain: sliderMain, sliderMenu: sliderMenu, isDraggable: isDraggable, animationDuration: animationDuration, settleCurve: settleCurve, sliderMenuOpenSize: sliderMenuOpenSize, sliderMenuCloseSize: sliderMenuCloseSize, style: style, slideOverStyle: slideOverStyle, slideOverBackgroundColor: slideOverBackgroundColor, onOpenChanged: onOpenChangedRaw == null ? null : (bool p0) { D4.callInterpreterCallback(visitor!, onOpenChangedRaw, [p0]); }, brightness: brightness);
         }
         if (named.containsKey('slideDirection')) {
-          final slideDirection = D4.getRequiredNamedArg<$dartnative_53.SlideDirection>(named, 'slideDirection', 'SliderMenuContainer');
-          return $dartnative_53.SliderMenuContainer(sliderKey: sliderKey, sliderMain: sliderMain, sliderMenu: sliderMenu, isDraggable: isDraggable, animationDuration: animationDuration, settleCurve: settleCurve, sliderMenuOpenSize: sliderMenuOpenSize, sliderMenuCloseSize: sliderMenuCloseSize, style: style, slideOverStyle: slideOverStyle, slideOverBackgroundColor: slideOverBackgroundColor, onOpenChanged: onOpenChangedRaw == null ? null : (bool p0) { D4.callInterpreterCallback(visitor!, onOpenChangedRaw, [p0]); }, brightness: brightness, slideDirection: slideDirection);
+          final slideDirection = D4.getRequiredNamedArg<$dartnative_54.SlideDirection>(named, 'slideDirection', 'SliderMenuContainer');
+          return $dartnative_54.SliderMenuContainer(sliderKey: sliderKey, sliderMain: sliderMain, sliderMenu: sliderMenu, isDraggable: isDraggable, animationDuration: animationDuration, settleCurve: settleCurve, sliderMenuOpenSize: sliderMenuOpenSize, sliderMenuCloseSize: sliderMenuCloseSize, style: style, slideOverStyle: slideOverStyle, slideOverBackgroundColor: slideOverBackgroundColor, onOpenChanged: onOpenChangedRaw == null ? null : (bool p0) { D4.callInterpreterCallback(visitor!, onOpenChangedRaw, [p0]); }, brightness: brightness, slideDirection: slideDirection);
         }
         throw StateError('Unreachable: all named parameter combinations should be covered');
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainer>(target, 'SliderMenuContainer').key,
-      'sliderMain': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainer>(target, 'SliderMenuContainer').sliderMain,
-      'sliderMenu': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainer>(target, 'SliderMenuContainer').sliderMenu,
-      'sliderKey': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainer>(target, 'SliderMenuContainer').sliderKey,
-      'animationDuration': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainer>(target, 'SliderMenuContainer').animationDuration,
-      'settleCurve': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainer>(target, 'SliderMenuContainer').settleCurve,
-      'sliderMenuOpenSize': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainer>(target, 'SliderMenuContainer').sliderMenuOpenSize,
-      'sliderMenuCloseSize': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainer>(target, 'SliderMenuContainer').sliderMenuCloseSize,
-      'isDraggable': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainer>(target, 'SliderMenuContainer').isDraggable,
-      'slideDirection': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainer>(target, 'SliderMenuContainer').slideDirection,
-      'style': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainer>(target, 'SliderMenuContainer').style,
-      'slideOverStyle': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainer>(target, 'SliderMenuContainer').slideOverStyle,
-      'slideOverBackgroundColor': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainer>(target, 'SliderMenuContainer').slideOverBackgroundColor,
-      'onOpenChanged': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainer>(target, 'SliderMenuContainer').onOpenChanged,
-      'brightness': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainer>(target, 'SliderMenuContainer').brightness,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainer>(target, 'SliderMenuContainer').key,
+      'sliderMain': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainer>(target, 'SliderMenuContainer').sliderMain,
+      'sliderMenu': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainer>(target, 'SliderMenuContainer').sliderMenu,
+      'sliderKey': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainer>(target, 'SliderMenuContainer').sliderKey,
+      'animationDuration': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainer>(target, 'SliderMenuContainer').animationDuration,
+      'settleCurve': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainer>(target, 'SliderMenuContainer').settleCurve,
+      'sliderMenuOpenSize': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainer>(target, 'SliderMenuContainer').sliderMenuOpenSize,
+      'sliderMenuCloseSize': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainer>(target, 'SliderMenuContainer').sliderMenuCloseSize,
+      'isDraggable': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainer>(target, 'SliderMenuContainer').isDraggable,
+      'slideDirection': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainer>(target, 'SliderMenuContainer').slideDirection,
+      'style': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainer>(target, 'SliderMenuContainer').style,
+      'slideOverStyle': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainer>(target, 'SliderMenuContainer').slideOverStyle,
+      'slideOverBackgroundColor': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainer>(target, 'SliderMenuContainer').slideOverBackgroundColor,
+      'onOpenChanged': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainer>(target, 'SliderMenuContainer').onOpenChanged,
+      'brightness': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainer>(target, 'SliderMenuContainer').brightness,
     },
     methods: {
       'createState': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_53.SliderMenuContainer>(target, 'SliderMenuContainer');
+        final t = D4.validateTarget<$dartnative_54.SliderMenuContainer>(target, 'SliderMenuContainer');
         return t.createState();
       },
     },
@@ -11478,43 +11525,43 @@ BridgedClass _createSliderMenuContainerBridge() {
 
 BridgedClass _createSliderMenuContainerStateBridge() {
   return BridgedClass(
-    nativeType: $dartnative_53.SliderMenuContainerState,
+    nativeType: $dartnative_54.SliderMenuContainerState,
     name: 'SliderMenuContainerState',
-    isAssignable: (v) => v is $dartnative_53.SliderMenuContainerState,
+    isAssignable: (v) => v is $dartnative_54.SliderMenuContainerState,
     hierarchyDepth: 4,
     constructors: {
       '': (visitor, positional, named) {
-        return $dartnative_53.SliderMenuContainerState();
+        return $dartnative_54.SliderMenuContainerState();
       },
     },
     getters: {
-      'widget': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainerState>(target, 'SliderMenuContainerState').widget,
-      'context': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainerState>(target, 'SliderMenuContainerState').context,
-      'mounted': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainerState>(target, 'SliderMenuContainerState').mounted,
-      'isOpenNotifier': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainerState>(target, 'SliderMenuContainerState').isOpenNotifier,
-      'isDrawerOpen': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainerState>(target, 'SliderMenuContainerState').isDrawerOpen,
-      'animationController': (visitor, target) => D4.validateTarget<$dartnative_53.SliderMenuContainerState>(target, 'SliderMenuContainerState').animationController,
+      'widget': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainerState>(target, 'SliderMenuContainerState').widget,
+      'context': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainerState>(target, 'SliderMenuContainerState').context,
+      'mounted': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainerState>(target, 'SliderMenuContainerState').mounted,
+      'isOpenNotifier': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainerState>(target, 'SliderMenuContainerState').isOpenNotifier,
+      'isDrawerOpen': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainerState>(target, 'SliderMenuContainerState').isDrawerOpen,
+      'animationController': (visitor, target) => D4.validateTarget<$dartnative_54.SliderMenuContainerState>(target, 'SliderMenuContainerState').animationController,
     },
     methods: {
       'initState': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_53.SliderMenuContainerState>(target, 'SliderMenuContainerState');
+        final t = D4.validateTarget<$dartnative_54.SliderMenuContainerState>(target, 'SliderMenuContainerState');
         (t as dynamic).initState();
         return null;
       },
       'didUpdateWidget': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_53.SliderMenuContainerState>(target, 'SliderMenuContainerState');
+        final t = D4.validateTarget<$dartnative_54.SliderMenuContainerState>(target, 'SliderMenuContainerState');
         D4.requireMinArgs(positional, 1, 'didUpdateWidget');
-        final oldWidget = D4.getRequiredArg<$dartnative_53.SliderMenuContainer>(positional, 0, 'oldWidget', 'didUpdateWidget');
+        final oldWidget = D4.getRequiredArg<$dartnative_54.SliderMenuContainer>(positional, 0, 'oldWidget', 'didUpdateWidget');
         (t as dynamic).didUpdateWidget(oldWidget);
         return null;
       },
       'didChangeDependencies': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_53.SliderMenuContainerState>(target, 'SliderMenuContainerState');
+        final t = D4.validateTarget<$dartnative_54.SliderMenuContainerState>(target, 'SliderMenuContainerState');
         (t as dynamic).didChangeDependencies();
         return null;
       },
       'setState': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_53.SliderMenuContainerState>(target, 'SliderMenuContainerState');
+        final t = D4.validateTarget<$dartnative_54.SliderMenuContainerState>(target, 'SliderMenuContainerState');
         D4.requireMinArgs(positional, 1, 'setState');
         if (positional.isEmpty) {
           throw ArgumentError('setState: Missing required argument "fn" at position 0');
@@ -11524,37 +11571,37 @@ BridgedClass _createSliderMenuContainerStateBridge() {
         return null;
       },
       'dispose': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_53.SliderMenuContainerState>(target, 'SliderMenuContainerState');
+        final t = D4.validateTarget<$dartnative_54.SliderMenuContainerState>(target, 'SliderMenuContainerState');
         (t as dynamic).dispose();
         return null;
       },
       'build': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_53.SliderMenuContainerState>(target, 'SliderMenuContainerState');
+        final t = D4.validateTarget<$dartnative_54.SliderMenuContainerState>(target, 'SliderMenuContainerState');
         D4.requireMinArgs(positional, 1, 'build');
         final context = D4.getRequiredArg<$dartnative_3.BuildContext>(positional, 0, 'context', 'build');
         return (t as dynamic).build(context);
       },
       'tryCloseForBack': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_53.SliderMenuContainerState>(target, 'SliderMenuContainerState');
+        final t = D4.validateTarget<$dartnative_54.SliderMenuContainerState>(target, 'SliderMenuContainerState');
         return t.tryCloseForBack();
       },
       'toggle': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_53.SliderMenuContainerState>(target, 'SliderMenuContainerState');
+        final t = D4.validateTarget<$dartnative_54.SliderMenuContainerState>(target, 'SliderMenuContainerState');
         t.toggle();
         return null;
       },
       'openDrawer': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_53.SliderMenuContainerState>(target, 'SliderMenuContainerState');
+        final t = D4.validateTarget<$dartnative_54.SliderMenuContainerState>(target, 'SliderMenuContainerState');
         t.openDrawer();
         return null;
       },
       'closeDrawer': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_53.SliderMenuContainerState>(target, 'SliderMenuContainerState');
+        final t = D4.validateTarget<$dartnative_54.SliderMenuContainerState>(target, 'SliderMenuContainerState');
         t.closeDrawer();
         return null;
       },
       'createTicker': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_53.SliderMenuContainerState>(target, 'SliderMenuContainerState');
+        final t = D4.validateTarget<$dartnative_54.SliderMenuContainerState>(target, 'SliderMenuContainerState');
         D4.requireMinArgs(positional, 1, 'createTicker');
         if (positional.isEmpty) {
           throw ArgumentError('createTicker: Missing required argument "onTick" at position 0');
@@ -41010,13 +41057,14 @@ BridgedClass _createFastListBridge() {
         final padding = D4.getOptionalNamedArg<$dartnative_9.EdgeInsetsGeometry?>(named, 'padding');
         final scrollDirection = D4.getNamedArgWithDefault<$dartnative_29.Axis>(named, 'scrollDirection', $dartnative_29.Axis.vertical);
         final reverse = D4.getNamedArgWithDefault<bool>(named, 'reverse', false);
-        final physics = D4.getOptionalNamedArg<$dartnative_48.ScrollPhysics?>(named, 'physics');
+        final physics = D4.getOptionalNamedArg<$dartnative_49.ScrollPhysics?>(named, 'physics');
         final showScrollBar = D4.getNamedArgWithDefault<bool>(named, 'showScrollBar', false);
         final onScrollRaw = named['onScroll'];
         final onVisibleRangeRaw = named['onVisibleRange'];
         final keepAliveCount = D4.getOptionalNamedArg<int?>(named, 'keepAliveCount');
         final stableItems = D4.getNamedArgWithDefault<bool>(named, 'stableItems', false);
-        return $dartnative_28.FastList(key: key, itemCount: itemCount, itemBuilder: (($dartnative_3.BuildContext p0, int p1) { return D4.extractBridgedArg<$dartnative_3.Widget>(D4.callInterpreterCallback(visitor!, itemBuilderRaw, [p0, p1]), 'callback', visitor) as $dartnative_3.Widget; }) as $dartnative_3.Widget Function($dartnative_3.BuildContext, int), controller: controller, padding: padding, scrollDirection: scrollDirection, reverse: reverse, physics: physics, showScrollBar: showScrollBar, onScroll: onScrollRaw == null ? null : (double p0, double p1, double p2, bool p3) { D4.callInterpreterCallback(visitor!, onScrollRaw, [p0, p1, p2, p3]); }, onVisibleRange: onVisibleRangeRaw == null ? null : (int p0, int p1) { D4.callInterpreterCallback(visitor!, onVisibleRangeRaw, [p0, p1]); }, keepAliveCount: keepAliveCount, stableItems: stableItems);
+        final pagingEnabled = D4.getNamedArgWithDefault<bool>(named, 'pagingEnabled', false);
+        return $dartnative_28.FastList(key: key, itemCount: itemCount, itemBuilder: (($dartnative_3.BuildContext p0, int p1) { return D4.extractBridgedArg<$dartnative_3.Widget>(D4.callInterpreterCallback(visitor!, itemBuilderRaw, [p0, p1]), 'callback', visitor) as $dartnative_3.Widget; }) as $dartnative_3.Widget Function($dartnative_3.BuildContext, int), controller: controller, padding: padding, scrollDirection: scrollDirection, reverse: reverse, physics: physics, showScrollBar: showScrollBar, onScroll: onScrollRaw == null ? null : (double p0, double p1, double p2, bool p3) { D4.callInterpreterCallback(visitor!, onScrollRaw, [p0, p1, p2, p3]); }, onVisibleRange: onVisibleRangeRaw == null ? null : (int p0, int p1) { D4.callInterpreterCallback(visitor!, onVisibleRangeRaw, [p0, p1]); }, keepAliveCount: keepAliveCount, stableItems: stableItems, pagingEnabled: pagingEnabled);
       },
     },
     getters: {
@@ -41033,9 +41081,10 @@ BridgedClass _createFastListBridge() {
       'onVisibleRange': (visitor, target) => D4.validateTarget<$dartnative_28.FastList>(target, 'FastList').onVisibleRange,
       'keepAliveCount': (visitor, target) => D4.validateTarget<$dartnative_28.FastList>(target, 'FastList').keepAliveCount,
       'stableItems': (visitor, target) => D4.validateTarget<$dartnative_28.FastList>(target, 'FastList').stableItems,
+      'pagingEnabled': (visitor, target) => D4.validateTarget<$dartnative_28.FastList>(target, 'FastList').pagingEnabled,
     },
     constructorSignatures: {
-      '': 'const FastList({Key? key, required int itemCount, required IndexedWidgetBuilder itemBuilder, FastListController? controller, EdgeInsetsGeometry? padding, Axis scrollDirection = Axis.vertical, bool reverse = false, ScrollPhysics? physics, bool showScrollBar = false, FastScrollCallback? onScroll, void Function(int firstVisible, int lastVisible)? onVisibleRange, int? keepAliveCount, bool stableItems = false})',
+      '': 'const FastList({Key? key, required int itemCount, required IndexedWidgetBuilder itemBuilder, FastListController? controller, EdgeInsetsGeometry? padding, Axis scrollDirection = Axis.vertical, bool reverse = false, ScrollPhysics? physics, bool showScrollBar = false, FastScrollCallback? onScroll, void Function(int firstVisible, int lastVisible)? onVisibleRange, int? keepAliveCount, bool stableItems = false, bool pagingEnabled = false})',
     },
     getterSignatures: {
       'key': 'Key? get key',
@@ -41051,6 +41100,242 @@ BridgedClass _createFastListBridge() {
       'onVisibleRange': 'void Function(int firstVisible, int lastVisible)? get onVisibleRange',
       'keepAliveCount': 'int? get keepAliveCount',
       'stableItems': 'bool get stableItems',
+      'pagingEnabled': 'bool get pagingEnabled',
+    },
+  );
+}
+
+// =============================================================================
+// PageController Bridge
+// =============================================================================
+
+BridgedClass _createPageControllerBridge() {
+  return BridgedClass(
+    nativeType: $dartnative_46.PageController,
+    name: 'PageController',
+    isAssignable: (v) => v is $dartnative_46.PageController,
+    hierarchyDepth: 2,
+    constructors: {
+      '': (visitor, positional, named) {
+        final initialPage = D4.getNamedArgWithDefault<int>(named, 'initialPage', 0);
+        final keepPage = D4.getNamedArgWithDefault<bool>(named, 'keepPage', true);
+        final viewportFraction = D4.getNamedArgWithDefault<double>(named, 'viewportFraction', 1.0);
+        return $dartnative_46.PageController(initialPage: initialPage, keepPage: keepPage, viewportFraction: viewportFraction);
+      },
+    },
+    getters: {
+      'initialPage': (visitor, target) => D4.validateTarget<$dartnative_46.PageController>(target, 'PageController').initialPage,
+      'keepPage': (visitor, target) => D4.validateTarget<$dartnative_46.PageController>(target, 'PageController').keepPage,
+      'viewportFraction': (visitor, target) => D4.validateTarget<$dartnative_46.PageController>(target, 'PageController').viewportFraction,
+      'hasClients': (visitor, target) => D4.validateTarget<$dartnative_46.PageController>(target, 'PageController').hasClients,
+      'page': (visitor, target) => D4.validateTarget<$dartnative_46.PageController>(target, 'PageController').page,
+    },
+    methods: {
+      'jumpToPage': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_46.PageController>(target, 'PageController');
+        D4.requireMinArgs(positional, 1, 'jumpToPage');
+        final page = D4.getRequiredArg<int>(positional, 0, 'page', 'jumpToPage');
+        t.jumpToPage(page);
+        return null;
+      },
+      'animateToPage': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_46.PageController>(target, 'PageController');
+        D4.requireMinArgs(positional, 1, 'animateToPage');
+        final page = D4.getRequiredArg<int>(positional, 0, 'page', 'animateToPage');
+        final duration = D4.getRequiredNamedArg<Duration>(named, 'duration', 'animateToPage');
+        final curve = D4.getRequiredNamedArg<$dartnative_3.Curve>(named, 'curve', 'animateToPage');
+        return t.animateToPage(page, duration: duration, curve: curve);
+      },
+      'nextPage': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_46.PageController>(target, 'PageController');
+        final duration = D4.getRequiredNamedArg<Duration>(named, 'duration', 'nextPage');
+        final curve = D4.getRequiredNamedArg<$dartnative_3.Curve>(named, 'curve', 'nextPage');
+        return t.nextPage(duration: duration, curve: curve);
+      },
+      'previousPage': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_46.PageController>(target, 'PageController');
+        final duration = D4.getRequiredNamedArg<Duration>(named, 'duration', 'previousPage');
+        final curve = D4.getRequiredNamedArg<$dartnative_3.Curve>(named, 'curve', 'previousPage');
+        return t.previousPage(duration: duration, curve: curve);
+      },
+      'addListener': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_46.PageController>(target, 'PageController');
+        D4.requireMinArgs(positional, 1, 'addListener');
+        if (positional.isEmpty) {
+          throw ArgumentError('addListener: Missing required argument "listener" at position 0');
+        }
+        final listenerRaw = positional[0];
+        t.addListener(() { D4.callInterpreterCallback(visitor!, listenerRaw, []); });
+        return null;
+      },
+      'removeListener': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_46.PageController>(target, 'PageController');
+        D4.requireMinArgs(positional, 1, 'removeListener');
+        if (positional.isEmpty) {
+          throw ArgumentError('removeListener: Missing required argument "listener" at position 0');
+        }
+        final listenerRaw = positional[0];
+        t.removeListener(() { D4.callInterpreterCallback(visitor!, listenerRaw, []); });
+        return null;
+      },
+      'notifyListeners': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_46.PageController>(target, 'PageController');
+        t.notifyListeners();
+        return null;
+      },
+      'dispose': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_46.PageController>(target, 'PageController');
+        (t as dynamic).dispose();
+        return null;
+      },
+    },
+    constructorSignatures: {
+      '': 'PageController({int initialPage = 0, bool keepPage = true, double viewportFraction = 1.0})',
+    },
+    methodSignatures: {
+      'jumpToPage': 'void jumpToPage(int page)',
+      'animateToPage': 'Future<void> animateToPage(int page, {required Duration duration, required Curve curve})',
+      'nextPage': 'Future<void> nextPage({required Duration duration, required Curve curve})',
+      'previousPage': 'Future<void> previousPage({required Duration duration, required Curve curve})',
+      'addListener': 'void addListener(VoidCallback listener)',
+      'removeListener': 'void removeListener(VoidCallback listener)',
+      'notifyListeners': 'void notifyListeners()',
+      'dispose': 'void dispose()',
+    },
+    getterSignatures: {
+      'initialPage': 'int get initialPage',
+      'keepPage': 'bool get keepPage',
+      'viewportFraction': 'double get viewportFraction',
+      'hasClients': 'bool get hasClients',
+      'page': 'double? get page',
+    },
+  );
+}
+
+// =============================================================================
+// PageView Bridge
+// =============================================================================
+
+BridgedClass _createPageViewBridge() {
+  return BridgedClass(
+    nativeType: $dartnative_46.PageView,
+    name: 'PageView',
+    isAssignable: (v) => v is $dartnative_46.PageView,
+    hierarchyDepth: 2,
+    constructors: {
+      '': (visitor, positional, named) {
+        final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
+        final scrollDirection = D4.getNamedArgWithDefault<$dartnative_29.Axis>(named, 'scrollDirection', $dartnative_29.Axis.horizontal);
+        final reverse = D4.getNamedArgWithDefault<bool>(named, 'reverse', false);
+        final controller = D4.getOptionalNamedArg<$dartnative_46.PageController?>(named, 'controller');
+        final physics = D4.getOptionalNamedArg<$dartnative_49.ScrollPhysics?>(named, 'physics');
+        final pageSnapping = D4.getNamedArgWithDefault<bool>(named, 'pageSnapping', true);
+        final onPageChangedRaw = named['onPageChanged'];
+        final children = named.containsKey('children') && named['children'] != null
+            ? D4.coerceList<$dartnative_3.Widget>(named['children'], 'children')
+            : const <$dartnative_3.Widget>[];
+        final dragStartBehavior = D4.getOptionalNamedArg<Object?>(named, 'dragStartBehavior');
+        final allowImplicitScrolling = D4.getNamedArgWithDefault<bool>(named, 'allowImplicitScrolling', false);
+        final restorationId = D4.getOptionalNamedArg<String?>(named, 'restorationId');
+        final clipBehavior = D4.getOptionalNamedArg<Object?>(named, 'clipBehavior');
+        final hitTestBehavior = D4.getOptionalNamedArg<Object?>(named, 'hitTestBehavior');
+        final scrollBehavior = D4.getOptionalNamedArg<Object?>(named, 'scrollBehavior');
+        final padEnds = D4.getNamedArgWithDefault<bool>(named, 'padEnds', true);
+        return $dartnative_46.PageView(key: key, scrollDirection: scrollDirection, reverse: reverse, controller: controller, physics: physics, pageSnapping: pageSnapping, onPageChanged: onPageChangedRaw == null ? null : (int p0) { D4.callInterpreterCallback(visitor!, onPageChangedRaw, [p0]); }, children: children, dragStartBehavior: dragStartBehavior, allowImplicitScrolling: allowImplicitScrolling, restorationId: restorationId, clipBehavior: clipBehavior, hitTestBehavior: hitTestBehavior, scrollBehavior: scrollBehavior, padEnds: padEnds);
+      },
+      'builder': (visitor, positional, named) {
+        final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
+        final scrollDirection = D4.getNamedArgWithDefault<$dartnative_29.Axis>(named, 'scrollDirection', $dartnative_29.Axis.horizontal);
+        final reverse = D4.getNamedArgWithDefault<bool>(named, 'reverse', false);
+        final controller = D4.getOptionalNamedArg<$dartnative_46.PageController?>(named, 'controller');
+        final physics = D4.getOptionalNamedArg<$dartnative_49.ScrollPhysics?>(named, 'physics');
+        final pageSnapping = D4.getNamedArgWithDefault<bool>(named, 'pageSnapping', true);
+        final onPageChangedRaw = named['onPageChanged'];
+        if (!named.containsKey('itemBuilder') || named['itemBuilder'] == null) {
+          throw ArgumentError('PageView: Missing required named argument "itemBuilder"');
+        }
+        final itemBuilderRaw = named['itemBuilder'];
+        final findChildIndexCallbackRaw = named['findChildIndexCallback'];
+        final itemCount = D4.getOptionalNamedArg<int?>(named, 'itemCount');
+        final dragStartBehavior = D4.getOptionalNamedArg<Object?>(named, 'dragStartBehavior');
+        final allowImplicitScrolling = D4.getNamedArgWithDefault<bool>(named, 'allowImplicitScrolling', false);
+        final restorationId = D4.getOptionalNamedArg<String?>(named, 'restorationId');
+        final clipBehavior = D4.getOptionalNamedArg<Object?>(named, 'clipBehavior');
+        final hitTestBehavior = D4.getOptionalNamedArg<Object?>(named, 'hitTestBehavior');
+        final scrollBehavior = D4.getOptionalNamedArg<Object?>(named, 'scrollBehavior');
+        final padEnds = D4.getNamedArgWithDefault<bool>(named, 'padEnds', true);
+        return $dartnative_46.PageView.builder(key: key, scrollDirection: scrollDirection, reverse: reverse, controller: controller, physics: physics, pageSnapping: pageSnapping, onPageChanged: onPageChangedRaw == null ? null : (int p0) { D4.callInterpreterCallback(visitor!, onPageChangedRaw, [p0]); }, itemBuilder: (($dartnative_3.BuildContext p0, int p1) { return D4.extractBridgedArg<$dartnative_3.Widget>(D4.callInterpreterCallback(visitor!, itemBuilderRaw, [p0, p1]), 'callback', visitor) as $dartnative_3.Widget; }) as $dartnative_3.Widget Function($dartnative_3.BuildContext, int), findChildIndexCallback: findChildIndexCallbackRaw == null ? null : (($dartnative_3.Key p0) { return D4.callInterpreterCallback(visitor!, findChildIndexCallbackRaw, [p0]) as int?; }) as int? Function($dartnative_3.Key), itemCount: itemCount, dragStartBehavior: dragStartBehavior, allowImplicitScrolling: allowImplicitScrolling, restorationId: restorationId, clipBehavior: clipBehavior, hitTestBehavior: hitTestBehavior, scrollBehavior: scrollBehavior, padEnds: padEnds);
+      },
+      'custom': (visitor, positional, named) {
+        final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
+        final scrollDirection = D4.getNamedArgWithDefault<$dartnative_29.Axis>(named, 'scrollDirection', $dartnative_29.Axis.horizontal);
+        final reverse = D4.getNamedArgWithDefault<bool>(named, 'reverse', false);
+        final controller = D4.getOptionalNamedArg<$dartnative_46.PageController?>(named, 'controller');
+        final physics = D4.getOptionalNamedArg<$dartnative_49.ScrollPhysics?>(named, 'physics');
+        final pageSnapping = D4.getNamedArgWithDefault<bool>(named, 'pageSnapping', true);
+        final onPageChangedRaw = named['onPageChanged'];
+        final childrenDelegate = D4.getRequiredNamedArg<$dartnative_55.SliverChildDelegate>(named, 'childrenDelegate', 'PageView');
+        final dragStartBehavior = D4.getOptionalNamedArg<Object?>(named, 'dragStartBehavior');
+        final allowImplicitScrolling = D4.getNamedArgWithDefault<bool>(named, 'allowImplicitScrolling', false);
+        final restorationId = D4.getOptionalNamedArg<String?>(named, 'restorationId');
+        final clipBehavior = D4.getOptionalNamedArg<Object?>(named, 'clipBehavior');
+        final hitTestBehavior = D4.getOptionalNamedArg<Object?>(named, 'hitTestBehavior');
+        final scrollBehavior = D4.getOptionalNamedArg<Object?>(named, 'scrollBehavior');
+        final padEnds = D4.getNamedArgWithDefault<bool>(named, 'padEnds', true);
+        return $dartnative_46.PageView.custom(key: key, scrollDirection: scrollDirection, reverse: reverse, controller: controller, physics: physics, pageSnapping: pageSnapping, onPageChanged: onPageChangedRaw == null ? null : (int p0) { D4.callInterpreterCallback(visitor!, onPageChangedRaw, [p0]); }, childrenDelegate: childrenDelegate, dragStartBehavior: dragStartBehavior, allowImplicitScrolling: allowImplicitScrolling, restorationId: restorationId, clipBehavior: clipBehavior, hitTestBehavior: hitTestBehavior, scrollBehavior: scrollBehavior, padEnds: padEnds);
+      },
+    },
+    getters: {
+      'key': (visitor, target) => D4.validateTarget<$dartnative_46.PageView>(target, 'PageView').key,
+      'scrollDirection': (visitor, target) => D4.validateTarget<$dartnative_46.PageView>(target, 'PageView').scrollDirection,
+      'reverse': (visitor, target) => D4.validateTarget<$dartnative_46.PageView>(target, 'PageView').reverse,
+      'controller': (visitor, target) => (D4.validateTarget<$dartnative_46.PageView>(target, 'PageView') as dynamic).controller,
+      'physics': (visitor, target) => D4.validateTarget<$dartnative_46.PageView>(target, 'PageView').physics,
+      'pageSnapping': (visitor, target) => D4.validateTarget<$dartnative_46.PageView>(target, 'PageView').pageSnapping,
+      'onPageChanged': (visitor, target) => D4.validateTarget<$dartnative_46.PageView>(target, 'PageView').onPageChanged,
+      'itemBuilder': (visitor, target) => D4.validateTarget<$dartnative_46.PageView>(target, 'PageView').itemBuilder,
+      'itemCount': (visitor, target) => D4.validateTarget<$dartnative_46.PageView>(target, 'PageView').itemCount,
+      'allowImplicitScrolling': (visitor, target) => D4.validateTarget<$dartnative_46.PageView>(target, 'PageView').allowImplicitScrolling,
+      'findChildIndexCallback': (visitor, target) => D4.validateTarget<$dartnative_46.PageView>(target, 'PageView').findChildIndexCallback,
+      'dragStartBehavior': (visitor, target) => D4.validateTarget<$dartnative_46.PageView>(target, 'PageView').dragStartBehavior,
+      'restorationId': (visitor, target) => D4.validateTarget<$dartnative_46.PageView>(target, 'PageView').restorationId,
+      'clipBehavior': (visitor, target) => D4.validateTarget<$dartnative_46.PageView>(target, 'PageView').clipBehavior,
+      'hitTestBehavior': (visitor, target) => D4.validateTarget<$dartnative_46.PageView>(target, 'PageView').hitTestBehavior,
+      'scrollBehavior': (visitor, target) => D4.validateTarget<$dartnative_46.PageView>(target, 'PageView').scrollBehavior,
+      'padEnds': (visitor, target) => D4.validateTarget<$dartnative_46.PageView>(target, 'PageView').padEnds,
+    },
+    methods: {
+      'createState': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_46.PageView>(target, 'PageView');
+        return t.createState();
+      },
+    },
+    constructorSignatures: {
+      '': 'PageView({Key? key, Axis scrollDirection = Axis.horizontal, bool reverse = false, PageController? controller, ScrollPhysics? physics, bool pageSnapping = true, void Function(int page)? onPageChanged, List<Widget> children = const <Widget>[], Object? dragStartBehavior, bool allowImplicitScrolling = false, String? restorationId, Object? clipBehavior, Object? hitTestBehavior, Object? scrollBehavior, bool padEnds = true})',
+      'builder': 'const PageView.builder({Key? key, Axis scrollDirection = Axis.horizontal, bool reverse = false, PageController? controller, ScrollPhysics? physics, bool pageSnapping = true, void Function(int page)? onPageChanged, required IndexedWidgetBuilder itemBuilder, int? Function(Key key)? findChildIndexCallback, int? itemCount, Object? dragStartBehavior, bool allowImplicitScrolling = false, String? restorationId, Object? clipBehavior, Object? hitTestBehavior, Object? scrollBehavior, bool padEnds = true})',
+      'custom': 'PageView.custom({Key? key, Axis scrollDirection = Axis.horizontal, bool reverse = false, PageController? controller, ScrollPhysics? physics, bool pageSnapping = true, void Function(int page)? onPageChanged, required SliverChildDelegate childrenDelegate, Object? dragStartBehavior, bool allowImplicitScrolling = false, String? restorationId, Object? clipBehavior, Object? hitTestBehavior, Object? scrollBehavior, bool padEnds = true})',
+    },
+    methodSignatures: {
+      'createState': 'State<PageView> createState()',
+    },
+    getterSignatures: {
+      'key': 'Key? get key',
+      'scrollDirection': 'Axis get scrollDirection',
+      'reverse': 'bool get reverse',
+      'controller': 'PageController? get controller',
+      'physics': 'ScrollPhysics? get physics',
+      'pageSnapping': 'bool get pageSnapping',
+      'onPageChanged': 'void Function(int page)? get onPageChanged',
+      'itemBuilder': 'IndexedWidgetBuilder get itemBuilder',
+      'itemCount': 'int? get itemCount',
+      'allowImplicitScrolling': 'bool get allowImplicitScrolling',
+      'findChildIndexCallback': 'int? Function(Key key)? get findChildIndexCallback',
+      'dragStartBehavior': 'Object? get dragStartBehavior',
+      'restorationId': 'String? get restorationId',
+      'clipBehavior': 'Object? get clipBehavior',
+      'hitTestBehavior': 'Object? get hitTestBehavior',
+      'scrollBehavior': 'Object? get scrollBehavior',
+      'padEnds': 'bool get padEnds',
     },
   );
 }
@@ -41294,13 +41579,13 @@ BridgedClass _createGridViewBridge() {
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
-        final gridDelegate = D4.getRequiredNamedArg<$dartnative_54.SliverGridDelegateWithFixedCrossAxisCount>(named, 'gridDelegate', 'GridView');
+        final gridDelegate = D4.getRequiredNamedArg<$dartnative_55.SliverGridDelegateWithFixedCrossAxisCount>(named, 'gridDelegate', 'GridView');
         final children = named.containsKey('children') && named['children'] != null
             ? D4.coerceListOrNull<$dartnative_3.Widget>(named['children'], 'children')
             : const <$dartnative_3.Widget>[];
         final padding = D4.getOptionalNamedArg<$dartnative_9.EdgeInsetsGeometry?>(named, 'padding');
         final shrinkWrap = D4.getNamedArgWithDefault<bool>(named, 'shrinkWrap', false);
-        final physics = D4.getOptionalNamedArg<$dartnative_48.ScrollPhysics?>(named, 'physics');
+        final physics = D4.getOptionalNamedArg<$dartnative_49.ScrollPhysics?>(named, 'physics');
         final controller = D4.getOptionalNamedArg<$dartnative_3.ScrollController?>(named, 'controller');
         final showScrollBar = D4.getNamedArgWithDefault<bool>(named, 'showScrollBar', false);
         final scrollDirection = D4.getNamedArgWithDefault<$dartnative_29.Axis>(named, 'scrollDirection', $dartnative_29.Axis.vertical);
@@ -41318,7 +41603,7 @@ BridgedClass _createGridViewBridge() {
             : const <$dartnative_3.Widget>[];
         final padding = D4.getOptionalNamedArg<$dartnative_9.EdgeInsetsGeometry?>(named, 'padding');
         final shrinkWrap = D4.getNamedArgWithDefault<bool>(named, 'shrinkWrap', false);
-        final physics = D4.getOptionalNamedArg<$dartnative_48.ScrollPhysics?>(named, 'physics');
+        final physics = D4.getOptionalNamedArg<$dartnative_49.ScrollPhysics?>(named, 'physics');
         final controller = D4.getOptionalNamedArg<$dartnative_3.ScrollController?>(named, 'controller');
         final showScrollBar = D4.getNamedArgWithDefault<bool>(named, 'showScrollBar', false);
         final scrollDirection = D4.getNamedArgWithDefault<$dartnative_29.Axis>(named, 'scrollDirection', $dartnative_29.Axis.vertical);
@@ -41326,7 +41611,7 @@ BridgedClass _createGridViewBridge() {
       },
       'builder': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
-        final gridDelegate = D4.getRequiredNamedArg<$dartnative_54.SliverGridDelegateWithFixedCrossAxisCount>(named, 'gridDelegate', 'GridView');
+        final gridDelegate = D4.getRequiredNamedArg<$dartnative_55.SliverGridDelegateWithFixedCrossAxisCount>(named, 'gridDelegate', 'GridView');
         final itemCount = D4.getRequiredNamedArg<int?>(named, 'itemCount', 'GridView');
         if (!named.containsKey('itemBuilder')) {
           throw ArgumentError('GridView: Missing required named argument "itemBuilder"');
@@ -41334,7 +41619,7 @@ BridgedClass _createGridViewBridge() {
         final itemBuilderRaw = named['itemBuilder'];
         final padding = D4.getOptionalNamedArg<$dartnative_9.EdgeInsetsGeometry?>(named, 'padding');
         final shrinkWrap = D4.getNamedArgWithDefault<bool>(named, 'shrinkWrap', false);
-        final physics = D4.getOptionalNamedArg<$dartnative_48.ScrollPhysics?>(named, 'physics');
+        final physics = D4.getOptionalNamedArg<$dartnative_49.ScrollPhysics?>(named, 'physics');
         final controller = D4.getOptionalNamedArg<$dartnative_3.ScrollController?>(named, 'controller');
         final showScrollBar = D4.getNamedArgWithDefault<bool>(named, 'showScrollBar', false);
         final scrollDirection = D4.getNamedArgWithDefault<$dartnative_29.Axis>(named, 'scrollDirection', $dartnative_29.Axis.vertical);
@@ -41513,7 +41798,7 @@ BridgedClass _createMasonryGridViewBridge() {
             : const <$dartnative_3.Widget>[];
         final padding = D4.getOptionalNamedArg<$dartnative_9.EdgeInsetsGeometry?>(named, 'padding');
         final shrinkWrap = D4.getNamedArgWithDefault<bool>(named, 'shrinkWrap', false);
-        final physics = D4.getOptionalNamedArg<$dartnative_48.ScrollPhysics?>(named, 'physics');
+        final physics = D4.getOptionalNamedArg<$dartnative_49.ScrollPhysics?>(named, 'physics');
         return $dartnative_34.MasonryGridView.count(key: key, crossAxisCount: crossAxisCount, mainAxisSpacing: mainAxisSpacing, crossAxisSpacing: crossAxisSpacing, itemHeightBuilder: ((int p0) { return D4.callInterpreterCallback(visitor!, itemHeightBuilderRaw, [p0]) as double; }) as double Function(int), children: children, padding: padding, shrinkWrap: shrinkWrap, physics: physics);
       },
       'builder': (visitor, positional, named) {
@@ -41532,7 +41817,7 @@ BridgedClass _createMasonryGridViewBridge() {
         final itemBuilderRaw = named['itemBuilder'];
         final padding = D4.getOptionalNamedArg<$dartnative_9.EdgeInsetsGeometry?>(named, 'padding');
         final shrinkWrap = D4.getNamedArgWithDefault<bool>(named, 'shrinkWrap', false);
-        final physics = D4.getOptionalNamedArg<$dartnative_48.ScrollPhysics?>(named, 'physics');
+        final physics = D4.getOptionalNamedArg<$dartnative_49.ScrollPhysics?>(named, 'physics');
         return $dartnative_34.MasonryGridView.builder(key: key, crossAxisCount: crossAxisCount, mainAxisSpacing: mainAxisSpacing, crossAxisSpacing: crossAxisSpacing, itemHeightBuilder: ((int p0) { return D4.callInterpreterCallback(visitor!, itemHeightBuilderRaw, [p0]) as double; }) as double Function(int), itemCount: itemCount, itemBuilder: itemBuilderRaw == null ? null : (($dartnative_3.BuildContext p0, int p1) { return D4.extractBridgedArg<$dartnative_3.Widget>(D4.callInterpreterCallback(visitor!, itemBuilderRaw, [p0, p1]), 'callback', visitor) as $dartnative_3.Widget; }) as $dartnative_3.Widget Function($dartnative_3.BuildContext, int), padding: padding, shrinkWrap: shrinkWrap, physics: physics);
       },
     },
@@ -41629,9 +41914,9 @@ BridgedClass _createMasonryColumnBridge() {
 
 BridgedClass _createSystemUiOverlayStyleBridge() {
   return BridgedClass(
-    nativeType: $dartnative_57.SystemUiOverlayStyle,
+    nativeType: $dartnative_58.SystemUiOverlayStyle,
     name: 'SystemUiOverlayStyle',
-    isAssignable: (v) => v is $dartnative_57.SystemUiOverlayStyle,
+    isAssignable: (v) => v is $dartnative_58.SystemUiOverlayStyle,
     constructors: {
       '': (visitor, positional, named) {
         final statusBarBrightness = D4.getOptionalNamedArg<$dartnative_9.Brightness?>(named, 'statusBarBrightness');
@@ -41640,20 +41925,20 @@ BridgedClass _createSystemUiOverlayStyleBridge() {
         final systemNavigationBarIconBrightness = D4.getOptionalNamedArg<$dartnative_9.Brightness?>(named, 'systemNavigationBarIconBrightness');
         final systemNavigationBarColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'systemNavigationBarColor');
         final systemNavigationBarDividerColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'systemNavigationBarDividerColor');
-        return $dartnative_57.SystemUiOverlayStyle(statusBarBrightness: statusBarBrightness, statusBarColor: statusBarColor, statusBarIconBrightness: statusBarIconBrightness, systemNavigationBarIconBrightness: systemNavigationBarIconBrightness, systemNavigationBarColor: systemNavigationBarColor, systemNavigationBarDividerColor: systemNavigationBarDividerColor);
+        return $dartnative_58.SystemUiOverlayStyle(statusBarBrightness: statusBarBrightness, statusBarColor: statusBarColor, statusBarIconBrightness: statusBarIconBrightness, systemNavigationBarIconBrightness: systemNavigationBarIconBrightness, systemNavigationBarColor: systemNavigationBarColor, systemNavigationBarDividerColor: systemNavigationBarDividerColor);
       },
     },
     getters: {
-      'statusBarBrightness': (visitor, target) => D4.validateTarget<$dartnative_57.SystemUiOverlayStyle>(target, 'SystemUiOverlayStyle').statusBarBrightness,
-      'statusBarColor': (visitor, target) => D4.validateTarget<$dartnative_57.SystemUiOverlayStyle>(target, 'SystemUiOverlayStyle').statusBarColor,
-      'statusBarIconBrightness': (visitor, target) => D4.validateTarget<$dartnative_57.SystemUiOverlayStyle>(target, 'SystemUiOverlayStyle').statusBarIconBrightness,
-      'systemNavigationBarIconBrightness': (visitor, target) => D4.validateTarget<$dartnative_57.SystemUiOverlayStyle>(target, 'SystemUiOverlayStyle').systemNavigationBarIconBrightness,
-      'systemNavigationBarColor': (visitor, target) => D4.validateTarget<$dartnative_57.SystemUiOverlayStyle>(target, 'SystemUiOverlayStyle').systemNavigationBarColor,
-      'systemNavigationBarDividerColor': (visitor, target) => D4.validateTarget<$dartnative_57.SystemUiOverlayStyle>(target, 'SystemUiOverlayStyle').systemNavigationBarDividerColor,
+      'statusBarBrightness': (visitor, target) => D4.validateTarget<$dartnative_58.SystemUiOverlayStyle>(target, 'SystemUiOverlayStyle').statusBarBrightness,
+      'statusBarColor': (visitor, target) => D4.validateTarget<$dartnative_58.SystemUiOverlayStyle>(target, 'SystemUiOverlayStyle').statusBarColor,
+      'statusBarIconBrightness': (visitor, target) => D4.validateTarget<$dartnative_58.SystemUiOverlayStyle>(target, 'SystemUiOverlayStyle').statusBarIconBrightness,
+      'systemNavigationBarIconBrightness': (visitor, target) => D4.validateTarget<$dartnative_58.SystemUiOverlayStyle>(target, 'SystemUiOverlayStyle').systemNavigationBarIconBrightness,
+      'systemNavigationBarColor': (visitor, target) => D4.validateTarget<$dartnative_58.SystemUiOverlayStyle>(target, 'SystemUiOverlayStyle').systemNavigationBarColor,
+      'systemNavigationBarDividerColor': (visitor, target) => D4.validateTarget<$dartnative_58.SystemUiOverlayStyle>(target, 'SystemUiOverlayStyle').systemNavigationBarDividerColor,
     },
     staticGetters: {
-      'light': (visitor) => $dartnative_57.SystemUiOverlayStyle.light,
-      'dark': (visitor) => $dartnative_57.SystemUiOverlayStyle.dark,
+      'light': (visitor) => $dartnative_58.SystemUiOverlayStyle.light,
+      'dark': (visitor) => $dartnative_58.SystemUiOverlayStyle.dark,
     },
     constructorSignatures: {
       '': 'const SystemUiOverlayStyle({Brightness? statusBarBrightness, Color? statusBarColor, Brightness? statusBarIconBrightness, Brightness? systemNavigationBarIconBrightness, Color? systemNavigationBarColor, Color? systemNavigationBarDividerColor})',
@@ -41679,13 +41964,13 @@ BridgedClass _createSystemUiOverlayStyleBridge() {
 
 BridgedClass _createSystemChromeBridge() {
   return BridgedClass(
-    nativeType: $dartnative_57.SystemChrome,
+    nativeType: $dartnative_58.SystemChrome,
     name: 'SystemChrome',
-    isAssignable: (v) => v is $dartnative_57.SystemChrome,
+    isAssignable: (v) => v is $dartnative_58.SystemChrome,
     constructors: {
     },
     staticGetters: {
-      'defaultStyle': (visitor) => $dartnative_57.SystemChrome.defaultStyle,
+      'defaultStyle': (visitor) => $dartnative_58.SystemChrome.defaultStyle,
     },
     staticMethods: {
       'setPreferredOrientations': (visitor, positional, named, typeArgs) {
@@ -41693,44 +41978,44 @@ BridgedClass _createSystemChromeBridge() {
         if (positional.isEmpty) {
           throw ArgumentError('setPreferredOrientations: Missing required argument "orientations" at position 0');
         }
-        final orientations = D4.coerceList<$dartnative_57.DeviceOrientation>(positional[0], 'orientations');
-        return $dartnative_57.SystemChrome.setPreferredOrientations(orientations);
+        final orientations = D4.coerceList<$dartnative_58.DeviceOrientation>(positional[0], 'orientations');
+        return $dartnative_58.SystemChrome.setPreferredOrientations(orientations);
       },
       'pushChromeScope': (visitor, positional, named, typeArgs) {
-        return $dartnative_57.SystemChrome.pushChromeScope();
+        return $dartnative_58.SystemChrome.pushChromeScope();
       },
       'popChromeScope': (visitor, positional, named, typeArgs) {
-        return $dartnative_57.SystemChrome.popChromeScope();
+        return $dartnative_58.SystemChrome.popChromeScope();
       },
       'setSystemUIOverlayStyle': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'setSystemUIOverlayStyle');
-        final style = D4.getRequiredArg<$dartnative_57.SystemUiOverlayStyle>(positional, 0, 'style', 'setSystemUIOverlayStyle');
-        return $dartnative_57.SystemChrome.setSystemUIOverlayStyle(style);
+        final style = D4.getRequiredArg<$dartnative_58.SystemUiOverlayStyle>(positional, 0, 'style', 'setSystemUIOverlayStyle');
+        return $dartnative_58.SystemChrome.setSystemUIOverlayStyle(style);
       },
       'setEnabledSystemUIMode': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'setEnabledSystemUIMode');
-        final mode = D4.getRequiredArg<$dartnative_57.SystemUiMode>(positional, 0, 'mode', 'setEnabledSystemUIMode');
-        return $dartnative_57.SystemChrome.setEnabledSystemUIMode(mode);
+        final mode = D4.getRequiredArg<$dartnative_58.SystemUiMode>(positional, 0, 'mode', 'setEnabledSystemUIMode');
+        return $dartnative_58.SystemChrome.setEnabledSystemUIMode(mode);
       },
       'setStatusBarColor': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'setStatusBarColor');
         final color = D4.getRequiredArg<$dartnative_9.Color?>(positional, 0, 'color', 'setStatusBarColor');
-        return $dartnative_57.SystemChrome.setStatusBarColor(color);
+        return $dartnative_58.SystemChrome.setStatusBarColor(color);
       },
       'setNavigationBarColor': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'setNavigationBarColor');
         final color = D4.getRequiredArg<$dartnative_9.Color?>(positional, 0, 'color', 'setNavigationBarColor');
-        return $dartnative_57.SystemChrome.setNavigationBarColor(color);
+        return $dartnative_58.SystemChrome.setNavigationBarColor(color);
       },
       'setNavigationBarDividerColor': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'setNavigationBarDividerColor');
         final color = D4.getRequiredArg<$dartnative_9.Color>(positional, 0, 'color', 'setNavigationBarDividerColor');
-        return $dartnative_57.SystemChrome.setNavigationBarDividerColor(color);
+        return $dartnative_58.SystemChrome.setNavigationBarDividerColor(color);
       },
     },
     staticSetters: {
       'defaultStyle': (visitor, value) => 
-        $dartnative_57.SystemChrome.defaultStyle = D4.extractBridgedArgOrNull<$dartnative_57.SystemUiOverlayStyle>(value, 'defaultStyle'),
+        $dartnative_58.SystemChrome.defaultStyle = D4.extractBridgedArgOrNull<$dartnative_58.SystemUiOverlayStyle>(value, 'defaultStyle'),
     },
     staticMethodSignatures: {
       'setPreferredOrientations': 'void setPreferredOrientations(List<DeviceOrientation> orientations)',
@@ -41837,9 +42122,9 @@ BridgedClass _createDynamicColorBridge() {
 
 BridgedClass _createSearchBarBridge() {
   return BridgedClass(
-    nativeType: $dartnative_49.SearchBar,
+    nativeType: $dartnative_50.SearchBar,
     name: 'SearchBar',
-    isAssignable: (v) => v is $dartnative_49.SearchBar,
+    isAssignable: (v) => v is $dartnative_50.SearchBar,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
@@ -41851,22 +42136,22 @@ BridgedClass _createSearchBarBridge() {
         final suggestions = D4.getOptionalNamedArg<$dartnative_3.Widget?>(named, 'suggestions');
         final backgroundColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'backgroundColor');
         final surfaceColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'surfaceColor');
-        return $dartnative_49.SearchBar(key: key, hintText: hintText, onChanged: onChangedRaw == null ? null : (String p0) { D4.callInterpreterCallback(visitor!, onChangedRaw, [p0]); }, onSubmitted: onSubmittedRaw == null ? null : (String p0) { D4.callInterpreterCallback(visitor!, onSubmittedRaw, [p0]); }, onClosed: onClosedRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onClosedRaw, []); }, suggestions: suggestions, backgroundColor: backgroundColor, surfaceColor: surfaceColor);
+        return $dartnative_50.SearchBar(key: key, hintText: hintText, onChanged: onChangedRaw == null ? null : (String p0) { D4.callInterpreterCallback(visitor!, onChangedRaw, [p0]); }, onSubmitted: onSubmittedRaw == null ? null : (String p0) { D4.callInterpreterCallback(visitor!, onSubmittedRaw, [p0]); }, onClosed: onClosedRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onClosedRaw, []); }, suggestions: suggestions, backgroundColor: backgroundColor, surfaceColor: surfaceColor);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_49.SearchBar>(target, 'SearchBar').key,
-      'hintText': (visitor, target) => D4.validateTarget<$dartnative_49.SearchBar>(target, 'SearchBar').hintText,
-      'onChanged': (visitor, target) => D4.validateTarget<$dartnative_49.SearchBar>(target, 'SearchBar').onChanged,
-      'onSubmitted': (visitor, target) => D4.validateTarget<$dartnative_49.SearchBar>(target, 'SearchBar').onSubmitted,
-      'onClosed': (visitor, target) => D4.validateTarget<$dartnative_49.SearchBar>(target, 'SearchBar').onClosed,
-      'suggestions': (visitor, target) => D4.validateTarget<$dartnative_49.SearchBar>(target, 'SearchBar').suggestions,
-      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_49.SearchBar>(target, 'SearchBar').backgroundColor,
-      'surfaceColor': (visitor, target) => D4.validateTarget<$dartnative_49.SearchBar>(target, 'SearchBar').surfaceColor,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_50.SearchBar>(target, 'SearchBar').key,
+      'hintText': (visitor, target) => D4.validateTarget<$dartnative_50.SearchBar>(target, 'SearchBar').hintText,
+      'onChanged': (visitor, target) => D4.validateTarget<$dartnative_50.SearchBar>(target, 'SearchBar').onChanged,
+      'onSubmitted': (visitor, target) => D4.validateTarget<$dartnative_50.SearchBar>(target, 'SearchBar').onSubmitted,
+      'onClosed': (visitor, target) => D4.validateTarget<$dartnative_50.SearchBar>(target, 'SearchBar').onClosed,
+      'suggestions': (visitor, target) => D4.validateTarget<$dartnative_50.SearchBar>(target, 'SearchBar').suggestions,
+      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_50.SearchBar>(target, 'SearchBar').backgroundColor,
+      'surfaceColor': (visitor, target) => D4.validateTarget<$dartnative_50.SearchBar>(target, 'SearchBar').surfaceColor,
     },
     methods: {
       'build': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_49.SearchBar>(target, 'SearchBar');
+        final t = D4.validateTarget<$dartnative_50.SearchBar>(target, 'SearchBar');
         D4.requireMinArgs(positional, 1, 'build');
         final context = D4.getRequiredArg<$dartnative_3.BuildContext>(positional, 0, 'context', 'build');
         return (t as dynamic).build(context);
@@ -41897,9 +42182,9 @@ BridgedClass _createSearchBarBridge() {
 
 BridgedClass _createNativeSearchBarBridge() {
   return BridgedClass(
-    nativeType: $dartnative_49.NativeSearchBar,
+    nativeType: $dartnative_50.NativeSearchBar,
     name: 'NativeSearchBar',
-    isAssignable: (v) => v is $dartnative_49.NativeSearchBar,
+    isAssignable: (v) => v is $dartnative_50.NativeSearchBar,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -41911,18 +42196,18 @@ BridgedClass _createNativeSearchBarBridge() {
         final suggestions = D4.getOptionalNamedArg<$dartnative_3.Widget?>(named, 'suggestions');
         final backgroundColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'backgroundColor');
         final surfaceColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'surfaceColor');
-        return $dartnative_49.NativeSearchBar(key: key, hintText: hintText, onChanged: onChangedRaw == null ? null : (String p0) { D4.callInterpreterCallback(visitor!, onChangedRaw, [p0]); }, onSubmitted: onSubmittedRaw == null ? null : (String p0) { D4.callInterpreterCallback(visitor!, onSubmittedRaw, [p0]); }, onClosed: onClosedRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onClosedRaw, []); }, suggestions: suggestions, backgroundColor: backgroundColor, surfaceColor: surfaceColor);
+        return $dartnative_50.NativeSearchBar(key: key, hintText: hintText, onChanged: onChangedRaw == null ? null : (String p0) { D4.callInterpreterCallback(visitor!, onChangedRaw, [p0]); }, onSubmitted: onSubmittedRaw == null ? null : (String p0) { D4.callInterpreterCallback(visitor!, onSubmittedRaw, [p0]); }, onClosed: onClosedRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onClosedRaw, []); }, suggestions: suggestions, backgroundColor: backgroundColor, surfaceColor: surfaceColor);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_49.NativeSearchBar>(target, 'NativeSearchBar').key,
-      'hintText': (visitor, target) => D4.validateTarget<$dartnative_49.NativeSearchBar>(target, 'NativeSearchBar').hintText,
-      'onChanged': (visitor, target) => D4.validateTarget<$dartnative_49.NativeSearchBar>(target, 'NativeSearchBar').onChanged,
-      'onSubmitted': (visitor, target) => D4.validateTarget<$dartnative_49.NativeSearchBar>(target, 'NativeSearchBar').onSubmitted,
-      'onClosed': (visitor, target) => D4.validateTarget<$dartnative_49.NativeSearchBar>(target, 'NativeSearchBar').onClosed,
-      'suggestions': (visitor, target) => D4.validateTarget<$dartnative_49.NativeSearchBar>(target, 'NativeSearchBar').suggestions,
-      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_49.NativeSearchBar>(target, 'NativeSearchBar').backgroundColor,
-      'surfaceColor': (visitor, target) => D4.validateTarget<$dartnative_49.NativeSearchBar>(target, 'NativeSearchBar').surfaceColor,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_50.NativeSearchBar>(target, 'NativeSearchBar').key,
+      'hintText': (visitor, target) => D4.validateTarget<$dartnative_50.NativeSearchBar>(target, 'NativeSearchBar').hintText,
+      'onChanged': (visitor, target) => D4.validateTarget<$dartnative_50.NativeSearchBar>(target, 'NativeSearchBar').onChanged,
+      'onSubmitted': (visitor, target) => D4.validateTarget<$dartnative_50.NativeSearchBar>(target, 'NativeSearchBar').onSubmitted,
+      'onClosed': (visitor, target) => D4.validateTarget<$dartnative_50.NativeSearchBar>(target, 'NativeSearchBar').onClosed,
+      'suggestions': (visitor, target) => D4.validateTarget<$dartnative_50.NativeSearchBar>(target, 'NativeSearchBar').suggestions,
+      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_50.NativeSearchBar>(target, 'NativeSearchBar').backgroundColor,
+      'surfaceColor': (visitor, target) => D4.validateTarget<$dartnative_50.NativeSearchBar>(target, 'NativeSearchBar').surfaceColor,
     },
     constructorSignatures: {
       '': 'const NativeSearchBar({Key? key, required String hintText, ValueChanged<String>? onChanged, ValueChanged<String>? onSubmitted, VoidCallback? onClosed, Widget? suggestions, Color? backgroundColor, Color? surfaceColor})',
@@ -41946,9 +42231,9 @@ BridgedClass _createNativeSearchBarBridge() {
 
 BridgedClass _createSegmentedControlBridge() {
   return BridgedClass(
-    nativeType: $dartnative_50.SegmentedControl,
+    nativeType: $dartnative_51.SegmentedControl,
     name: 'SegmentedControl',
-    isAssignable: (v) => v is $dartnative_50.SegmentedControl,
+    isAssignable: (v) => v is $dartnative_51.SegmentedControl,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -41963,18 +42248,18 @@ BridgedClass _createSegmentedControlBridge() {
         final backgroundColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'backgroundColor');
         final labelFontStyle = D4.getOptionalNamedArg<$dartnative_9.TextStyle?>(named, 'labelFontStyle');
         final selectedLabelFontStyle = D4.getOptionalNamedArg<$dartnative_9.TextStyle?>(named, 'selectedLabelFontStyle');
-        return $dartnative_50.SegmentedControl(key: key, segments: segments, selectedIndex: selectedIndex, onValueChanged: onValueChangedRaw == null ? null : (int p0) { D4.callInterpreterCallback(visitor!, onValueChangedRaw, [p0]); }, indicatorColor: indicatorColor, backgroundColor: backgroundColor, labelFontStyle: labelFontStyle, selectedLabelFontStyle: selectedLabelFontStyle);
+        return $dartnative_51.SegmentedControl(key: key, segments: segments, selectedIndex: selectedIndex, onValueChanged: onValueChangedRaw == null ? null : (int p0) { D4.callInterpreterCallback(visitor!, onValueChangedRaw, [p0]); }, indicatorColor: indicatorColor, backgroundColor: backgroundColor, labelFontStyle: labelFontStyle, selectedLabelFontStyle: selectedLabelFontStyle);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_50.SegmentedControl>(target, 'SegmentedControl').key,
-      'segments': (visitor, target) => D4.validateTarget<$dartnative_50.SegmentedControl>(target, 'SegmentedControl').segments,
-      'selectedIndex': (visitor, target) => D4.validateTarget<$dartnative_50.SegmentedControl>(target, 'SegmentedControl').selectedIndex,
-      'onValueChanged': (visitor, target) => D4.validateTarget<$dartnative_50.SegmentedControl>(target, 'SegmentedControl').onValueChanged,
-      'indicatorColor': (visitor, target) => D4.validateTarget<$dartnative_50.SegmentedControl>(target, 'SegmentedControl').indicatorColor,
-      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_50.SegmentedControl>(target, 'SegmentedControl').backgroundColor,
-      'labelFontStyle': (visitor, target) => D4.validateTarget<$dartnative_50.SegmentedControl>(target, 'SegmentedControl').labelFontStyle,
-      'selectedLabelFontStyle': (visitor, target) => D4.validateTarget<$dartnative_50.SegmentedControl>(target, 'SegmentedControl').selectedLabelFontStyle,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_51.SegmentedControl>(target, 'SegmentedControl').key,
+      'segments': (visitor, target) => D4.validateTarget<$dartnative_51.SegmentedControl>(target, 'SegmentedControl').segments,
+      'selectedIndex': (visitor, target) => D4.validateTarget<$dartnative_51.SegmentedControl>(target, 'SegmentedControl').selectedIndex,
+      'onValueChanged': (visitor, target) => D4.validateTarget<$dartnative_51.SegmentedControl>(target, 'SegmentedControl').onValueChanged,
+      'indicatorColor': (visitor, target) => D4.validateTarget<$dartnative_51.SegmentedControl>(target, 'SegmentedControl').indicatorColor,
+      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_51.SegmentedControl>(target, 'SegmentedControl').backgroundColor,
+      'labelFontStyle': (visitor, target) => D4.validateTarget<$dartnative_51.SegmentedControl>(target, 'SegmentedControl').labelFontStyle,
+      'selectedLabelFontStyle': (visitor, target) => D4.validateTarget<$dartnative_51.SegmentedControl>(target, 'SegmentedControl').selectedLabelFontStyle,
     },
     constructorSignatures: {
       '': 'const SegmentedControl({Key? key, required List<String> segments, int selectedIndex = 0, ValueChanged<int>? onValueChanged, Color? indicatorColor, Color? backgroundColor, TextStyle? labelFontStyle, TextStyle? selectedLabelFontStyle})',
@@ -41998,24 +42283,24 @@ BridgedClass _createSegmentedControlBridge() {
 
 BridgedClass _createAndroidSwitchStyleBridge() {
   return BridgedClass(
-    nativeType: $dartnative_56.AndroidSwitchStyle,
+    nativeType: $dartnative_57.AndroidSwitchStyle,
     name: 'AndroidSwitchStyle',
-    isAssignable: (v) => v is $dartnative_56.AndroidSwitchStyle,
+    isAssignable: (v) => v is $dartnative_57.AndroidSwitchStyle,
     constructors: {
       '': (visitor, positional, named) {
         final checkIcon = D4.getOptionalNamedArg<bool?>(named, 'checkIcon');
         final thumbIconSize = D4.getOptionalNamedArg<double?>(named, 'thumbIconSize');
-        return $dartnative_56.AndroidSwitchStyle(checkIcon: checkIcon, thumbIconSize: thumbIconSize);
+        return $dartnative_57.AndroidSwitchStyle(checkIcon: checkIcon, thumbIconSize: thumbIconSize);
       },
     },
     getters: {
-      'checkIcon': (visitor, target) => D4.validateTarget<$dartnative_56.AndroidSwitchStyle>(target, 'AndroidSwitchStyle').checkIcon,
-      'thumbIconSize': (visitor, target) => D4.validateTarget<$dartnative_56.AndroidSwitchStyle>(target, 'AndroidSwitchStyle').thumbIconSize,
-      'hashCode': (visitor, target) => D4.validateTarget<$dartnative_56.AndroidSwitchStyle>(target, 'AndroidSwitchStyle').hashCode,
+      'checkIcon': (visitor, target) => D4.validateTarget<$dartnative_57.AndroidSwitchStyle>(target, 'AndroidSwitchStyle').checkIcon,
+      'thumbIconSize': (visitor, target) => D4.validateTarget<$dartnative_57.AndroidSwitchStyle>(target, 'AndroidSwitchStyle').thumbIconSize,
+      'hashCode': (visitor, target) => D4.validateTarget<$dartnative_57.AndroidSwitchStyle>(target, 'AndroidSwitchStyle').hashCode,
     },
     methods: {
       '==': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_56.AndroidSwitchStyle>(target, 'AndroidSwitchStyle');
+        final t = D4.validateTarget<$dartnative_57.AndroidSwitchStyle>(target, 'AndroidSwitchStyle');
         // GEN-103: Dart spec — non-null == null is always false.
         if (positional.isEmpty || positional[0] == null) return false;
         final other = D4.getRequiredArg<Object>(positional, 0, 'other', 'operator==');
@@ -42039,9 +42324,9 @@ BridgedClass _createAndroidSwitchStyleBridge() {
 
 BridgedClass _createSwitchBridge() {
   return BridgedClass(
-    nativeType: $dartnative_56.Switch,
+    nativeType: $dartnative_57.Switch,
     name: 'Switch',
-    isAssignable: (v) => v is $dartnative_56.Switch,
+    isAssignable: (v) => v is $dartnative_57.Switch,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -42052,19 +42337,19 @@ BridgedClass _createSwitchBridge() {
         final activeTrackColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'activeTrackColor');
         final inactiveThumbColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'inactiveThumbColor');
         final inactiveTrackColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'inactiveTrackColor');
-        final android = D4.getOptionalNamedArg<$dartnative_56.AndroidSwitchStyle?>(named, 'android');
-        return $dartnative_56.Switch(key: key, value: value, onChanged: onChangedRaw == null ? null : (bool p0) { D4.callInterpreterCallback(visitor!, onChangedRaw, [p0]); }, activeThumbColor: activeThumbColor, activeTrackColor: activeTrackColor, inactiveThumbColor: inactiveThumbColor, inactiveTrackColor: inactiveTrackColor, android: android);
+        final android = D4.getOptionalNamedArg<$dartnative_57.AndroidSwitchStyle?>(named, 'android');
+        return $dartnative_57.Switch(key: key, value: value, onChanged: onChangedRaw == null ? null : (bool p0) { D4.callInterpreterCallback(visitor!, onChangedRaw, [p0]); }, activeThumbColor: activeThumbColor, activeTrackColor: activeTrackColor, inactiveThumbColor: inactiveThumbColor, inactiveTrackColor: inactiveTrackColor, android: android);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_56.Switch>(target, 'Switch').key,
-      'value': (visitor, target) => D4.validateTarget<$dartnative_56.Switch>(target, 'Switch').value,
-      'onChanged': (visitor, target) => D4.validateTarget<$dartnative_56.Switch>(target, 'Switch').onChanged,
-      'activeThumbColor': (visitor, target) => D4.validateTarget<$dartnative_56.Switch>(target, 'Switch').activeThumbColor,
-      'activeTrackColor': (visitor, target) => D4.validateTarget<$dartnative_56.Switch>(target, 'Switch').activeTrackColor,
-      'inactiveThumbColor': (visitor, target) => D4.validateTarget<$dartnative_56.Switch>(target, 'Switch').inactiveThumbColor,
-      'inactiveTrackColor': (visitor, target) => D4.validateTarget<$dartnative_56.Switch>(target, 'Switch').inactiveTrackColor,
-      'android': (visitor, target) => D4.validateTarget<$dartnative_56.Switch>(target, 'Switch').android,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_57.Switch>(target, 'Switch').key,
+      'value': (visitor, target) => D4.validateTarget<$dartnative_57.Switch>(target, 'Switch').value,
+      'onChanged': (visitor, target) => D4.validateTarget<$dartnative_57.Switch>(target, 'Switch').onChanged,
+      'activeThumbColor': (visitor, target) => D4.validateTarget<$dartnative_57.Switch>(target, 'Switch').activeThumbColor,
+      'activeTrackColor': (visitor, target) => D4.validateTarget<$dartnative_57.Switch>(target, 'Switch').activeTrackColor,
+      'inactiveThumbColor': (visitor, target) => D4.validateTarget<$dartnative_57.Switch>(target, 'Switch').inactiveThumbColor,
+      'inactiveTrackColor': (visitor, target) => D4.validateTarget<$dartnative_57.Switch>(target, 'Switch').inactiveTrackColor,
+      'android': (visitor, target) => D4.validateTarget<$dartnative_57.Switch>(target, 'Switch').android,
     },
     constructorSignatures: {
       '': 'const Switch({Key? key, required bool value, ValueChanged<bool>? onChanged, Color? activeThumbColor, Color? activeTrackColor, Color? inactiveThumbColor, Color? inactiveTrackColor, AndroidSwitchStyle? android})',
@@ -42088,9 +42373,9 @@ BridgedClass _createSwitchBridge() {
 
 BridgedClass _createSliderComponentShapeBridge() {
   return BridgedClass(
-    nativeType: $dartnative_52.SliderComponentShape,
+    nativeType: $dartnative_53.SliderComponentShape,
     name: 'SliderComponentShape',
-    isAssignable: (v) => v is $dartnative_52.SliderComponentShape,
+    isAssignable: (v) => v is $dartnative_53.SliderComponentShape,
     isAbstract: true,
     constructors: {
     },
@@ -42103,18 +42388,18 @@ BridgedClass _createSliderComponentShapeBridge() {
 
 BridgedClass _createRoundSliderThumbShapeBridge() {
   return BridgedClass(
-    nativeType: $dartnative_52.RoundSliderThumbShape,
+    nativeType: $dartnative_53.RoundSliderThumbShape,
     name: 'RoundSliderThumbShape',
-    isAssignable: (v) => v is $dartnative_52.RoundSliderThumbShape,
+    isAssignable: (v) => v is $dartnative_53.RoundSliderThumbShape,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final enabledThumbRadius = D4.getNamedArgWithDefault<double>(named, 'enabledThumbRadius', 4.0);
-        return $dartnative_52.RoundSliderThumbShape(enabledThumbRadius: enabledThumbRadius);
+        return $dartnative_53.RoundSliderThumbShape(enabledThumbRadius: enabledThumbRadius);
       },
     },
     getters: {
-      'enabledThumbRadius': (visitor, target) => D4.validateTarget<$dartnative_52.RoundSliderThumbShape>(target, 'RoundSliderThumbShape').enabledThumbRadius,
+      'enabledThumbRadius': (visitor, target) => D4.validateTarget<$dartnative_53.RoundSliderThumbShape>(target, 'RoundSliderThumbShape').enabledThumbRadius,
     },
     constructorSignatures: {
       '': 'const RoundSliderThumbShape({double enabledThumbRadius = 4.0})',
@@ -42131,18 +42416,18 @@ BridgedClass _createRoundSliderThumbShapeBridge() {
 
 BridgedClass _createRoundSliderOverlayShapeBridge() {
   return BridgedClass(
-    nativeType: $dartnative_52.RoundSliderOverlayShape,
+    nativeType: $dartnative_53.RoundSliderOverlayShape,
     name: 'RoundSliderOverlayShape',
-    isAssignable: (v) => v is $dartnative_52.RoundSliderOverlayShape,
+    isAssignable: (v) => v is $dartnative_53.RoundSliderOverlayShape,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final overlayRadius = D4.getNamedArgWithDefault<double>(named, 'overlayRadius', 24.0);
-        return $dartnative_52.RoundSliderOverlayShape(overlayRadius: overlayRadius);
+        return $dartnative_53.RoundSliderOverlayShape(overlayRadius: overlayRadius);
       },
     },
     getters: {
-      'overlayRadius': (visitor, target) => D4.validateTarget<$dartnative_52.RoundSliderOverlayShape>(target, 'RoundSliderOverlayShape').overlayRadius,
+      'overlayRadius': (visitor, target) => D4.validateTarget<$dartnative_53.RoundSliderOverlayShape>(target, 'RoundSliderOverlayShape').overlayRadius,
     },
     constructorSignatures: {
       '': 'const RoundSliderOverlayShape({double overlayRadius = 24.0})',
@@ -42159,36 +42444,36 @@ BridgedClass _createRoundSliderOverlayShapeBridge() {
 
 BridgedClass _createSliderThemeDataBridge() {
   return BridgedClass(
-    nativeType: $dartnative_52.SliderThemeData,
+    nativeType: $dartnative_53.SliderThemeData,
     name: 'SliderThemeData',
-    isAssignable: (v) => v is $dartnative_52.SliderThemeData,
+    isAssignable: (v) => v is $dartnative_53.SliderThemeData,
     constructors: {
       '': (visitor, positional, named) {
         final trackHeight = D4.getOptionalNamedArg<double?>(named, 'trackHeight');
-        final thumbShape = D4.getOptionalNamedArg<$dartnative_52.SliderComponentShape?>(named, 'thumbShape');
-        final overlayShape = D4.getOptionalNamedArg<$dartnative_52.SliderComponentShape?>(named, 'overlayShape');
+        final thumbShape = D4.getOptionalNamedArg<$dartnative_53.SliderComponentShape?>(named, 'thumbShape');
+        final overlayShape = D4.getOptionalNamedArg<$dartnative_53.SliderComponentShape?>(named, 'overlayShape');
         final activeTrackColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'activeTrackColor');
         final inactiveTrackColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'inactiveTrackColor');
         final thumbColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'thumbColor');
         final overlayColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'overlayColor');
-        return $dartnative_52.SliderThemeData(trackHeight: trackHeight, thumbShape: thumbShape, overlayShape: overlayShape, activeTrackColor: activeTrackColor, inactiveTrackColor: inactiveTrackColor, thumbColor: thumbColor, overlayColor: overlayColor);
+        return $dartnative_53.SliderThemeData(trackHeight: trackHeight, thumbShape: thumbShape, overlayShape: overlayShape, activeTrackColor: activeTrackColor, inactiveTrackColor: inactiveTrackColor, thumbColor: thumbColor, overlayColor: overlayColor);
       },
     },
     getters: {
-      'trackHeight': (visitor, target) => D4.validateTarget<$dartnative_52.SliderThemeData>(target, 'SliderThemeData').trackHeight,
-      'thumbShape': (visitor, target) => D4.validateTarget<$dartnative_52.SliderThemeData>(target, 'SliderThemeData').thumbShape,
-      'overlayShape': (visitor, target) => D4.validateTarget<$dartnative_52.SliderThemeData>(target, 'SliderThemeData').overlayShape,
-      'activeTrackColor': (visitor, target) => D4.validateTarget<$dartnative_52.SliderThemeData>(target, 'SliderThemeData').activeTrackColor,
-      'inactiveTrackColor': (visitor, target) => D4.validateTarget<$dartnative_52.SliderThemeData>(target, 'SliderThemeData').inactiveTrackColor,
-      'thumbColor': (visitor, target) => D4.validateTarget<$dartnative_52.SliderThemeData>(target, 'SliderThemeData').thumbColor,
-      'overlayColor': (visitor, target) => D4.validateTarget<$dartnative_52.SliderThemeData>(target, 'SliderThemeData').overlayColor,
+      'trackHeight': (visitor, target) => D4.validateTarget<$dartnative_53.SliderThemeData>(target, 'SliderThemeData').trackHeight,
+      'thumbShape': (visitor, target) => D4.validateTarget<$dartnative_53.SliderThemeData>(target, 'SliderThemeData').thumbShape,
+      'overlayShape': (visitor, target) => D4.validateTarget<$dartnative_53.SliderThemeData>(target, 'SliderThemeData').overlayShape,
+      'activeTrackColor': (visitor, target) => D4.validateTarget<$dartnative_53.SliderThemeData>(target, 'SliderThemeData').activeTrackColor,
+      'inactiveTrackColor': (visitor, target) => D4.validateTarget<$dartnative_53.SliderThemeData>(target, 'SliderThemeData').inactiveTrackColor,
+      'thumbColor': (visitor, target) => D4.validateTarget<$dartnative_53.SliderThemeData>(target, 'SliderThemeData').thumbColor,
+      'overlayColor': (visitor, target) => D4.validateTarget<$dartnative_53.SliderThemeData>(target, 'SliderThemeData').overlayColor,
     },
     methods: {
       'copyWith': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_52.SliderThemeData>(target, 'SliderThemeData');
+        final t = D4.validateTarget<$dartnative_53.SliderThemeData>(target, 'SliderThemeData');
         final trackHeight = D4.getOptionalNamedArg<double?>(named, 'trackHeight');
-        final thumbShape = D4.getOptionalNamedArg<$dartnative_52.SliderComponentShape?>(named, 'thumbShape');
-        final overlayShape = D4.getOptionalNamedArg<$dartnative_52.SliderComponentShape?>(named, 'overlayShape');
+        final thumbShape = D4.getOptionalNamedArg<$dartnative_53.SliderComponentShape?>(named, 'thumbShape');
+        final overlayShape = D4.getOptionalNamedArg<$dartnative_53.SliderComponentShape?>(named, 'overlayShape');
         final activeTrackColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'activeTrackColor');
         final inactiveTrackColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'inactiveTrackColor');
         final thumbColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'thumbColor');
@@ -42220,28 +42505,28 @@ BridgedClass _createSliderThemeDataBridge() {
 
 BridgedClass _createSliderThemeBridge() {
   return BridgedClass(
-    nativeType: $dartnative_52.SliderTheme,
+    nativeType: $dartnative_53.SliderTheme,
     name: 'SliderTheme',
-    isAssignable: (v) => v is $dartnative_52.SliderTheme,
+    isAssignable: (v) => v is $dartnative_53.SliderTheme,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
-        final data = D4.getRequiredNamedArg<$dartnative_52.SliderThemeData>(named, 'data', 'SliderTheme');
+        final data = D4.getRequiredNamedArg<$dartnative_53.SliderThemeData>(named, 'data', 'SliderTheme');
         final child = D4.getRequiredNamedArg<$dartnative_3.Widget>(named, 'child', 'SliderTheme');
-        return $dartnative_52.SliderTheme(key: key, data: data, child: child);
+        return $dartnative_53.SliderTheme(key: key, data: data, child: child);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_52.SliderTheme>(target, 'SliderTheme').key,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_52.SliderTheme>(target, 'SliderTheme').child,
-      'data': (visitor, target) => D4.validateTarget<$dartnative_52.SliderTheme>(target, 'SliderTheme').data,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_53.SliderTheme>(target, 'SliderTheme').key,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_53.SliderTheme>(target, 'SliderTheme').child,
+      'data': (visitor, target) => D4.validateTarget<$dartnative_53.SliderTheme>(target, 'SliderTheme').data,
     },
     methods: {
       'updateShouldNotify': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_52.SliderTheme>(target, 'SliderTheme');
+        final t = D4.validateTarget<$dartnative_53.SliderTheme>(target, 'SliderTheme');
         D4.requireMinArgs(positional, 1, 'updateShouldNotify');
-        final oldWidget = D4.getRequiredArg<$dartnative_52.SliderTheme>(positional, 0, 'oldWidget', 'updateShouldNotify');
+        final oldWidget = D4.getRequiredArg<$dartnative_53.SliderTheme>(positional, 0, 'oldWidget', 'updateShouldNotify');
         return t.updateShouldNotify(oldWidget);
       },
     },
@@ -42249,7 +42534,7 @@ BridgedClass _createSliderThemeBridge() {
       'of': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'of');
         final context = D4.getRequiredArg<$dartnative_3.BuildContext>(positional, 0, 'context', 'of');
-        return $dartnative_52.SliderTheme.of(context);
+        return $dartnative_53.SliderTheme.of(context);
       },
     },
     constructorSignatures: {
@@ -42275,9 +42560,9 @@ BridgedClass _createSliderThemeBridge() {
 
 BridgedClass _createAndroidSliderStyleBridge() {
   return BridgedClass(
-    nativeType: $dartnative_52.AndroidSliderStyle,
+    nativeType: $dartnative_53.AndroidSliderStyle,
     name: 'AndroidSliderStyle',
-    isAssignable: (v) => v is $dartnative_52.AndroidSliderStyle,
+    isAssignable: (v) => v is $dartnative_53.AndroidSliderStyle,
     constructors: {
       '': (visitor, positional, named) {
         final trackHeight = D4.getOptionalNamedArg<double?>(named, 'trackHeight');
@@ -42286,21 +42571,21 @@ BridgedClass _createAndroidSliderStyleBridge() {
         final thumbTrackGap = D4.getOptionalNamedArg<double?>(named, 'thumbTrackGap');
         final stopIndicatorSize = D4.getOptionalNamedArg<double?>(named, 'stopIndicatorSize');
         final trackCornerSize = D4.getOptionalNamedArg<double?>(named, 'trackCornerSize');
-        return $dartnative_52.AndroidSliderStyle(trackHeight: trackHeight, thumbWidth: thumbWidth, thumbHeight: thumbHeight, thumbTrackGap: thumbTrackGap, stopIndicatorSize: stopIndicatorSize, trackCornerSize: trackCornerSize);
+        return $dartnative_53.AndroidSliderStyle(trackHeight: trackHeight, thumbWidth: thumbWidth, thumbHeight: thumbHeight, thumbTrackGap: thumbTrackGap, stopIndicatorSize: stopIndicatorSize, trackCornerSize: trackCornerSize);
       },
     },
     getters: {
-      'trackHeight': (visitor, target) => D4.validateTarget<$dartnative_52.AndroidSliderStyle>(target, 'AndroidSliderStyle').trackHeight,
-      'thumbWidth': (visitor, target) => D4.validateTarget<$dartnative_52.AndroidSliderStyle>(target, 'AndroidSliderStyle').thumbWidth,
-      'thumbHeight': (visitor, target) => D4.validateTarget<$dartnative_52.AndroidSliderStyle>(target, 'AndroidSliderStyle').thumbHeight,
-      'thumbTrackGap': (visitor, target) => D4.validateTarget<$dartnative_52.AndroidSliderStyle>(target, 'AndroidSliderStyle').thumbTrackGap,
-      'stopIndicatorSize': (visitor, target) => D4.validateTarget<$dartnative_52.AndroidSliderStyle>(target, 'AndroidSliderStyle').stopIndicatorSize,
-      'trackCornerSize': (visitor, target) => D4.validateTarget<$dartnative_52.AndroidSliderStyle>(target, 'AndroidSliderStyle').trackCornerSize,
-      'hashCode': (visitor, target) => D4.validateTarget<$dartnative_52.AndroidSliderStyle>(target, 'AndroidSliderStyle').hashCode,
+      'trackHeight': (visitor, target) => D4.validateTarget<$dartnative_53.AndroidSliderStyle>(target, 'AndroidSliderStyle').trackHeight,
+      'thumbWidth': (visitor, target) => D4.validateTarget<$dartnative_53.AndroidSliderStyle>(target, 'AndroidSliderStyle').thumbWidth,
+      'thumbHeight': (visitor, target) => D4.validateTarget<$dartnative_53.AndroidSliderStyle>(target, 'AndroidSliderStyle').thumbHeight,
+      'thumbTrackGap': (visitor, target) => D4.validateTarget<$dartnative_53.AndroidSliderStyle>(target, 'AndroidSliderStyle').thumbTrackGap,
+      'stopIndicatorSize': (visitor, target) => D4.validateTarget<$dartnative_53.AndroidSliderStyle>(target, 'AndroidSliderStyle').stopIndicatorSize,
+      'trackCornerSize': (visitor, target) => D4.validateTarget<$dartnative_53.AndroidSliderStyle>(target, 'AndroidSliderStyle').trackCornerSize,
+      'hashCode': (visitor, target) => D4.validateTarget<$dartnative_53.AndroidSliderStyle>(target, 'AndroidSliderStyle').hashCode,
     },
     methods: {
       '==': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_52.AndroidSliderStyle>(target, 'AndroidSliderStyle');
+        final t = D4.validateTarget<$dartnative_53.AndroidSliderStyle>(target, 'AndroidSliderStyle');
         // GEN-103: Dart spec — non-null == null is always false.
         if (positional.isEmpty || positional[0] == null) return false;
         final other = D4.getRequiredArg<Object>(positional, 0, 'other', 'operator==');
@@ -42328,9 +42613,9 @@ BridgedClass _createAndroidSliderStyleBridge() {
 
 BridgedClass _createSliderBridge() {
   return BridgedClass(
-    nativeType: $dartnative_52.Slider,
+    nativeType: $dartnative_53.Slider,
     name: 'Slider',
-    isAssignable: (v) => v is $dartnative_52.Slider,
+    isAssignable: (v) => v is $dartnative_53.Slider,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -42345,23 +42630,23 @@ BridgedClass _createSliderBridge() {
         final activeColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'activeColor');
         final inactiveColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'inactiveColor');
         final thumbColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'thumbColor');
-        final android = D4.getOptionalNamedArg<$dartnative_52.AndroidSliderStyle?>(named, 'android');
-        return $dartnative_52.Slider(key: key, value: value, onChanged: onChangedRaw == null ? null : (double p0) { D4.callInterpreterCallback(visitor!, onChangedRaw, [p0]); }, onChangeStart: onChangeStartRaw == null ? null : (double p0) { D4.callInterpreterCallback(visitor!, onChangeStartRaw, [p0]); }, onChangeEnd: onChangeEndRaw == null ? null : (double p0) { D4.callInterpreterCallback(visitor!, onChangeEndRaw, [p0]); }, min: min, max: max, divisions: divisions, activeColor: activeColor, inactiveColor: inactiveColor, thumbColor: thumbColor, android: android);
+        final android = D4.getOptionalNamedArg<$dartnative_53.AndroidSliderStyle?>(named, 'android');
+        return $dartnative_53.Slider(key: key, value: value, onChanged: onChangedRaw == null ? null : (double p0) { D4.callInterpreterCallback(visitor!, onChangedRaw, [p0]); }, onChangeStart: onChangeStartRaw == null ? null : (double p0) { D4.callInterpreterCallback(visitor!, onChangeStartRaw, [p0]); }, onChangeEnd: onChangeEndRaw == null ? null : (double p0) { D4.callInterpreterCallback(visitor!, onChangeEndRaw, [p0]); }, min: min, max: max, divisions: divisions, activeColor: activeColor, inactiveColor: inactiveColor, thumbColor: thumbColor, android: android);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_52.Slider>(target, 'Slider').key,
-      'value': (visitor, target) => D4.validateTarget<$dartnative_52.Slider>(target, 'Slider').value,
-      'onChanged': (visitor, target) => D4.validateTarget<$dartnative_52.Slider>(target, 'Slider').onChanged,
-      'onChangeStart': (visitor, target) => D4.validateTarget<$dartnative_52.Slider>(target, 'Slider').onChangeStart,
-      'onChangeEnd': (visitor, target) => D4.validateTarget<$dartnative_52.Slider>(target, 'Slider').onChangeEnd,
-      'min': (visitor, target) => D4.validateTarget<$dartnative_52.Slider>(target, 'Slider').min,
-      'max': (visitor, target) => D4.validateTarget<$dartnative_52.Slider>(target, 'Slider').max,
-      'divisions': (visitor, target) => D4.validateTarget<$dartnative_52.Slider>(target, 'Slider').divisions,
-      'activeColor': (visitor, target) => D4.validateTarget<$dartnative_52.Slider>(target, 'Slider').activeColor,
-      'inactiveColor': (visitor, target) => D4.validateTarget<$dartnative_52.Slider>(target, 'Slider').inactiveColor,
-      'thumbColor': (visitor, target) => D4.validateTarget<$dartnative_52.Slider>(target, 'Slider').thumbColor,
-      'android': (visitor, target) => D4.validateTarget<$dartnative_52.Slider>(target, 'Slider').android,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_53.Slider>(target, 'Slider').key,
+      'value': (visitor, target) => D4.validateTarget<$dartnative_53.Slider>(target, 'Slider').value,
+      'onChanged': (visitor, target) => D4.validateTarget<$dartnative_53.Slider>(target, 'Slider').onChanged,
+      'onChangeStart': (visitor, target) => D4.validateTarget<$dartnative_53.Slider>(target, 'Slider').onChangeStart,
+      'onChangeEnd': (visitor, target) => D4.validateTarget<$dartnative_53.Slider>(target, 'Slider').onChangeEnd,
+      'min': (visitor, target) => D4.validateTarget<$dartnative_53.Slider>(target, 'Slider').min,
+      'max': (visitor, target) => D4.validateTarget<$dartnative_53.Slider>(target, 'Slider').max,
+      'divisions': (visitor, target) => D4.validateTarget<$dartnative_53.Slider>(target, 'Slider').divisions,
+      'activeColor': (visitor, target) => D4.validateTarget<$dartnative_53.Slider>(target, 'Slider').activeColor,
+      'inactiveColor': (visitor, target) => D4.validateTarget<$dartnative_53.Slider>(target, 'Slider').inactiveColor,
+      'thumbColor': (visitor, target) => D4.validateTarget<$dartnative_53.Slider>(target, 'Slider').thumbColor,
+      'android': (visitor, target) => D4.validateTarget<$dartnative_53.Slider>(target, 'Slider').android,
     },
     constructorSignatures: {
       '': 'const Slider({Key? key, required double value, ValueChanged<double>? onChanged, ValueChanged<double>? onChangeStart, ValueChanged<double>? onChangeEnd, double min = 0, double max = 1, int? divisions, Color? activeColor, Color? inactiveColor, Color? thumbColor, AndroidSliderStyle? android})',
@@ -42621,9 +42906,9 @@ BridgedClass _createMediaFileBridge() {
 
 BridgedClass _createAndroidProgressIndicatorStyleBridge() {
   return BridgedClass(
-    nativeType: $dartnative_46.AndroidProgressIndicatorStyle,
+    nativeType: $dartnative_47.AndroidProgressIndicatorStyle,
     name: 'AndroidProgressIndicatorStyle',
-    isAssignable: (v) => v is $dartnative_46.AndroidProgressIndicatorStyle,
+    isAssignable: (v) => v is $dartnative_47.AndroidProgressIndicatorStyle,
     constructors: {
       '': (visitor, positional, named) {
         final wavy = D4.getNamedArgWithDefault<bool>(named, 'wavy', false);
@@ -42632,21 +42917,21 @@ BridgedClass _createAndroidProgressIndicatorStyleBridge() {
         final waveSpeed = D4.getOptionalNamedArg<double?>(named, 'waveSpeed');
         final trackGap = D4.getOptionalNamedArg<double?>(named, 'trackGap');
         final stopIndicatorSize = D4.getOptionalNamedArg<double?>(named, 'stopIndicatorSize');
-        return $dartnative_46.AndroidProgressIndicatorStyle(wavy: wavy, waveAmplitude: waveAmplitude, wavelength: wavelength, waveSpeed: waveSpeed, trackGap: trackGap, stopIndicatorSize: stopIndicatorSize);
+        return $dartnative_47.AndroidProgressIndicatorStyle(wavy: wavy, waveAmplitude: waveAmplitude, wavelength: wavelength, waveSpeed: waveSpeed, trackGap: trackGap, stopIndicatorSize: stopIndicatorSize);
       },
     },
     getters: {
-      'wavy': (visitor, target) => D4.validateTarget<$dartnative_46.AndroidProgressIndicatorStyle>(target, 'AndroidProgressIndicatorStyle').wavy,
-      'waveAmplitude': (visitor, target) => D4.validateTarget<$dartnative_46.AndroidProgressIndicatorStyle>(target, 'AndroidProgressIndicatorStyle').waveAmplitude,
-      'wavelength': (visitor, target) => D4.validateTarget<$dartnative_46.AndroidProgressIndicatorStyle>(target, 'AndroidProgressIndicatorStyle').wavelength,
-      'waveSpeed': (visitor, target) => D4.validateTarget<$dartnative_46.AndroidProgressIndicatorStyle>(target, 'AndroidProgressIndicatorStyle').waveSpeed,
-      'trackGap': (visitor, target) => D4.validateTarget<$dartnative_46.AndroidProgressIndicatorStyle>(target, 'AndroidProgressIndicatorStyle').trackGap,
-      'stopIndicatorSize': (visitor, target) => D4.validateTarget<$dartnative_46.AndroidProgressIndicatorStyle>(target, 'AndroidProgressIndicatorStyle').stopIndicatorSize,
-      'hashCode': (visitor, target) => D4.validateTarget<$dartnative_46.AndroidProgressIndicatorStyle>(target, 'AndroidProgressIndicatorStyle').hashCode,
+      'wavy': (visitor, target) => D4.validateTarget<$dartnative_47.AndroidProgressIndicatorStyle>(target, 'AndroidProgressIndicatorStyle').wavy,
+      'waveAmplitude': (visitor, target) => D4.validateTarget<$dartnative_47.AndroidProgressIndicatorStyle>(target, 'AndroidProgressIndicatorStyle').waveAmplitude,
+      'wavelength': (visitor, target) => D4.validateTarget<$dartnative_47.AndroidProgressIndicatorStyle>(target, 'AndroidProgressIndicatorStyle').wavelength,
+      'waveSpeed': (visitor, target) => D4.validateTarget<$dartnative_47.AndroidProgressIndicatorStyle>(target, 'AndroidProgressIndicatorStyle').waveSpeed,
+      'trackGap': (visitor, target) => D4.validateTarget<$dartnative_47.AndroidProgressIndicatorStyle>(target, 'AndroidProgressIndicatorStyle').trackGap,
+      'stopIndicatorSize': (visitor, target) => D4.validateTarget<$dartnative_47.AndroidProgressIndicatorStyle>(target, 'AndroidProgressIndicatorStyle').stopIndicatorSize,
+      'hashCode': (visitor, target) => D4.validateTarget<$dartnative_47.AndroidProgressIndicatorStyle>(target, 'AndroidProgressIndicatorStyle').hashCode,
     },
     methods: {
       '==': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_46.AndroidProgressIndicatorStyle>(target, 'AndroidProgressIndicatorStyle');
+        final t = D4.validateTarget<$dartnative_47.AndroidProgressIndicatorStyle>(target, 'AndroidProgressIndicatorStyle');
         // GEN-103: Dart spec — non-null == null is always false.
         if (positional.isEmpty || positional[0] == null) return false;
         final other = D4.getRequiredArg<Object>(positional, 0, 'other', 'operator==');
@@ -42674,9 +42959,9 @@ BridgedClass _createAndroidProgressIndicatorStyleBridge() {
 
 BridgedClass _createCircularProgressIndicatorBridge() {
   return BridgedClass(
-    nativeType: $dartnative_46.CircularProgressIndicator,
+    nativeType: $dartnative_47.CircularProgressIndicator,
     name: 'CircularProgressIndicator',
-    isAssignable: (v) => v is $dartnative_46.CircularProgressIndicator,
+    isAssignable: (v) => v is $dartnative_47.CircularProgressIndicator,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -42686,18 +42971,18 @@ BridgedClass _createCircularProgressIndicatorBridge() {
         final strokeWidth = D4.getOptionalNamedArg<double?>(named, 'strokeWidth');
         final value = D4.getOptionalNamedArg<double?>(named, 'value');
         final backgroundColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'backgroundColor');
-        final android = D4.getOptionalNamedArg<$dartnative_46.AndroidProgressIndicatorStyle?>(named, 'android');
-        return $dartnative_46.CircularProgressIndicator(key: key, color: color, valueColor: valueColor, strokeWidth: strokeWidth, value: value, backgroundColor: backgroundColor, android: android);
+        final android = D4.getOptionalNamedArg<$dartnative_47.AndroidProgressIndicatorStyle?>(named, 'android');
+        return $dartnative_47.CircularProgressIndicator(key: key, color: color, valueColor: valueColor, strokeWidth: strokeWidth, value: value, backgroundColor: backgroundColor, android: android);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_46.CircularProgressIndicator>(target, 'CircularProgressIndicator').key,
-      'color': (visitor, target) => D4.validateTarget<$dartnative_46.CircularProgressIndicator>(target, 'CircularProgressIndicator').color,
-      'valueColor': (visitor, target) => D4.validateTarget<$dartnative_46.CircularProgressIndicator>(target, 'CircularProgressIndicator').valueColor,
-      'strokeWidth': (visitor, target) => D4.validateTarget<$dartnative_46.CircularProgressIndicator>(target, 'CircularProgressIndicator').strokeWidth,
-      'value': (visitor, target) => D4.validateTarget<$dartnative_46.CircularProgressIndicator>(target, 'CircularProgressIndicator').value,
-      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_46.CircularProgressIndicator>(target, 'CircularProgressIndicator').backgroundColor,
-      'android': (visitor, target) => D4.validateTarget<$dartnative_46.CircularProgressIndicator>(target, 'CircularProgressIndicator').android,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_47.CircularProgressIndicator>(target, 'CircularProgressIndicator').key,
+      'color': (visitor, target) => D4.validateTarget<$dartnative_47.CircularProgressIndicator>(target, 'CircularProgressIndicator').color,
+      'valueColor': (visitor, target) => D4.validateTarget<$dartnative_47.CircularProgressIndicator>(target, 'CircularProgressIndicator').valueColor,
+      'strokeWidth': (visitor, target) => D4.validateTarget<$dartnative_47.CircularProgressIndicator>(target, 'CircularProgressIndicator').strokeWidth,
+      'value': (visitor, target) => D4.validateTarget<$dartnative_47.CircularProgressIndicator>(target, 'CircularProgressIndicator').value,
+      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_47.CircularProgressIndicator>(target, 'CircularProgressIndicator').backgroundColor,
+      'android': (visitor, target) => D4.validateTarget<$dartnative_47.CircularProgressIndicator>(target, 'CircularProgressIndicator').android,
     },
     constructorSignatures: {
       '': 'const CircularProgressIndicator({Key? key, Color? color, Animation<Color>? valueColor, double? strokeWidth, double? value, Color? backgroundColor, AndroidProgressIndicatorStyle? android})',
@@ -42720,9 +43005,9 @@ BridgedClass _createCircularProgressIndicatorBridge() {
 
 BridgedClass _createLinearProgressIndicatorBridge() {
   return BridgedClass(
-    nativeType: $dartnative_46.LinearProgressIndicator,
+    nativeType: $dartnative_47.LinearProgressIndicator,
     name: 'LinearProgressIndicator',
-    isAssignable: (v) => v is $dartnative_46.LinearProgressIndicator,
+    isAssignable: (v) => v is $dartnative_47.LinearProgressIndicator,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
@@ -42732,18 +43017,18 @@ BridgedClass _createLinearProgressIndicatorBridge() {
         final backgroundColor = D4.getOptionalNamedArg<$dartnative_9.Color?>(named, 'backgroundColor');
         final minHeight = D4.getOptionalNamedArg<double?>(named, 'minHeight');
         final valueColor = D4.getOptionalNamedArg<$dartnative_14.Animation<$dartnative_9.Color>?>(named, 'valueColor');
-        final android = D4.getOptionalNamedArg<$dartnative_46.AndroidProgressIndicatorStyle?>(named, 'android');
-        return $dartnative_46.LinearProgressIndicator(key: key, value: value, color: color, backgroundColor: backgroundColor, minHeight: minHeight, valueColor: valueColor, android: android);
+        final android = D4.getOptionalNamedArg<$dartnative_47.AndroidProgressIndicatorStyle?>(named, 'android');
+        return $dartnative_47.LinearProgressIndicator(key: key, value: value, color: color, backgroundColor: backgroundColor, minHeight: minHeight, valueColor: valueColor, android: android);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_46.LinearProgressIndicator>(target, 'LinearProgressIndicator').key,
-      'value': (visitor, target) => D4.validateTarget<$dartnative_46.LinearProgressIndicator>(target, 'LinearProgressIndicator').value,
-      'color': (visitor, target) => D4.validateTarget<$dartnative_46.LinearProgressIndicator>(target, 'LinearProgressIndicator').color,
-      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_46.LinearProgressIndicator>(target, 'LinearProgressIndicator').backgroundColor,
-      'minHeight': (visitor, target) => D4.validateTarget<$dartnative_46.LinearProgressIndicator>(target, 'LinearProgressIndicator').minHeight,
-      'valueColor': (visitor, target) => D4.validateTarget<$dartnative_46.LinearProgressIndicator>(target, 'LinearProgressIndicator').valueColor,
-      'android': (visitor, target) => D4.validateTarget<$dartnative_46.LinearProgressIndicator>(target, 'LinearProgressIndicator').android,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_47.LinearProgressIndicator>(target, 'LinearProgressIndicator').key,
+      'value': (visitor, target) => D4.validateTarget<$dartnative_47.LinearProgressIndicator>(target, 'LinearProgressIndicator').value,
+      'color': (visitor, target) => D4.validateTarget<$dartnative_47.LinearProgressIndicator>(target, 'LinearProgressIndicator').color,
+      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_47.LinearProgressIndicator>(target, 'LinearProgressIndicator').backgroundColor,
+      'minHeight': (visitor, target) => D4.validateTarget<$dartnative_47.LinearProgressIndicator>(target, 'LinearProgressIndicator').minHeight,
+      'valueColor': (visitor, target) => D4.validateTarget<$dartnative_47.LinearProgressIndicator>(target, 'LinearProgressIndicator').valueColor,
+      'android': (visitor, target) => D4.validateTarget<$dartnative_47.LinearProgressIndicator>(target, 'LinearProgressIndicator').android,
     },
     constructorSignatures: {
       '': 'const LinearProgressIndicator({Key? key, double? value, Color? color, Color? backgroundColor, double? minHeight, Animation<Color>? valueColor, AndroidProgressIndicatorStyle? android})',
@@ -42898,9 +43183,9 @@ BridgedClass _createFloatingActionButtonBridge() {
 
 BridgedClass _createShimmerBridge() {
   return BridgedClass(
-    nativeType: $dartnative_51.Shimmer,
+    nativeType: $dartnative_52.Shimmer,
     name: 'Shimmer',
-    isAssignable: (v) => v is $dartnative_51.Shimmer,
+    isAssignable: (v) => v is $dartnative_52.Shimmer,
     hierarchyDepth: 1,
     constructors: {
       'fromColors': (visitor, positional, named) {
@@ -42911,19 +43196,19 @@ BridgedClass _createShimmerBridge() {
         final period = D4.getNamedArgWithDefault<Duration>(named, 'period', const Duration(milliseconds: 1500));
         final enabled = D4.getNamedArgWithDefault<bool>(named, 'enabled', true);
         final loop = D4.getNamedArgWithDefault<int>(named, 'loop', 0);
-        final style = D4.getNamedArgWithDefault<$dartnative_51.ShimmerStyle>(named, 'style', $dartnative_51.ShimmerStyle.wide);
-        return $dartnative_51.Shimmer.fromColors(key: key, child: child, baseColor: baseColor, highlightColor: highlightColor, period: period, enabled: enabled, loop: loop, style: style);
+        final style = D4.getNamedArgWithDefault<$dartnative_52.ShimmerStyle>(named, 'style', $dartnative_52.ShimmerStyle.wide);
+        return $dartnative_52.Shimmer.fromColors(key: key, child: child, baseColor: baseColor, highlightColor: highlightColor, period: period, enabled: enabled, loop: loop, style: style);
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_51.Shimmer>(target, 'Shimmer').key,
-      'child': (visitor, target) => D4.validateTarget<$dartnative_51.Shimmer>(target, 'Shimmer').child,
-      'baseColor': (visitor, target) => D4.validateTarget<$dartnative_51.Shimmer>(target, 'Shimmer').baseColor,
-      'highlightColor': (visitor, target) => D4.validateTarget<$dartnative_51.Shimmer>(target, 'Shimmer').highlightColor,
-      'period': (visitor, target) => D4.validateTarget<$dartnative_51.Shimmer>(target, 'Shimmer').period,
-      'enabled': (visitor, target) => D4.validateTarget<$dartnative_51.Shimmer>(target, 'Shimmer').enabled,
-      'loop': (visitor, target) => D4.validateTarget<$dartnative_51.Shimmer>(target, 'Shimmer').loop,
-      'style': (visitor, target) => D4.validateTarget<$dartnative_51.Shimmer>(target, 'Shimmer').style,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_52.Shimmer>(target, 'Shimmer').key,
+      'child': (visitor, target) => D4.validateTarget<$dartnative_52.Shimmer>(target, 'Shimmer').child,
+      'baseColor': (visitor, target) => D4.validateTarget<$dartnative_52.Shimmer>(target, 'Shimmer').baseColor,
+      'highlightColor': (visitor, target) => D4.validateTarget<$dartnative_52.Shimmer>(target, 'Shimmer').highlightColor,
+      'period': (visitor, target) => D4.validateTarget<$dartnative_52.Shimmer>(target, 'Shimmer').period,
+      'enabled': (visitor, target) => D4.validateTarget<$dartnative_52.Shimmer>(target, 'Shimmer').enabled,
+      'loop': (visitor, target) => D4.validateTarget<$dartnative_52.Shimmer>(target, 'Shimmer').loop,
+      'style': (visitor, target) => D4.validateTarget<$dartnative_52.Shimmer>(target, 'Shimmer').style,
     },
     constructorSignatures: {
       'fromColors': 'factory Shimmer.fromColors({Key? key, required Widget child, required Color baseColor, required Color highlightColor, Duration period = const Duration(milliseconds: 1500), bool enabled = true, int loop = 0, ShimmerStyle style = ShimmerStyle.wide})',
@@ -43275,7 +43560,7 @@ BridgedClass _createAsyncSnapshotBridge() {
           case int _: return $dartnative_17.AsyncSnapshot<int>.withData(state, data);
           case String _: return $dartnative_17.AsyncSnapshot<String>.withData(state, data);
           case bool _: return $dartnative_17.AsyncSnapshot<bool>.withData(state, data);
-          case $dartnative_53.SliderMenuContainerState _: return $dartnative_17.AsyncSnapshot<$dartnative_53.SliderMenuContainerState>.withData(state, data);
+          case $dartnative_54.SliderMenuContainerState _: return $dartnative_17.AsyncSnapshot<$dartnative_54.SliderMenuContainerState>.withData(state, data);
           case $dartnative_14.AnimatedBuilder _: return $dartnative_17.AsyncSnapshot<$dartnative_14.AnimatedBuilder>.withData(state, data);
           case $dartnative_14.AnimationController _: return $dartnative_17.AsyncSnapshot<$dartnative_14.AnimationController>.withData(state, data);
           case $dartnative_14.CurvedAnimation _: return $dartnative_17.AsyncSnapshot<$dartnative_14.CurvedAnimation>.withData(state, data);
@@ -43290,7 +43575,7 @@ BridgedClass _createAsyncSnapshotBridge() {
           case $dartnative_14.AnimatedContainer _: return $dartnative_17.AsyncSnapshot<$dartnative_14.AnimatedContainer>.withData(state, data);
           case $dartnative_14.AnimatedCrossFade _: return $dartnative_17.AsyncSnapshot<$dartnative_14.AnimatedCrossFade>.withData(state, data);
           case $dartnative_14.AnimatedDefaultTextStyle _: return $dartnative_17.AsyncSnapshot<$dartnative_14.AnimatedDefaultTextStyle>.withData(state, data);
-          case $dartnative_63.AnimatedOpacity _: return $dartnative_17.AsyncSnapshot<$dartnative_63.AnimatedOpacity>.withData(state, data);
+          case $dartnative_64.AnimatedOpacity _: return $dartnative_17.AsyncSnapshot<$dartnative_64.AnimatedOpacity>.withData(state, data);
           case $dartnative_14.AnimatedPadding _: return $dartnative_17.AsyncSnapshot<$dartnative_14.AnimatedPadding>.withData(state, data);
           case $dartnative_14.AnimatedPositioned _: return $dartnative_17.AsyncSnapshot<$dartnative_14.AnimatedPositioned>.withData(state, data);
           case $dartnative_14.AnimatedRotation _: return $dartnative_17.AsyncSnapshot<$dartnative_14.AnimatedRotation>.withData(state, data);
@@ -43300,25 +43585,25 @@ BridgedClass _createAsyncSnapshotBridge() {
           case $dartnative_14.AnimatedSwitcher _: return $dartnative_17.AsyncSnapshot<$dartnative_14.AnimatedSwitcher>.withData(state, data);
           case $dartnative_14.AnimatedWidget _: return $dartnative_17.AsyncSnapshot<$dartnative_14.AnimatedWidget>.withData(state, data);
           case $dartnative_6.App _: return $dartnative_17.AsyncSnapshot<$dartnative_6.App>.withData(state, data);
-          case $dartnative_47.AppBar _: return $dartnative_17.AsyncSnapshot<$dartnative_47.AppBar>.withData(state, data);
+          case $dartnative_48.AppBar _: return $dartnative_17.AsyncSnapshot<$dartnative_48.AppBar>.withData(state, data);
           case $dartnative_20.Badge _: return $dartnative_17.AsyncSnapshot<$dartnative_20.Badge>.withData(state, data);
-          case $dartnative_47.BarButtonItem _: return $dartnative_17.AsyncSnapshot<$dartnative_47.BarButtonItem>.withData(state, data);
+          case $dartnative_48.BarButtonItem _: return $dartnative_17.AsyncSnapshot<$dartnative_48.BarButtonItem>.withData(state, data);
           case $dartnative_3.Builder _: return $dartnative_17.AsyncSnapshot<$dartnative_3.Builder>.withData(state, data);
           case $dartnative_20.Card _: return $dartnative_17.AsyncSnapshot<$dartnative_20.Card>.withData(state, data);
           case $dartnative_23.Center _: return $dartnative_17.AsyncSnapshot<$dartnative_23.Center>.withData(state, data);
           case $dartnative_20.CircleAvatar _: return $dartnative_17.AsyncSnapshot<$dartnative_20.CircleAvatar>.withData(state, data);
           case $dartnative_37.ClipOval _: return $dartnative_17.AsyncSnapshot<$dartnative_37.ClipOval>.withData(state, data);
-          case $dartnative_63.ClipRRect _: return $dartnative_17.AsyncSnapshot<$dartnative_63.ClipRRect>.withData(state, data);
-          case $dartnative_63.ClipRSuperellipse _: return $dartnative_17.AsyncSnapshot<$dartnative_63.ClipRSuperellipse>.withData(state, data);
-          case $dartnative_63.ClipRect _: return $dartnative_17.AsyncSnapshot<$dartnative_63.ClipRect>.withData(state, data);
+          case $dartnative_64.ClipRRect _: return $dartnative_17.AsyncSnapshot<$dartnative_64.ClipRRect>.withData(state, data);
+          case $dartnative_64.ClipRSuperellipse _: return $dartnative_17.AsyncSnapshot<$dartnative_64.ClipRSuperellipse>.withData(state, data);
+          case $dartnative_64.ClipRect _: return $dartnative_17.AsyncSnapshot<$dartnative_64.ClipRect>.withData(state, data);
           case $dartnative_14.ColorTween _: return $dartnative_17.AsyncSnapshot<$dartnative_14.ColorTween>.withData(state, data);
           case $dartnative_29.Column _: return $dartnative_17.AsyncSnapshot<$dartnative_29.Column>.withData(state, data);
           case $dartnative_13.Computed _: return $dartnative_17.AsyncSnapshot<$dartnative_13.Computed>.withData(state, data);
           case $dartnative_6.DefaultTextStyle _: return $dartnative_17.AsyncSnapshot<$dartnative_6.DefaultTextStyle>.withData(state, data);
           case $dartnative_6.Directionality _: return $dartnative_17.AsyncSnapshot<$dartnative_6.Directionality>.withData(state, data);
           case $dartnative_23.Divider _: return $dartnative_17.AsyncSnapshot<$dartnative_23.Divider>.withData(state, data);
-          case $dartnative_47.Drawer _: return $dartnative_17.AsyncSnapshot<$dartnative_47.Drawer>.withData(state, data);
-          case $dartnative_47.DrawerHeader _: return $dartnative_17.AsyncSnapshot<$dartnative_47.DrawerHeader>.withData(state, data);
+          case $dartnative_48.Drawer _: return $dartnative_17.AsyncSnapshot<$dartnative_48.Drawer>.withData(state, data);
+          case $dartnative_48.DrawerHeader _: return $dartnative_17.AsyncSnapshot<$dartnative_48.DrawerHeader>.withData(state, data);
           case $dartnative_29.Expanded _: return $dartnative_17.AsyncSnapshot<$dartnative_29.Expanded>.withData(state, data);
           case $dartnative_31.FocusNode _: return $dartnative_17.AsyncSnapshot<$dartnative_31.FocusNode>.withData(state, data);
           case $dartnative_31.FocusScopeNode _: return $dartnative_17.AsyncSnapshot<$dartnative_31.FocusScopeNode>.withData(state, data);
@@ -43327,20 +43612,22 @@ BridgedClass _createAsyncSnapshotBridge() {
           case $dartnative_14.IntTween _: return $dartnative_17.AsyncSnapshot<$dartnative_14.IntTween>.withData(state, data);
           case $dartnative_3.KeyedSubtree _: return $dartnative_17.AsyncSnapshot<$dartnative_3.KeyedSubtree>.withData(state, data);
           case $dartnative_20.ListTile _: return $dartnative_17.AsyncSnapshot<$dartnative_20.ListTile>.withData(state, data);
-          case $dartnative_63.Offstage _: return $dartnative_17.AsyncSnapshot<$dartnative_63.Offstage>.withData(state, data);
+          case $dartnative_64.Offstage _: return $dartnative_17.AsyncSnapshot<$dartnative_64.Offstage>.withData(state, data);
+          case $dartnative_46.PageController _: return $dartnative_17.AsyncSnapshot<$dartnative_46.PageController>.withData(state, data);
+          case $dartnative_46.PageView _: return $dartnative_17.AsyncSnapshot<$dartnative_46.PageView>.withData(state, data);
           case $dartnative_13.Provided _: return $dartnative_17.AsyncSnapshot<$dartnative_13.Provided>.withData(state, data);
           case $dartnative_14.RectTween _: return $dartnative_17.AsyncSnapshot<$dartnative_14.RectTween>.withData(state, data);
-          case $dartnative_62.RenderParagraph _: return $dartnative_17.AsyncSnapshot<$dartnative_62.RenderParagraph>.withData(state, data);
+          case $dartnative_63.RenderParagraph _: return $dartnative_17.AsyncSnapshot<$dartnative_63.RenderParagraph>.withData(state, data);
           case $dartnative_29.Row _: return $dartnative_17.AsyncSnapshot<$dartnative_29.Row>.withData(state, data);
-          case $dartnative_47.ScaffoldDrawerElement _: return $dartnative_17.AsyncSnapshot<$dartnative_47.ScaffoldDrawerElement>.withData(state, data);
+          case $dartnative_48.ScaffoldDrawerElement _: return $dartnative_17.AsyncSnapshot<$dartnative_48.ScaffoldDrawerElement>.withData(state, data);
           case $dartnative_3.ScrollController _: return $dartnative_17.AsyncSnapshot<$dartnative_3.ScrollController>.withData(state, data);
-          case $dartnative_49.SearchBar _: return $dartnative_17.AsyncSnapshot<$dartnative_49.SearchBar>.withData(state, data);
+          case $dartnative_50.SearchBar _: return $dartnative_17.AsyncSnapshot<$dartnative_50.SearchBar>.withData(state, data);
           case $dartnative_14.SingleTickerProviderStateMixin _: return $dartnative_17.AsyncSnapshot<$dartnative_14.SingleTickerProviderStateMixin>.withData(state, data);
           case $dartnative_14.SizeTween _: return $dartnative_17.AsyncSnapshot<$dartnative_14.SizeTween>.withData(state, data);
-          case $dartnative_53.SliderMenuContainer _: return $dartnative_17.AsyncSnapshot<$dartnative_53.SliderMenuContainer>.withData(state, data);
-          case $dartnative_52.SliderTheme _: return $dartnative_17.AsyncSnapshot<$dartnative_52.SliderTheme>.withData(state, data);
+          case $dartnative_54.SliderMenuContainer _: return $dartnative_17.AsyncSnapshot<$dartnative_54.SliderMenuContainer>.withData(state, data);
+          case $dartnative_53.SliderTheme _: return $dartnative_17.AsyncSnapshot<$dartnative_53.SliderTheme>.withData(state, data);
           case $dartnative_17.StreamBuilder _: return $dartnative_17.AsyncSnapshot<$dartnative_17.StreamBuilder>.withData(state, data);
-          case $dartnative_58.Table _: return $dartnative_17.AsyncSnapshot<$dartnative_58.Table>.withData(state, data);
+          case $dartnative_59.Table _: return $dartnative_17.AsyncSnapshot<$dartnative_59.Table>.withData(state, data);
           case $dartnative_3.TextEditingController _: return $dartnative_17.AsyncSnapshot<$dartnative_3.TextEditingController>.withData(state, data);
           case $dartnative_14.TickerProviderStateMixin _: return $dartnative_17.AsyncSnapshot<$dartnative_14.TickerProviderStateMixin>.withData(state, data);
           case $dartnative_14.TweenAnimationBuilder _: return $dartnative_17.AsyncSnapshot<$dartnative_14.TweenAnimationBuilder>.withData(state, data);
@@ -43352,44 +43639,44 @@ BridgedClass _createAsyncSnapshotBridge() {
           case $dartnative_23.Align _: return $dartnative_17.AsyncSnapshot<$dartnative_23.Align>.withData(state, data);
           case $dartnative_9.Alignment _: return $dartnative_17.AsyncSnapshot<$dartnative_9.Alignment>.withData(state, data);
           case $dartnative_9.AlignmentDirectional _: return $dartnative_17.AsyncSnapshot<$dartnative_9.AlignmentDirectional>.withData(state, data);
-          case $dartnative_48.AlwaysScrollableScrollPhysics _: return $dartnative_17.AsyncSnapshot<$dartnative_48.AlwaysScrollableScrollPhysics>.withData(state, data);
+          case $dartnative_49.AlwaysScrollableScrollPhysics _: return $dartnative_17.AsyncSnapshot<$dartnative_49.AlwaysScrollableScrollPhysics>.withData(state, data);
           case $dartnative_14.Animation _: return $dartnative_17.AsyncSnapshot<$dartnative_14.Animation>.withData(state, data);
           case $dartnative_6.AnnotatedRegion _: return $dartnative_17.AsyncSnapshot<$dartnative_6.AnnotatedRegion>.withData(state, data);
-          case $dartnative_63.AspectRatio _: return $dartnative_17.AsyncSnapshot<$dartnative_63.AspectRatio>.withData(state, data);
+          case $dartnative_64.AspectRatio _: return $dartnative_17.AsyncSnapshot<$dartnative_64.AspectRatio>.withData(state, data);
           case $dartnative_36.AssetImage _: return $dartnative_17.AsyncSnapshot<$dartnative_36.AssetImage>.withData(state, data);
-          case $dartnative_47.BackButton _: return $dartnative_17.AsyncSnapshot<$dartnative_47.BackButton>.withData(state, data);
+          case $dartnative_48.BackButton _: return $dartnative_17.AsyncSnapshot<$dartnative_48.BackButton>.withData(state, data);
           case $dartnative_15.BackdropFilter _: return $dartnative_17.AsyncSnapshot<$dartnative_15.BackdropFilter>.withData(state, data);
           case $dartnative_25.BinaryCanvasRecorder _: return $dartnative_17.AsyncSnapshot<$dartnative_25.BinaryCanvasRecorder>.withData(state, data);
           case $dartnative_25.BlurImageFilter _: return $dartnative_17.AsyncSnapshot<$dartnative_25.BlurImageFilter>.withData(state, data);
           case $dartnative_9.Border _: return $dartnative_17.AsyncSnapshot<$dartnative_9.Border>.withData(state, data);
           case $dartnative_16.BottomNavigationBar _: return $dartnative_17.AsyncSnapshot<$dartnative_16.BottomNavigationBar>.withData(state, data);
-          case $dartnative_47.BottomSheet _: return $dartnative_17.AsyncSnapshot<$dartnative_47.BottomSheet>.withData(state, data);
-          case $dartnative_48.BouncingScrollPhysics _: return $dartnative_17.AsyncSnapshot<$dartnative_48.BouncingScrollPhysics>.withData(state, data);
+          case $dartnative_48.BottomSheet _: return $dartnative_17.AsyncSnapshot<$dartnative_48.BottomSheet>.withData(state, data);
+          case $dartnative_49.BouncingScrollPhysics _: return $dartnative_17.AsyncSnapshot<$dartnative_49.BouncingScrollPhysics>.withData(state, data);
           case $dartnative_9.BoxDecoration _: return $dartnative_17.AsyncSnapshot<$dartnative_9.BoxDecoration>.withData(state, data);
           case $dartnative_18.Button _: return $dartnative_17.AsyncSnapshot<$dartnative_18.Button>.withData(state, data);
           case $dartnative_3.ChangeNotifier _: return $dartnative_17.AsyncSnapshot<$dartnative_3.ChangeNotifier>.withData(state, data);
           case $dartnative_21.Checkbox _: return $dartnative_17.AsyncSnapshot<$dartnative_21.Checkbox>.withData(state, data);
           case $dartnative_9.CircleBorder _: return $dartnative_17.AsyncSnapshot<$dartnative_9.CircleBorder>.withData(state, data);
-          case $dartnative_46.CircularProgressIndicator _: return $dartnative_17.AsyncSnapshot<$dartnative_46.CircularProgressIndicator>.withData(state, data);
-          case $dartnative_48.ClampingScrollPhysics _: return $dartnative_17.AsyncSnapshot<$dartnative_48.ClampingScrollPhysics>.withData(state, data);
+          case $dartnative_47.CircularProgressIndicator _: return $dartnative_17.AsyncSnapshot<$dartnative_47.CircularProgressIndicator>.withData(state, data);
+          case $dartnative_49.ClampingScrollPhysics _: return $dartnative_17.AsyncSnapshot<$dartnative_49.ClampingScrollPhysics>.withData(state, data);
           case $dartnative_37.ColoredBox _: return $dartnative_17.AsyncSnapshot<$dartnative_37.ColoredBox>.withData(state, data);
           case $dartnative_23.ConstrainedBox _: return $dartnative_17.AsyncSnapshot<$dartnative_23.ConstrainedBox>.withData(state, data);
           case $dartnative_23.Container _: return $dartnative_17.AsyncSnapshot<$dartnative_23.Container>.withData(state, data);
           case $dartnative_25.CustomPaint _: return $dartnative_17.AsyncSnapshot<$dartnative_25.CustomPaint>.withData(state, data);
-          case $dartnative_54.CustomScrollView _: return $dartnative_17.AsyncSnapshot<$dartnative_54.CustomScrollView>.withData(state, data);
+          case $dartnative_55.CustomScrollView _: return $dartnative_17.AsyncSnapshot<$dartnative_55.CustomScrollView>.withData(state, data);
           case $dartnative_23.DecoratedBox _: return $dartnative_17.AsyncSnapshot<$dartnative_23.DecoratedBox>.withData(state, data);
           case $dartnative_9.EdgeInsets _: return $dartnative_17.AsyncSnapshot<$dartnative_9.EdgeInsets>.withData(state, data);
           case $dartnative_9.EdgeInsetsDirectional _: return $dartnative_17.AsyncSnapshot<$dartnative_9.EdgeInsetsDirectional>.withData(state, data);
           case $dartnative_27.FastGrid _: return $dartnative_17.AsyncSnapshot<$dartnative_27.FastGrid>.withData(state, data);
           case $dartnative_28.FastList _: return $dartnative_17.AsyncSnapshot<$dartnative_28.FastList>.withData(state, data);
           case $dartnative_36.FileImage _: return $dartnative_17.AsyncSnapshot<$dartnative_36.FileImage>.withData(state, data);
-          case $dartnative_61.FilteringTextInputFormatter _: return $dartnative_17.AsyncSnapshot<$dartnative_61.FilteringTextInputFormatter>.withData(state, data);
+          case $dartnative_62.FilteringTextInputFormatter _: return $dartnative_17.AsyncSnapshot<$dartnative_62.FilteringTextInputFormatter>.withData(state, data);
           case $dartnative_37.FittedBox _: return $dartnative_17.AsyncSnapshot<$dartnative_37.FittedBox>.withData(state, data);
-          case $dartnative_58.FixedColumnWidth _: return $dartnative_17.AsyncSnapshot<$dartnative_58.FixedColumnWidth>.withData(state, data);
+          case $dartnative_59.FixedColumnWidth _: return $dartnative_17.AsyncSnapshot<$dartnative_59.FixedColumnWidth>.withData(state, data);
           case $dartnative_29.Flex _: return $dartnative_17.AsyncSnapshot<$dartnative_29.Flex>.withData(state, data);
-          case $dartnative_58.FlexColumnWidth _: return $dartnative_17.AsyncSnapshot<$dartnative_58.FlexColumnWidth>.withData(state, data);
+          case $dartnative_59.FlexColumnWidth _: return $dartnative_17.AsyncSnapshot<$dartnative_59.FlexColumnWidth>.withData(state, data);
           case $dartnative_29.Flexible _: return $dartnative_17.AsyncSnapshot<$dartnative_29.Flexible>.withData(state, data);
-          case $dartnative_54.FlexibleSpaceBar _: return $dartnative_17.AsyncSnapshot<$dartnative_54.FlexibleSpaceBar>.withData(state, data);
+          case $dartnative_55.FlexibleSpaceBar _: return $dartnative_17.AsyncSnapshot<$dartnative_55.FlexibleSpaceBar>.withData(state, data);
           case $dartnative_30.FloatingActionButton _: return $dartnative_17.AsyncSnapshot<$dartnative_30.FloatingActionButton>.withData(state, data);
           case $dartnative_31.Focus _: return $dartnative_17.AsyncSnapshot<$dartnative_31.Focus>.withData(state, data);
           case $dartnative_31.FocusScope _: return $dartnative_17.AsyncSnapshot<$dartnative_31.FocusScope>.withData(state, data);
@@ -43409,15 +43696,15 @@ BridgedClass _createAsyncSnapshotBridge() {
           case $dartnative_37.IndexedStack _: return $dartnative_17.AsyncSnapshot<$dartnative_37.IndexedStack>.withData(state, data);
           case $dartnative_3.InheritedWidget _: return $dartnative_17.AsyncSnapshot<$dartnative_3.InheritedWidget>.withData(state, data);
           case $dartnative_32.InkWell _: return $dartnative_17.AsyncSnapshot<$dartnative_32.InkWell>.withData(state, data);
-          case $dartnative_58.IntrinsicColumnWidth _: return $dartnative_17.AsyncSnapshot<$dartnative_58.IntrinsicColumnWidth>.withData(state, data);
+          case $dartnative_59.IntrinsicColumnWidth _: return $dartnative_17.AsyncSnapshot<$dartnative_59.IntrinsicColumnWidth>.withData(state, data);
           case $dartnative_37.IntrinsicHeight _: return $dartnative_17.AsyncSnapshot<$dartnative_37.IntrinsicHeight>.withData(state, data);
           case $dartnative_37.IntrinsicWidth _: return $dartnative_17.AsyncSnapshot<$dartnative_37.IntrinsicWidth>.withData(state, data);
           case $dartnative_17.LayoutBuilder _: return $dartnative_17.AsyncSnapshot<$dartnative_17.LayoutBuilder>.withData(state, data);
-          case $dartnative_61.LengthLimitingTextInputFormatter _: return $dartnative_17.AsyncSnapshot<$dartnative_61.LengthLimitingTextInputFormatter>.withData(state, data);
+          case $dartnative_62.LengthLimitingTextInputFormatter _: return $dartnative_17.AsyncSnapshot<$dartnative_62.LengthLimitingTextInputFormatter>.withData(state, data);
           case $dartnative_7.LicenseException _: return $dartnative_17.AsyncSnapshot<$dartnative_7.LicenseException>.withData(state, data);
           case $dartnative_9.LinearGradient _: return $dartnative_17.AsyncSnapshot<$dartnative_9.LinearGradient>.withData(state, data);
-          case $dartnative_46.LinearProgressIndicator _: return $dartnative_17.AsyncSnapshot<$dartnative_46.LinearProgressIndicator>.withData(state, data);
-          case $dartnative_48.ListView _: return $dartnative_17.AsyncSnapshot<$dartnative_48.ListView>.withData(state, data);
+          case $dartnative_47.LinearProgressIndicator _: return $dartnative_17.AsyncSnapshot<$dartnative_47.LinearProgressIndicator>.withData(state, data);
+          case $dartnative_49.ListView _: return $dartnative_17.AsyncSnapshot<$dartnative_49.ListView>.withData(state, data);
           case $dartnative_32.Listener _: return $dartnative_17.AsyncSnapshot<$dartnative_32.Listener>.withData(state, data);
           case $dartnative_3.LocalKey _: return $dartnative_17.AsyncSnapshot<$dartnative_3.LocalKey>.withData(state, data);
           case $dartnative_34.MasonryColumn _: return $dartnative_17.AsyncSnapshot<$dartnative_34.MasonryColumn>.withData(state, data);
@@ -43425,11 +43712,11 @@ BridgedClass _createAsyncSnapshotBridge() {
           case $dartnative_34.MasonryGridView _: return $dartnative_17.AsyncSnapshot<$dartnative_34.MasonryGridView>.withData(state, data);
           case $dartnative_9.MaterialColor _: return $dartnative_17.AsyncSnapshot<$dartnative_9.MaterialColor>.withData(state, data);
           case $dartnative_36.MemoryImage _: return $dartnative_17.AsyncSnapshot<$dartnative_36.MemoryImage>.withData(state, data);
-          case $dartnative_49.NativeSearchBar _: return $dartnative_17.AsyncSnapshot<$dartnative_49.NativeSearchBar>.withData(state, data);
+          case $dartnative_50.NativeSearchBar _: return $dartnative_17.AsyncSnapshot<$dartnative_50.NativeSearchBar>.withData(state, data);
           case $dartnative_25.NetworkCanvasImage _: return $dartnative_17.AsyncSnapshot<$dartnative_25.NetworkCanvasImage>.withData(state, data);
           case $dartnative_36.NetworkImage _: return $dartnative_17.AsyncSnapshot<$dartnative_36.NetworkImage>.withData(state, data);
-          case $dartnative_48.NeverScrollableScrollPhysics _: return $dartnative_17.AsyncSnapshot<$dartnative_48.NeverScrollableScrollPhysics>.withData(state, data);
-          case $dartnative_63.Opacity _: return $dartnative_17.AsyncSnapshot<$dartnative_63.Opacity>.withData(state, data);
+          case $dartnative_49.NeverScrollableScrollPhysics _: return $dartnative_17.AsyncSnapshot<$dartnative_49.NeverScrollableScrollPhysics>.withData(state, data);
+          case $dartnative_64.Opacity _: return $dartnative_17.AsyncSnapshot<$dartnative_64.Opacity>.withData(state, data);
           case $dartnative_9.OutlineInputBorder _: return $dartnative_17.AsyncSnapshot<$dartnative_9.OutlineInputBorder>.withData(state, data);
           case $dartnative_23.Padding _: return $dartnative_17.AsyncSnapshot<$dartnative_23.Padding>.withData(state, data);
           case $dartnative_6.PageRoute _: return $dartnative_17.AsyncSnapshot<$dartnative_6.PageRoute>.withData(state, data);
@@ -43442,64 +43729,64 @@ BridgedClass _createAsyncSnapshotBridge() {
           case $dartnative_25.PathLineTo _: return $dartnative_17.AsyncSnapshot<$dartnative_25.PathLineTo>.withData(state, data);
           case $dartnative_25.PathMoveTo _: return $dartnative_17.AsyncSnapshot<$dartnative_25.PathMoveTo>.withData(state, data);
           case $dartnative_6.PopScope _: return $dartnative_17.AsyncSnapshot<$dartnative_6.PopScope>.withData(state, data);
-          case $dartnative_55.Positioned _: return $dartnative_17.AsyncSnapshot<$dartnative_55.Positioned>.withData(state, data);
-          case $dartnative_47.PreferredSizeWidget _: return $dartnative_17.AsyncSnapshot<$dartnative_47.PreferredSizeWidget>.withData(state, data);
+          case $dartnative_56.Positioned _: return $dartnative_17.AsyncSnapshot<$dartnative_56.Positioned>.withData(state, data);
+          case $dartnative_48.PreferredSizeWidget _: return $dartnative_17.AsyncSnapshot<$dartnative_48.PreferredSizeWidget>.withData(state, data);
           case $dartnative_9.RadialGradient _: return $dartnative_17.AsyncSnapshot<$dartnative_9.RadialGradient>.withData(state, data);
           case $dartnative_21.Radio _: return $dartnative_17.AsyncSnapshot<$dartnative_21.Radio>.withData(state, data);
           case $dartnative_9.RenderBox _: return $dartnative_17.AsyncSnapshot<$dartnative_9.RenderBox>.withData(state, data);
-          case $dartnative_63.RepaintBoundary _: return $dartnative_17.AsyncSnapshot<$dartnative_63.RepaintBoundary>.withData(state, data);
-          case $dartnative_59.RichText _: return $dartnative_17.AsyncSnapshot<$dartnative_59.RichText>.withData(state, data);
-          case $dartnative_52.RoundSliderOverlayShape _: return $dartnative_17.AsyncSnapshot<$dartnative_52.RoundSliderOverlayShape>.withData(state, data);
-          case $dartnative_52.RoundSliderThumbShape _: return $dartnative_17.AsyncSnapshot<$dartnative_52.RoundSliderThumbShape>.withData(state, data);
+          case $dartnative_64.RepaintBoundary _: return $dartnative_17.AsyncSnapshot<$dartnative_64.RepaintBoundary>.withData(state, data);
+          case $dartnative_60.RichText _: return $dartnative_17.AsyncSnapshot<$dartnative_60.RichText>.withData(state, data);
+          case $dartnative_53.RoundSliderOverlayShape _: return $dartnative_17.AsyncSnapshot<$dartnative_53.RoundSliderOverlayShape>.withData(state, data);
+          case $dartnative_53.RoundSliderThumbShape _: return $dartnative_17.AsyncSnapshot<$dartnative_53.RoundSliderThumbShape>.withData(state, data);
           case $dartnative_9.RoundedRectangleBorder _: return $dartnative_17.AsyncSnapshot<$dartnative_9.RoundedRectangleBorder>.withData(state, data);
           case $dartnative_9.RoundedSuperellipseBorder _: return $dartnative_17.AsyncSnapshot<$dartnative_9.RoundedSuperellipseBorder>.withData(state, data);
           case $dartnative_23.SafeArea _: return $dartnative_17.AsyncSnapshot<$dartnative_23.SafeArea>.withData(state, data);
-          case $dartnative_47.Scaffold _: return $dartnative_17.AsyncSnapshot<$dartnative_47.Scaffold>.withData(state, data);
-          case $dartnative_48.ScrollView _: return $dartnative_17.AsyncSnapshot<$dartnative_48.ScrollView>.withData(state, data);
-          case $dartnative_50.SegmentedControl _: return $dartnative_17.AsyncSnapshot<$dartnative_50.SegmentedControl>.withData(state, data);
+          case $dartnative_48.Scaffold _: return $dartnative_17.AsyncSnapshot<$dartnative_48.Scaffold>.withData(state, data);
+          case $dartnative_49.ScrollView _: return $dartnative_17.AsyncSnapshot<$dartnative_49.ScrollView>.withData(state, data);
+          case $dartnative_51.SegmentedControl _: return $dartnative_17.AsyncSnapshot<$dartnative_51.SegmentedControl>.withData(state, data);
           case $dartnative_9.ShapeDecoration _: return $dartnative_17.AsyncSnapshot<$dartnative_9.ShapeDecoration>.withData(state, data);
-          case $dartnative_51.Shimmer _: return $dartnative_17.AsyncSnapshot<$dartnative_51.Shimmer>.withData(state, data);
+          case $dartnative_52.Shimmer _: return $dartnative_17.AsyncSnapshot<$dartnative_52.Shimmer>.withData(state, data);
           case $dartnative_11.ShowNativeToast _: return $dartnative_17.AsyncSnapshot<$dartnative_11.ShowNativeToast>.withData(state, data);
           case $dartnative_13.Signal _: return $dartnative_17.AsyncSnapshot<$dartnative_13.Signal>.withData(state, data);
-          case $dartnative_48.SingleChildScrollView _: return $dartnative_17.AsyncSnapshot<$dartnative_48.SingleChildScrollView>.withData(state, data);
+          case $dartnative_49.SingleChildScrollView _: return $dartnative_17.AsyncSnapshot<$dartnative_49.SingleChildScrollView>.withData(state, data);
           case $dartnative_23.SizedBox _: return $dartnative_17.AsyncSnapshot<$dartnative_23.SizedBox>.withData(state, data);
-          case $dartnative_52.Slider _: return $dartnative_17.AsyncSnapshot<$dartnative_52.Slider>.withData(state, data);
-          case $dartnative_54.SliverAppBar _: return $dartnative_17.AsyncSnapshot<$dartnative_54.SliverAppBar>.withData(state, data);
-          case $dartnative_54.SliverChildBuilderDelegate _: return $dartnative_17.AsyncSnapshot<$dartnative_54.SliverChildBuilderDelegate>.withData(state, data);
-          case $dartnative_54.SliverChildListDelegate _: return $dartnative_17.AsyncSnapshot<$dartnative_54.SliverChildListDelegate>.withData(state, data);
-          case $dartnative_54.SliverFillRemaining _: return $dartnative_17.AsyncSnapshot<$dartnative_54.SliverFillRemaining>.withData(state, data);
-          case $dartnative_54.SliverGrid _: return $dartnative_17.AsyncSnapshot<$dartnative_54.SliverGrid>.withData(state, data);
-          case $dartnative_54.SliverGridDelegateWithFixedCrossAxisCount _: return $dartnative_17.AsyncSnapshot<$dartnative_54.SliverGridDelegateWithFixedCrossAxisCount>.withData(state, data);
-          case $dartnative_54.SliverGridDelegateWithMaxCrossAxisExtent _: return $dartnative_17.AsyncSnapshot<$dartnative_54.SliverGridDelegateWithMaxCrossAxisExtent>.withData(state, data);
-          case $dartnative_54.SliverList _: return $dartnative_17.AsyncSnapshot<$dartnative_54.SliverList>.withData(state, data);
-          case $dartnative_54.SliverPadding _: return $dartnative_17.AsyncSnapshot<$dartnative_54.SliverPadding>.withData(state, data);
-          case $dartnative_54.SliverToBoxAdapter _: return $dartnative_17.AsyncSnapshot<$dartnative_54.SliverToBoxAdapter>.withData(state, data);
-          case $dartnative_47.SnackBar _: return $dartnative_17.AsyncSnapshot<$dartnative_47.SnackBar>.withData(state, data);
+          case $dartnative_53.Slider _: return $dartnative_17.AsyncSnapshot<$dartnative_53.Slider>.withData(state, data);
+          case $dartnative_55.SliverAppBar _: return $dartnative_17.AsyncSnapshot<$dartnative_55.SliverAppBar>.withData(state, data);
+          case $dartnative_55.SliverChildBuilderDelegate _: return $dartnative_17.AsyncSnapshot<$dartnative_55.SliverChildBuilderDelegate>.withData(state, data);
+          case $dartnative_55.SliverChildListDelegate _: return $dartnative_17.AsyncSnapshot<$dartnative_55.SliverChildListDelegate>.withData(state, data);
+          case $dartnative_55.SliverFillRemaining _: return $dartnative_17.AsyncSnapshot<$dartnative_55.SliverFillRemaining>.withData(state, data);
+          case $dartnative_55.SliverGrid _: return $dartnative_17.AsyncSnapshot<$dartnative_55.SliverGrid>.withData(state, data);
+          case $dartnative_55.SliverGridDelegateWithFixedCrossAxisCount _: return $dartnative_17.AsyncSnapshot<$dartnative_55.SliverGridDelegateWithFixedCrossAxisCount>.withData(state, data);
+          case $dartnative_55.SliverGridDelegateWithMaxCrossAxisExtent _: return $dartnative_17.AsyncSnapshot<$dartnative_55.SliverGridDelegateWithMaxCrossAxisExtent>.withData(state, data);
+          case $dartnative_55.SliverList _: return $dartnative_17.AsyncSnapshot<$dartnative_55.SliverList>.withData(state, data);
+          case $dartnative_55.SliverPadding _: return $dartnative_17.AsyncSnapshot<$dartnative_55.SliverPadding>.withData(state, data);
+          case $dartnative_55.SliverToBoxAdapter _: return $dartnative_17.AsyncSnapshot<$dartnative_55.SliverToBoxAdapter>.withData(state, data);
+          case $dartnative_48.SnackBar _: return $dartnative_17.AsyncSnapshot<$dartnative_48.SnackBar>.withData(state, data);
           case $dartnative_29.Spacer _: return $dartnative_17.AsyncSnapshot<$dartnative_29.Spacer>.withData(state, data);
-          case $dartnative_55.Stack _: return $dartnative_17.AsyncSnapshot<$dartnative_55.Stack>.withData(state, data);
+          case $dartnative_56.Stack _: return $dartnative_17.AsyncSnapshot<$dartnative_56.Stack>.withData(state, data);
           case $dartnative_9.StadiumBorder _: return $dartnative_17.AsyncSnapshot<$dartnative_9.StadiumBorder>.withData(state, data);
           case $dartnative_3.StatefulWidget _: return $dartnative_17.AsyncSnapshot<$dartnative_3.StatefulWidget>.withData(state, data);
           case $dartnative_3.StatelessWidget _: return $dartnative_17.AsyncSnapshot<$dartnative_3.StatelessWidget>.withData(state, data);
-          case $dartnative_56.Switch _: return $dartnative_17.AsyncSnapshot<$dartnative_56.Switch>.withData(state, data);
-          case $dartnative_59.TapGestureRecognizer _: return $dartnative_17.AsyncSnapshot<$dartnative_59.TapGestureRecognizer>.withData(state, data);
-          case $dartnative_59.Text _: return $dartnative_17.AsyncSnapshot<$dartnative_59.Text>.withData(state, data);
-          case $dartnative_60.TextField _: return $dartnative_17.AsyncSnapshot<$dartnative_60.TextField>.withData(state, data);
+          case $dartnative_57.Switch _: return $dartnative_17.AsyncSnapshot<$dartnative_57.Switch>.withData(state, data);
+          case $dartnative_60.TapGestureRecognizer _: return $dartnative_17.AsyncSnapshot<$dartnative_60.TapGestureRecognizer>.withData(state, data);
+          case $dartnative_60.Text _: return $dartnative_17.AsyncSnapshot<$dartnative_60.Text>.withData(state, data);
+          case $dartnative_61.TextField _: return $dartnative_17.AsyncSnapshot<$dartnative_61.TextField>.withData(state, data);
           case $dartnative_3.TextSelection _: return $dartnative_17.AsyncSnapshot<$dartnative_3.TextSelection>.withData(state, data);
-          case $dartnative_59.TextSpan _: return $dartnative_17.AsyncSnapshot<$dartnative_59.TextSpan>.withData(state, data);
+          case $dartnative_60.TextSpan _: return $dartnative_17.AsyncSnapshot<$dartnative_60.TextSpan>.withData(state, data);
           case $dartnative_14.TickerFuture _: return $dartnative_17.AsyncSnapshot<$dartnative_14.TickerFuture>.withData(state, data);
           case $dartnative_14.Transform _: return $dartnative_17.AsyncSnapshot<$dartnative_14.Transform>.withData(state, data);
           case $dartnative_14.Tween _: return $dartnative_17.AsyncSnapshot<$dartnative_14.Tween>.withData(state, data);
           case $dartnative_14.TweenSequence _: return $dartnative_17.AsyncSnapshot<$dartnative_14.TweenSequence>.withData(state, data);
           case $dartnative_9.UnderlineInputBorder _: return $dartnative_17.AsyncSnapshot<$dartnative_9.UnderlineInputBorder>.withData(state, data);
           case $dartnative_3.ValueListenable _: return $dartnative_17.AsyncSnapshot<$dartnative_3.ValueListenable>.withData(state, data);
-          case $dartnative_63.Visibility _: return $dartnative_17.AsyncSnapshot<$dartnative_63.Visibility>.withData(state, data);
+          case $dartnative_64.Visibility _: return $dartnative_17.AsyncSnapshot<$dartnative_64.Visibility>.withData(state, data);
           case $dartnative_37.Wrap _: return $dartnative_17.AsyncSnapshot<$dartnative_37.Wrap>.withData(state, data);
           case $dartnative_9.AlignmentGeometry _: return $dartnative_17.AsyncSnapshot<$dartnative_9.AlignmentGeometry>.withData(state, data);
-          case $dartnative_46.AndroidProgressIndicatorStyle _: return $dartnative_17.AsyncSnapshot<$dartnative_46.AndroidProgressIndicatorStyle>.withData(state, data);
-          case $dartnative_52.AndroidSliderStyle _: return $dartnative_17.AsyncSnapshot<$dartnative_52.AndroidSliderStyle>.withData(state, data);
-          case $dartnative_56.AndroidSwitchStyle _: return $dartnative_17.AsyncSnapshot<$dartnative_56.AndroidSwitchStyle>.withData(state, data);
+          case $dartnative_47.AndroidProgressIndicatorStyle _: return $dartnative_17.AsyncSnapshot<$dartnative_47.AndroidProgressIndicatorStyle>.withData(state, data);
+          case $dartnative_53.AndroidSliderStyle _: return $dartnative_17.AsyncSnapshot<$dartnative_53.AndroidSliderStyle>.withData(state, data);
+          case $dartnative_57.AndroidSwitchStyle _: return $dartnative_17.AsyncSnapshot<$dartnative_57.AndroidSwitchStyle>.withData(state, data);
           case $dartnative_14.Animatable _: return $dartnative_17.AsyncSnapshot<$dartnative_14.Animatable>.withData(state, data);
-          case $dartnative_47.AppBarIOSConfig _: return $dartnative_17.AsyncSnapshot<$dartnative_47.AppBarIOSConfig>.withData(state, data);
+          case $dartnative_48.AppBarIOSConfig _: return $dartnative_17.AsyncSnapshot<$dartnative_48.AppBarIOSConfig>.withData(state, data);
           case $dartnative_9.BorderRadius _: return $dartnative_17.AsyncSnapshot<$dartnative_9.BorderRadius>.withData(state, data);
           case $dartnative_9.BorderSide _: return $dartnative_17.AsyncSnapshot<$dartnative_9.BorderSide>.withData(state, data);
           case $dartnative_16.BottomNavigationBarItem _: return $dartnative_17.AsyncSnapshot<$dartnative_16.BottomNavigationBarItem>.withData(state, data);
@@ -43537,13 +43824,13 @@ BridgedClass _createAsyncSnapshotBridge() {
           case $dartnative_9.FontFeature _: return $dartnative_17.AsyncSnapshot<$dartnative_9.FontFeature>.withData(state, data);
           case $dartnative_9.FontVariation _: return $dartnative_17.AsyncSnapshot<$dartnative_9.FontVariation>.withData(state, data);
           case $dartnative_3.FrameTiming _: return $dartnative_17.AsyncSnapshot<$dartnative_3.FrameTiming>.withData(state, data);
-          case $dartnative_59.GestureRecognizer _: return $dartnative_17.AsyncSnapshot<$dartnative_59.GestureRecognizer>.withData(state, data);
+          case $dartnative_60.GestureRecognizer _: return $dartnative_17.AsyncSnapshot<$dartnative_60.GestureRecognizer>.withData(state, data);
           case $dartnative_9.Gradient _: return $dartnative_17.AsyncSnapshot<$dartnative_9.Gradient>.withData(state, data);
           case $dartnative_6.HapticFeedback _: return $dartnative_17.AsyncSnapshot<$dartnative_6.HapticFeedback>.withData(state, data);
           case $dartnative_35.IconData _: return $dartnative_17.AsyncSnapshot<$dartnative_35.IconData>.withData(state, data);
           case $dartnative_36.ImageCache _: return $dartnative_17.AsyncSnapshot<$dartnative_36.ImageCache>.withData(state, data);
           case $dartnative_36.ImageProvider _: return $dartnative_17.AsyncSnapshot<$dartnative_36.ImageProvider>.withData(state, data);
-          case $dartnative_59.InlineSpan _: return $dartnative_17.AsyncSnapshot<$dartnative_59.InlineSpan>.withData(state, data);
+          case $dartnative_60.InlineSpan _: return $dartnative_17.AsyncSnapshot<$dartnative_60.InlineSpan>.withData(state, data);
           case $dartnative_9.InputBorder _: return $dartnative_17.AsyncSnapshot<$dartnative_9.InputBorder>.withData(state, data);
           case $dartnative_9.InputDecoration _: return $dartnative_17.AsyncSnapshot<$dartnative_9.InputDecoration>.withData(state, data);
           case $dartnative_3.Key _: return $dartnative_17.AsyncSnapshot<$dartnative_3.Key>.withData(state, data);
@@ -43557,7 +43844,7 @@ BridgedClass _createAsyncSnapshotBridge() {
           case $dartnative_45.MediaFile _: return $dartnative_17.AsyncSnapshot<$dartnative_45.MediaFile>.withData(state, data);
           case $dartnative_6.MediaQuery _: return $dartnative_17.AsyncSnapshot<$dartnative_6.MediaQuery>.withData(state, data);
           case $dartnative_6.MediaQueryData _: return $dartnative_17.AsyncSnapshot<$dartnative_6.MediaQueryData>.withData(state, data);
-          case $dartnative_47.MenuAction _: return $dartnative_17.AsyncSnapshot<$dartnative_47.MenuAction>.withData(state, data);
+          case $dartnative_48.MenuAction _: return $dartnative_17.AsyncSnapshot<$dartnative_48.MenuAction>.withData(state, data);
           case $dartnative_6.ModalRoute _: return $dartnative_17.AsyncSnapshot<$dartnative_6.ModalRoute>.withData(state, data);
           case $dartnative_1.NativeBindings _: return $dartnative_17.AsyncSnapshot<$dartnative_1.NativeBindings>.withData(state, data);
           case $dartnative_6.Navigator _: return $dartnative_17.AsyncSnapshot<$dartnative_6.Navigator>.withData(state, data);
@@ -43580,15 +43867,15 @@ BridgedClass _createAsyncSnapshotBridge() {
           case $dartnative_3.RenderObject _: return $dartnative_17.AsyncSnapshot<$dartnative_3.RenderObject>.withData(state, data);
           case $dartnative_6.Route _: return $dartnative_17.AsyncSnapshot<$dartnative_6.Route>.withData(state, data);
           case $dartnative_6.RouteTransition _: return $dartnative_17.AsyncSnapshot<$dartnative_6.RouteTransition>.withData(state, data);
-          case $dartnative_47.ScaffoldFeatureController _: return $dartnative_17.AsyncSnapshot<$dartnative_47.ScaffoldFeatureController>.withData(state, data);
-          case $dartnative_47.ScaffoldMessenger _: return $dartnative_17.AsyncSnapshot<$dartnative_47.ScaffoldMessenger>.withData(state, data);
-          case $dartnative_47.ScaffoldMessengerState _: return $dartnative_17.AsyncSnapshot<$dartnative_47.ScaffoldMessengerState>.withData(state, data);
-          case $dartnative_47.ScaffoldState _: return $dartnative_17.AsyncSnapshot<$dartnative_47.ScaffoldState>.withData(state, data);
+          case $dartnative_48.ScaffoldFeatureController _: return $dartnative_17.AsyncSnapshot<$dartnative_48.ScaffoldFeatureController>.withData(state, data);
+          case $dartnative_48.ScaffoldMessenger _: return $dartnative_17.AsyncSnapshot<$dartnative_48.ScaffoldMessenger>.withData(state, data);
+          case $dartnative_48.ScaffoldMessengerState _: return $dartnative_17.AsyncSnapshot<$dartnative_48.ScaffoldMessengerState>.withData(state, data);
+          case $dartnative_48.ScaffoldState _: return $dartnative_17.AsyncSnapshot<$dartnative_48.ScaffoldState>.withData(state, data);
           case $dartnative_32.ScaleEndDetails _: return $dartnative_17.AsyncSnapshot<$dartnative_32.ScaleEndDetails>.withData(state, data);
           case $dartnative_32.ScaleStartDetails _: return $dartnative_17.AsyncSnapshot<$dartnative_32.ScaleStartDetails>.withData(state, data);
           case $dartnative_32.ScaleUpdateDetails _: return $dartnative_17.AsyncSnapshot<$dartnative_32.ScaleUpdateDetails>.withData(state, data);
           case $dartnative_3.SchedulerBinding _: return $dartnative_17.AsyncSnapshot<$dartnative_3.SchedulerBinding>.withData(state, data);
-          case $dartnative_48.ScrollPhysics _: return $dartnative_17.AsyncSnapshot<$dartnative_48.ScrollPhysics>.withData(state, data);
+          case $dartnative_49.ScrollPhysics _: return $dartnative_17.AsyncSnapshot<$dartnative_49.ScrollPhysics>.withData(state, data);
           case $dartnative_3.ScrollPosition _: return $dartnative_17.AsyncSnapshot<$dartnative_3.ScrollPosition>.withData(state, data);
           case $dartnative_25.Shader _: return $dartnative_17.AsyncSnapshot<$dartnative_25.Shader>.withData(state, data);
           case $dartnative_9.Shadow _: return $dartnative_17.AsyncSnapshot<$dartnative_9.Shadow>.withData(state, data);
@@ -43596,29 +43883,29 @@ BridgedClass _createAsyncSnapshotBridge() {
           case $dartnative_6.SheetHeader _: return $dartnative_17.AsyncSnapshot<$dartnative_6.SheetHeader>.withData(state, data);
           case $dartnative_6.SheetHeaderController _: return $dartnative_17.AsyncSnapshot<$dartnative_6.SheetHeaderController>.withData(state, data);
           case $dartnative_9.Size _: return $dartnative_17.AsyncSnapshot<$dartnative_9.Size>.withData(state, data);
-          case $dartnative_53.SlideOverStyle _: return $dartnative_17.AsyncSnapshot<$dartnative_53.SlideOverStyle>.withData(state, data);
-          case $dartnative_52.SliderComponentShape _: return $dartnative_17.AsyncSnapshot<$dartnative_52.SliderComponentShape>.withData(state, data);
-          case $dartnative_52.SliderThemeData _: return $dartnative_17.AsyncSnapshot<$dartnative_52.SliderThemeData>.withData(state, data);
-          case $dartnative_54.SliverChildDelegate _: return $dartnative_17.AsyncSnapshot<$dartnative_54.SliverChildDelegate>.withData(state, data);
-          case $dartnative_54.SliverGridDelegate _: return $dartnative_17.AsyncSnapshot<$dartnative_54.SliverGridDelegate>.withData(state, data);
-          case $dartnative_47.SnackBarAction _: return $dartnative_17.AsyncSnapshot<$dartnative_47.SnackBarAction>.withData(state, data);
+          case $dartnative_54.SlideOverStyle _: return $dartnative_17.AsyncSnapshot<$dartnative_54.SlideOverStyle>.withData(state, data);
+          case $dartnative_53.SliderComponentShape _: return $dartnative_17.AsyncSnapshot<$dartnative_53.SliderComponentShape>.withData(state, data);
+          case $dartnative_53.SliderThemeData _: return $dartnative_17.AsyncSnapshot<$dartnative_53.SliderThemeData>.withData(state, data);
+          case $dartnative_55.SliverChildDelegate _: return $dartnative_17.AsyncSnapshot<$dartnative_55.SliverChildDelegate>.withData(state, data);
+          case $dartnative_55.SliverGridDelegate _: return $dartnative_17.AsyncSnapshot<$dartnative_55.SliverGridDelegate>.withData(state, data);
+          case $dartnative_48.SnackBarAction _: return $dartnative_17.AsyncSnapshot<$dartnative_48.SnackBarAction>.withData(state, data);
           case $dartnative_14.SpringDescription _: return $dartnative_17.AsyncSnapshot<$dartnative_14.SpringDescription>.withData(state, data);
           case $dartnative_3.State _: return $dartnative_17.AsyncSnapshot<$dartnative_3.State>.withData(state, data);
           case $dartnative_35.StaticIconProvider _: return $dartnative_17.AsyncSnapshot<$dartnative_35.StaticIconProvider>.withData(state, data);
           case $dartnative_6.StrutStyle _: return $dartnative_17.AsyncSnapshot<$dartnative_6.StrutStyle>.withData(state, data);
-          case $dartnative_57.SystemChrome _: return $dartnative_17.AsyncSnapshot<$dartnative_57.SystemChrome>.withData(state, data);
+          case $dartnative_58.SystemChrome _: return $dartnative_17.AsyncSnapshot<$dartnative_58.SystemChrome>.withData(state, data);
           case $dartnative_6.SystemNavigator _: return $dartnative_17.AsyncSnapshot<$dartnative_6.SystemNavigator>.withData(state, data);
-          case $dartnative_57.SystemUiOverlayStyle _: return $dartnative_17.AsyncSnapshot<$dartnative_57.SystemUiOverlayStyle>.withData(state, data);
-          case $dartnative_58.TableBorder _: return $dartnative_17.AsyncSnapshot<$dartnative_58.TableBorder>.withData(state, data);
-          case $dartnative_58.TableColumnWidth _: return $dartnative_17.AsyncSnapshot<$dartnative_58.TableColumnWidth>.withData(state, data);
-          case $dartnative_58.TableRow _: return $dartnative_17.AsyncSnapshot<$dartnative_58.TableRow>.withData(state, data);
+          case $dartnative_58.SystemUiOverlayStyle _: return $dartnative_17.AsyncSnapshot<$dartnative_58.SystemUiOverlayStyle>.withData(state, data);
+          case $dartnative_59.TableBorder _: return $dartnative_17.AsyncSnapshot<$dartnative_59.TableBorder>.withData(state, data);
+          case $dartnative_59.TableColumnWidth _: return $dartnative_17.AsyncSnapshot<$dartnative_59.TableColumnWidth>.withData(state, data);
+          case $dartnative_59.TableRow _: return $dartnative_17.AsyncSnapshot<$dartnative_59.TableRow>.withData(state, data);
           case $dartnative_32.TapDownDetails _: return $dartnative_17.AsyncSnapshot<$dartnative_32.TapDownDetails>.withData(state, data);
           case $dartnative_32.TapUpDetails _: return $dartnative_17.AsyncSnapshot<$dartnative_32.TapUpDetails>.withData(state, data);
-          case $dartnative_60.TextAlignVertical _: return $dartnative_17.AsyncSnapshot<$dartnative_60.TextAlignVertical>.withData(state, data);
+          case $dartnative_61.TextAlignVertical _: return $dartnative_17.AsyncSnapshot<$dartnative_61.TextAlignVertical>.withData(state, data);
           case $dartnative_25.TextBox _: return $dartnative_17.AsyncSnapshot<$dartnative_25.TextBox>.withData(state, data);
           case $dartnative_3.TextEditingValue _: return $dartnative_17.AsyncSnapshot<$dartnative_3.TextEditingValue>.withData(state, data);
-          case $dartnative_61.TextInputFormatter _: return $dartnative_17.AsyncSnapshot<$dartnative_61.TextInputFormatter>.withData(state, data);
-          case $dartnative_62.TextPainter _: return $dartnative_17.AsyncSnapshot<$dartnative_62.TextPainter>.withData(state, data);
+          case $dartnative_62.TextInputFormatter _: return $dartnative_17.AsyncSnapshot<$dartnative_62.TextInputFormatter>.withData(state, data);
+          case $dartnative_63.TextPainter _: return $dartnative_17.AsyncSnapshot<$dartnative_63.TextPainter>.withData(state, data);
           case $dartnative_9.TextPosition _: return $dartnative_17.AsyncSnapshot<$dartnative_9.TextPosition>.withData(state, data);
           case $dartnative_3.TextRange _: return $dartnative_17.AsyncSnapshot<$dartnative_3.TextRange>.withData(state, data);
           case $dartnative_9.TextStyle _: return $dartnative_17.AsyncSnapshot<$dartnative_9.TextStyle>.withData(state, data);
@@ -43774,9 +44061,9 @@ BridgedClass _createFutureBuilderBridge() {
 
 BridgedClass _createTableColumnWidthBridge() {
   return BridgedClass(
-    nativeType: $dartnative_58.TableColumnWidth,
+    nativeType: $dartnative_59.TableColumnWidth,
     name: 'TableColumnWidth',
-    isAssignable: (v) => v is $dartnative_58.TableColumnWidth,
+    isAssignable: (v) => v is $dartnative_59.TableColumnWidth,
     isAbstract: true,
     constructors: {
     },
@@ -43789,18 +44076,18 @@ BridgedClass _createTableColumnWidthBridge() {
 
 BridgedClass _createFlexColumnWidthBridge() {
   return BridgedClass(
-    nativeType: $dartnative_58.FlexColumnWidth,
+    nativeType: $dartnative_59.FlexColumnWidth,
     name: 'FlexColumnWidth',
-    isAssignable: (v) => v is $dartnative_58.FlexColumnWidth,
+    isAssignable: (v) => v is $dartnative_59.FlexColumnWidth,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final value = D4.getOptionalArgWithDefault<double>(positional, 0, 'value', 1.0);
-        return $dartnative_58.FlexColumnWidth(value);
+        return $dartnative_59.FlexColumnWidth(value);
       },
     },
     getters: {
-      'value': (visitor, target) => D4.validateTarget<$dartnative_58.FlexColumnWidth>(target, 'FlexColumnWidth').value,
+      'value': (visitor, target) => D4.validateTarget<$dartnative_59.FlexColumnWidth>(target, 'FlexColumnWidth').value,
     },
     constructorSignatures: {
       '': 'const FlexColumnWidth([double value = 1.0])',
@@ -43817,19 +44104,19 @@ BridgedClass _createFlexColumnWidthBridge() {
 
 BridgedClass _createFixedColumnWidthBridge() {
   return BridgedClass(
-    nativeType: $dartnative_58.FixedColumnWidth,
+    nativeType: $dartnative_59.FixedColumnWidth,
     name: 'FixedColumnWidth',
-    isAssignable: (v) => v is $dartnative_58.FixedColumnWidth,
+    isAssignable: (v) => v is $dartnative_59.FixedColumnWidth,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'FixedColumnWidth');
         final width = D4.getRequiredArg<double>(positional, 0, 'width', 'FixedColumnWidth');
-        return $dartnative_58.FixedColumnWidth(width);
+        return $dartnative_59.FixedColumnWidth(width);
       },
     },
     getters: {
-      'width': (visitor, target) => D4.validateTarget<$dartnative_58.FixedColumnWidth>(target, 'FixedColumnWidth').width,
+      'width': (visitor, target) => D4.validateTarget<$dartnative_59.FixedColumnWidth>(target, 'FixedColumnWidth').width,
     },
     constructorSignatures: {
       '': 'const FixedColumnWidth(double width)',
@@ -43846,13 +44133,13 @@ BridgedClass _createFixedColumnWidthBridge() {
 
 BridgedClass _createIntrinsicColumnWidthBridge() {
   return BridgedClass(
-    nativeType: $dartnative_58.IntrinsicColumnWidth,
+    nativeType: $dartnative_59.IntrinsicColumnWidth,
     name: 'IntrinsicColumnWidth',
-    isAssignable: (v) => v is $dartnative_58.IntrinsicColumnWidth,
+    isAssignable: (v) => v is $dartnative_59.IntrinsicColumnWidth,
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        return $dartnative_58.IntrinsicColumnWidth();
+        return $dartnative_59.IntrinsicColumnWidth();
       },
     },
     constructorSignatures: {
@@ -43867,9 +44154,9 @@ BridgedClass _createIntrinsicColumnWidthBridge() {
 
 BridgedClass _createTableBorderBridge() {
   return BridgedClass(
-    nativeType: $dartnative_58.TableBorder,
+    nativeType: $dartnative_59.TableBorder,
     name: 'TableBorder',
-    isAssignable: (v) => v is $dartnative_58.TableBorder,
+    isAssignable: (v) => v is $dartnative_59.TableBorder,
     constructors: {
       '': (visitor, positional, named) {
         final top = D4.getNamedArgWithDefault<$dartnative_9.BorderSide>(named, 'top', $dartnative_9.BorderSide.none);
@@ -43878,26 +44165,26 @@ BridgedClass _createTableBorderBridge() {
         final left = D4.getNamedArgWithDefault<$dartnative_9.BorderSide>(named, 'left', $dartnative_9.BorderSide.none);
         final horizontalInside = D4.getNamedArgWithDefault<$dartnative_9.BorderSide>(named, 'horizontalInside', $dartnative_9.BorderSide.none);
         final verticalInside = D4.getNamedArgWithDefault<$dartnative_9.BorderSide>(named, 'verticalInside', $dartnative_9.BorderSide.none);
-        return $dartnative_58.TableBorder(top: top, right: right, bottom: bottom, left: left, horizontalInside: horizontalInside, verticalInside: verticalInside);
+        return $dartnative_59.TableBorder(top: top, right: right, bottom: bottom, left: left, horizontalInside: horizontalInside, verticalInside: verticalInside);
       },
       'all': (visitor, positional, named) {
         final color = D4.getNamedArgWithDefault<$dartnative_9.Color>(named, 'color', const $dartnative_9.Color(0xFF000000));
         final width = D4.getNamedArgWithDefault<double>(named, 'width', 1.0);
-        return $dartnative_58.TableBorder.all(color: color, width: width);
+        return $dartnative_59.TableBorder.all(color: color, width: width);
       },
       'symmetric': (visitor, positional, named) {
         final inside = D4.getNamedArgWithDefault<$dartnative_9.BorderSide>(named, 'inside', $dartnative_9.BorderSide.none);
         final outside = D4.getNamedArgWithDefault<$dartnative_9.BorderSide>(named, 'outside', $dartnative_9.BorderSide.none);
-        return $dartnative_58.TableBorder.symmetric(inside: inside, outside: outside);
+        return $dartnative_59.TableBorder.symmetric(inside: inside, outside: outside);
       },
     },
     getters: {
-      'top': (visitor, target) => D4.validateTarget<$dartnative_58.TableBorder>(target, 'TableBorder').top,
-      'right': (visitor, target) => D4.validateTarget<$dartnative_58.TableBorder>(target, 'TableBorder').right,
-      'bottom': (visitor, target) => D4.validateTarget<$dartnative_58.TableBorder>(target, 'TableBorder').bottom,
-      'left': (visitor, target) => D4.validateTarget<$dartnative_58.TableBorder>(target, 'TableBorder').left,
-      'horizontalInside': (visitor, target) => D4.validateTarget<$dartnative_58.TableBorder>(target, 'TableBorder').horizontalInside,
-      'verticalInside': (visitor, target) => D4.validateTarget<$dartnative_58.TableBorder>(target, 'TableBorder').verticalInside,
+      'top': (visitor, target) => D4.validateTarget<$dartnative_59.TableBorder>(target, 'TableBorder').top,
+      'right': (visitor, target) => D4.validateTarget<$dartnative_59.TableBorder>(target, 'TableBorder').right,
+      'bottom': (visitor, target) => D4.validateTarget<$dartnative_59.TableBorder>(target, 'TableBorder').bottom,
+      'left': (visitor, target) => D4.validateTarget<$dartnative_59.TableBorder>(target, 'TableBorder').left,
+      'horizontalInside': (visitor, target) => D4.validateTarget<$dartnative_59.TableBorder>(target, 'TableBorder').horizontalInside,
+      'verticalInside': (visitor, target) => D4.validateTarget<$dartnative_59.TableBorder>(target, 'TableBorder').verticalInside,
     },
     constructorSignatures: {
       '': 'const TableBorder({BorderSide top = BorderSide.none, BorderSide right = BorderSide.none, BorderSide bottom = BorderSide.none, BorderSide left = BorderSide.none, BorderSide horizontalInside = BorderSide.none, BorderSide verticalInside = BorderSide.none})',
@@ -43921,9 +44208,9 @@ BridgedClass _createTableBorderBridge() {
 
 BridgedClass _createTableRowBridge() {
   return BridgedClass(
-    nativeType: $dartnative_58.TableRow,
+    nativeType: $dartnative_59.TableRow,
     name: 'TableRow',
-    isAssignable: (v) => v is $dartnative_58.TableRow,
+    isAssignable: (v) => v is $dartnative_59.TableRow,
     constructors: {
       '': (visitor, positional, named) {
         if (!named.containsKey('children') || named['children'] == null) {
@@ -43931,12 +44218,12 @@ BridgedClass _createTableRowBridge() {
         }
         final children = D4.coerceList<$dartnative_3.Widget>(named['children'], 'children');
         final decoration = D4.getOptionalNamedArg<$dartnative_9.Decoration?>(named, 'decoration');
-        return $dartnative_58.TableRow(children: children, decoration: decoration);
+        return $dartnative_59.TableRow(children: children, decoration: decoration);
       },
     },
     getters: {
-      'children': (visitor, target) => D4.validateTarget<$dartnative_58.TableRow>(target, 'TableRow').children,
-      'decoration': (visitor, target) => D4.validateTarget<$dartnative_58.TableRow>(target, 'TableRow').decoration,
+      'children': (visitor, target) => D4.validateTarget<$dartnative_59.TableRow>(target, 'TableRow').children,
+      'decoration': (visitor, target) => D4.validateTarget<$dartnative_59.TableRow>(target, 'TableRow').decoration,
     },
     constructorSignatures: {
       '': 'const TableRow({required List<Widget> children, Decoration? decoration})',
@@ -43954,39 +44241,39 @@ BridgedClass _createTableRowBridge() {
 
 BridgedClass _createTableBridge() {
   return BridgedClass(
-    nativeType: $dartnative_58.Table,
+    nativeType: $dartnative_59.Table,
     name: 'Table',
-    isAssignable: (v) => v is $dartnative_58.Table,
+    isAssignable: (v) => v is $dartnative_59.Table,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_3.Key?>(named, 'key');
-        final columnWidths = D4.coerceMapOrNull<int, $dartnative_58.TableColumnWidth>(named['columnWidths'], 'columnWidths');
-        final border = D4.getOptionalNamedArg<$dartnative_58.TableBorder?>(named, 'border');
+        final columnWidths = D4.coerceMapOrNull<int, $dartnative_59.TableColumnWidth>(named['columnWidths'], 'columnWidths');
+        final border = D4.getOptionalNamedArg<$dartnative_59.TableBorder?>(named, 'border');
         if (!named.containsKey('children') || named['children'] == null) {
           throw ArgumentError('Table: Missing required named argument "children"');
         }
-        final children = D4.coerceList<$dartnative_58.TableRow>(named['children'], 'children');
+        final children = D4.coerceList<$dartnative_59.TableRow>(named['children'], 'children');
         if (!named.containsKey('defaultColumnWidth')) {
-          return $dartnative_58.Table(key: key, columnWidths: columnWidths, border: border, children: children);
+          return $dartnative_59.Table(key: key, columnWidths: columnWidths, border: border, children: children);
         }
         if (named.containsKey('defaultColumnWidth')) {
-          final defaultColumnWidth = D4.getRequiredNamedArg<$dartnative_58.TableColumnWidth>(named, 'defaultColumnWidth', 'Table');
-          return $dartnative_58.Table(key: key, columnWidths: columnWidths, border: border, children: children, defaultColumnWidth: defaultColumnWidth);
+          final defaultColumnWidth = D4.getRequiredNamedArg<$dartnative_59.TableColumnWidth>(named, 'defaultColumnWidth', 'Table');
+          return $dartnative_59.Table(key: key, columnWidths: columnWidths, border: border, children: children, defaultColumnWidth: defaultColumnWidth);
         }
         throw StateError('Unreachable: all named parameter combinations should be covered');
       },
     },
     getters: {
-      'key': (visitor, target) => D4.validateTarget<$dartnative_58.Table>(target, 'Table').key,
-      'columnWidths': (visitor, target) => D4.validateTarget<$dartnative_58.Table>(target, 'Table').columnWidths,
-      'defaultColumnWidth': (visitor, target) => D4.validateTarget<$dartnative_58.Table>(target, 'Table').defaultColumnWidth,
-      'border': (visitor, target) => D4.validateTarget<$dartnative_58.Table>(target, 'Table').border,
-      'children': (visitor, target) => D4.validateTarget<$dartnative_58.Table>(target, 'Table').children,
+      'key': (visitor, target) => D4.validateTarget<$dartnative_59.Table>(target, 'Table').key,
+      'columnWidths': (visitor, target) => D4.validateTarget<$dartnative_59.Table>(target, 'Table').columnWidths,
+      'defaultColumnWidth': (visitor, target) => D4.validateTarget<$dartnative_59.Table>(target, 'Table').defaultColumnWidth,
+      'border': (visitor, target) => D4.validateTarget<$dartnative_59.Table>(target, 'Table').border,
+      'children': (visitor, target) => D4.validateTarget<$dartnative_59.Table>(target, 'Table').children,
     },
     methods: {
       'build': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_58.Table>(target, 'Table');
+        final t = D4.validateTarget<$dartnative_59.Table>(target, 'Table');
         D4.requireMinArgs(positional, 1, 'build');
         final context = D4.getRequiredArg<$dartnative_3.BuildContext>(positional, 0, 'context', 'build');
         return (t as dynamic).build(context);
@@ -44109,7 +44396,7 @@ BridgedClass _createAlwaysStoppedAnimationBridge() {
           case int _: return $dartnative_14.AlwaysStoppedAnimation<int>(value);
           case String _: return $dartnative_14.AlwaysStoppedAnimation<String>(value);
           case bool _: return $dartnative_14.AlwaysStoppedAnimation<bool>(value);
-          case $dartnative_53.SliderMenuContainerState _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_53.SliderMenuContainerState>(value);
+          case $dartnative_54.SliderMenuContainerState _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_54.SliderMenuContainerState>(value);
           case $dartnative_14.AnimatedBuilder _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.AnimatedBuilder>(value);
           case $dartnative_14.AnimationController _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.AnimationController>(value);
           case $dartnative_14.CurvedAnimation _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.CurvedAnimation>(value);
@@ -44123,7 +44410,7 @@ BridgedClass _createAlwaysStoppedAnimationBridge() {
           case $dartnative_14.AnimatedContainer _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.AnimatedContainer>(value);
           case $dartnative_14.AnimatedCrossFade _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.AnimatedCrossFade>(value);
           case $dartnative_14.AnimatedDefaultTextStyle _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.AnimatedDefaultTextStyle>(value);
-          case $dartnative_63.AnimatedOpacity _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_63.AnimatedOpacity>(value);
+          case $dartnative_64.AnimatedOpacity _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_64.AnimatedOpacity>(value);
           case $dartnative_14.AnimatedPadding _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.AnimatedPadding>(value);
           case $dartnative_14.AnimatedPositioned _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.AnimatedPositioned>(value);
           case $dartnative_14.AnimatedRotation _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.AnimatedRotation>(value);
@@ -44133,25 +44420,25 @@ BridgedClass _createAlwaysStoppedAnimationBridge() {
           case $dartnative_14.AnimatedSwitcher _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.AnimatedSwitcher>(value);
           case $dartnative_14.AnimatedWidget _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.AnimatedWidget>(value);
           case $dartnative_6.App _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_6.App>(value);
-          case $dartnative_47.AppBar _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.AppBar>(value);
+          case $dartnative_48.AppBar _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.AppBar>(value);
           case $dartnative_20.Badge _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_20.Badge>(value);
-          case $dartnative_47.BarButtonItem _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.BarButtonItem>(value);
+          case $dartnative_48.BarButtonItem _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.BarButtonItem>(value);
           case $dartnative_3.Builder _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.Builder>(value);
           case $dartnative_20.Card _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_20.Card>(value);
           case $dartnative_23.Center _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_23.Center>(value);
           case $dartnative_20.CircleAvatar _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_20.CircleAvatar>(value);
           case $dartnative_37.ClipOval _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_37.ClipOval>(value);
-          case $dartnative_63.ClipRRect _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_63.ClipRRect>(value);
-          case $dartnative_63.ClipRSuperellipse _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_63.ClipRSuperellipse>(value);
-          case $dartnative_63.ClipRect _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_63.ClipRect>(value);
+          case $dartnative_64.ClipRRect _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_64.ClipRRect>(value);
+          case $dartnative_64.ClipRSuperellipse _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_64.ClipRSuperellipse>(value);
+          case $dartnative_64.ClipRect _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_64.ClipRect>(value);
           case $dartnative_14.ColorTween _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.ColorTween>(value);
           case $dartnative_29.Column _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_29.Column>(value);
           case $dartnative_13.Computed _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_13.Computed>(value);
           case $dartnative_6.DefaultTextStyle _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_6.DefaultTextStyle>(value);
           case $dartnative_6.Directionality _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_6.Directionality>(value);
           case $dartnative_23.Divider _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_23.Divider>(value);
-          case $dartnative_47.Drawer _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.Drawer>(value);
-          case $dartnative_47.DrawerHeader _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.DrawerHeader>(value);
+          case $dartnative_48.Drawer _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.Drawer>(value);
+          case $dartnative_48.DrawerHeader _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.DrawerHeader>(value);
           case $dartnative_29.Expanded _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_29.Expanded>(value);
           case $dartnative_31.FocusNode _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_31.FocusNode>(value);
           case $dartnative_31.FocusScopeNode _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_31.FocusScopeNode>(value);
@@ -44160,20 +44447,22 @@ BridgedClass _createAlwaysStoppedAnimationBridge() {
           case $dartnative_14.IntTween _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.IntTween>(value);
           case $dartnative_3.KeyedSubtree _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.KeyedSubtree>(value);
           case $dartnative_20.ListTile _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_20.ListTile>(value);
-          case $dartnative_63.Offstage _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_63.Offstage>(value);
+          case $dartnative_64.Offstage _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_64.Offstage>(value);
+          case $dartnative_46.PageController _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_46.PageController>(value);
+          case $dartnative_46.PageView _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_46.PageView>(value);
           case $dartnative_13.Provided _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_13.Provided>(value);
           case $dartnative_14.RectTween _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.RectTween>(value);
-          case $dartnative_62.RenderParagraph _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_62.RenderParagraph>(value);
+          case $dartnative_63.RenderParagraph _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_63.RenderParagraph>(value);
           case $dartnative_29.Row _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_29.Row>(value);
-          case $dartnative_47.ScaffoldDrawerElement _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.ScaffoldDrawerElement>(value);
+          case $dartnative_48.ScaffoldDrawerElement _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.ScaffoldDrawerElement>(value);
           case $dartnative_3.ScrollController _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.ScrollController>(value);
-          case $dartnative_49.SearchBar _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_49.SearchBar>(value);
+          case $dartnative_50.SearchBar _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_50.SearchBar>(value);
           case $dartnative_14.SingleTickerProviderStateMixin _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.SingleTickerProviderStateMixin>(value);
           case $dartnative_14.SizeTween _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.SizeTween>(value);
-          case $dartnative_53.SliderMenuContainer _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_53.SliderMenuContainer>(value);
-          case $dartnative_52.SliderTheme _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_52.SliderTheme>(value);
+          case $dartnative_54.SliderMenuContainer _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_54.SliderMenuContainer>(value);
+          case $dartnative_53.SliderTheme _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_53.SliderTheme>(value);
           case $dartnative_17.StreamBuilder _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_17.StreamBuilder>(value);
-          case $dartnative_58.Table _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_58.Table>(value);
+          case $dartnative_59.Table _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_59.Table>(value);
           case $dartnative_3.TextEditingController _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.TextEditingController>(value);
           case $dartnative_14.TickerProviderStateMixin _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.TickerProviderStateMixin>(value);
           case $dartnative_14.TweenAnimationBuilder _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.TweenAnimationBuilder>(value);
@@ -44185,44 +44474,44 @@ BridgedClass _createAlwaysStoppedAnimationBridge() {
           case $dartnative_23.Align _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_23.Align>(value);
           case $dartnative_9.Alignment _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.Alignment>(value);
           case $dartnative_9.AlignmentDirectional _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.AlignmentDirectional>(value);
-          case $dartnative_48.AlwaysScrollableScrollPhysics _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.AlwaysScrollableScrollPhysics>(value);
+          case $dartnative_49.AlwaysScrollableScrollPhysics _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_49.AlwaysScrollableScrollPhysics>(value);
           case $dartnative_14.Animation _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.Animation>(value);
           case $dartnative_6.AnnotatedRegion _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_6.AnnotatedRegion>(value);
-          case $dartnative_63.AspectRatio _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_63.AspectRatio>(value);
+          case $dartnative_64.AspectRatio _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_64.AspectRatio>(value);
           case $dartnative_36.AssetImage _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_36.AssetImage>(value);
-          case $dartnative_47.BackButton _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.BackButton>(value);
+          case $dartnative_48.BackButton _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.BackButton>(value);
           case $dartnative_15.BackdropFilter _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_15.BackdropFilter>(value);
           case $dartnative_25.BinaryCanvasRecorder _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_25.BinaryCanvasRecorder>(value);
           case $dartnative_25.BlurImageFilter _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_25.BlurImageFilter>(value);
           case $dartnative_9.Border _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.Border>(value);
           case $dartnative_16.BottomNavigationBar _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_16.BottomNavigationBar>(value);
-          case $dartnative_47.BottomSheet _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.BottomSheet>(value);
-          case $dartnative_48.BouncingScrollPhysics _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.BouncingScrollPhysics>(value);
+          case $dartnative_48.BottomSheet _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.BottomSheet>(value);
+          case $dartnative_49.BouncingScrollPhysics _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_49.BouncingScrollPhysics>(value);
           case $dartnative_9.BoxDecoration _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.BoxDecoration>(value);
           case $dartnative_18.Button _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_18.Button>(value);
           case $dartnative_3.ChangeNotifier _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.ChangeNotifier>(value);
           case $dartnative_21.Checkbox _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_21.Checkbox>(value);
           case $dartnative_9.CircleBorder _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.CircleBorder>(value);
-          case $dartnative_46.CircularProgressIndicator _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_46.CircularProgressIndicator>(value);
-          case $dartnative_48.ClampingScrollPhysics _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.ClampingScrollPhysics>(value);
+          case $dartnative_47.CircularProgressIndicator _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.CircularProgressIndicator>(value);
+          case $dartnative_49.ClampingScrollPhysics _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_49.ClampingScrollPhysics>(value);
           case $dartnative_37.ColoredBox _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_37.ColoredBox>(value);
           case $dartnative_23.ConstrainedBox _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_23.ConstrainedBox>(value);
           case $dartnative_23.Container _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_23.Container>(value);
           case $dartnative_25.CustomPaint _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_25.CustomPaint>(value);
-          case $dartnative_54.CustomScrollView _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_54.CustomScrollView>(value);
+          case $dartnative_55.CustomScrollView _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_55.CustomScrollView>(value);
           case $dartnative_23.DecoratedBox _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_23.DecoratedBox>(value);
           case $dartnative_9.EdgeInsets _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.EdgeInsets>(value);
           case $dartnative_9.EdgeInsetsDirectional _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.EdgeInsetsDirectional>(value);
           case $dartnative_27.FastGrid _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_27.FastGrid>(value);
           case $dartnative_28.FastList _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_28.FastList>(value);
           case $dartnative_36.FileImage _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_36.FileImage>(value);
-          case $dartnative_61.FilteringTextInputFormatter _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_61.FilteringTextInputFormatter>(value);
+          case $dartnative_62.FilteringTextInputFormatter _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_62.FilteringTextInputFormatter>(value);
           case $dartnative_37.FittedBox _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_37.FittedBox>(value);
-          case $dartnative_58.FixedColumnWidth _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_58.FixedColumnWidth>(value);
+          case $dartnative_59.FixedColumnWidth _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_59.FixedColumnWidth>(value);
           case $dartnative_29.Flex _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_29.Flex>(value);
-          case $dartnative_58.FlexColumnWidth _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_58.FlexColumnWidth>(value);
+          case $dartnative_59.FlexColumnWidth _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_59.FlexColumnWidth>(value);
           case $dartnative_29.Flexible _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_29.Flexible>(value);
-          case $dartnative_54.FlexibleSpaceBar _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_54.FlexibleSpaceBar>(value);
+          case $dartnative_55.FlexibleSpaceBar _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_55.FlexibleSpaceBar>(value);
           case $dartnative_30.FloatingActionButton _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_30.FloatingActionButton>(value);
           case $dartnative_31.Focus _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_31.Focus>(value);
           case $dartnative_31.FocusScope _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_31.FocusScope>(value);
@@ -44242,15 +44531,15 @@ BridgedClass _createAlwaysStoppedAnimationBridge() {
           case $dartnative_37.IndexedStack _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_37.IndexedStack>(value);
           case $dartnative_3.InheritedWidget _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.InheritedWidget>(value);
           case $dartnative_32.InkWell _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_32.InkWell>(value);
-          case $dartnative_58.IntrinsicColumnWidth _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_58.IntrinsicColumnWidth>(value);
+          case $dartnative_59.IntrinsicColumnWidth _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_59.IntrinsicColumnWidth>(value);
           case $dartnative_37.IntrinsicHeight _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_37.IntrinsicHeight>(value);
           case $dartnative_37.IntrinsicWidth _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_37.IntrinsicWidth>(value);
           case $dartnative_17.LayoutBuilder _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_17.LayoutBuilder>(value);
-          case $dartnative_61.LengthLimitingTextInputFormatter _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_61.LengthLimitingTextInputFormatter>(value);
+          case $dartnative_62.LengthLimitingTextInputFormatter _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_62.LengthLimitingTextInputFormatter>(value);
           case $dartnative_7.LicenseException _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_7.LicenseException>(value);
           case $dartnative_9.LinearGradient _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.LinearGradient>(value);
-          case $dartnative_46.LinearProgressIndicator _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_46.LinearProgressIndicator>(value);
-          case $dartnative_48.ListView _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.ListView>(value);
+          case $dartnative_47.LinearProgressIndicator _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.LinearProgressIndicator>(value);
+          case $dartnative_49.ListView _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_49.ListView>(value);
           case $dartnative_32.Listener _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_32.Listener>(value);
           case $dartnative_3.LocalKey _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.LocalKey>(value);
           case $dartnative_34.MasonryColumn _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_34.MasonryColumn>(value);
@@ -44258,11 +44547,11 @@ BridgedClass _createAlwaysStoppedAnimationBridge() {
           case $dartnative_34.MasonryGridView _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_34.MasonryGridView>(value);
           case $dartnative_9.MaterialColor _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.MaterialColor>(value);
           case $dartnative_36.MemoryImage _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_36.MemoryImage>(value);
-          case $dartnative_49.NativeSearchBar _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_49.NativeSearchBar>(value);
+          case $dartnative_50.NativeSearchBar _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_50.NativeSearchBar>(value);
           case $dartnative_25.NetworkCanvasImage _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_25.NetworkCanvasImage>(value);
           case $dartnative_36.NetworkImage _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_36.NetworkImage>(value);
-          case $dartnative_48.NeverScrollableScrollPhysics _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.NeverScrollableScrollPhysics>(value);
-          case $dartnative_63.Opacity _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_63.Opacity>(value);
+          case $dartnative_49.NeverScrollableScrollPhysics _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_49.NeverScrollableScrollPhysics>(value);
+          case $dartnative_64.Opacity _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_64.Opacity>(value);
           case $dartnative_9.OutlineInputBorder _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.OutlineInputBorder>(value);
           case $dartnative_23.Padding _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_23.Padding>(value);
           case $dartnative_6.PageRoute _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_6.PageRoute>(value);
@@ -44275,64 +44564,64 @@ BridgedClass _createAlwaysStoppedAnimationBridge() {
           case $dartnative_25.PathLineTo _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_25.PathLineTo>(value);
           case $dartnative_25.PathMoveTo _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_25.PathMoveTo>(value);
           case $dartnative_6.PopScope _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_6.PopScope>(value);
-          case $dartnative_55.Positioned _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_55.Positioned>(value);
-          case $dartnative_47.PreferredSizeWidget _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.PreferredSizeWidget>(value);
+          case $dartnative_56.Positioned _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_56.Positioned>(value);
+          case $dartnative_48.PreferredSizeWidget _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.PreferredSizeWidget>(value);
           case $dartnative_9.RadialGradient _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.RadialGradient>(value);
           case $dartnative_21.Radio _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_21.Radio>(value);
           case $dartnative_9.RenderBox _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.RenderBox>(value);
-          case $dartnative_63.RepaintBoundary _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_63.RepaintBoundary>(value);
-          case $dartnative_59.RichText _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_59.RichText>(value);
-          case $dartnative_52.RoundSliderOverlayShape _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_52.RoundSliderOverlayShape>(value);
-          case $dartnative_52.RoundSliderThumbShape _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_52.RoundSliderThumbShape>(value);
+          case $dartnative_64.RepaintBoundary _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_64.RepaintBoundary>(value);
+          case $dartnative_60.RichText _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_60.RichText>(value);
+          case $dartnative_53.RoundSliderOverlayShape _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_53.RoundSliderOverlayShape>(value);
+          case $dartnative_53.RoundSliderThumbShape _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_53.RoundSliderThumbShape>(value);
           case $dartnative_9.RoundedRectangleBorder _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.RoundedRectangleBorder>(value);
           case $dartnative_9.RoundedSuperellipseBorder _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.RoundedSuperellipseBorder>(value);
           case $dartnative_23.SafeArea _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_23.SafeArea>(value);
-          case $dartnative_47.Scaffold _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.Scaffold>(value);
-          case $dartnative_48.ScrollView _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.ScrollView>(value);
-          case $dartnative_50.SegmentedControl _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_50.SegmentedControl>(value);
+          case $dartnative_48.Scaffold _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.Scaffold>(value);
+          case $dartnative_49.ScrollView _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_49.ScrollView>(value);
+          case $dartnative_51.SegmentedControl _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_51.SegmentedControl>(value);
           case $dartnative_9.ShapeDecoration _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.ShapeDecoration>(value);
-          case $dartnative_51.Shimmer _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_51.Shimmer>(value);
+          case $dartnative_52.Shimmer _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_52.Shimmer>(value);
           case $dartnative_11.ShowNativeToast _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_11.ShowNativeToast>(value);
           case $dartnative_13.Signal _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_13.Signal>(value);
-          case $dartnative_48.SingleChildScrollView _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.SingleChildScrollView>(value);
+          case $dartnative_49.SingleChildScrollView _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_49.SingleChildScrollView>(value);
           case $dartnative_23.SizedBox _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_23.SizedBox>(value);
-          case $dartnative_52.Slider _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_52.Slider>(value);
-          case $dartnative_54.SliverAppBar _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_54.SliverAppBar>(value);
-          case $dartnative_54.SliverChildBuilderDelegate _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_54.SliverChildBuilderDelegate>(value);
-          case $dartnative_54.SliverChildListDelegate _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_54.SliverChildListDelegate>(value);
-          case $dartnative_54.SliverFillRemaining _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_54.SliverFillRemaining>(value);
-          case $dartnative_54.SliverGrid _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_54.SliverGrid>(value);
-          case $dartnative_54.SliverGridDelegateWithFixedCrossAxisCount _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_54.SliverGridDelegateWithFixedCrossAxisCount>(value);
-          case $dartnative_54.SliverGridDelegateWithMaxCrossAxisExtent _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_54.SliverGridDelegateWithMaxCrossAxisExtent>(value);
-          case $dartnative_54.SliverList _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_54.SliverList>(value);
-          case $dartnative_54.SliverPadding _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_54.SliverPadding>(value);
-          case $dartnative_54.SliverToBoxAdapter _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_54.SliverToBoxAdapter>(value);
-          case $dartnative_47.SnackBar _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.SnackBar>(value);
+          case $dartnative_53.Slider _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_53.Slider>(value);
+          case $dartnative_55.SliverAppBar _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_55.SliverAppBar>(value);
+          case $dartnative_55.SliverChildBuilderDelegate _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_55.SliverChildBuilderDelegate>(value);
+          case $dartnative_55.SliverChildListDelegate _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_55.SliverChildListDelegate>(value);
+          case $dartnative_55.SliverFillRemaining _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_55.SliverFillRemaining>(value);
+          case $dartnative_55.SliverGrid _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_55.SliverGrid>(value);
+          case $dartnative_55.SliverGridDelegateWithFixedCrossAxisCount _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_55.SliverGridDelegateWithFixedCrossAxisCount>(value);
+          case $dartnative_55.SliverGridDelegateWithMaxCrossAxisExtent _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_55.SliverGridDelegateWithMaxCrossAxisExtent>(value);
+          case $dartnative_55.SliverList _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_55.SliverList>(value);
+          case $dartnative_55.SliverPadding _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_55.SliverPadding>(value);
+          case $dartnative_55.SliverToBoxAdapter _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_55.SliverToBoxAdapter>(value);
+          case $dartnative_48.SnackBar _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.SnackBar>(value);
           case $dartnative_29.Spacer _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_29.Spacer>(value);
-          case $dartnative_55.Stack _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_55.Stack>(value);
+          case $dartnative_56.Stack _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_56.Stack>(value);
           case $dartnative_9.StadiumBorder _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.StadiumBorder>(value);
           case $dartnative_3.StatefulWidget _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.StatefulWidget>(value);
           case $dartnative_3.StatelessWidget _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.StatelessWidget>(value);
-          case $dartnative_56.Switch _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_56.Switch>(value);
-          case $dartnative_59.TapGestureRecognizer _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_59.TapGestureRecognizer>(value);
-          case $dartnative_59.Text _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_59.Text>(value);
-          case $dartnative_60.TextField _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_60.TextField>(value);
+          case $dartnative_57.Switch _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_57.Switch>(value);
+          case $dartnative_60.TapGestureRecognizer _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_60.TapGestureRecognizer>(value);
+          case $dartnative_60.Text _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_60.Text>(value);
+          case $dartnative_61.TextField _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_61.TextField>(value);
           case $dartnative_3.TextSelection _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.TextSelection>(value);
-          case $dartnative_59.TextSpan _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_59.TextSpan>(value);
+          case $dartnative_60.TextSpan _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_60.TextSpan>(value);
           case $dartnative_14.TickerFuture _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.TickerFuture>(value);
           case $dartnative_14.Transform _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.Transform>(value);
           case $dartnative_14.Tween _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.Tween>(value);
           case $dartnative_14.TweenSequence _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.TweenSequence>(value);
           case $dartnative_9.UnderlineInputBorder _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.UnderlineInputBorder>(value);
           case $dartnative_3.ValueListenable _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.ValueListenable>(value);
-          case $dartnative_63.Visibility _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_63.Visibility>(value);
+          case $dartnative_64.Visibility _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_64.Visibility>(value);
           case $dartnative_37.Wrap _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_37.Wrap>(value);
           case $dartnative_9.AlignmentGeometry _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.AlignmentGeometry>(value);
-          case $dartnative_46.AndroidProgressIndicatorStyle _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_46.AndroidProgressIndicatorStyle>(value);
-          case $dartnative_52.AndroidSliderStyle _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_52.AndroidSliderStyle>(value);
-          case $dartnative_56.AndroidSwitchStyle _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_56.AndroidSwitchStyle>(value);
+          case $dartnative_47.AndroidProgressIndicatorStyle _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.AndroidProgressIndicatorStyle>(value);
+          case $dartnative_53.AndroidSliderStyle _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_53.AndroidSliderStyle>(value);
+          case $dartnative_57.AndroidSwitchStyle _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_57.AndroidSwitchStyle>(value);
           case $dartnative_14.Animatable _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.Animatable>(value);
-          case $dartnative_47.AppBarIOSConfig _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.AppBarIOSConfig>(value);
+          case $dartnative_48.AppBarIOSConfig _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.AppBarIOSConfig>(value);
           case $dartnative_17.AsyncSnapshot _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_17.AsyncSnapshot>(value);
           case $dartnative_9.BorderRadius _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.BorderRadius>(value);
           case $dartnative_9.BorderSide _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.BorderSide>(value);
@@ -44371,13 +44660,13 @@ BridgedClass _createAlwaysStoppedAnimationBridge() {
           case $dartnative_9.FontFeature _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.FontFeature>(value);
           case $dartnative_9.FontVariation _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.FontVariation>(value);
           case $dartnative_3.FrameTiming _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.FrameTiming>(value);
-          case $dartnative_59.GestureRecognizer _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_59.GestureRecognizer>(value);
+          case $dartnative_60.GestureRecognizer _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_60.GestureRecognizer>(value);
           case $dartnative_9.Gradient _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.Gradient>(value);
           case $dartnative_6.HapticFeedback _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_6.HapticFeedback>(value);
           case $dartnative_35.IconData _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_35.IconData>(value);
           case $dartnative_36.ImageCache _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_36.ImageCache>(value);
           case $dartnative_36.ImageProvider _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_36.ImageProvider>(value);
-          case $dartnative_59.InlineSpan _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_59.InlineSpan>(value);
+          case $dartnative_60.InlineSpan _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_60.InlineSpan>(value);
           case $dartnative_9.InputBorder _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.InputBorder>(value);
           case $dartnative_9.InputDecoration _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.InputDecoration>(value);
           case $dartnative_3.Key _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.Key>(value);
@@ -44391,7 +44680,7 @@ BridgedClass _createAlwaysStoppedAnimationBridge() {
           case $dartnative_45.MediaFile _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_45.MediaFile>(value);
           case $dartnative_6.MediaQuery _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_6.MediaQuery>(value);
           case $dartnative_6.MediaQueryData _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_6.MediaQueryData>(value);
-          case $dartnative_47.MenuAction _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.MenuAction>(value);
+          case $dartnative_48.MenuAction _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.MenuAction>(value);
           case $dartnative_6.ModalRoute _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_6.ModalRoute>(value);
           case $dartnative_1.NativeBindings _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_1.NativeBindings>(value);
           case $dartnative_6.Navigator _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_6.Navigator>(value);
@@ -44414,15 +44703,15 @@ BridgedClass _createAlwaysStoppedAnimationBridge() {
           case $dartnative_3.RenderObject _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.RenderObject>(value);
           case $dartnative_6.Route _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_6.Route>(value);
           case $dartnative_6.RouteTransition _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_6.RouteTransition>(value);
-          case $dartnative_47.ScaffoldFeatureController _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.ScaffoldFeatureController>(value);
-          case $dartnative_47.ScaffoldMessenger _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.ScaffoldMessenger>(value);
-          case $dartnative_47.ScaffoldMessengerState _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.ScaffoldMessengerState>(value);
-          case $dartnative_47.ScaffoldState _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.ScaffoldState>(value);
+          case $dartnative_48.ScaffoldFeatureController _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.ScaffoldFeatureController>(value);
+          case $dartnative_48.ScaffoldMessenger _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.ScaffoldMessenger>(value);
+          case $dartnative_48.ScaffoldMessengerState _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.ScaffoldMessengerState>(value);
+          case $dartnative_48.ScaffoldState _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.ScaffoldState>(value);
           case $dartnative_32.ScaleEndDetails _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_32.ScaleEndDetails>(value);
           case $dartnative_32.ScaleStartDetails _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_32.ScaleStartDetails>(value);
           case $dartnative_32.ScaleUpdateDetails _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_32.ScaleUpdateDetails>(value);
           case $dartnative_3.SchedulerBinding _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.SchedulerBinding>(value);
-          case $dartnative_48.ScrollPhysics _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.ScrollPhysics>(value);
+          case $dartnative_49.ScrollPhysics _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_49.ScrollPhysics>(value);
           case $dartnative_3.ScrollPosition _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.ScrollPosition>(value);
           case $dartnative_25.Shader _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_25.Shader>(value);
           case $dartnative_9.Shadow _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.Shadow>(value);
@@ -44430,29 +44719,29 @@ BridgedClass _createAlwaysStoppedAnimationBridge() {
           case $dartnative_6.SheetHeader _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_6.SheetHeader>(value);
           case $dartnative_6.SheetHeaderController _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_6.SheetHeaderController>(value);
           case $dartnative_9.Size _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.Size>(value);
-          case $dartnative_53.SlideOverStyle _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_53.SlideOverStyle>(value);
-          case $dartnative_52.SliderComponentShape _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_52.SliderComponentShape>(value);
-          case $dartnative_52.SliderThemeData _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_52.SliderThemeData>(value);
-          case $dartnative_54.SliverChildDelegate _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_54.SliverChildDelegate>(value);
-          case $dartnative_54.SliverGridDelegate _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_54.SliverGridDelegate>(value);
-          case $dartnative_47.SnackBarAction _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_47.SnackBarAction>(value);
+          case $dartnative_54.SlideOverStyle _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_54.SlideOverStyle>(value);
+          case $dartnative_53.SliderComponentShape _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_53.SliderComponentShape>(value);
+          case $dartnative_53.SliderThemeData _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_53.SliderThemeData>(value);
+          case $dartnative_55.SliverChildDelegate _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_55.SliverChildDelegate>(value);
+          case $dartnative_55.SliverGridDelegate _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_55.SliverGridDelegate>(value);
+          case $dartnative_48.SnackBarAction _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_48.SnackBarAction>(value);
           case $dartnative_14.SpringDescription _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_14.SpringDescription>(value);
           case $dartnative_3.State _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.State>(value);
           case $dartnative_35.StaticIconProvider _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_35.StaticIconProvider>(value);
           case $dartnative_6.StrutStyle _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_6.StrutStyle>(value);
-          case $dartnative_57.SystemChrome _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_57.SystemChrome>(value);
+          case $dartnative_58.SystemChrome _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_58.SystemChrome>(value);
           case $dartnative_6.SystemNavigator _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_6.SystemNavigator>(value);
-          case $dartnative_57.SystemUiOverlayStyle _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_57.SystemUiOverlayStyle>(value);
-          case $dartnative_58.TableBorder _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_58.TableBorder>(value);
-          case $dartnative_58.TableColumnWidth _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_58.TableColumnWidth>(value);
-          case $dartnative_58.TableRow _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_58.TableRow>(value);
+          case $dartnative_58.SystemUiOverlayStyle _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_58.SystemUiOverlayStyle>(value);
+          case $dartnative_59.TableBorder _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_59.TableBorder>(value);
+          case $dartnative_59.TableColumnWidth _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_59.TableColumnWidth>(value);
+          case $dartnative_59.TableRow _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_59.TableRow>(value);
           case $dartnative_32.TapDownDetails _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_32.TapDownDetails>(value);
           case $dartnative_32.TapUpDetails _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_32.TapUpDetails>(value);
-          case $dartnative_60.TextAlignVertical _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_60.TextAlignVertical>(value);
+          case $dartnative_61.TextAlignVertical _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_61.TextAlignVertical>(value);
           case $dartnative_25.TextBox _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_25.TextBox>(value);
           case $dartnative_3.TextEditingValue _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.TextEditingValue>(value);
-          case $dartnative_61.TextInputFormatter _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_61.TextInputFormatter>(value);
-          case $dartnative_62.TextPainter _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_62.TextPainter>(value);
+          case $dartnative_62.TextInputFormatter _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_62.TextInputFormatter>(value);
+          case $dartnative_63.TextPainter _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_63.TextPainter>(value);
           case $dartnative_9.TextPosition _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.TextPosition>(value);
           case $dartnative_3.TextRange _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_3.TextRange>(value);
           case $dartnative_9.TextStyle _: return $dartnative_14.AlwaysStoppedAnimation<$dartnative_9.TextStyle>(value);
@@ -48460,30 +48749,30 @@ BridgedClass _createClipboardBridge() {
 
 BridgedClass _createTextPainterBridge() {
   return BridgedClass(
-    nativeType: $dartnative_62.TextPainter,
+    nativeType: $dartnative_63.TextPainter,
     name: 'TextPainter',
-    isAssignable: (v) => v is $dartnative_62.TextPainter,
+    isAssignable: (v) => v is $dartnative_63.TextPainter,
     constructors: {
       '': (visitor, positional, named) {
-        final text = D4.getOptionalNamedArg<$dartnative_59.InlineSpan?>(named, 'text');
+        final text = D4.getOptionalNamedArg<$dartnative_60.InlineSpan?>(named, 'text');
         final textDirection = D4.getOptionalNamedArg<$dartnative_9.TextDirection?>(named, 'textDirection');
         final maxLines = D4.getOptionalNamedArg<int?>(named, 'maxLines');
         final textScaleFactor = D4.getNamedArgWithDefault<double>(named, 'textScaleFactor', 1.0);
-        return $dartnative_62.TextPainter(text: text, textDirection: textDirection, maxLines: maxLines, textScaleFactor: textScaleFactor);
+        return $dartnative_63.TextPainter(text: text, textDirection: textDirection, maxLines: maxLines, textScaleFactor: textScaleFactor);
       },
     },
     getters: {
-      'text': (visitor, target) => D4.validateTarget<$dartnative_62.TextPainter>(target, 'TextPainter').text,
-      'textDirection': (visitor, target) => D4.validateTarget<$dartnative_62.TextPainter>(target, 'TextPainter').textDirection,
-      'maxLines': (visitor, target) => D4.validateTarget<$dartnative_62.TextPainter>(target, 'TextPainter').maxLines,
-      'textScaleFactor': (visitor, target) => D4.validateTarget<$dartnative_62.TextPainter>(target, 'TextPainter').textScaleFactor,
-      'size': (visitor, target) => D4.validateTarget<$dartnative_62.TextPainter>(target, 'TextPainter').size,
-      'width': (visitor, target) => D4.validateTarget<$dartnative_62.TextPainter>(target, 'TextPainter').width,
-      'height': (visitor, target) => D4.validateTarget<$dartnative_62.TextPainter>(target, 'TextPainter').height,
+      'text': (visitor, target) => D4.validateTarget<$dartnative_63.TextPainter>(target, 'TextPainter').text,
+      'textDirection': (visitor, target) => D4.validateTarget<$dartnative_63.TextPainter>(target, 'TextPainter').textDirection,
+      'maxLines': (visitor, target) => D4.validateTarget<$dartnative_63.TextPainter>(target, 'TextPainter').maxLines,
+      'textScaleFactor': (visitor, target) => D4.validateTarget<$dartnative_63.TextPainter>(target, 'TextPainter').textScaleFactor,
+      'size': (visitor, target) => D4.validateTarget<$dartnative_63.TextPainter>(target, 'TextPainter').size,
+      'width': (visitor, target) => D4.validateTarget<$dartnative_63.TextPainter>(target, 'TextPainter').width,
+      'height': (visitor, target) => D4.validateTarget<$dartnative_63.TextPainter>(target, 'TextPainter').height,
     },
     methods: {
       'layout': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_62.TextPainter>(target, 'TextPainter');
+        final t = D4.validateTarget<$dartnative_63.TextPainter>(target, 'TextPainter');
         final minWidth = D4.getNamedArgWithDefault<double>(named, 'minWidth', 0.0);
         final maxWidth = D4.getNamedArgWithDefault<double>(named, 'maxWidth', double.infinity);
         t.layout(minWidth: minWidth, maxWidth: maxWidth);
@@ -48514,49 +48803,49 @@ BridgedClass _createTextPainterBridge() {
 
 BridgedClass _createRenderParagraphBridge() {
   return BridgedClass(
-    nativeType: $dartnative_62.RenderParagraph,
+    nativeType: $dartnative_63.RenderParagraph,
     name: 'RenderParagraph',
-    isAssignable: (v) => v is $dartnative_62.RenderParagraph,
+    isAssignable: (v) => v is $dartnative_63.RenderParagraph,
     hierarchyDepth: 2,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'RenderParagraph');
-        final text = D4.getRequiredArg<$dartnative_59.InlineSpan>(positional, 0, 'text', 'RenderParagraph');
+        final text = D4.getRequiredArg<$dartnative_60.InlineSpan>(positional, 0, 'text', 'RenderParagraph');
         final textDirection = D4.getOptionalNamedArg<$dartnative_9.TextDirection?>(named, 'textDirection');
         final maxLines = D4.getOptionalNamedArg<int?>(named, 'maxLines');
         final textScaleFactor = D4.getNamedArgWithDefault<double>(named, 'textScaleFactor', 1.0);
-        return $dartnative_62.RenderParagraph(text, textDirection: textDirection, maxLines: maxLines, textScaleFactor: textScaleFactor);
+        return $dartnative_63.RenderParagraph(text, textDirection: textDirection, maxLines: maxLines, textScaleFactor: textScaleFactor);
       },
       'forView': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'RenderParagraph');
         final viewId = D4.getRequiredArg<int>(positional, 0, 'viewId', 'RenderParagraph');
-        return $dartnative_62.RenderParagraph.forView(viewId);
+        return $dartnative_63.RenderParagraph.forView(viewId);
       },
     },
     getters: {
-      'viewId': (visitor, target) => D4.validateTarget<$dartnative_62.RenderParagraph>(target, 'RenderParagraph').viewId,
-      'attached': (visitor, target) => D4.validateTarget<$dartnative_62.RenderParagraph>(target, 'RenderParagraph').attached,
-      'size': (visitor, target) => D4.validateTarget<$dartnative_62.RenderParagraph>(target, 'RenderParagraph').size,
-      'textDirection': (visitor, target) => D4.validateTarget<$dartnative_62.RenderParagraph>(target, 'RenderParagraph').textDirection,
-      'maxLines': (visitor, target) => D4.validateTarget<$dartnative_62.RenderParagraph>(target, 'RenderParagraph').maxLines,
-      'textScaleFactor': (visitor, target) => D4.validateTarget<$dartnative_62.RenderParagraph>(target, 'RenderParagraph').textScaleFactor,
+      'viewId': (visitor, target) => D4.validateTarget<$dartnative_63.RenderParagraph>(target, 'RenderParagraph').viewId,
+      'attached': (visitor, target) => D4.validateTarget<$dartnative_63.RenderParagraph>(target, 'RenderParagraph').attached,
+      'size': (visitor, target) => D4.validateTarget<$dartnative_63.RenderParagraph>(target, 'RenderParagraph').size,
+      'textDirection': (visitor, target) => D4.validateTarget<$dartnative_63.RenderParagraph>(target, 'RenderParagraph').textDirection,
+      'maxLines': (visitor, target) => D4.validateTarget<$dartnative_63.RenderParagraph>(target, 'RenderParagraph').maxLines,
+      'textScaleFactor': (visitor, target) => D4.validateTarget<$dartnative_63.RenderParagraph>(target, 'RenderParagraph').textScaleFactor,
     },
     methods: {
       'localToGlobal': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_62.RenderParagraph>(target, 'RenderParagraph');
+        final t = D4.validateTarget<$dartnative_63.RenderParagraph>(target, 'RenderParagraph');
         D4.requireMinArgs(positional, 1, 'localToGlobal');
         final localOffset = D4.getRequiredArg<$dartnative_9.Offset>(positional, 0, 'localOffset', 'localToGlobal');
         return t.localToGlobal(localOffset);
       },
       'layout': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_62.RenderParagraph>(target, 'RenderParagraph');
+        final t = D4.validateTarget<$dartnative_63.RenderParagraph>(target, 'RenderParagraph');
         D4.requireMinArgs(positional, 1, 'layout');
         final constraints = D4.getRequiredArg<$dartnative_9.BoxConstraints>(positional, 0, 'constraints', 'layout');
         t.layout(constraints);
         return null;
       },
       'getPositionForOffset': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_62.RenderParagraph>(target, 'RenderParagraph');
+        final t = D4.validateTarget<$dartnative_63.RenderParagraph>(target, 'RenderParagraph');
         D4.requireMinArgs(positional, 1, 'getPositionForOffset');
         final offset = D4.getRequiredArg<$dartnative_9.Offset>(positional, 0, 'offset', 'getPositionForOffset');
         return t.getPositionForOffset(offset);
@@ -48570,7 +48859,7 @@ BridgedClass _createRenderParagraphBridge() {
         }
         final callbackRaw = positional[0];
         final callback = ((int p0, double p1, double p2) { return D4.callInterpreterCallback(visitor!, callbackRaw, [p0, p1, p2]) as int; }) as int Function(int, double, double);
-        return $dartnative_62.RenderParagraph.registerCharOffsetCallback(callback);
+        return $dartnative_63.RenderParagraph.registerCharOffsetCallback(callback);
       },
     },
     constructorSignatures: {
@@ -49576,8 +49865,8 @@ BridgedClass _createSheetHeaderBridge() {
     constructors: {
       '': (visitor, positional, named) {
         final title = D4.getOptionalNamedArg<String?>(named, 'title');
-        final close = D4.getOptionalNamedArg<$dartnative_47.BarButtonItem?>(named, 'close');
-        final action = D4.getOptionalNamedArg<$dartnative_47.BarButtonItem?>(named, 'action');
+        final close = D4.getOptionalNamedArg<$dartnative_48.BarButtonItem?>(named, 'close');
+        final action = D4.getOptionalNamedArg<$dartnative_48.BarButtonItem?>(named, 'action');
         final actions = D4.coerceListOrNull<$dartnative_3.Widget>(named['actions'], 'actions');
         final systemBar = D4.getNamedArgWithDefault<bool>(named, 'systemBar', true);
         return $dartnative_6.SheetHeader(title: title, close: close, action: action, actions: actions, systemBar: systemBar);
@@ -50535,6 +50824,16 @@ BridgedClass _createNativeBindingsBridge() {
         t.registerKeyboardCallback((double p0) { D4.callInterpreterCallback(visitor!, callbackRaw, [p0]); });
         return null;
       },
+      'registerBrightnessCallback': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_1.NativeBindings>(target, 'NativeBindings');
+        D4.requireMinArgs(positional, 1, 'registerBrightnessCallback');
+        if (positional.isEmpty) {
+          throw ArgumentError('registerBrightnessCallback: Missing required argument "callback" at position 0');
+        }
+        final callbackRaw = positional[0];
+        t.registerBrightnessCallback((bool p0) { D4.callInterpreterCallback(visitor!, callbackRaw, [p0]); });
+        return null;
+      },
       'registerSystemPopCallback': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$dartnative_1.NativeBindings>(target, 'NativeBindings');
         D4.requireMinArgs(positional, 1, 'registerSystemPopCallback');
@@ -51044,6 +51343,7 @@ BridgedClass _createNativeBindingsBridge() {
       'getViewGlobalOrigin': 'Offset getViewGlobalOrigin(int viewId)',
       'getTextCharacterOffset': 'int getTextCharacterOffset(int viewId, double x, double y)',
       'registerKeyboardCallback': 'void registerKeyboardCallback(void Function(double height) callback)',
+      'registerBrightnessCallback': 'void registerBrightnessCallback(void Function(bool isDark) callback)',
       'registerSystemPopCallback': 'void registerSystemPopCallback(void Function(int poppedRootId) callback)',
       'registerInsetsChangedCallback': 'void registerInsetsChangedCallback(void Function() callback)',
       'armCallbackAddr': 'void armCallbackAddr(int address)',

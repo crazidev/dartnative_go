@@ -15,26 +15,10 @@ dependencies:
   # == Supported plugins starts ===
   dartnative_share: ^1.0.0
   dartnative_webview: ^1.0.0
-  # dartnative_shared_preferences: ^1.0.1
-  # Auth: Supabase session handling plus the native Apple and Google sign in.
-  dartnative_supabase: ^1.0.0
-  dartnative_social_sign_in: ^1.0.0
-
-  # Storage: key value preferences and the SQLite database.
   dartnative_shared_preferences: ^1.0.0
-  dartnative_sqlite: ^1.0.0
   dartnative_path_provider: ^1.0.0
-
-  # Reads the bundled .dnkeys file (your Supabase URL and keys live there).
-  dartnative_keys: ^1.0.0
-
-  # Opens links in the system browser (the drawer's website item).
   dartnative_url_launcher: ^1.0.0
-
-  # Branded launch splash.
   dartnative_splash: ^1.0.0
-
-  # Used by the Apple sign in nonce (sha256).
   crypto: ^3.0.0
   # == Supported plugins ends ===
   tom_d4rt: any

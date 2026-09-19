@@ -25,3 +25,28 @@ d4rtgen:
         - package:dartnative_share/dartnative_share.dart
       barrelImport: package:dartnative_share/dartnative_share.dart
       outputPath: lib/src/interpreter/dartnative_share_bridges.b.dart
+    - name: dartnative_shared_preferences
+      barrelFiles:
+        - package:dartnative_shared_preferences/dartnative_shared_preferences.dart
+      barrelImport: package:dartnative_shared_preferences/dartnative_shared_preferences.dart
+      outputPath: lib/src/interpreter/dartnative_shared_preferences_bridges.b.dart
+    - name: dartnative_path_provider
+      barrelFiles:
+        - package:dartnative_path_provider/dartnative_path_provider.dart
+      barrelImport: package:dartnative_path_provider/dartnative_path_provider.dart
+      outputPath: lib/src/interpreter/dartnative_path_provider_bridges.b.dart
+    - name: dartnative_url_launcher
+      barrelFiles:
+        - package:dartnative_url_launcher/dartnative_url_launcher.dart
+      barrelImport: package:dartnative_url_launcher/dartnative_url_launcher.dart
+      outputPath: lib/src/interpreter/dartnative_url_launcher_bridges.b.dart
+    - name: dartnative_splash
+      barrelFiles:
+        - package:dartnative_splash/dartnative_splash.dart
+      barrelImport: package:dartnative_splash/dartnative_splash.dart
+      outputPath: lib/src/interpreter/dartnative_splash_bridges.b.dart
+    - name: crypto
+      barrelFiles:
+        - package:crypto/crypto.dart
+      barrelImport: package:crypto/crypto.dart
+      outputPath: lib/src/interpreter/crypto_bridges.b.dart
