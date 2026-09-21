@@ -1,6 +1,30 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:analyzer/dart/ast/ast.dart' as analyzer;
+import 'package:path/path.dart' as p;
 import 'package:tom_ast_generator/tom_ast_generator.dart';
+
+import '../runner/logger.dart';
+
+/// Extended [AstConverter] that handles newer/unmapped analyzer nodes
+/// such as [analyzer.LibraryIdentifier] in `library foo;` directives.
+class SafeAstConverter extends AstConverter {
+  @override
+  SAstNode? convert(analyzer.AstNode? node) {
+    if (node == null) return null;
+    if (node is analyzer.LibraryIdentifier) {
+      final name = node.components.map((c) => c.name).join('.');
+      return SSimpleIdentifier(
+        offset: node.offset,
+        length: node.length,
+        name: name,
+        inDeclarationContext: false,
+      );
+    }
+    return super.convert(node);
+  }
+}
 
 /// Libraries handled by native bridges at runtime — skipped during bundling.
 ///
@@ -8,6 +32,7 @@ import 'package:tom_ast_generator/tom_ast_generator.dart';
 /// `tool/build_ast_bundle.dart` so both produce identical bundles.
 const kAstBridgedLibraries = {
   'package:dartnative/dartnative.dart',
+  'package:dartnative/plugin.dart',
   'package:dartnative/src/framework.dart',
   'package:dartnative_share/dartnative_share.dart',
   'package:dartnative_webview/dartnative_webview.dart',
@@ -15,8 +40,19 @@ const kAstBridgedLibraries = {
   'package:dartnative_path_provider/dartnative_path_provider.dart',
   'package:dartnative_url_launcher/dartnative_url_launcher.dart',
   'package:dartnative_splash/dartnative_splash.dart',
+  'package:dartnative_supabase/dartnative_supabase.dart',
+  'package:dartnative_social_sign_in/dartnative_social_sign_in.dart',
+  'package:dartnative_sqlite/dartnative_sqlite.dart',
+  'package:dartnative_keys/dartnative_keys.dart',
+  'package:riverpod_kit/riverpod_kit.dart',
+  'package:riverpod/riverpod.dart',
   'package:flutter/widgets.dart',
   'package:flutter/material.dart',
+  'package:flutter/cupertino.dart',
+  'package:flutter/foundation.dart',
+  'package:flutter/painting.dart',
+  'package:flutter/rendering.dart',
+  'package:flutter/services.dart',
 };
 
 /// Result of [buildGuestAstBundle].
@@ -87,12 +123,124 @@ Map<String, String> registrantStubs(
   }
   return stubs;
 }
+
+/// Packages that are build/dev tools and should never be bundled into the runtime.
+const kExcludedDevPackages = {
+  '_fe_analyzer_shared',
+  'analyzer',
+  'build',
+  'build_config',
+  'build_daemon',
+  'build_resolvers',
+  'build_runner',
+  'build_runner_core',
+  'code_builder',
+  'dart_style',
+  'frontend_server_client',
+  'graphs',
+  'lints',
+  'flutter_lints',
+  'source_gen',
+  'source_helper',
+  'test',
+  'test_api',
+  'test_core',
+  'matcher',
+  'coverage',
+};
+
+final Map<String, ({DateTime mtime, Map<String, String> sources})>
+    _packageSourcesCache = {};
+
+/// Discovers and loads source code for third-party and pure Dart packages
+/// listed in `.dart_tool/package_config.json`.
+///
+/// Allows `AstBundler` to automatically resolve and bundle package imports
+/// (e.g. `package:riverpod_kit/riverpod_kit.dart`, `package:riverpod/riverpod.dart`)
+/// into the AST bundle without manual configuration.
+Map<String, String> resolvePackageSources(
+  Directory projectDir, {
+  String? packageName,
+}) {
+  final configFile = File('${projectDir.path}/.dart_tool/package_config.json');
+  if (!configFile.existsSync()) return const {};
+
+  final mtime = configFile.lastModifiedSync();
+  final cacheKey = '${projectDir.path}:$packageName';
+  final cached = _packageSourcesCache[cacheKey];
+  if (cached != null && cached.mtime == mtime) {
+    return cached.sources;
+  }
+
+  final sources = <String, String>{};
+
+  try {
+    final json = jsonDecode(configFile.readAsStringSync());
+    if (json is! Map<String, dynamic>) return sources;
+    final packages = json['packages'] as List<dynamic>?;
+    if (packages == null) return sources;
+
+    final baseUri = configFile.uri;
+
+    for (final pkg in packages) {
+      if (pkg is! Map<String, dynamic>) continue;
+      final name = pkg['name'] as String?;
+      if (name == null || name.isEmpty) continue;
+      // Skip the host app itself (handled directly by AstBundler via lib/)
+      if (name == packageName) continue;
+      // Skip native core and platform bindings
+      if (name == 'dartnative' ||
+          name == 'dartnative_ios' ||
+          name == 'dartnative_android') {
+        continue;
+      }
+      // Skip dev and analyzer tool packages
+      if (kExcludedDevPackages.contains(name)) {
+        continue;
+      }
+
+      final rawRootStr = pkg['rootUri'] as String?;
+      final rawPkgUriStr = (pkg['packageUri'] as String?) ?? 'lib/';
+      if (rawRootStr == null) continue;
+
+      final rootUriStr =
+          rawRootStr.endsWith('/') ? rawRootStr : '$rawRootStr/';
+      final packageUriStr =
+          rawPkgUriStr.endsWith('/') ? rawPkgUriStr : '$rawPkgUriStr/';
+
+      final rootUri = baseUri.resolve(rootUriStr);
+      final libUri = rootUri.resolve(packageUriStr);
+      final libDir = Directory.fromUri(libUri);
+      if (!libDir.existsSync()) continue;
+
+      for (final entity in libDir.listSync(recursive: true)) {
+        if (entity is File && entity.path.endsWith('.dart')) {
+          final rel = p
+              .relative(entity.path, from: libDir.path)
+              .replaceAll('\\', '/');
+          final packageUri = 'package:$name/$rel';
+          // Don't override bridged libraries
+          if (!kAstBridgedLibraries.contains(packageUri)) {
+            try {
+              sources[packageUri] = entity.readAsStringSync();
+            } catch (_) {}
+          }
+        }
+      }
+    }
+    _packageSourcesCache[cacheKey] = (mtime: mtime, sources: sources);
+  } catch (_) {}
+
+  return sources;
+}
+
 String? detectGuestPackageName(Directory projectDir) {
   try {
     final pubspec = File('${projectDir.path}/pubspec.yaml');
     if (!pubspec.existsSync()) return null;
     for (final line in pubspec.readAsLinesSync()) {
-      final match = RegExp(r'^name:\s*([A-Za-z0-9_]+)').firstMatch(line.trim());
+      final match =
+          RegExp(r'^name:\s*([A-Za-z0-9_]+)').firstMatch(line.trim());
       if (match != null) return match.group(1);
     }
   } catch (_) {}
@@ -128,7 +276,10 @@ Directory _codeRootFor(Directory projectDir, File entryFile) {
 /// Cheap I/O (no analyzer parse): sorted `relativePath + bytes` hash.
 /// Used to skip rebuilds when sources are unchanged since the last
 /// successful build — the `flutter run` "no changes" fast path.
-Future<String> fingerprintGuestSources(Directory codeRoot) async {
+Future<String> fingerprintGuestSources(
+  Directory codeRoot, [
+  Directory? projectDir,
+]) async {
   var hash = 0xcbf29ce484222325;
   const prime = 0x100000001b3;
   void mix(int byte) {
@@ -141,6 +292,10 @@ Future<String> fingerprintGuestSources(Directory codeRoot) async {
     await for (final e in codeRoot.list(recursive: true)) {
       if (e is File && e.path.endsWith('.dart')) files.add(e);
     }
+  }
+  if (projectDir != null) {
+    final pkgConfig = File('${projectDir.path}/.dart_tool/package_config.json');
+    if (pkgConfig.existsSync()) files.add(pkgConfig);
   }
   files.sort((a, b) => a.path.compareTo(b.path));
   for (final f in files) {
@@ -214,18 +369,20 @@ Future<AstBuildResult> buildGuestAstBundle(
     );
   }
 
-  final outPath =
-      outputArg ?? '${projectDir.path}/assets/bundles/guest.ast';
-  final outFile = File(
-    outPath.startsWith('/') ? outPath : '${projectDir.path}/$outPath',
-  );
+  final rawPath = outputArg ?? 'assets/bundles/guest.ast';
+  final outPath = rawPath.startsWith('${projectDir.path}/')
+      ? rawPath
+      : p.isAbsolute(rawPath)
+          ? rawPath
+          : p.join(projectDir.path, rawPath);
+  final outFile = File(outPath);
 
   // Incremental fast path: unchanged sources since last success → skip parse.
   final codeRoot = _codeRootFor(projectDir, entryFile);
   if (incremental && !force) {
     final last = _lastBuilds[projectDir.path];
     if (last != null && last.outputPath == outFile.path) {
-      final fp = await fingerprintGuestSources(codeRoot);
+      final fp = await fingerprintGuestSources(codeRoot, projectDir);
       if (fp == last.fingerprint && outFile.existsSync()) {
         final size = await outFile.length();
         return AstBuildResult(
@@ -241,17 +398,29 @@ Future<AstBuildResult> buildGuestAstBundle(
   }
 
   try {
+    final t1 = Stopwatch()..start();
+    final explicitSources = <String, String>{
+      ...resolvePackageSources(projectDir, packageName: packageName),
+      ...registrantStubs(projectDir, packageName),
+    };
+    final resolveMs = t1.elapsedMilliseconds;
+
+    final t2 = Stopwatch()..start();
     final bundler = AstBundler(
       bridgedLibraries: kAstBridgedLibraries,
-      explicitSources: registrantStubs(projectDir, packageName),
+      explicitSources: explicitSources,
       packageName: packageName,
       projectRoot: projectDir.path,
+      converter: SafeAstConverter(),
     );
     final bundle = await bundler.createFromFile(entryFile.path);
+    final parseBundleMs = t2.elapsedMilliseconds;
+
+    final t3 = Stopwatch()..start();
     await outFile.parent.create(recursive: true);
     bundle.saveToFile(outFile.path);
     final size = await outFile.length();
-    final fp = await fingerprintGuestSources(codeRoot);
+    final fp = await fingerprintGuestSources(codeRoot, projectDir);
     _lastBuilds[projectDir.path] = _LastBuild(
       fingerprint: fp,
       outputPath: outFile.path,
@@ -259,6 +428,14 @@ Future<AstBuildResult> buildGuestAstBundle(
       byteSize: size,
       entryPointUri: bundle.entryPointUri,
     );
+    final writeMs = t3.elapsedMilliseconds;
+    DartGoLogger.bench(
+      'AstBuilder',
+      'guest.ast generated',
+      resolveMs + parseBundleMs + writeMs,
+      {'resolve': resolveMs, 'parse': parseBundleMs, 'write': writeMs},
+    );
+
     return AstBuildResult(
       success: true,
       outputPath: outFile.path,
@@ -266,11 +443,12 @@ Future<AstBuildResult> buildGuestAstBundle(
       byteSize: size,
       entryPointUri: bundle.entryPointUri,
     );
-  } catch (e) {
+  } catch (e, st) {
     return AstBuildResult(
       success: false,
       outputPath: outFile.path,
-      error: e.toString(),
+      error: '$e\n$st',
     );
   }
 }
+

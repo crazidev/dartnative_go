@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Dartscript registration for dartnative_go_ast
-// Generated: 2026-09-19T21:39:52.794452 by tom_d4rt_generator 1.26.2
+// Generated: 2026-09-20T04:31:46.109153 by tom_d4rt_generator 1.26.2
 
 /// D4rt Bridge Registration for dartnative_go_ast
 library;
@@ -14,6 +14,7 @@ import 'dartnative_path_provider_bridges.b.dart' as dartnative_path_provider_bri
 import 'dartnative_url_launcher_bridges.b.dart' as dartnative_url_launcher_bridges;
 import 'dartnative_splash_bridges.b.dart' as dartnative_splash_bridges;
 import 'crypto_bridges.b.dart' as crypto_bridges;
+import 'riverpod_kit_bridges.b.dart' as riverpod_kit_bridges;
 import 'relaxers.b.dart' as relaxer_factories;
 
 /// Combined bridge registration for dartnative_go_ast.
@@ -86,6 +87,14 @@ class DartnativeGoAstBridges {
     for (final barrel in crypto_bridges.CryptoBridge.subPackageBarrels()) {
       crypto_bridges.CryptoBridge.registerBridges(d4rt, barrel);
     }
+    riverpod_kit_bridges.RiverpodKitBridge.registerBridges(
+      d4rt,
+      'package:riverpod_kit/riverpod_kit.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel in riverpod_kit_bridges.RiverpodKitBridge.subPackageBarrels()) {
+      riverpod_kit_bridges.RiverpodKitBridge.registerBridges(d4rt, barrel);
+    }
 
     // RC-2: Register generic constructor factories
     relaxer_factories.registerGenericConstructors();
@@ -104,6 +113,7 @@ class DartnativeGoAstBridges {
     buffer.writeln(dartnative_url_launcher_bridges.DartnativeUrlLauncherBridge.getImportBlock());
     buffer.writeln(dartnative_splash_bridges.DartnativeSplashBridge.getImportBlock());
     buffer.writeln(crypto_bridges.CryptoBridge.getImportBlock());
+    buffer.writeln(riverpod_kit_bridges.RiverpodKitBridge.getImportBlock());
     return buffer.toString();
   }
 }

@@ -67,4 +67,57 @@ void _applyAstBridgePostFixes() {
     );
     dnBridgesFile.writeAsStringSync(content);
   }
+
+  _patchRiverpodBridges(File('lib/src/interpreter/ast/riverpod_kit_bridges.b.dart'));
+}
+
+void _patchRiverpodBridges(File file) {
+  if (!file.existsSync()) return;
+  var content = file.readAsStringSync();
+
+  // 1. Remove internal ClassBaseX and $RefArg extension blocks cleanly
+  content = content.replaceAll(
+    RegExp(
+      r'BridgedExtensionDefinition\(\s*name:\s*r?[\x27"]ClassBaseX[\x27"],[\s\S]*?(?=BridgedExtensionDefinition)',
+    ),
+    '',
+  );
+  content = content.replaceAll(
+    RegExp(
+      r'BridgedExtensionDefinition\(\s*name:\s*r?[\x27"]\$RefArg[\x27"],[\s\S]*?(?=BridgedExtensionDefinition)',
+    ),
+    '',
+  );
+
+  // 2. Remove from extension source map
+  content = content.replaceAll(
+    RegExp(r"[\x27\x22]ClassBaseX@AnyNotifier[\x27\x22]:\s*['\x22][^'\x22]+['\x22],\s*\n?"),
+    '',
+  );
+  content = content.replaceAll(
+    RegExp(r"r?[\x27\x22]\$RefArg@Ref[\x27\x22]:\s*['\x22][^'\x22]+['\x22],\s*\n?"),
+    '',
+  );
+
+  // 3. Escape unescaped '$...' in string literals to '\$...' (excluding '${')
+  content = content.replaceAll(r"'$", r"'\$");
+  content = content.replaceAll(r"'\${", r"'${");
+
+  // 4. Ensure ProviderScope & UncontrolledProviderScope extract child as Widget
+  if (!content.contains("import 'package:dartnative/dartnative.dart' as \$flutter_widgets;")) {
+    content = content.replaceFirst(
+      "import 'dart:async';",
+      "import 'dart:async';\nimport 'package:dartnative/dartnative.dart' as \$flutter_widgets;",
+    );
+  }
+  content = content.replaceAll(
+    "final child = D4.getRequiredNamedArg<dynamic>(\n          named,\n          'child',\n          'ProviderScope',\n        );",
+    "final child = D4.extractBridgedArg<\$flutter_widgets.Widget>(\n          D4.getRequiredNamedArg<dynamic>(\n            named,\n            'child',\n            'ProviderScope',\n          ),\n          'child',\n          visitor,\n        );",
+  );
+  content = content.replaceAll(
+    "final child = D4.getRequiredNamedArg<dynamic>(\n          named,\n          'child',\n          'UncontrolledProviderScope',\n        );",
+    "final child = D4.extractBridgedArg<\$flutter_widgets.Widget>(\n          D4.getRequiredNamedArg<dynamic>(\n            named,\n            'child',\n            'UncontrolledProviderScope',\n          ),\n          'child',\n          visitor,\n        );",
+  );
+
+  file.writeAsStringSync(content);
 }

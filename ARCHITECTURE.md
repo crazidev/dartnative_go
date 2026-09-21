@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-**DartNative Go** is an on-device dynamic client runtime for [DartNative](https://dartpub.dev) applications (analogous to *Expo Go* in the React Native ecosystem). It enables developers to author full DartNative mobile applications using multi-file modular structures, stateful components, and local `setState()`, and run or hot-reload them dynamically over Wi-Fi / localhost without recompiling native binaries.
+**DartNative Go** is an on-device dynamic client runtime for [DartNative](https://dartpub.dev) applications (analogous to *Expo Go* in the React Native ecosystem). It enables developers to author full DartNative mobile applications using multi-file modular structures, stateful components, Riverpod state management, and local `setState()`, and run or hot-reload them dynamically over Wi-Fi / localhost in under 50ms without recompiling native binaries.
 
 ---
 
@@ -10,29 +10,40 @@
 
 ```
    ┌────────────────────────────────────────────────────────────────────────┐
-   │             Live Dev Server (tool/dev_server.dart)                     │
-   │  - Watches guest_app/ (*.dart) with debouncing                         │
-   │  - Serves multi-file bundle: http://localhost:8088/bundle.json         │
-   │  - Real-time WebSocket:      ws://localhost:8088/ws                    │
-   │  - Receives guest logs:      POST /log                                 │
+   │             Live Dev Server (bin/dart_go.dart / server.dart)           │
+   │  - Validates pubspec & native plugins                                  │
+   │  - Analyzes dependencies (.dart_tool/package_config.json)              │
+   │  - Serves lightweight user code ZIP: http://localhost:8088/user-code.zip│
+   │  - Serves pure-Dart package ZIPs:    http://localhost:8088/pkg/*.zip   │
+   │  - Serves pre-compiled AST bundle:   http://localhost:8088/guest.ast   │
+   │  - Real-time WebSocket:              ws://localhost:8088/ws            │
+   │  - Bi-directional sync:              reload, breakpoints, verbose mode │
    └──────────────────┬────────────────────────────────▲────────────────────┘
-                      │ HTTP & WebSocket               │ Guest Print Logs
-                      ▼                                │
+                      │ HTTP Manifest & ZIP Bundles    │ Real-time Telemetry
+                      ▼                                │ & Device Logs
    ┌───────────────────────────────────────────────────┴────────────────────┐
    │             Host App (dartnative_go / lib/main.dart)                   │
    │                                                                        │
    │  ┌──────────────────────────────────────────────────────────────────┐  │
-   │  │  Interpreter Engine (tom_d4rt - Source Based)                    │  │
-   │  │  - Source parser powered by package:analyzer                     │  │
+   │  │  Runner Pipeline (lib/src/runner/)                               │  │
+   │  │  - BundleLoader (In-memory + On-device DepCache)                 │  │
+   │  │  - DartGoLogger (Auto-checking zero-if/else logging & bench)     │  │
+   │  │  - LiveConnection (WebSocket reload & bidirectional verbose sync)│  │
+   │  └───────────────────────────────┬──────────────────────────────────┘  │
+   │                                  ▼                                     │
+   │  ┌──────────────────────────────────────────────────────────────────┐  │
+   │  │  Dual-Mode Interpreter Engines                                   │  │
+   │  │  1. Source Mode (tom_d4rt - Analyzer-based on-device execution)  │  │
+   │  │  2. AST Mode (tom_d4rt_ast - Analyzer-free precompiled bundle)   │  │
    │  │  - Automated Type-Safe Bridges (51,000+ lines generated)         │  │
-   │  │  - Multi-file virtual sources routing                            │  │
+   │  │  - User-module-only state snapshotting (< 2ms)                   │  │
    │  └───────────────────────────────┬──────────────────────────────────┘  │
    │                                  ▼                                     │
    │  ┌──────────────────────────────────────────────────────────────────┐  │
    │  │  Widget & State Interface Proxies (lib/src/interpreter/)         │  │
-   │  │  - InterpretedStatefulWidgetProxy                                │  │
-   │  │  - InterpretedStateProxy (bridges native State.setState)         │  │
-   │  │  - super.initState() guard & local setState() routing            │  │
+   │  │  - InterpretedConsumerWidget (Riverpod Ref + ProviderScope mount)│  │
+   │  │  - InterpretedStatefulWidgetProxy / InterpretedStateProxy        │  │
+   │  │  - Granular Generational Remounting (Targeted mutated widget)    │  │
    │  └───────────────────────────────┬──────────────────────────────────┘  │
    │                                  ▼                                     │
    │  ┌──────────────────────────────────────────────────────────────────┐  │
@@ -49,149 +60,63 @@
 | Component | Technology | Description |
 | :--- | :--- | :--- |
 | **Host Application** | `dartnative` (v1.0.0) | Native iOS & Android runner shell with full graphics engine support. |
-| **Interpreter** | `tom_d4rt` (v1.77.0) | Pure-Dart interpreter operating in **source-based (analyzer)** mode. |
+| **Source Interpreter** | `tom_d4rt` (v1.77.0) | Pure-Dart interpreter operating in **source-based (analyzer)** mode (default). |
+| **AST Interpreter** | `tom_d4rt_ast` | Zero-dependency, analyzer-free AST interpreter for precompiled bundles. |
 | **Bridge Generator** | `tom_d4rt_generator` / `d4rtgen` | Code generator that inspected DartNative framework APIs and generated 51,000+ lines of reflection-free bindings. |
-| **Live Dev Server** | Standalone Dart script (`tool/dev_server.dart`) | HTTP bundle provider + WebSocket broadcaster with filesystem watching. |
-| **Guest Application** | Pure Dart (`guest_app/`) | Interpreted modular code written against standard DartNative APIs. |
+| **Live Dev Server** | `dart_go start` (`server.dart`) | HTTP manifest + on-demand dependency packager + UDP broadcaster + WebSocket server. |
+| **Guest Application** | Pure Dart (`example/` / user app) | Interpreted modular code written against standard DartNative & Flutter-compatible APIs. |
 
 ---
 
-## 4. Key Problems Solved & Technical Solutions
+## 4. Key Architectural Subsystems
 
-### Problem 1: Interpreted `StatefulWidget` & Local `setState()`
-* **Challenge**: When guest code declares standard Flutter/DartNative classes (e.g., `class CounterApp extends StatefulWidget`, `class _CounterAppState extends State<CounterApp>`), those classes exist inside `d4rt`'s virtual memory as `BridgedInstance` / `InterpreterInstance`. The host's native Flutter element tree cannot recognize or build them directly, and calling `setState()` inside the script does not trigger native UI repaints.
+### 4.1 Dependency Packaging & On-Device Caching (Expo Go Architecture)
+* **Challenge**: Packaging entire projects with large dependencies into a single monolithic bundle causes massive bundle downloads and slow parsing on every single save.
 * **Solution**:
-  - Implemented custom proxy wrappers in [`lib/src/interpreter/widget_proxies.dart`](file:///Users/mac/Dev/projects/dartnative_go/lib/src/interpreter/widget_proxies.dart):
-    - `InterpretedStatefulWidgetProxy`: Extends native `StatefulWidget` and wraps the interpreted widget object.
-    - `InterpretedStateProxy`: Extends native `State<StatefulWidget>`. It instantiates the guest's state class, hooks into `State.setState()`, and calls native `markNeedsBuild()` / `super.setState(() {})`.
-    - Recursively resolves child widgets returned by `build(context)` so they become native render widgets.
+  1. **Split Manifest & Packaging**: Dev server inspects `.dart_tool/package_config.json` via `DepPackager`. Pure Dart dependencies (e.g. `flutter_riverpod`, `collection`, etc.) are packaged into individual versioned ZIP archives (`/pkg/<name>@<version>.zip`) with immutable cache headers.
+  2. **User Code Isolation**: Only user project code is zipped into `/user-code.zip`.
+  3. **On-Device `DepCache`**: Downloaded package ZIPs are unpacked and persisted in `<app_support_dir>/dartnative_go/dep_cache/<pkg>@<ver>/`.
+  4. **In-Memory Cache**: `BundleLoader` retains `_cachedDepSources` across hot reloads. During incremental reloads, fetching dependencies takes **0ms**.
+  5. **DevTool Cache Control**: Developers can inspect cache size and clear cached packages from the mobile in-app DevTool overlay.
 
-### Problem 2: Stack Overflow / Infinite Recursion on `super.initState()`
-* **Challenge**: Interpreted `State` classes routinely invoke `super.initState()`. In a naive bridge implementation, calling `super.initState()` either caused reflection lookup failures or recursively invoked the state proxy's own method, crashing the application with a stack overflow upon tapping "Connect".
+### 4.2 Sub-100ms Hot Reload & State Preservation
+* **Challenge**: Full interpreter state snapshots previously iterated through thousands of library symbols across all 93+ dependencies, taking upwards of 6,700ms per hot reload. Additionally, unmounting root widgets caused `ProviderContainer` disposals, resetting Riverpod state.
 * **Solution**:
-  - Registered a safe handler for `State.initState` in `widget_proxies.dart`:
-    ```dart
-    'initState': (visitor, target, positional, named, typeArgs) {
-      if (target is InterpretedStateProxy) {
-        // Native state has already completed super.initState();
-        // treat interpreted super call as a safe no-op.
-        return null;
-      }
-      return null;
-    }
-    ```
+  1. **Targeted User-Module Snapshotting**: `_snapshotState` and `_restoreState` in `InterpreterRunner` restrict top-level variable retention exclusively to user project modules (`entrypointLibrary` and non-`package:` files). Snapshot time reduced from **6,729ms → < 2ms**.
+  2. **Root Container Stabilization**: The root `ProviderScope` is mounted with a stable element key (`const ValueKey('guest_root')`), guaranteeing the container remains live and state is preserved across reloads.
+  3. **Granular Generational Remounting**: `InterpretedConsumerWidget` and `InterpretedStatefulWidget` use generational keys (`Consumer_<ClassName>_gen_$gen`). Only the specific widget modified in source code remounts with fresh methods, while preserved state is seamlessly bound.
+  4. **Reload Speed**: Total hot reload latency dropped from **~8,200ms → 45ms** (Source) and **< 15ms** (AST).
 
-### Problem 3: Multi-File Relative Imports
-* **Challenge**: A monolithic script is not practical for real app development. As soon as guest code splits into modules (e.g., `import 'reset_button.dart';`), a standard interpreter fails because relative URIs cannot be resolved without a virtual filesystem.
+### 4.3 Unified Auto-Checking Logger (`DartGoLogger`) & Verbose Sync
+* **Challenge**: Scattered inline `if (verbose) / else` checks created boilerplate and inconsistency between CLI and device logging.
 * **Solution**:
-  - **Dev Server Multi-File Bundler**: In [`tool/dev_server.dart`](file:///Users/mac/Dev/projects/dartnative_go/tool/dev_server.dart), added the `/bundle.json` endpoint that traverses `guest_app/`, reads all `.dart` files, and returns a JSON map of `{ "relativePath": "fileContent" }`.
-  - **Virtual URI Alias Mapping**: In [`lib/main.dart`](file:///Users/mac/Dev/projects/dartnative_go/lib/main.dart), normalized paths into multiple lookup formats:
-    - `package:guest_app/reset_button.dart`
-    - `reset_button.dart`
-    - `file:///reset_button.dart`
-  - Passed the dictionary to `_interpreter.execute(..., sources: _liveSources)`, giving the interpreter full module resolution.
-
-### Problem 4: Bi-Directional Guest Logging & Diagnostics
-* **Challenge**: By default, `print()` statements inside interpreted sandboxes are captured or lost, making debugging impossible for guest app developers.
-* **Solution**:
-  - Wrapped execution inside a custom Dart `runZoned` with `ZoneSpecification(print: ...)` in `lib/main.dart`.
-  - Redirected guest logs to:
-    1. The host debug console (IDE / terminal).
-    2. The in-app Go Launcher log viewer.
-    3. The Dev Server via `POST http://localhost:8088/log`, enabling developers to see live outputs directly in their server terminal.
-
-### Problem 5: Missing Imports & Cross-Module Dependencies
-* **Challenge**: Developers often write UI code without remembering to write boilerplate imports (`import 'package:dartnative/dartnative.dart';`), standard libraries (`dart:math`, `dart:async`), or relative imports for sibling components. In standard runtimes, this causes compile-time undefined symbol errors.
-* **Solution**:
-  - Built [`AutoImportParser`](file:///Users/mac/Dev/projects/dartnative_go/lib/src/interpreter/auto_import_parser.dart):
-    - **Framework Symbol Auto-Injection**: Detects usage of core framework symbols (`Widget`, `StatefulWidget`, `Scaffold`, `Text`, `Button`, etc.) and automatically injects `package:dartnative/dartnative.dart` if missing.
-    - **Standard Library Auto-Injection**: Detects `min`, `max`, `Random` (`dart:math`) or `Timer`, `Completer` (`dart:async`).
-    - **Project-Wide Symbol Discovery**: Scans project sources for declared classes/enums, resolves relative import paths, and auto-wires dependencies (e.g. `ResetButton` from `reset_button.dart`).
-    - **Virtual Path Alias Matrix**: Generates a unified alias map (`package:guest_app/...`, `file:///...`, relative paths) so any import format resolves.
-
-### Problem 6: Advanced Generator Options for Fluid UI Performance
-* **Challenge**: Long-running synchronous interpreted callbacks inside UI event handlers can block Flutter's single-threaded event loop and hitch frame rates.
-* **Solution**:
-  - Configured advanced generator flags in [`buildkit.yaml`](file:///Users/mac/Dev/projects/dartnative_go/buildkit.yaml):
-    - `yieldVoidCallbacks: true`: Wraps void bridged callbacks in an asynchronous micro-yield (`Future.delayed(Duration.zero)`) after calling the interpreted handler, returning a slice of the event loop to Flutter for smooth touch gestures and animations.
-    - `generateDartscript: true` & `registrationClass: DartnativeGoBridges`: Generates [`lib/src/interpreter/dartscript.b.dart`](file:///Users/mac/Dev/projects/dartnative_go/lib/src/interpreter/dartscript.b.dart) to automatically register both primary and sub-package barrels (`src/core.dart`, `src/widgets.dart`, `src/framework.dart`) as well as RC-2 / GEN-079 relaxer factories.
-
-### Problem 7: Stale Closures / Callbacks & State Preservation on Hot Reload
-* **Challenge**: When editing callbacks or text in guest files (e.g., updating text in `main.dart` or editing `reset_button.dart`), earlier implementations either failed to update callbacks due to module caching or reset the entire widget state (reverting `_count` from 10 back to 0) by remounting the entire widget tree.
-* **Root Causes**:
-  1. `tom_d4rt`'s internal module loader retained previously parsed AST units across calls on the same interpreter instance.
-  2. Remounting the root subtree with changing generational keys wiped out all Flutter `State` objects and destroyed guest state fields.
-  3. Re-evaluating code created fresh class definitions, while existing `State` objects in the element tree still pointed to old class method tables and stale bound method caches.
-* **Solution**:
-  - **Interpreted State Preservation & Field Transfer**: In [`lib/src/interpreter/widget_proxies.dart`](file:///Users/mac/Dev/projects/dartnative_go/lib/src/interpreter/widget_proxies.dart), when `didUpdateWidget` is dispatched on hot reload:
-    - Instantiates a fresh `State` instance from the updated class definition in the new interpreter session.
-    - Copies all existing runtime state fields (e.g., `_count = 10`) from `oldState` into `newState` via `_transferStateFields`.
-    - Re-wires native proxies (`nativeProxy`, `bridgedSuperObject`, `nativeStateProxy`, `interpretedStatefulWidget`) to `newState`.
-    - Updates `visitor` and `ownerWidget`, dispatches `didUpdateWidget`, and calls `setState(() {})` to trigger an immediate rebuild with the new methods and preserved state.
-  - **Stable Element Subtree**: Kept the root `KeyedSubtree` key stable across hot reloads so Flutter's element reconciliation updates existing state elements in-place instead of discarding them.
-  - **Fresh Module Parsing**: On hot reload, `_interpreter.dispose()` drops module cache and `_initInterpreter()` reloads with `_liveSources`, feeding updated classes into the running tree.
-
-### Problem 8: First-Class App Lifecycle & Safe `setState` Execution
-* **Challenge**: Complex guest applications create long-lived listeners, tickers, and streams that outlive a single widget frame, and mid-build `setState` calls can crash the engine.
-* **Solution**:
-  - Implemented [`D4rtFlutterApplication`](file:///Users/mac/Dev/projects/dartnative_go/lib/src/interpreter/d4rt_flutter_application.dart) supporting `onMount` and `onUnmount` hooks invoked automatically across reloads and disconnects.
-  - Implemented safe `setState` deferral via microtask scheduling when invoked during active render passes.
+  1. **`DartGoLogger`**: Centralized utility providing `info()`, `debug()`, `bench()`, `reload()`, `warn()`, and `error()`. Internal checks automatically suppress debug and benchmark telemetry when `DartGoLogger.verbose` is `false`.
+  2. **Bi-Directional WebSocket Sync (`set_verbose`)**:
+     - Pressing `v` in the dev server terminal toggles verbose mode and broadcasts `{'type': 'set_verbose', 'enabled': bool}` to connected mobile apps.
+     - Toggling `VERBOSE LOGS` in the mobile app DevTool sends `set_verbose` to the dev server, syncing terminal telemetry instantly.
+  3. **Startup Flag**: CLI supports `-v` and `--verbose` flags on `dart_go start`.
 
 ---
 
-## 5. Directory Structure & Key Files
-
-```
-dartnative_go/
-├── guest_app/                                # Dynamic guest application code
-│   ├── main.dart                            # Entrypoint (CounterApp StatefulWidget)
-│   └── reset_button.dart                    # Subcomponent (demonstrating multi-file imports)
-├── lib/
-│   ├── main.dart                            # Host application, Launcher UI, OTA client
-│   ├── d4rt_bridges.b.dart                  # Bridge entrypoints
-│   └── src/
-│       └── interpreter/
-│           ├── dartnative_bridges.b.dart    # 51,000+ lines generated DartNative bindings
-│           ├── dn_bridge.dart               # Bridge registration helper
-│           ├── relaxers.b.dart              # Type relaxer wrappers
-│           └── widget_proxies.dart          # Interpreted StatefulWidget & State proxies
-├── tool/
-│   ├── dev_server.dart                      # Live Dev Server (HTTP bundle + WebSocket)
-│   └── generate_app_assets.dart             # Asset generator
-├── pubspec.yaml                             # Host dependencies (tom_d4rt, dartnative)
-└── ARCHITECTURE.md                          # This document
-```
-
----
-
-## 6. How It Works: Step-by-Step Execution Flow
-
-1. **Host Bootstrapping**:
-   - The native app starts and displays the **DartNative Go Launcher** screen.
-   - `_initInterpreter()` instantiates `D4rt()` and registers `dartnative_bridges.b.dart` and `widget_proxies.dart`.
-2. **Dev Server Connection**:
-   - Tapping **"Connect to Live Dev Server"** fetches `http://localhost:8088/bundle.json`.
-   - The host opens a WebSocket connection to `ws://localhost:8088/ws` for change notifications.
-3. **Execution**:
-   - `_interpreter.execute(source: mainCode, name: 'main', sources: _liveSources)` is evaluated.
-   - If the returned object is an interpreted `StatefulWidget`, the host wraps it in an `InterpretedStatefulWidgetProxy`.
-   - The proxy mounts into the Flutter/DartNative element tree as a true native widget.
-4. **Interactive State & Hot Reload**:
-   - Clicking buttons triggers interpreted event handlers; `setState()` triggers native rebuilds.
-   - Saving changes in `guest_app/` causes the Dev Server to push a WebSocket notification.
-   - The host fetches the updated bundle and re-evaluates the widget tree instantly.
-
----
-
-## 7. Commands & Quick Reference
+## 5. Development Workflow & Commands
 
 ```bash
-# Start the live dev server
-dart run tool/dev_server.dart
+# Start Dev Server with interactive hot reload & auto AST build
+dart_go start
 
-# Run the host app on iOS simulator or device
-dn run -d <device-id>
+# Start Dev Server in verbose mode with detailed telemetry
+dart_go start -v
 
-# Generate/update bridges (if DartNative framework APIs change)
-dart run tom_d4rt_generator:d4rtgen
+# Run Dev Server on custom port
+dart_go start --port=8090
+
+# Pre-compile AST bundle for test execution
+dart run tool/build_ast_bundle.dart
 ```
+
+### Dev Server Interactive Stdin Commands:
+- `r`: Trigger manual hot reload across all connected devices.
+- `v`: Toggle verbose diagnostic logging & benchmark traces.
+- `q`: Render ASCII QR code in terminal for camera scanning.
+- `c`: Clear terminal screen.
+- `h`: Show command help.

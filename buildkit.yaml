@@ -50,3 +50,9 @@ d4rtgen:
         - package:crypto/crypto.dart
       barrelImport: package:crypto/crypto.dart
       outputPath: lib/src/interpreter/crypto_bridges.b.dart
+    - name: riverpod_kit
+      barrelFiles:
+        - package:riverpod_kit/riverpod_kit.dart
+      barrelImport: package:riverpod_kit/riverpod_kit.dart
+      outputPath: lib/src/interpreter/riverpod_kit_bridges.b.dart
+

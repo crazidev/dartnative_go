@@ -3,6 +3,7 @@ library;
 import 'dart:async';
 
 import 'package:dartnative/dartnative.dart';
+import 'package:riverpod_kit/riverpod_kit.dart';
 import 'package:tom_d4rt_ast/d4rt.dart';
 
 import '../debug_controller.dart';
@@ -66,6 +67,147 @@ class InterpretedStatelessWidget extends StatelessWidget {
         return widget;
       }
       throw StateError('Interpreted StatelessWidget has no callable build(context) method');
+    });
+  }
+}
+
+/// Native proxy for AST-interpreted classes that extend [ConsumerWidget].
+class InterpretedConsumerWidget extends ConsumerWidget {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedConsumerWidget(this.visitor, this.instance, {Key? key})
+      : super(key: key ?? _resolveKey(instance)) {
+    instance.nativeProxy = this;
+  }
+
+  static Key _resolveKey(InterpretedInstance instance) {
+    final gen = WidgetGenerationTracker.getGeneration(instance.klass.name);
+    try {
+      if (instance.hasInstanceMember('key')) {
+        final k = instance.get('key');
+        if (k is Key) return ValueKey('${k}_gen_$gen');
+      }
+    } catch (_) {}
+    return ValueKey('Consumer_${instance.klass.name}_gen_$gen');
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return _runWithLogCapture(() {
+      final method = instance.get('build', visitor: visitor);
+      if (method is Callable) {
+        final rawResult = method.call(visitor, [context, ref], {});
+        final widget = D4.extractBridgedArg<Widget>(rawResult, 'buildResult', visitor);
+        return widget;
+      }
+      throw StateError('Interpreted ConsumerWidget has no callable build(context, ref) method');
+    });
+  }
+}
+
+/// Native proxy for AST-interpreted classes that extend [Notifier].
+///
+/// Riverpod's [NotifierProvider] requires its factory to return a real
+/// `Notifier<ValueT>` subclass. When interpreted code supplies
+/// `AppStateNotifier.new`, the interpreter returns an [InterpretedInstance].
+/// This proxy bridges the gap: it extends `Notifier<dynamic>` and delegates
+/// the required [build] method back into the interpreter.
+class InterpretedNotifierProxy extends Notifier<dynamic> {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedNotifierProxy(this.visitor, this.instance) {
+    // Store the native proxy on the instance so that getter/setter
+    // access on `state` routes through this native object.
+    instance.nativeProxy = this;
+    instance.bridgedSuperObject = this;
+  }
+
+  @override
+  dynamic build() {
+    return _runWithLogCapture(() {
+      final method = instance.klass.findInstanceMethod('build');
+      if (method != null) {
+        final callable = instance.bindMethodCached(method);
+        return callable.call(visitor, [], {});
+      }
+      // Fallback: try dynamic dispatch
+      final m2 = instance.get('build', visitor: visitor);
+      if (m2 is Callable) {
+        return m2.call(visitor, [], {});
+      }
+      throw StateError(
+        'InterpretedNotifierProxy: ${instance.klass.name} has no build() method',
+      );
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Route `state` reads/writes from interpreter into the native Notifier state.
+  // The interpreter may call `state = value` on the instance; we intercept this
+  // via a field override below. Riverpod calls build() on this native object
+  // and uses `this.state` to store the result, so no extra wiring is needed
+  // for reads.  Writes from interpreted code go through the setter.
+  // ---------------------------------------------------------------------------
+}
+
+/// Native proxy for AST-interpreted classes that extend [AsyncNotifier].
+class InterpretedAsyncNotifierProxy extends AsyncNotifier<dynamic> {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedAsyncNotifierProxy(this.visitor, this.instance) {
+    instance.nativeProxy = this;
+    instance.bridgedSuperObject = this;
+  }
+
+  @override
+  FutureOr<dynamic> build() {
+    return _runWithLogCapture(() {
+      final method = instance.klass.findInstanceMethod('build');
+      if (method != null) {
+        final callable = instance.bindMethodCached(method);
+        return callable.call(visitor, [], {});
+      }
+      final m2 = instance.get('build', visitor: visitor);
+      if (m2 is Callable) {
+        return m2.call(visitor, [], {});
+      }
+      throw StateError(
+        'InterpretedAsyncNotifierProxy: ${instance.klass.name} has no build() method',
+      );
+    });
+  }
+}
+
+/// Native proxy for AST-interpreted classes that extend [StreamNotifier].
+class InterpretedStreamNotifierProxy extends StreamNotifier<dynamic> {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedStreamNotifierProxy(this.visitor, this.instance) {
+    instance.nativeProxy = this;
+    instance.bridgedSuperObject = this;
+  }
+
+  @override
+  Stream<dynamic> build() {
+    return _runWithLogCapture(() {
+      final method = instance.klass.findInstanceMethod('build');
+      if (method != null) {
+        final callable = instance.bindMethodCached(method);
+        final res = callable.call(visitor, [], {});
+        return res is Stream<dynamic> ? res : Stream.value(res);
+      }
+      final m2 = instance.get('build', visitor: visitor);
+      if (m2 is Callable) {
+        final res = m2.call(visitor, [], {});
+        return res is Stream<dynamic> ? res : Stream.value(res);
+      }
+      throw StateError(
+        'InterpretedStreamNotifierProxy: ${instance.klass.name} has no build() method',
+      );
     });
   }
 }
@@ -316,6 +458,9 @@ Widget? wrapAstInterpretedWidget(Object? arg, {InterpreterVisitor? visitor}) {
       // Walk class inheritance chain to find StatefulWidget or StatelessWidget
       var cur = arg.klass;
       while (true) {
+        if (cur.name == 'ConsumerWidget' || cur.bridgedSuperclass?.name == 'ConsumerWidget') {
+          return InterpretedConsumerWidget(effectiveVisitor, arg);
+        }
         if (cur.name == 'StatefulWidget' || cur.bridgedSuperclass?.name == 'StatefulWidget') {
           return InterpretedStatefulWidget(effectiveVisitor, arg);
         }
@@ -336,8 +481,8 @@ Widget? wrapAstInterpretedWidget(Object? arg, {InterpreterVisitor? visitor}) {
   return null;
 }
 
-/// Registers interface proxies for [StatelessWidget] and [StatefulWidget]
-/// into the [tom_d4rt_ast] interpreter runtime with log interception support.
+/// Registers interface proxies for [StatelessWidget], [StatefulWidget], and
+/// [ConsumerWidget] into the [tom_d4rt_ast] interpreter runtime with log interception support.
 void registerAstWidgetInterfaceProxies(
   D4rt interpreter, {
   void Function(String message)? onLog,
@@ -375,5 +520,28 @@ void registerAstWidgetInterfaceProxies(
 
   D4.registerInterfaceProxy('StatefulWidget', (visitor, instance) {
     return InterpretedStatefulWidget(visitor, instance);
+  });
+
+  D4.registerInterfaceProxy('ConsumerWidget', (visitor, instance) {
+    return InterpretedConsumerWidget(visitor, instance);
+  });
+
+  // Register Notifier proxy so NotifierProvider(MyNotifier.new) works.
+  // extractBridgedArg<Notifier<dynamic>> will find this proxy factory when
+  // it encounters an InterpretedInstance that extends Notifier.
+  D4.registerInterfaceProxy('Notifier', (visitor, instance) {
+    return InterpretedNotifierProxy(visitor, instance);
+  });
+
+  // Belt-and-suspenders: also register as a GenericTypeWrapper so the
+  // generic resolution path (Notifier<X>) can wrap the instance too.
+  D4.registerGenericTypeWrapper('Notifier', (value, innerTypeArg) {
+    if (value is InterpretedInstance) {
+      final effectiveVisitor = D4.activeVisitor;
+      if (effectiveVisitor != null) {
+        return InterpretedNotifierProxy(effectiveVisitor, value);
+      }
+    }
+    return null;
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dartnative/dartnative.dart';
+import 'package:riverpod_kit/riverpod_kit.dart';
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
 
@@ -56,6 +57,137 @@ class InterpretedStatelessWidget extends StatelessWidget {
         return widget;
       }
       throw StateError('Interpreted StatelessWidget has no callable build(context) method');
+    });
+  }
+}
+
+/// Native proxy for interpreted classes that extend [ConsumerWidget].
+class InterpretedConsumerWidget extends ConsumerWidget {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedConsumerWidget(this.visitor, this.instance, {Key? key})
+      : super(key: key ?? _resolveKey(instance)) {
+    instance.nativeProxy = this;
+  }
+
+  static Key _resolveKey(InterpretedInstance instance) {
+    final gen = WidgetGenerationTracker.getGeneration(instance.klass.name);
+    try {
+      if (instance.hasInstanceMember('key')) {
+        final k = instance.get('key');
+        if (k is Key) return ValueKey('${k}_gen_$gen');
+      }
+    } catch (_) {}
+    return ValueKey('Consumer_${instance.klass.name}_gen_$gen');
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return _runWithLogCapture(() {
+      final method = instance.get('build', visitor: visitor);
+      if (method is Callable) {
+        final rawResult = method.call(visitor, [context, ref], {});
+        final widget = D4.extractBridgedArg<Widget>(rawResult, 'buildResult', visitor);
+        return widget;
+      }
+      throw StateError('Interpreted ConsumerWidget has no callable build(context, ref) method');
+    });
+  }
+}
+
+/// Native proxy for interpreted classes that extend [Notifier].
+///
+/// Riverpod's [NotifierProvider] requires its factory to return a real
+/// `Notifier<ValueT>` subclass. When interpreted code supplies
+/// `AppStateNotifier.new`, the interpreter returns an [InterpretedInstance].
+/// This proxy bridges the gap: it extends `Notifier<dynamic>` and delegates
+/// the required [build] method back into the interpreter.
+class InterpretedNotifierProxy extends Notifier<dynamic> {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedNotifierProxy(this.visitor, this.instance) {
+    instance.nativeProxy = this;
+    instance.bridgedSuperObject = this;
+  }
+
+  @override
+  dynamic build() {
+    return _runWithLogCapture(() {
+      final method = instance.klass.findInstanceMethod('build');
+      if (method != null) {
+        final callable = instance.bindMethodCached(method);
+        return callable.call(visitor, [], {});
+      }
+      // Fallback: try dynamic dispatch
+      final m2 = instance.get('build', visitor: visitor);
+      if (m2 is Callable) {
+        return m2.call(visitor, [], {});
+      }
+      throw StateError(
+        'InterpretedNotifierProxy: ${instance.klass.name} has no build() method',
+      );
+    });
+  }
+}
+
+/// Native proxy for interpreted classes that extend [AsyncNotifier].
+class InterpretedAsyncNotifierProxy extends AsyncNotifier<dynamic> {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedAsyncNotifierProxy(this.visitor, this.instance) {
+    instance.nativeProxy = this;
+    instance.bridgedSuperObject = this;
+  }
+
+  @override
+  FutureOr<dynamic> build() {
+    return _runWithLogCapture(() {
+      final method = instance.klass.findInstanceMethod('build');
+      if (method != null) {
+        final callable = instance.bindMethodCached(method);
+        return callable.call(visitor, [], {});
+      }
+      final m2 = instance.get('build', visitor: visitor);
+      if (m2 is Callable) {
+        return m2.call(visitor, [], {});
+      }
+      throw StateError(
+        'InterpretedAsyncNotifierProxy: ${instance.klass.name} has no build() method',
+      );
+    });
+  }
+}
+
+/// Native proxy for interpreted classes that extend [StreamNotifier].
+class InterpretedStreamNotifierProxy extends StreamNotifier<dynamic> {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedStreamNotifierProxy(this.visitor, this.instance) {
+    instance.nativeProxy = this;
+    instance.bridgedSuperObject = this;
+  }
+
+  @override
+  Stream<dynamic> build() {
+    return _runWithLogCapture(() {
+      final method = instance.klass.findInstanceMethod('build');
+      if (method != null) {
+        final callable = instance.bindMethodCached(method);
+        final res = callable.call(visitor, [], {});
+        return res is Stream<dynamic> ? res : Stream.value(res);
+      }
+      final m2 = instance.get('build', visitor: visitor);
+      if (m2 is Callable) {
+        final res = m2.call(visitor, [], {});
+        return res is Stream<dynamic> ? res : Stream.value(res);
+      }
+      throw StateError(
+        'InterpretedStreamNotifierProxy: ${instance.klass.name} has no build() method',
+      );
     });
   }
 }
@@ -306,6 +438,9 @@ Widget? wrapInterpretedWidget(Object? arg, {InterpreterVisitor? visitor}) {
       // Walk class inheritance chain to find StatefulWidget or StatelessWidget
       var cur = arg.klass;
       while (true) {
+        if (cur.name == 'ConsumerWidget' || cur.bridgedSuperclass?.name == 'ConsumerWidget') {
+          return InterpretedConsumerWidget(effectiveVisitor, arg);
+        }
         if (cur.name == 'StatefulWidget' || cur.bridgedSuperclass?.name == 'StatefulWidget') {
           return InterpretedStatefulWidget(effectiveVisitor, arg);
         }
@@ -326,8 +461,8 @@ Widget? wrapInterpretedWidget(Object? arg, {InterpreterVisitor? visitor}) {
   return null;
 }
 
-/// Registers interface proxies for [StatelessWidget] and [StatefulWidget]
-/// into the [tom_d4rt] interpreter runtime with log interception support.
+/// Registers interface proxies for [StatelessWidget], [StatefulWidget], and
+/// [ConsumerWidget] into the [tom_d4rt] interpreter runtime with log interception support.
 void registerWidgetInterfaceProxies(D4rt interpreter, {void Function(String message)? onLog}) {
   if (onLog != null) {
     onGuestLog = onLog;
@@ -362,5 +497,25 @@ void registerWidgetInterfaceProxies(D4rt interpreter, {void Function(String mess
 
   D4.registerInterfaceProxy('StatefulWidget', (visitor, instance) {
     return InterpretedStatefulWidget(visitor, instance);
+  });
+
+  D4.registerInterfaceProxy('ConsumerWidget', (visitor, instance) {
+    return InterpretedConsumerWidget(visitor, instance);
+  });
+
+  // Register Notifier proxy so NotifierProvider(MyNotifier.new) works.
+  D4.registerInterfaceProxy('Notifier', (visitor, instance) {
+    return InterpretedNotifierProxy(visitor, instance);
+  });
+
+  // Belt-and-suspenders: generic wrapper for Notifier<X> resolution.
+  D4.registerGenericTypeWrapper('Notifier', (value, innerTypeArg) {
+    if (value is InterpretedInstance) {
+      final effectiveVisitor = D4.activeVisitor;
+      if (effectiveVisitor != null) {
+        return InterpretedNotifierProxy(effectiveVisitor, value);
+      }
+    }
+    return null;
   });
 }

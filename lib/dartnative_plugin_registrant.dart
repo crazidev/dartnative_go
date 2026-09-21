@@ -51,6 +51,7 @@ abstract final class DartNativePluginRegistrant {
       'dartnative_splash',
       'dartnative_url_launcher',
       'dartnative_webview',
+      'riverpod_kit',
     ]);
     registerNativeBindings(
       Platform.isAndroid

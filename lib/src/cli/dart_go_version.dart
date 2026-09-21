@@ -106,6 +106,18 @@ const List<SupportedPlugin> kSupportedNativePlugins = [
     isCore: false,
     description: 'System browser and external URL launcher',
   ),
+  SupportedPlugin(
+    name: 'riverpod_kit',
+    supportedConstraint: '^0.1.0',
+    isCore: false,
+    description: 'Riverpod state management bridge and widgets for DartNative',
+  ),
+  SupportedPlugin(
+    name: 'riverpod',
+    supportedConstraint: '>=2.0.0',
+    isCore: false,
+    description: 'Riverpod core reactive state management engine',
+  ),
 ];
 
 /// Map of plugin name to [SupportedPlugin] for fast lookup.

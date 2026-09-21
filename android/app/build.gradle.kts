@@ -24,7 +24,7 @@ android {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.dartnative_go"
         // You can update the following values to match your application needs.
-        minSdk = dartnative.minSdkVersion
+        minSdk = 26
         targetSdk = dartnative.targetSdkVersion
         versionCode = dartnative.versionCode
         versionName = dartnative.versionName

@@ -1,51 +1,63 @@
 import 'package:dartnative/dartnative.dart';
+import 'package:riverpod_kit/riverpod_kit.dart';
 
 // ---------------------------------------------------------------------------
-// AppState — a simple singleton that survives hot reload.
-// Hot reload patches widget code but does NOT reinitialize Dart statics,
-// so any mutations you make at runtime are preserved between reloads.
-// Hot RESTART resets everything back to initial values.
+// AppState Model & Riverpod Notifier
 // ---------------------------------------------------------------------------
 class AppState {
-  AppState._(); // private constructor
-  static final AppState instance = AppState._(); // created once, ever
+  final bool isLoggedIn;
+  final String userName;
+  final int loginCount;
 
-  bool isLoggedIn = false;
-  String userName = 'Guest';
-  int loginCount = 0;
+  const AppState({
+    this.isLoggedIn = false,
+    this.userName = 'Guest',
+    this.loginCount = 0,
+  });
+
+  AppState copyWith({bool? isLoggedIn, String? userName, int? loginCount}) {
+    return AppState(
+      isLoggedIn: isLoggedIn ?? this.isLoggedIn,
+      userName: userName ?? this.userName,
+      loginCount: loginCount ?? this.loginCount,
+    );
+  }
 }
 
+class AppStateNotifier extends Notifier<AppState> {
+  AppStateNotifier();
+
+  @override
+  AppState build() => const AppState();
+
+  void login({String userName = 'Alice'}) {
+    state = state.copyWith(
+      isLoggedIn: true,
+      userName: userName,
+      loginCount: state.loginCount + 1,
+    );
+  }
+
+  void logout() {
+    state = state.copyWith(isLoggedIn: false, userName: 'Guest');
+  }
+}
+
+final appStateProvider = NotifierProvider<AppStateNotifier, AppState>(
+  () => AppStateNotifier(),
+);
+
 // ---------------------------------------------------------------------------
-// HomeScreen — lets you mutate AppState and observe what survives hot reload.
+// HomeScreen — ConsumerWidget using Riverpod state management
 // ---------------------------------------------------------------------------
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(appStateProvider);
+    final notifier = ref.read(appStateProvider.notifier);
 
-class _HomeScreenState extends State<HomeScreen> {
-  // Shortcut reference — same singleton instance every time.
-  final state = AppState.instance;
-
-  void _login() {
-    setState(() {
-      state.isLoggedIn = true;
-      state.userName = 'Alice';
-      state.loginCount++;
-    });
-  }
-
-  void _logout() {
-    setState(() {
-      state.isLoggedIn = false;
-      state.userName = 'Guest';
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFFFF),
       body: Center(
@@ -53,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.all(32),
           child: DefaultTextStyle(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 // Status icon
                 Icon(
@@ -82,38 +94,41 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                // Hot reload hint
+                // Riverpod Info Card
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
-                    border: Border.all(color: Colors.amber.shade300),
+                    color: Colors.blue.shade50,
+                    border: Border.all(color: Colors.blue.shade300),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(
-                    ''
-                    '👉 Change the state above, then hot reload (⌘R / r).\n'
-                    'The values should stay the same.\n\n'
-                    '🔄 Hot restart (⇧⌘R / R) will reset everything.',
+                    '⚡️ Powered by Riverpod (`riverpod_kit`)\n\n'
+                    '👉 Tap Login/Logout to mutate state via Notifier.\n'
+                    'Hot reload (⌘R / r) preserves state in memory.',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 13),
                   ),
                 ),
                 const SizedBox(height: 32),
 
-                // Buttons
+                // Action Buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Button(
-                      onPressed: state.isLoggedIn ? null : _login,
+                      onPressed: state.isLoggedIn
+                          ? null
+                          : () => notifier.login(),
                       title: 'Login',
                       color: Colors.green,
                       foregroundColor: Colors.white,
                     ),
                     const SizedBox(width: 16),
                     Button(
-                      onPressed: state.isLoggedIn ? _logout : null,
+                      onPressed: state.isLoggedIn
+                          ? () => notifier.logout()
+                          : null,
                       title: 'Logout',
                       color: Colors.red,
                       foregroundColor: Colors.white,
@@ -122,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            style: TextStyle(color: Colors.black),
+            style: const TextStyle(color: Colors.black),
           ),
         ),
       ),

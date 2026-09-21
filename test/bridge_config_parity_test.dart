@@ -6,7 +6,22 @@ import 'package:yaml/yaml.dart';
 /// barrels. Only runtime imports / output paths / registration class differ.
 Future<void> run() async {
   Map load(String path) {
-    final text = File(path).readAsStringSync();
+    final candidates = [
+      path,
+      '${Directory.current.path}/$path',
+      '${Directory.current.path}/../$path',
+      '/Users/mac/Dev/projects/dartnative_go/$path',
+    ];
+    File? foundFile;
+    for (final cand in candidates) {
+      final f = File(cand);
+      if (f.existsSync()) {
+        foundFile = f;
+        break;
+      }
+    }
+    foundFile ??= File(path);
+    final text = foundFile.readAsStringSync();
     return (loadYaml(text) as Map)['d4rtgen'] as Map;
   }
 

@@ -17,7 +17,12 @@ Future<void> main(List<String> args) async {
 
   final command = args.isEmpty ? 'start' : args.first;
 
-  if (command == 'version' || command == '--version' || command == '-v') {
+  if (command == 'version' || command == '--version') {
+    _printVersion();
+    return;
+  }
+
+  if (command == '-v' && args.length == 1) {
     _printVersion();
     return;
   }
@@ -28,7 +33,7 @@ Future<void> main(List<String> args) async {
     return;
   }
 
-  if (command == 'start' || !command.startsWith('-')) {
+  if (command == 'start' || !command.startsWith('-') || command == '-v' || command == '--verbose') {
     final commandArgs = (command == 'start') ? args.skip(1).toList() : args;
     final projectDir = _parseProjectDir(commandArgs);
     final (startPort, endPort) = _parsePortRange(commandArgs);
@@ -36,6 +41,7 @@ Future<void> main(List<String> args) async {
     final enableQrCode = !commandArgs.contains('--no-qrcode');
     final customHost = _parseStringArg(commandArgs, 'host');
     final rebuildAst = !commandArgs.contains('--no-rebuild-ast');
+    final verbose = commandArgs.contains('--verbose') || commandArgs.contains('-v');
 
     final server = DartGoServer(
       DartGoServerOptions(
@@ -46,6 +52,7 @@ Future<void> main(List<String> args) async {
         enableQrCode: enableQrCode,
         customHost: customHost,
         rebuildAst: rebuildAst,
+        verbose: verbose,
       ),
     );
 
@@ -179,6 +186,7 @@ OPTIONS FOR 'start':
       --host=<ip>             Custom host IP/interface to advertise
       --rebuild-ast           Rebuild assets/bundles/guest.ast on Dart changes (AST hot reload; default: on)
       --no-rebuild-ast        Disable AST rebuild (source-only hot reload)
+  -v, --verbose               Enable verbose step-by-step benchmark logs and diagnostic traces
       --no-broadcast          Disable local UDP discovery beacon
       --no-qrcode             Disable terminal QR code rendering
 

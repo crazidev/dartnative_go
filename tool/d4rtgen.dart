@@ -65,5 +65,146 @@ void _applyBridgePostFixes() {
     );
     supabaseFile.writeAsStringSync(content);
   }
+
+  _patchRiverpodBridges(
+    File('lib/src/interpreter/riverpod_kit_bridges.b.dart'),
+    isAst: false,
+  );
+  _patchRiverpodBridges(
+    File('lib/src/interpreter/ast/riverpod_kit_bridges.b.dart'),
+    isAst: true,
+  );
+}
+
+void _patchRiverpodBridges(File file, {required bool isAst}) {
+  if (!file.existsSync()) return;
+  var content = file.readAsStringSync();
+
+  // 1. Remove internal ClassBaseX and $RefArg extension blocks cleanly
+  content = content.replaceAll(
+    RegExp(
+      r'BridgedExtensionDefinition\(\s*name:\s*r?[\x27"]ClassBaseX[\x27"],[\s\S]*?(?=BridgedExtensionDefinition)',
+    ),
+    '',
+  );
+  content = content.replaceAll(
+    RegExp(
+      r'BridgedExtensionDefinition\(\s*name:\s*r?[\x27"]\$RefArg[\x27"],[\s\S]*?(?=BridgedExtensionDefinition)',
+    ),
+    '',
+  );
+
+  // 2. Remove from extension source map
+  content = content.replaceAll(
+    RegExp(r"[\x27\x22]ClassBaseX@AnyNotifier[\x27\x22]:\s*['\x22][^'\x22]+['\x22],\s*\n?"),
+    '',
+  );
+  content = content.replaceAll(
+    RegExp(r"r?[\x27\x22]\$RefArg@Ref[\x27\x22]:\s*['\x22][^'\x22]+['\x22],\s*\n?"),
+    '',
+  );
+
+  // 3. Escape unescaped '$...' in string literals to '\$...' (excluding '${')
+  content = content.replaceAll(r"'$", r"'\$");
+  content = content.replaceAll(r"'\${", r"'${");
+
+  // 4. Ensure ProviderScope & UncontrolledProviderScope extract child as Widget
+  if (!content.contains("import 'package:dartnative/dartnative.dart' as \$flutter_widgets;")) {
+    content = content.replaceFirst(
+      "import 'dart:async';",
+      "import 'dart:async';\nimport 'package:dartnative/dartnative.dart' as \$flutter_widgets;",
+    );
+  }
+  content = content.replaceAll(
+    "final child = D4.getRequiredNamedArg<dynamic>(\n          named,\n          'child',\n          'ProviderScope',\n        );",
+    "final child = D4.extractBridgedArg<\$flutter_widgets.Widget>(\n          D4.getRequiredNamedArg<dynamic>(\n            named,\n            'child',\n            'ProviderScope',\n          ),\n          'child',\n          visitor,\n        );",
+  );
+  content = content.replaceAll(
+    "final child = D4.getRequiredNamedArg<dynamic>(\n          named,\n          'child',\n          'UncontrolledProviderScope',\n        );",
+    "final child = D4.extractBridgedArg<\$flutter_widgets.Widget>(\n          D4.getRequiredNamedArg<dynamic>(\n            named,\n            'child',\n            'UncontrolledProviderScope',\n          ),\n          'child',\n          visitor,\n        );",
+  );
+
+  // 5. Proxy import for Notifier bridging
+  final proxyImport = isAst ? "import 'ast_widget_proxies.dart';" : "import 'widget_proxies.dart';";
+  if (!content.contains(proxyImport)) {
+    content = content.replaceFirst(
+      "import 'package:dartnative/dartnative.dart' as \$flutter_widgets;",
+      "import 'package:dartnative/dartnative.dart' as \$flutter_widgets;\n$proxyImport",
+    );
+  }
+
+  // 6. Define _unwrapInterpretedProxy helper if absent
+  if (!content.contains('Object? _unwrapInterpretedProxy(')) {
+    content = content.replaceFirst(
+      'class RiverpodKitBridge {',
+      'Object? _unwrapInterpretedProxy(Object? val) {\n  if (val is InterpretedNotifierProxy) {\n    return val.instance;\n  }\n  if (val is InterpretedAsyncNotifierProxy) {\n    return val.instance;\n  }\n  if (val is InterpretedStreamNotifierProxy) {\n    return val.instance;\n  }\n  return val;\n}\n\nclass RiverpodKitBridge {',
+    );
+  }
+
+  // 7. Patch NotifierProvider to wrap InterpretedInstance in InterpretedNotifierProxy
+  content = content.replaceAll(
+    "        final retryRaw = named['retry'];\n        return \$riverpod_8.NotifierProvider(\n          (() {\n                return D4.extractBridgedArg<\$riverpod_8.Notifier<dynamic>>(\n                      D4.callInterpreterCallback(\n                        visitor!,\n                        createNotifierRaw,\n                        [],\n                      ),\n                      'callback',\n                      visitor,\n                    )\n                    as \$riverpod_8.Notifier<dynamic>;\n              })",
+    "        final retryRaw = named['retry'];\n        return \$riverpod_8.NotifierProvider(\n          (() {\n                final rawNotifier = D4.callInterpreterCallback(\n                  visitor!,\n                  createNotifierRaw,\n                  [],\n                );\n                // DN-PATCH: InterpretedInstance → native Notifier proxy.\n                if (rawNotifier is InterpretedInstance) {\n                  return InterpretedNotifierProxy(visitor!, rawNotifier);\n                }\n                return D4.extractBridgedArg<\$riverpod_8.Notifier<dynamic>>(\n                      rawNotifier,\n                      'callback',\n                      visitor,\n                    )\n                    as \$riverpod_8.Notifier<dynamic>;\n              })",
+  );
+
+  // 7b. Patch AsyncNotifierProvider to wrap InterpretedInstance in InterpretedAsyncNotifierProxy
+  content = content.replaceAll(
+    "        final retryRaw = named['retry'];\n        return \$riverpod_6.AsyncNotifierProvider(\n          (() {\n                return D4.extractBridgedArg<\$riverpod_6.AsyncNotifier<dynamic>>(\n                      D4.callInterpreterCallback(\n                        visitor!,\n                        createNotifierRaw,\n                        [],\n                      ),\n                      'callback',\n                      visitor,\n                    )\n                    as \$riverpod_6.AsyncNotifier<dynamic>;\n              })",
+    "        final retryRaw = named['retry'];\n        return \$riverpod_6.AsyncNotifierProvider(\n          (() {\n                final rawNotifier = D4.callInterpreterCallback(\n                  visitor!,\n                  createNotifierRaw,\n                  [],\n                );\n                // DN-PATCH: InterpretedInstance → native AsyncNotifier proxy.\n                if (rawNotifier is InterpretedInstance) {\n                  return InterpretedAsyncNotifierProxy(visitor!, rawNotifier);\n                }\n                return D4.extractBridgedArg<\$riverpod_6.AsyncNotifier<dynamic>>(\n                      rawNotifier,\n                      'callback',\n                      visitor,\n                    )\n                    as \$riverpod_6.AsyncNotifier<dynamic>;\n              })",
+  );
+
+  // 7c. Patch StreamNotifierProvider to wrap InterpretedInstance in InterpretedStreamNotifierProxy
+  content = content.replaceAll(
+    "        final retryRaw = named['retry'];\n        return \$riverpod_10.StreamNotifierProvider(\n          (() {\n                return D4.extractBridgedArg<\n                      \$riverpod_10.StreamNotifier<dynamic>\n                    >(\n                      D4.callInterpreterCallback(\n                        visitor!,\n                        createNotifierRaw,\n                        [],\n                      ),\n                      'callback',\n                      visitor,\n                    )\n                    as \$riverpod_10.StreamNotifier<dynamic>;\n              })",
+    "        final retryRaw = named['retry'];\n        return \$riverpod_10.StreamNotifierProvider(\n          (() {\n                final rawNotifier = D4.callInterpreterCallback(\n                  visitor!,\n                  createNotifierRaw,\n                  [],\n                );\n                // DN-PATCH: InterpretedInstance → native StreamNotifier proxy.\n                if (rawNotifier is InterpretedInstance) {\n                  return InterpretedStreamNotifierProxy(visitor!, rawNotifier);\n                }\n                return D4.extractBridgedArg<\n                      \$riverpod_10.StreamNotifier<dynamic>\n                    >(\n                      rawNotifier,\n                      'callback',\n                      visitor,\n                    )\n                    as \$riverpod_10.StreamNotifier<dynamic>;\n              })",
+  );
+
+  // 8. Unwrap InterpretedNotifierProxy on WidgetRef watch, read, and refresh
+  content = content.replaceAll(
+    "        return t.watch(provider);",
+    "        return _unwrapInterpretedProxy(t.watch(provider));",
+  );
+  content = content.replaceAll(
+    "        return t.read(provider);",
+    "        return _unwrapInterpretedProxy(t.read(provider));",
+  );
+  content = content.replaceAll(
+    "        return t.refresh(provider);",
+    "        return _unwrapInterpretedProxy(t.refresh(provider));",
+  );
+  content = content.replaceAll(
+    "        return t.read(listenable);",
+    "        return _unwrapInterpretedProxy(t.read(listenable));",
+  );
+  content = content.replaceAll(
+    "        return t.watch(listenable);",
+    "        return _unwrapInterpretedProxy(t.watch(listenable));",
+  );
+
+  // 9. Patch AsyncValue / AsyncData / AsyncLoading / AsyncError getters if missing valueOrNull
+  if (!content.contains("'valueOrNull':")) {
+    const asyncGetters = """      'valueOrNull': (visitor, target) =>
+          D4.validateTarget<TARGET_TYPE>(target, 'TARGET_NAME').value,
+      'isLoading': (visitor, target) =>
+          D4.validateTarget<TARGET_TYPE>(target, 'TARGET_NAME').isLoading,
+      'isRefreshing': (visitor, target) =>
+          D4.validateTarget<TARGET_TYPE>(target, 'TARGET_NAME').isRefreshing,
+      'isReloading': (visitor, target) =>
+          D4.validateTarget<TARGET_TYPE>(target, 'TARGET_NAME').isReloading,
+      'hasValue': (visitor, target) =>
+          D4.validateTarget<TARGET_TYPE>(target, 'TARGET_NAME').hasValue,
+      'hasError': (visitor, target) =>
+          D4.validateTarget<TARGET_TYPE>(target, 'TARGET_NAME').hasError,
+      'hashCode':""";
+
+    for (final name in ['AsyncValue', 'AsyncData', 'AsyncLoading', 'AsyncError']) {
+      final targetType = '\$riverpod_5.$name';
+      final snippet = asyncGetters.replaceAll('TARGET_TYPE', targetType).replaceAll('TARGET_NAME', name);
+      final search = "      'hashCode': (visitor, target) => D4\n          .validateTarget<$targetType>(target, '$name')\n          .hashCode,";
+      content = content.replaceFirst(search, snippet + search.substring(search.indexOf(" (visitor, target)")));
+    }
+  }
+
+  file.writeAsStringSync(content);
 }
 

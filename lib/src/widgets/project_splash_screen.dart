@@ -7,6 +7,9 @@ class ProjectSplashScreen extends StatelessWidget {
   final String? iconUrl;
   final Color backgroundColor;
   final String statusMessage;
+  final double? downloadProgress;
+  final int? downloadedCount;
+  final int? downloadTotal;
 
   const ProjectSplashScreen({
     super.key,
@@ -15,6 +18,9 @@ class ProjectSplashScreen extends StatelessWidget {
     this.iconUrl,
     this.backgroundColor = const Color(0xFF000000),
     this.statusMessage = 'Loading project bundle...',
+    this.downloadProgress,
+    this.downloadedCount,
+    this.downloadTotal,
   });
 
   /// Helper to parse hex colors like '#000000' or '#112233'.
@@ -54,34 +60,66 @@ class ProjectSplashScreen extends StatelessWidget {
     return Scaffold(
       key: const ValueKey('project_splash_screen'),
       backgroundColor: backgroundColor,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildLogo(),
-            const SizedBox(height: 24),
-            Text(
-              appName,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+      body: Stack(
+        children: [
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildLogo(),
+                const SizedBox(height: 24),
+                Text(
+                  appName,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  statusMessage,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.white70,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                const CircularProgressIndicator(
+                  color: Colors.white,
+                ),
+              ],
+            ),
+          ),
+          if (downloadProgress != null)
+            Positioned(
+              left: 32,
+              right: 32,
+              bottom: 48,
+              child: Column(
+                children: [
+                  if (downloadedCount != null && downloadTotal != null)
+                    Text(
+                      'Downloading packages ($downloadedCount / $downloadTotal)',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: downloadProgress,
+                      backgroundColor: Colors.white24,
+                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                      minHeight: 6,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              statusMessage,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.white70,
-              ),
-            ),
-            const SizedBox(height: 28),
-            const CircularProgressIndicator(
-              color: Colors.white,
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }

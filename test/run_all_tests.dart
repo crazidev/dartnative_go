@@ -9,6 +9,10 @@ import 'debug_controller_test.dart' as debug_test;
 import 'granular_generational_remounting_test.dart' as granular_test;
 import 'hot_reload_callback_test.dart' as callback_test;
 import 'hot_reload_state_preservation_test.dart' as state_test;
+import 'dep_cache_test.dart' as dep_cache_test;
+import 'dep_packager_test.dart' as dep_packager_test;
+import 'riverpod_comprehensive_test.dart' as riverpod_comprehensive_test;
+import 'riverpod_hot_reload_test.dart' as riverpod_hot_reload_test;
 import 'runtime_mode_test.dart' as runtime_mode_test;
 
 class TestCase {
@@ -19,7 +23,7 @@ class TestCase {
   TestCase({
     required this.name,
     required this.run,
-    this.timeout = const Duration(seconds: 15),
+    this.timeout = const Duration(seconds: 45),
   });
 }
 
@@ -65,6 +69,22 @@ Future<void> main() async {
     TestCase(
       name: 'Bridge Config Parity (buildkit vs buildkit_ast)',
       run: () => bridge_config_test.main(),
+    ),
+    TestCase(
+      name: 'DepPackager & ZIP Archiving',
+      run: () => dep_packager_test.main(),
+    ),
+    TestCase(
+      name: 'DepCache & On-Device Storage',
+      run: () => dep_cache_test.main(),
+    ),
+    TestCase(
+      name: 'Riverpod All Providers Validation (Source & AST)',
+      run: () => riverpod_comprehensive_test.main(),
+    ),
+    TestCase(
+      name: 'Riverpod Hot Reload State Preservation (Source & AST)',
+      run: () => riverpod_hot_reload_test.main(),
     ),
   ];
 

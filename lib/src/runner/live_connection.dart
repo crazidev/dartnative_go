@@ -9,6 +9,7 @@ class LiveConnection {
   final void Function(List<Map<String, dynamic>> breakpoints)? onBreakpoints;
   final void Function()? onResume;
   final void Function(bool enabled)? onSetVmDebugger;
+  final void Function(bool enabled)? onSetVerbose;
   final void Function(String error)? onError;
 
   WebSocket? _socket;
@@ -20,6 +21,7 @@ class LiveConnection {
     this.onBreakpoints,
     this.onResume,
     this.onSetVmDebugger,
+    this.onSetVerbose,
     this.onError,
   });
 
@@ -55,6 +57,8 @@ class LiveConnection {
               onResume?.call();
             } else if (type == 'set_vm_debugger') {
               onSetVmDebugger?.call(data['enabled'] == true);
+            } else if (type == 'set_verbose') {
+              onSetVerbose?.call(data['enabled'] == true);
             }
           } catch (_) {}
         },
@@ -82,6 +86,19 @@ class LiveConnection {
           'level': level,
           'message': message,
           'timestamp': DateTime.now().millisecondsSinceEpoch,
+        }),
+      );
+    } catch (_) {}
+  }
+
+  /// Sends verbose mode change to dev server.
+  void sendSetVerbose(bool enabled) {
+    if (!isConnected) return;
+    try {
+      _socket?.add(
+        jsonEncode({
+          'type': 'set_verbose',
+          'enabled': enabled,
         }),
       );
     } catch (_) {}

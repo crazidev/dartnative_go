@@ -34,6 +34,9 @@ abstract final class DartNativePluginRegistrant {
     if (dnTrialEnded) {
       DartNativeLicense.instance.noteTrialEnded();
     }
+    DartNativeLicense.instance.reportPluginUsage(const <String>[
+      'riverpod_kit',
+    ]);
     registerNativeBindings(
       Platform.isAndroid
           ? AndroidNativeBindings.instance

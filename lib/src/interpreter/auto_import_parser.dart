@@ -186,6 +186,7 @@ class AutoImportParser {
   ) {
     final index = <String, String>{};
     projectFiles.forEach((path, code) {
+      if (path.startsWith('package:') || path.startsWith('file:///')) return;
       final declared = extractDeclaredSymbols(code);
       for (final sym in declared) {
         index[sym] = path;
@@ -444,6 +445,10 @@ class AutoImportParser {
     // First pass: breakpoint instrumentation & auto-import processing on all files
     final processedFiles = <String, String>{};
     rawFiles.forEach((path, content) {
+      if (path.startsWith('package:')) {
+        processedFiles[path] = content;
+        return;
+      }
       final normalized = path.startsWith('/') ? path.substring(1) : path;
       final cleanFile = normalized.replaceAll(r'\', '/');
       final baseFile = cleanFile.contains('/')
@@ -470,6 +475,9 @@ class AutoImportParser {
     // Second pass: generate multi-key aliases for all discovered/configured packages
     processedFiles.forEach((path, code) {
       result[path] = code;
+      if (path.startsWith('package:')) {
+        return;
+      }
       result['./$path'] = code;
       result['file:///$path'] = code;
 

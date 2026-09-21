@@ -10,7 +10,9 @@ import 'src/devtool/devtool_overlay.dart';
 import 'src/runner/bundle_loader.dart';
 import 'src/runner/interpreter_runner.dart';
 import 'src/runner/live_connection.dart';
+import 'src/runner/logger.dart';
 import 'src/runner/runtime_mode.dart';
+import 'src/interpreter/widget_generation_tracker.dart';
 import 'src/widgets/interpreter_error_view.dart';
 import 'src/widgets/project_splash_screen.dart';
 
@@ -32,8 +34,8 @@ class _DartNativeGoState extends State<DartNativeGo> {
     storage: ProjectStorage(),
   );
   final TextEditingController _urlController = TextEditingController();
+  StreamSubscription<List<DartGoProject>>? _scannerSub;
   List<DartGoProject> _projects = [];
-  StreamSubscription? _scannerSub;
   bool _isLoading = true;
 
   // Active Runner & Guest App State
@@ -43,7 +45,6 @@ class _DartNativeGoState extends State<DartNativeGo> {
   String? _errorMessage;
   ProjectBundle? _activeBundle;
   Widget? _interpretedWidget;
-  int _reloadGeneration = 0;
 
   final BundleLoader _bundleLoader = BundleLoader();
   late InterpreterRunner _interpreterRunner;
@@ -51,10 +52,18 @@ class _DartNativeGoState extends State<DartNativeGo> {
 
   /// Engine mode. Source default; AST opt-in for testing (see runtime_mode.dart).
   bool _useAst = kUseAst;
+  bool _verboseLogs = DartGoLogger.verbose;
+
+  double? _downloadProgress;
+  int? _downloadedCount;
+  int? _downloadTotal;
 
   @override
   void initState() {
     super.initState();
+    DartGoLogger.logSink = (msg, {level = 'INFO'}) {
+      _liveConnection?.sendDeviceLog(msg, level: level);
+    };
     _interpreterRunner = InterpreterRunner(
       onLog: (msg) => _liveConnection?.sendDeviceLog(msg),
       onExit: _unmountApp,
@@ -100,6 +109,9 @@ class _DartNativeGoState extends State<DartNativeGo> {
       _isLoadingBundle = true;
       _errorMessage = null;
       _statusMessage = 'Connecting to dev server...';
+      _downloadProgress = null;
+      _downloadedCount = null;
+      _downloadTotal = null;
       _activeBundle = ProjectBundle(
         appName: fallbackAppName ?? 'DartNative App',
         serverUrl: serverUrl,
@@ -115,7 +127,21 @@ class _DartNativeGoState extends State<DartNativeGo> {
       });
 
       // 1. Fetch manifest & multi-file bundle
-      final bundle = await _bundleLoader.fetchBundle(serverUrl);
+      final bundle = await _bundleLoader.fetchBundle(
+        serverUrl,
+        onlyAst: _useAst,
+        onProgress: (downloaded, total) {
+          if (mounted) {
+            setState(() {
+              _downloadedCount = downloaded;
+              _downloadTotal = total;
+              _downloadProgress = total > 0 ? downloaded / total : null;
+              _statusMessage =
+                  'Downloading packages ($downloaded / $total)...';
+            });
+          }
+        },
+      );
       if (!mounted) return;
 
       setState(() {
@@ -135,6 +161,14 @@ class _DartNativeGoState extends State<DartNativeGo> {
         onResume: () {
           _interpreterRunner.debugController.resume();
         },
+        onSetVerbose: (enabled) {
+          if (mounted) {
+            setState(() {
+              _verboseLogs = enabled;
+              DartGoLogger.verbose = enabled;
+            });
+          }
+        },
       );
       await _liveConnection!.connect();
 
@@ -142,6 +176,9 @@ class _DartNativeGoState extends State<DartNativeGo> {
       setState(() {
         _statusMessage = 'Compiling & mounting application...';
       });
+
+      WidgetGenerationTracker.resetAll();
+      WidgetGenerationTracker.registerSources(bundle.sources);
 
       _interpreterRunner.currentServerUrl = bundle.serverUrl;
       _interpreterRunner.useAst = _useAst;
@@ -156,15 +193,10 @@ class _DartNativeGoState extends State<DartNativeGo> {
         _interpretedWidget = widget;
         _isAppMounted = true;
         _isLoadingBundle = false;
-        _reloadGeneration++;
       });
     } catch (e, stack) {
       final err = e.toString();
-      print('🔴 [Interpreter Error] $err\n$stack');
-      _liveConnection?.sendDeviceLog(
-        '🔴 [Interpreter Error] $err',
-        level: 'ERROR',
-      );
+      DartGoLogger.error('Interpreter Error: $err', null, stack);
       if (!mounted) return;
       setState(() {
         _isLoadingBundle = false;
@@ -177,32 +209,56 @@ class _DartNativeGoState extends State<DartNativeGo> {
   /// Re-evaluates updated code upon Hot Reload.
   Future<void> _reloadApp({String? changedFile}) async {
     if (_activeBundle == null) return;
+    final reloadSw = Stopwatch()..start();
     try {
+      final fetchSw = Stopwatch()..start();
       final updatedBundle = await _bundleLoader.fetchBundle(
         _activeBundle!.serverUrl,
+        onlyAst: _useAst,
       );
+      final fetchMs = fetchSw.elapsedMilliseconds;
       if (!mounted) return;
       _activeBundle = updatedBundle;
 
+      final trackSw = Stopwatch()..start();
+      WidgetGenerationTracker.registerSources(updatedBundle.sources);
+      if (changedFile != null && changedFile.isNotEmpty) {
+        WidgetGenerationTracker.notifyFilesChanged({changedFile});
+      } else {
+        WidgetGenerationTracker.notifyFilesChanged(const {});
+      }
+      final trackMs = trackSw.elapsedMilliseconds;
+
+      final evalSw = Stopwatch()..start();
       _interpreterRunner.useAst = _useAst;
       final widget = await _interpreterRunner.evaluateBundle(
         updatedBundle,
         isHotReload: true,
       );
+      final evalMs = evalSw.elapsedMilliseconds;
 
       if (!mounted) return;
+      final remountSw = Stopwatch()..start();
       setState(() {
         _interpretedWidget = widget;
-        _reloadGeneration++;
         _errorMessage = null;
       });
+      final remountMs = remountSw.elapsedMilliseconds;
+      final totalMs = reloadSw.elapsedMilliseconds;
+
+      DartGoLogger.reload(
+        mode: _useAst ? 'AST' : 'Source',
+        totalMs: totalMs,
+        timings: {
+          'fetch': fetchMs,
+          'track': trackMs,
+          'eval': evalMs,
+          'remount': remountMs,
+        },
+      );
     } catch (e, stack) {
       final err = 'Hot Reload Error: $e';
-      print('🔴 [Hot Reload Error] $err\n$stack');
-      _liveConnection?.sendDeviceLog(
-        '🔴 [Hot Reload Error] $err',
-        level: 'ERROR',
-      );
+      DartGoLogger.error(err, null, stack);
       if (!mounted) return;
       setState(() {
         _errorMessage = err;
@@ -214,6 +270,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
   void _unmountApp() {
     _liveConnection?.disconnect();
     _liveConnection = null;
+    WidgetGenerationTracker.resetAll();
     _interpreterRunner.unmount();
     if (!mounted) return;
     setState(() {
@@ -228,6 +285,8 @@ class _DartNativeGoState extends State<DartNativeGo> {
   Widget build(BuildContext context) {
     // 1. Loading state: Project Splash Screen while fetching bundle
     if (_isLoadingBundle) {
+      print("===== 0");
+
       return ProjectSplashScreen(
         appName: _activeBundle?.appName ?? 'DartNative App',
         splashUrl: _activeBundle?.splashUrl,
@@ -236,6 +295,9 @@ class _DartNativeGoState extends State<DartNativeGo> {
           _activeBundle?.splashBackgroundColor,
         ),
         statusMessage: _statusMessage,
+        downloadProgress: _downloadProgress,
+        downloadedCount: _downloadedCount,
+        downloadTotal: _downloadTotal,
       );
     }
 
@@ -263,6 +325,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
         isConnected: _liveConnection?.isConnected ?? false,
         onGoHome: _unmountApp,
         onReload: () => _reloadApp(),
+        depCache: _bundleLoader.depCache,
         runtimeModeLabel: runtimeModeFromBool(_useAst).label,
         useAst: _useAst,
         onToggleAst: (enabled) {
@@ -272,8 +335,16 @@ class _DartNativeGoState extends State<DartNativeGo> {
           });
           _reloadApp();
         },
+        verboseLogs: _verboseLogs,
+        onToggleVerbose: (enabled) {
+          setState(() {
+            _verboseLogs = enabled;
+            DartGoLogger.verbose = enabled;
+          });
+          _liveConnection?.sendSetVerbose(enabled);
+        },
         child: KeyedSubtree(
-          key: ValueKey('guest_root_$_reloadGeneration'),
+          key: const ValueKey('guest_root'),
           child:
               _interpretedWidget ??
               const Scaffold(

@@ -5,12 +5,12 @@ import 'package:tom_d4rt/tom_d4rt.dart';
 import '../interpreter/asset_bridge.dart';
 import '../interpreter/auto_import_parser.dart';
 import '../interpreter/d4rt_flutter_application.dart';
-import '../interpreter/dartnative_share_bridges.b.dart';
-import '../interpreter/dartnative_webview_bridges.b.dart';
+import '../interpreter/dartscript.b.dart';
 import '../interpreter/debug_controller.dart';
 import '../interpreter/dn_bridge.dart';
 import 'ast_interpreter_runner.dart';
 import 'bundle_loader.dart';
+import 'logger.dart';
 import 'runtime_mode.dart';
 
 /// Manages dynamic execution of DartNative guest apps using tom_d4rt.
@@ -31,12 +31,13 @@ class InterpreterRunner {
 
   /// When true, [evaluateBundle] prefers pre-compiled AST bytes.
   /// Defaults to [kUseAst] (false → source).
-  bool useAst;
+  bool useAst;  // Per-module snapshots for hot reload state preservation
+  final Map<String, Map<String, Object?>> _moduleTopLevelSnapshots = {};
+  final Map<String, Map<String, Map<String, Object?>>> _moduleStaticSnapshots = {};
+  final Map<String, Object?> _globalTopLevelSnapshot = {};
+  final Map<String, Map<String, Object?>> _globalStaticSnapshot = {};
 
-  // Snapshot of InterpretedClass.staticFields captured before each hot reload.
-  // Restored into the newly-created class objects after re-execution, giving
-  // the same transparent state-preservation behaviour as the Dart VM.
-  final Map<String, Map<String, Object?>> _staticFieldSnapshot = {};
+  AstInterpreterRunner? _astRunner;
 
   DebugController get debugController => _debugController;
   D4rt get interpreter => _interpreter;
@@ -67,29 +68,28 @@ class InterpreterRunner {
 
     // 1. Core DartNative framework bridges + proxies
     registerDartNativeBridges(_interpreter, onLog: onLog);
-    registerAssetAwareBridges(_interpreter, serverUrlProvider: () => currentServerUrl);
+    registerAssetAwareBridges(
+      _interpreter,
+      serverUrlProvider: () => currentServerUrl,
+    );
     AssetResolver.activeServerUrl = currentServerUrl;
 
-    // 2. Plugins bridges
+    // 2. Full generated bridge surface (plugins, riverpod, etc.)
     try {
-      DartnativeShareBridge.registerBridges(
-        _interpreter,
-        'package:dartnative_share/dartnative_share.dart',
-      );
+      DartnativeGoBridges.register(_interpreter);
     } catch (_) {}
 
-    try {
-      DartnativeWebviewBridge.registerBridges(
-        _interpreter,
-        'package:dartnative_webview/dartnative_webview.dart',
-      );
-    } catch (_) {}
-
-    // 3. Intercept runApp(...) so standard entrypoints (void main() { runApp(App()); }) work
-    void captureRunApp(visitor, positional, named, typeArgs) {
+    // 3. Special Framework Bridges: D4rtFlutterApplication, runApp, unawaited
+    Object? captureRunApp(
+      InterpreterVisitor visitor,
+      List<Object?> positional,
+      Map<String, Object?> named,
+      List<RuntimeType>? typeArgs,
+    ) {
       if (positional.isNotEmpty) {
         _capturedApp = unwrap<Widget>(positional[0], visitor: visitor);
       }
+      return null;
     }
 
     for (final lib in [
@@ -136,10 +136,7 @@ class InterpreterRunner {
       signature: 'void exitToLauncher()',
     );
 
-    // 4b. Register unawaited() from dart:async — fire-and-forget, discards
-    // the future's result. Without this the interpreter falls back to a
-    // "default bridged constructor" adapter which always returns null and
-    // throws a runtime error.
+    // 4b. Register unawaited() from dart:async
     void registerUnawaited(String library) {
       _interpreter.registertopLevelFunction(
         'unawaited',
@@ -221,30 +218,159 @@ class InterpreterRunner {
     );
   }
 
-  void _snapshotStaticFields() {
+  void _snapshotState([String? currentLibrary]) {
     final visitor = _interpreter.visitor;
     if (visitor == null) return;
-    _staticFieldSnapshot.clear();
-    for (final entry in visitor.globalEnvironment.values.entries) {
-      if (entry.value is InterpretedClass) {
-        final cls = entry.value as InterpretedClass;
-        if (cls.staticFields.isNotEmpty) {
-          _staticFieldSnapshot[entry.key] = Map.of(cls.staticFields);
+
+    _moduleTopLevelSnapshots.clear();
+    _moduleStaticSnapshots.clear();
+    _globalTopLevelSnapshot.clear();
+    _globalStaticSnapshot.clear();
+
+    bool isStatePreservingObject(Object? val) {
+      if (val == null) return false;
+      if (val is String ||
+          val is num ||
+          val is bool ||
+          val is Symbol ||
+          val is Type) {
+        return false;
+      }
+      if (val is InterpretedFunction ||
+          val is Callable ||
+          val is BridgedClass) {
+        return false;
+      }
+      final typeStr = val.runtimeType.toString();
+      if (typeStr.contains('Provider') ||
+          typeStr.contains('Notifier') ||
+          typeStr.contains('Controller') ||
+          typeStr.contains('Container')) {
+        return true;
+      }
+      if (val is BridgedInstance) {
+        final className = val.bridgedClass.name;
+        if (className.contains('Provider') ||
+            className.contains('Notifier') ||
+            className.contains('Controller') ||
+            className.contains('Container')) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    void snapshotEnvTo(
+      Environment env,
+      Map<String, Object?> topLevelMap,
+      Map<String, Map<String, Object?>> staticMap,
+    ) {
+      for (final entry in env.values.entries) {
+        final val = entry.value;
+        if (val is InterpretedClass) {
+          if (val.staticFields.isNotEmpty) {
+            staticMap[entry.key] = Map.of(val.staticFields);
+          }
+        } else if (isStatePreservingObject(val)) {
+          topLevelMap[entry.key] = val;
         }
       }
     }
+
+    // 1. Snapshot global environment & visitor current environment chain
+    Environment? currentEnv = visitor.environment;
+    while (currentEnv != null) {
+      snapshotEnvTo(currentEnv, _globalTopLevelSnapshot, _globalStaticSnapshot);
+      currentEnv = currentEnv.enclosing;
+    }
+    snapshotEnvTo(visitor.globalEnvironment, _globalTopLevelSnapshot, _globalStaticSnapshot);
+
+    // 2. Snapshot per-module environments (only user package & relevant stateful modules)
+    try {
+      final loader = visitor.moduleLoader;
+      final mainPkg = (currentLibrary != null && currentLibrary.startsWith('package:'))
+          ? currentLibrary.split('/')[0]
+          : 'package:guest_app';
+
+      for (final key in loader.sources.keys) {
+        // Skip stdlib and third-party dependency modules — only user app holds state
+        final isUserModule = key.startsWith(mainPkg) ||
+            key.startsWith('package:guest_app') ||
+            (!key.startsWith('package:') && !key.startsWith('dart:'));
+        if (!isUserModule) continue;
+
+        try {
+          final mod = loader.loadModule(Uri.parse(key));
+          final topMap = <String, Object?>{};
+          final statMap = <String, Map<String, Object?>>{};
+          snapshotEnvTo(mod.environment, topMap, statMap);
+          snapshotEnvTo(mod.exportedEnvironment, topMap, statMap);
+          if (topMap.isNotEmpty) _moduleTopLevelSnapshots[key] = topMap;
+          if (statMap.isNotEmpty) _moduleStaticSnapshots[key] = statMap;
+        } catch (_) {}
+      }
+    } catch (_) {}
   }
 
-  void _restoreStaticFields() {
+  void _restoreState() {
     final visitor = _interpreter.visitor;
     if (visitor == null) return;
-    for (final entry in _staticFieldSnapshot.entries) {
-      final cls = visitor.globalEnvironment.values[entry.key];
-      if (cls is InterpretedClass) {
-        cls.staticFields.addAll(entry.value);
+
+    void restoreEnvFrom(
+      Environment env,
+      Map<String, Object?> topLevelMap,
+      Map<String, Map<String, Object?>> staticMap,
+    ) {
+      for (final entry in staticMap.entries) {
+        final cls = env.values[entry.key];
+        if (cls is InterpretedClass) {
+          cls.staticFields.addAll(entry.value);
+        }
+      }
+
+      for (final entry in topLevelMap.entries) {
+        if (env.values.containsKey(entry.key)) {
+          final existing = env.values[entry.key];
+          if (existing is! InterpretedClass &&
+              existing is! InterpretedFunction &&
+              existing is! Callable) {
+            env.values[entry.key] = entry.value;
+          }
+        }
       }
     }
-    _staticFieldSnapshot.clear();
+
+    // 1. Restore global environment & visitor current environment chain
+    Environment? currentEnv = visitor.environment;
+    while (currentEnv != null) {
+      restoreEnvFrom(currentEnv, _globalTopLevelSnapshot, _globalStaticSnapshot);
+      currentEnv = currentEnv.enclosing;
+    }
+    restoreEnvFrom(visitor.globalEnvironment, _globalTopLevelSnapshot, _globalStaticSnapshot);
+
+    // 2. Restore per-module environments (only for modules that had snapshot data)
+    try {
+      final loader = visitor.moduleLoader;
+      final keysToRestore = _moduleTopLevelSnapshots.keys
+          .followedBy(_moduleStaticSnapshots.keys)
+          .toSet();
+      for (final key in keysToRestore) {
+        final topMap = _moduleTopLevelSnapshots[key];
+        final statMap = _moduleStaticSnapshots[key];
+        if (topMap != null || statMap != null) {
+          try {
+            final mod = loader.loadModule(Uri.parse(key));
+            restoreEnvFrom(mod.environment, topMap ?? const {}, statMap ?? const {});
+            restoreEnvFrom(mod.exportedEnvironment, topMap ?? const {}, statMap ?? const {});
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
+
+    _moduleTopLevelSnapshots.clear();
+    _moduleStaticSnapshots.clear();
+    _globalTopLevelSnapshot.clear();
+    _globalStaticSnapshot.clear();
   }
 
   /// Evaluates guest code from [source] and resolves the root [Widget].
@@ -256,21 +382,27 @@ class InterpreterRunner {
     Map<String, String>? sources,
     bool isHotReload = false,
   }) async {
+    final totalSw = Stopwatch()..start();
+    int snapMs = 0;
     if (isHotReload) {
-      _snapshotStaticFields();
+      final snapSw = Stopwatch()..start();
+      _snapshotState(library);
       try {
         _interpreter.dispose();
       } catch (_) {}
-      // dispose() keeps bridge registrations intact — no need to reinitialise.
+      snapMs = snapSw.elapsedMilliseconds;
     }
 
     _capturedApp = null;
+    final autoImportSw = Stopwatch()..start();
     final processedScript = AutoImportParser.processAndAutoImport(
       source,
       currentFilePath: library,
       projectFiles: sources,
     );
+    final autoImportMs = autoImportSw.elapsedMilliseconds;
 
+    final execSw = Stopwatch()..start();
     Object? rawResult = runZoned(
       () => _interpreter.execute(
         source: processedScript,
@@ -288,6 +420,7 @@ class InterpreterRunner {
     if (rawResult is Future) {
       rawResult = await rawResult;
     }
+    final execMs = execSw.elapsedMilliseconds;
 
     if (rawResult is D4rtFlutterApplication) {
       _activeApplication = rawResult;
@@ -306,7 +439,24 @@ class InterpreterRunner {
       );
     }
 
-    if (isHotReload) _restoreStaticFields();
+    int restoreMs = 0;
+    if (isHotReload) {
+      final restoreSw = Stopwatch()..start();
+      _restoreState();
+      restoreMs = restoreSw.elapsedMilliseconds;
+    }
+
+    DartGoLogger.bench(
+      'Interpreter',
+      'evaluate (${isHotReload ? "reload" : "initial"})',
+      totalSw.elapsedMilliseconds,
+      {
+        'snap': snapMs,
+        'auto_import': autoImportMs,
+        'exec': execMs,
+        'restore': restoreMs,
+      },
+    );
 
     return resolvedWidget;
   }
@@ -349,26 +499,20 @@ class InterpreterRunner {
     String? entryPoint,
     bool isHotReload = false,
   }) async {
-    // Keep interpreter lifecycle consistent with source hot-reload.
-    if (isHotReload) {
-      _snapshotStaticFields();
-      try {
-        _interpreter.dispose();
-      } catch (_) {}
-    }
-    final astRunner = AstInterpreterRunner(
+    _astRunner ??= AstInterpreterRunner(
       onLog: onLog,
       onExit: onExit,
       currentServerUrl: currentServerUrl,
     );
-    try {
-      return await astRunner.evaluateAstBundleAs<Widget>(
-        astBytes,
-        entryPoint: entryPoint,
-      );
-    } finally {
-      astRunner.dispose();
-    }
+    _astRunner!.currentServerUrl = currentServerUrl;
+    _astRunner!.onLog = onLog;
+    _astRunner!.onExit = onExit;
+
+    return await _astRunner!.evaluateAstBundleAs<Widget>(
+      astBytes,
+      entryPoint: entryPoint,
+      isHotReload: isHotReload,
+    );
   }
 
   /// Cleanly unmounts the active guest app.
@@ -381,5 +525,7 @@ class InterpreterRunner {
     try {
       _interpreter.dispose();
     } catch (_) {}
+    _astRunner?.dispose();
+    _astRunner = null;
   }
 }

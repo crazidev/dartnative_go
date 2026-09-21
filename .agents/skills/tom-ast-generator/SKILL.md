@@ -74,6 +74,39 @@ targets:
 
 ---
 
+### 4. DartNative Go Tooling & Verification Pipeline
+
+In `dartnative_go`, bridge and AST generation are orchestrated via scripts in `tool/`:
+
+```bash
+# 1. Regenerate source runtime bridges and apply post-fixes
+dart run tool/d4rtgen.dart
+
+# 2. Regenerate AST runtime bridges (for analyzer-free tom_d4rt_ast)
+dart run tool/d4rtgen_ast.dart
+
+# 3. Compile and validate pre-compiled AST bundle
+dart run tool/build_ast_bundle.dart --project=example
+
+# 4. Run static analysis across generated files and repository
+dart analyze
+
+# 5. Run AST and bridge parity regression test suite
+dart --enable-asserts test/ast_builder_test.dart
+dart --enable-asserts test/bridge_config_parity_test.dart
+
+# 6. Recompile and install global dart_go CLI
+dart run tool/install_global.dart
+```
+
+### 5. Analyzing, Patching & Post-Fixes Workflow
+Whenever running bridge or AST generation:
+1. **Analyze**: Run `dart analyze` to detect any syntax mismatches, deprecated symbols, or type cast errors.
+2. **Patch Generator Skew**: If the generator emits code with known signature skews (e.g. enum extensions, default parameter mismatches), codify the fix in `_applyBridgePostFixes()` inside `tool/d4rtgen.dart` / `tool/d4rtgen_ast.dart` so it is applied deterministically on every generation run.
+3. **Re-verify**: Ensure `dart analyze` and `dart test/ast_builder_test.dart` pass with zero issues.
+
+---
+
 ## Curated Reference Documents
 
 All reference documentation is located in [`references/`](./references/):
@@ -82,3 +115,4 @@ All reference documentation is located in [`references/`](./references/):
 - [astgen_build_yaml.md](./references/astgen_build_yaml.md): Detailed reference specification for all keys and options in `astgen_build.yaml`.
 - [tom_build_configuration_and_cli.md](./references/tom_build_configuration_and_cli.md): In-depth CLI manual covering options, exit codes, batch compilation, and CI automation.
 - [tom_ast_generator_limitations.md](./references/tom_ast_generator_limitations.md): Delta limitations (host-only dependency, parser-only behavior, macro limitations).
+

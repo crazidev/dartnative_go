@@ -1,5 +1,6 @@
 import 'package:dartnative/dartnative.dart';
 import 'package:example/home_screen.dart';
+import 'package:riverpod_kit/riverpod_kit.dart';
 
 import 'dartnative_plugin_registrant.dart';
 
@@ -17,5 +18,9 @@ void main() {
     systemNavigationBarColor: Colors.transparent,
     systemNavigationBarIconBrightness: Brightness.dark,
   );
-  runApp(const HomeScreen());
+  runApp(
+    const ProviderScope(
+      child: HomeScreen(),
+    ),
+  );
 }

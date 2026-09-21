@@ -41,22 +41,39 @@ Activate this skill when:
 
 ## Common Workflows & Commands
 
-### 1. Generating Bridges via CLI
+### 1. Generating Bridges via CLI & Tool Scripts
 ```bash
-# Generate bridges using d4rtgen CLI
+# Generate bridges using DartNative Go runner with automated post-fixes:
+dart run tool/d4rtgen.dart
+
+# Generate AST runtime bridges:
+dart run tool/d4rtgen_ast.dart
+
+# Standalone d4rtgen CLI
 dart run tom_d4rt_generator:d4rtgen --config buildkit.yaml
 
 # Or using build_runner
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-### 2. Scanning Corpus for Allowlist Pruning
+### 2. Post-Generation Analysis & Patching Workflow
+1. **Analyze**: Run `dart analyze` to identify any compiler errors in newly generated `*.b.dart` bridge files.
+2. **Patch Generator Skew (`_applyBridgePostFixes`)**:
+   - Because upstream SDKs or generator templates may have subtle parameter/type mismatches (e.g., enum extension dispatchers, missing type arguments, optional positional parameter counts), add or update string replacements in `_applyBridgePostFixes()` inside `tool/d4rtgen.dart` and `tool/d4rtgen_ast.dart`.
+3. **Verify**: Run `dart analyze` and parity tests:
+   ```bash
+   dart analyze
+   dart --enable-asserts test/bridge_config_parity_test.dart
+   ```
+4. **Recompile Global CLI**: Run `dart run tool/install_global.dart` if runtime/bridge changes affect the `dart_go` binary.
+
+### 3. Scanning Corpus for Allowlist Pruning
 ```bash
 # Scan test/demo scripts to identify actually used relaxer types and prune combinatorial explosions
 dart run tom_d4rt_generator:scan_corpus_types --output doc/corpus_relaxer_allowlist.yaml
 ```
 
-### 3. Sample `buildkit.yaml` Configuration
+### 4. Sample `buildkit.yaml` Configuration
 ```yaml
 d4rtgen:
   generateAllRelaxers: false

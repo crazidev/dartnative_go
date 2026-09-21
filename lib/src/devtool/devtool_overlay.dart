@@ -1,4 +1,5 @@
 import 'package:dartnative/dartnative.dart';
+import '../runner/dep_cache.dart';
 import 'shake_detector.dart';
 
 /// Overlay widget wrapped around the mounted guest app.
@@ -7,7 +8,7 @@ import 'shake_detector.dart';
 /// 1. A floating, draggable/hideable DevTool button.
 /// 2. Physical device shake detection to open the DevTool bottomsheet.
 /// 3. In-stack DevTool bottomsheet showing app details, server connection,
-///    manual reload, and a button to return to the DartNative Go launcher.
+///    dependency cache size & clearing, manual reload, and launcher exit.
 class DevToolOverlay extends StatefulWidget {
   final Widget child;
   final String appName;
@@ -16,6 +17,8 @@ class DevToolOverlay extends StatefulWidget {
   final bool isConnected;
   final VoidCallback onGoHome;
   final VoidCallback onReload;
+  final DepCache? depCache;
+  final VoidCallback? onClearCache;
 
   /// Current engine mode label (e.g. "Source (tom_d4rt)").
   final String runtimeModeLabel;
@@ -23,6 +26,10 @@ class DevToolOverlay extends StatefulWidget {
   /// True when testing AST bundles. Defaults to false (source).
   final bool useAst;
   final void Function(bool enabled)? onToggleAst;
+
+  /// Whether verbose benchmark & diagnostic logs are enabled.
+  final bool verboseLogs;
+  final void Function(bool enabled)? onToggleVerbose;
 
   const DevToolOverlay({
     super.key,
@@ -33,9 +40,13 @@ class DevToolOverlay extends StatefulWidget {
     required this.isConnected,
     required this.onGoHome,
     required this.onReload,
+    this.depCache,
+    this.onClearCache,
     this.runtimeModeLabel = 'Source (tom_d4rt)',
     this.useAst = false,
     this.onToggleAst,
+    this.verboseLogs = false,
+    this.onToggleVerbose,
   });
 
   @override
@@ -46,6 +57,7 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
   late ShakeDetector _shakeDetector;
   bool _isFloatingButtonVisible = true;
   bool _isBottomSheetOpen = false;
+  bool _isCacheCleared = false;
 
   @override
   void initState() {
@@ -401,6 +413,143 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
                               color: Colors.white,
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Dependency Cache (Expo Go-style caching inspection & clear)
+                  if (widget.depCache != null) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2C2C2E),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'DEPENDENCY CACHE',
+                                  style: TextStyle(
+                                    color: Colors.white38,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _isCacheCleared
+                                      ? '0 B (0 packages)'
+                                      : '${widget.depCache!.getFormattedCacheSize()} (${widget.depCache!.getCachedPackageCount()} packages)',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Button(
+                            title: _isCacheCleared ? '✅ Cleared' : '🗑️ Clear',
+                            variant: ButtonVariant.bordered,
+                            foregroundColor: _isCacheCleared
+                                ? const Color(0xFF34C759)
+                                : const Color(0xFFFF9500),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            onPressed: _isCacheCleared
+                                ? null
+                                : () async {
+                                    await widget.depCache!.clearCache();
+                                    widget.onClearCache?.call();
+                                    if (mounted) {
+                                      setState(() {
+                                        _isCacheCleared = true;
+                                      });
+                                    }
+                                  },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      widget.onToggleVerbose?.call(!widget.verboseLogs);
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2C2C2E),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'VERBOSE LOGS',
+                                  style: TextStyle(
+                                    color: Colors.white38,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  widget.verboseLogs
+                                      ? 'Enabled (Full telemetry & benchmarks)'
+                                      : 'Disabled (Clean output)',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const Text(
+                                  'Tap to toggle step-by-step benchmark traces',
+                                  style: TextStyle(
+                                    color: Colors.white38,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: widget.verboseLogs
+                                  ? const Color(0x2234C759)
+                                  : const Color(0x228E8E93),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              widget.verboseLogs ? 'ON' : 'OFF',
+                              style: TextStyle(
+                                color: widget.verboseLogs
+                                    ? const Color(0xFF34C759)
+                                    : const Color(0xFF8E8E93),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],

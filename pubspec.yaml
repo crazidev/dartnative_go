@@ -20,6 +20,10 @@ dependencies:
   dartnative_url_launcher: ^1.0.0
   dartnative_splash: ^1.0.0
   crypto: ^3.0.0
+  riverpod_kit:
+    hosted: https://dartpub.dev
+    version: ^0.1.0
+  riverpod: ^3.3.2
   # == Supported plugins ends ===
   tom_d4rt: any
   tom_d4rt_ast: any

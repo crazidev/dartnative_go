@@ -1,0 +1,30 @@
+name: tom_d4rt_ast
+description: Serializable AST model for Dart code interpretation without analyzer dependency.
+version: 0.65.0
+# Vendored fork (path override from the dartnative_go app): identical to the
+# pub.dev 0.65.0 release except lib/src/runtime/{ast_bundle,d4rt_runner}.dart
+# are patched to compile against BOTH archive 4.x (host/pub-cache) and the
+# archive 3.x API embedded in DartNative's patched AOT platform dill
+# (non-const GZip codecs, nullable ZipEncoder.encode).
+publish_to: none
+repository: https://github.com/al-the-bear/tom_d4rt
+homepage: https://github.com/al-the-bear/tom_d4rt/tree/main/tom_d4rt_ast
+topics:
+  - ast
+  - interpreter
+  - d4rt
+  - dart
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  archive: ^4.0.9
+  # Upper-bounded deliberately: this package interprets `SAstNode` trees, so a
+  # breaking change to the model is a breaking change here. An open constraint
+  # would let pub pair an interpreter with a model it cannot read.
+  tom_ast_model: ^0.2.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6
