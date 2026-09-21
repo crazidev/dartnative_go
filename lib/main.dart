@@ -12,6 +12,7 @@ import 'src/runner/interpreter_runner.dart';
 import 'src/runner/live_connection.dart';
 import 'src/runner/logger.dart';
 import 'src/runner/runtime_mode.dart';
+import 'src/runner/ui_probe.dart';
 import 'src/interpreter/widget_generation_tracker.dart';
 import 'src/widgets/interpreter_error_view.dart';
 import 'src/widgets/project_splash_screen.dart';
@@ -57,6 +58,12 @@ class _DartNativeGoState extends State<DartNativeGo> {
   double? _downloadProgress;
   int? _downloadedCount;
   int? _downloadTotal;
+
+  /// Probe anchor: resolves the guest-root `Element` (the reconciled DNTree)
+  /// for UI automation — see `lib/src/runner/ui_probe.dart`. Stable across
+  /// reloads; the inner `ValueKey('guest_root')` layer below keeps owning
+  /// state preservation, so this outer key never changes child type.
+  final GlobalKey _guestProbeKey = GlobalKey();
 
   @override
   void initState() {
@@ -154,6 +161,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       _liveConnection = LiveConnection(
         serverUrl: bundle.serverUrl,
         onReload: (changed) => _reloadApp(changedFile: changed),
+        onRestart: () => _restartApp(),
         onBreakpoints: (bps) {
           _interpreterRunner.debugController.setBreakpoints(bps);
           _reloadApp();
@@ -168,6 +176,113 @@ class _DartNativeGoState extends State<DartNativeGo> {
               DartGoLogger.verbose = enabled;
             });
           }
+        },
+        // UI automation: answer probe/tap requests from test scripts.
+        // Probes prefer the reconciled DNTree (native viewIds) via the
+        // guest probe key and fall back to the widget walk; taps resolve
+        // through mounted elements for the same reason.
+        // See `lib/src/runner/ui_probe.dart` + `test/test_lab/ui_automator.dart`.
+        onUiProbeRequest: (requestId) {
+          final probed = probeGuest(
+            elementRoot: probeRootElement(_guestProbeKey),
+            widgetRoot: _interpretedWidget,
+          );
+          _liveConnection?.sendUiTree(requestId, probed.tree);
+        },
+        onUiTap: (requestId, title) {
+          final elementRoot = probeRootElement(_guestProbeKey);
+          final widget = _interpretedWidget;
+          final String? error;
+          if (elementRoot != null) {
+            error = tapButtonInElementTree(elementRoot, title);
+          } else if (widget != null) {
+            error = tapButtonByTitle(widget, title);
+          } else {
+            error = 'no app mounted';
+          }
+          if (error == null && mounted) {
+            // Rebuild so the tapped callback's effects become visible to the
+            // next probe (guest setState/Provider notification still applies).
+            setState(() {});
+          }
+          _liveConnection?.sendUiTapResult(requestId, error == null, error);
+        },
+        // UI automation triggers: hover / focus / blur / submit / type.
+        // Resolve through the reconciled DNTree when available, else the
+        // widget walk; state-changing actions rebuild for the next probe.
+        onUiHover: (requestId, target) {
+          final outcome = hoverTarget(
+            widgetRoot: _interpretedWidget,
+            elementRoot: probeRootElement(_guestProbeKey),
+            spec: TargetSpec.fromJson(target),
+          );
+          _liveConnection?.sendUiActionResult(
+            'ui_hover_result',
+            requestId,
+            outcome.ok,
+            error: outcome.error,
+            viewId: outcome.viewId,
+          );
+        },
+        onUiFocus: (requestId, target) {
+          final outcome = focusTarget(
+            widgetRoot: _interpretedWidget,
+            elementRoot: probeRootElement(_guestProbeKey),
+            spec: TargetSpec.fromJson(target),
+          );
+          _liveConnection?.sendUiActionResult(
+            'ui_focus_result',
+            requestId,
+            outcome.ok,
+            error: outcome.error,
+            viewId: outcome.viewId,
+          );
+        },
+        onUiBlur: (requestId, target) {
+          final outcome = blurTarget(
+            widgetRoot: _interpretedWidget,
+            elementRoot: probeRootElement(_guestProbeKey),
+            spec: TargetSpec.fromJson(target),
+          );
+          _liveConnection?.sendUiActionResult(
+            'ui_blur_result',
+            requestId,
+            outcome.ok,
+            error: outcome.error,
+            viewId: outcome.viewId,
+          );
+        },
+        onUiSubmit: (requestId, target, text) {
+          final outcome = submitTarget(
+            widgetRoot: _interpretedWidget,
+            elementRoot: probeRootElement(_guestProbeKey),
+            spec: TargetSpec.fromJson(target),
+            text: text,
+          );
+          if (outcome.ok && mounted) setState(() {});
+          _liveConnection?.sendUiActionResult(
+            'ui_submit_result',
+            requestId,
+            outcome.ok,
+            error: outcome.error,
+            viewId: outcome.viewId,
+          );
+        },
+        onUiType: (requestId, target, text) {
+          final outcome = typeIntoTarget(
+            widgetRoot: _interpretedWidget,
+            elementRoot: probeRootElement(_guestProbeKey),
+            spec: TargetSpec.fromJson(target),
+            text: text,
+          );
+          if (outcome.ok && mounted) setState(() {});
+          _liveConnection?.sendUiActionResult(
+            'ui_type_result',
+            requestId,
+            outcome.ok,
+            error: outcome.error,
+            viewId: outcome.viewId,
+          );
         },
       );
       await _liveConnection!.connect();
@@ -266,6 +381,66 @@ class _DartNativeGoState extends State<DartNativeGo> {
     }
   }
 
+  /// Drops interpreter state and evaluates the current bundle fresh upon
+  /// Hot Restart (test scripts: `restart` broadcast, usually `origin: test`).
+  ///
+  /// Unlike [_reloadApp] nothing is preserved: generation tracking resets,
+  /// the runner is unmounted + re-initialized, and the bundle is re-fetched
+  /// so the app also (re)mounts when a previous evaluation left it in an
+  /// error/empty state. Requires a dispatched project (`_activeBundle`).
+  Future<void> _restartApp() async {
+    if (_activeBundle == null) return;
+    final restartSw = Stopwatch()..start();
+    try {
+      if (mounted) {
+        setState(() {
+          _statusMessage = 'Restarting application...';
+          _errorMessage = null;
+        });
+      }
+      final updatedBundle = await _bundleLoader.fetchBundle(
+        _activeBundle!.serverUrl,
+        onlyAst: _useAst,
+      );
+      if (!mounted) return;
+      _activeBundle = updatedBundle;
+
+      WidgetGenerationTracker.resetAll();
+      WidgetGenerationTracker.registerSources(updatedBundle.sources);
+
+      _interpreterRunner.unmount();
+      _interpreterRunner.currentServerUrl = updatedBundle.serverUrl;
+      _interpreterRunner.useAst = _useAst;
+      _interpreterRunner.initInterpreter();
+      final widget = await _interpreterRunner.evaluateBundle(
+        updatedBundle,
+        isHotReload: false,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _interpretedWidget = widget;
+        _isAppMounted = true;
+        _isLoadingBundle = false;
+        _errorMessage = null;
+      });
+      DartGoLogger.bench(
+        'Runner',
+        'Hot Restart (${_useAst ? 'AST' : 'Source'})',
+        restartSw.elapsedMilliseconds,
+      );
+    } catch (e, stack) {
+      final err = 'Hot Restart Error: $e';
+      DartGoLogger.error(err, null, stack);
+      if (!mounted) return;
+      setState(() {
+        _isLoadingBundle = false;
+        _isAppMounted = true;
+        _errorMessage = err;
+      });
+    }
+  }
+
   /// Unmounts the guest app and returns to the Go launcher screen.
   void _unmountApp() {
     _liveConnection?.disconnect();
@@ -344,12 +519,15 @@ class _DartNativeGoState extends State<DartNativeGo> {
           _liveConnection?.sendSetVerbose(enabled);
         },
         child: KeyedSubtree(
-          key: const ValueKey('guest_root'),
-          child:
-              _interpretedWidget ??
-              const Scaffold(
-                body: Center(child: Text('Evaluating widget...')),
-              ),
+          key: _guestProbeKey,
+          child: KeyedSubtree(
+            key: const ValueKey('guest_root'),
+            child:
+                _interpretedWidget ??
+                const Scaffold(
+                  body: Center(child: Text('Evaluating widget...')),
+                ),
+          ),
         ),
       );
     }

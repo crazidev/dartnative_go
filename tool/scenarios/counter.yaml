@@ -1,0 +1,47 @@
+# Minimal scenario: validates the CLI + driver headlessly.
+# No device needed: canned trees stand in for the app, and reload edits
+# apply to a temp sandbox seeded by fake.files.
+name: counter-smoke
+defaults: { step_timeout_s: 10, probe_interval_ms: 100 }
+
+fake:
+  trees:
+    - type: Scaffold
+      children:
+        - type: Center
+          children:
+            - type: Column
+              children:
+                - { type: Text, text: 'Count: 0' }
+                - { type: Button, title: Increment, tappable: true }
+    - type: Scaffold
+      children:
+        - type: Center
+          children:
+            - type: Column
+              children:
+                - { type: Text, text: 'Count: 1' }
+                - { type: Button, title: Increment, tappable: true }
+  taps:
+    Increment: ok
+  files:
+    lib/counter.dart: |
+      int count = 0;
+      String label() => 'Count: $count';
+
+steps:
+  # Fresh start: restart settles on the initial tree (consumes it), so the
+  # assertions below continue from there.
+  - require_clean: { files: [lib/counter.dart] }
+  - restart: { text: 'Count: 0', timeout_s: 5 }
+  - expect_button: Increment
+  - hover: { title: Increment }
+  - tap: { title: Increment }
+  - probe_until: { text: 'Count: 1', timeout_s: 5 }
+  - reload:
+      edit: { file: lib/counter.dart,
+              search: 'int count = 0;', replace: 'int count = 1;' }
+      settle: { text: 'Count: 1', timeout_s: 5 }
+      revert: true
+      revert_settle: { text: 'Count: 1', timeout_s: 5 }
+  - log: { msg: 'counter smoke done' }

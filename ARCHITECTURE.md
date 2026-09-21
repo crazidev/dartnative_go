@@ -120,3 +120,69 @@ dart run tool/build_ast_bundle.dart
 - `q`: Render ASCII QR code in terminal for camera scanning.
 - `c`: Clear terminal screen.
 - `h`: Show command help.
+
+---
+
+## 6. Headless Test Lab (`test/`)
+
+All suites are `package:test` and run under the DartNative tester —
+`dn test test/` is the single runner (never bare `dart test` for widget
+suites: `package:dartnative` needs `dart:ui`). The old
+`test/run_all_tests.dart` import-hack is retired.
+
+```text
+test/
+  unit/      # pure logic, no dart:ui
+  runner/    # interpreter flows via DnHarness (reload, modes, riverpod, UI)
+  server/    # dev-server protocol (FakeDevServer + real-server suites)
+  plugins/   # one suite per native plugin (shared_preferences = template)
+  test_lab/  # harness INFRA, not suites (DnHarness, widget_probe,
+             # reload_driver, FakeDevServer, UiAutomator, fakes, fixtures)
+```
+
+- **Bridge fakes (host-only, opt-in):** `loadModule` consults
+  `_hasBridgedContentForUri` BEFORE the `sources` map, so registered
+  bridges shadow `AutoImportParser` stubs and FFI plugins throw on macOS.
+  `DnHarness(bridgeOverrides:)` installs in-memory fakes over the real
+  bridges (last registration wins, before first evaluate) — one
+  `test/test_lab/fakes/fake_<plugin>.dart` per plugin. Device suites pass
+  NO overrides and run with
+  `dn test -d <id> --dart-define=DN_DEVICE_TEST=true`.
+- **Assertion channels:** tap side effects are asserted via host-visible
+  channels (`onLog` prints = device logs on-device, fake-host objects,
+  provider containers). Interpreted statics/top-levels are per-`execute`
+  isolated and MUST NOT be the assertion channel.
+- **Skills:** `.agents/skills/dartnative-test-{lab,writing}` (runbook +
+  authoring recipe) and `dartnative-plugin-matrix` (per-plugin checklist).
+
+---
+
+## 7. UI Automation Protocol (WS)
+
+Test scripts drive the app as second WebSocket clients; the dev server
+relays automation messages (`ui_*`, test-origin `reload`/`restart`) and the
+app answers from its live tree (`lib/main.dart` probe handler, anchored at
+`_guestProbeKey` so probes prefer the reconciled DNTree with native
+`viewId`s, falling back to the widget walk).
+
+| Direction | Messages |
+| :--- | :--- |
+| script → device | `ui_probe_request`, `ui_tap{title}`, `ui_hover/focus/blur{sub}`¹, `ui_submit/ui_type{text}`, `restart`², `reload`² |
+| device → script | `ui_tree{tree}`, `ui_tap_result`, `ui_<action>_result{ok,error?,viewId?}` |
+
+¹ Selectors: `{title?, text?, key?, icon_code_point?}` (AND-combined).
+`hover` = reachability + `viewId` report (the SDK exposes no hover
+callbacks). `focus`/`blur` need `TextField.focusNode`; `submit` needs
+`onSubmitted` (Buttons fail with "use tap"); `type` needs a controller and
+fires `onChanged`.
+² `origin: test` only — device reloads originate server-side, so test
+signals cannot loop. `restart` drops interpreter state and (re)mounts;
+`reload` preserves it.
+
+YAML scenarios (`tool/scenarios/*.yaml`) run headless
+(`--against fake`, canned trees + temp sandbox) or on-device via
+`dart run tool/ui_test_run.dart` (vanilla `dart run`: only pure imports).
+Steps: `require_clean` (fail fast on dirty reload targets, or
+`restore: true`), `restart`, `probe`, `expect_text/no_text/button/key/icon`,
+`tap`, `hover/focus/blur/submit/type`, `probe_until`, `reload`
+(exactly-once `search→replace`/`append`, `settle`/`revert`), `sleep`, `log`.

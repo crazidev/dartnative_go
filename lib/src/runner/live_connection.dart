@@ -12,12 +12,26 @@ class LiveConnection {
   final void Function(bool enabled)? onSetVerbose;
   final void Function(String error)? onError;
 
+  /// Hot restart requested by a test script (`restart` broadcast, usually
+  /// `origin: test`). Unlike `onReload` (state-preserving), the handler
+  /// should drop interpreter state and evaluate fresh.
+  final void Function()? onRestart;
+
   /// UI automation (see `lib/src/runner/ui_probe.dart` for the protocol).
   /// `onUiProbeRequest` fires when a test script asks for the widget tree;
   /// the handler should reply with [sendUiTree]. `onUiTap` fires with the
   /// button title; the handler should reply with [sendUiTapResult].
   final void Function(String requestId)? onUiProbeRequest;
   final void Function(String requestId, String title)? onUiTap;
+
+  /// UI automation triggers (see `lib/src/runner/ui_probe.dart`). Each fires
+  /// with the request id plus the decoded target (and text for type/submit);
+  /// the handler replies with [sendUiActionResult].
+  final void Function(String requestId, Map<String, dynamic> target)? onUiHover;
+  final void Function(String requestId, Map<String, dynamic> target)? onUiFocus;
+  final void Function(String requestId, Map<String, dynamic> target)? onUiBlur;
+  final void Function(String requestId, Map<String, dynamic> target, String? text)? onUiSubmit;
+  final void Function(String requestId, Map<String, dynamic> target, String text)? onUiType;
 
   WebSocket? _socket;
   bool _isDisposed = false;
@@ -30,11 +44,24 @@ class LiveConnection {
     this.onSetVmDebugger,
     this.onSetVerbose,
     this.onError,
+    this.onRestart,
     this.onUiProbeRequest,
     this.onUiTap,
+    this.onUiHover,
+    this.onUiFocus,
+    this.onUiBlur,
+    this.onUiSubmit,
+    this.onUiType,
   });
 
   bool get isConnected => _socket != null && _socket!.readyState == WebSocket.open;
+
+  static Map<String, dynamic> _targetMap(Map<String, dynamic> data) {
+    final target = data['target'];
+    if (target is Map<String, dynamic>) return target;
+    if (target is Map) return Map<String, dynamic>.from(target);
+    return const {};
+  }
 
   /// Connects to the dev server WebSocket at `ws://$host:$port/ws`.
   Future<void> connect({Duration timeout = const Duration(seconds: 5)}) async {
@@ -59,6 +86,8 @@ class LiveConnection {
             if (type == 'reload') {
               final changedFile = data['changedFile'] as String?;
               onReload?.call(changedFile);
+            } else if (type == 'restart') {
+              onRestart?.call();
             } else if (type == 'breakpoints') {
               final bpList = (data['breakpoints'] as List).cast<Map<String, dynamic>>();
               onBreakpoints?.call(bpList);
@@ -74,6 +103,33 @@ class LiveConnection {
               onUiTap?.call(
                 data['requestId']?.toString() ?? '',
                 data['title']?.toString() ?? '',
+              );
+            } else if (type == 'ui_hover') {
+              onUiHover?.call(
+                data['requestId']?.toString() ?? '',
+                _targetMap(data),
+              );
+            } else if (type == 'ui_focus') {
+              onUiFocus?.call(
+                data['requestId']?.toString() ?? '',
+                _targetMap(data),
+              );
+            } else if (type == 'ui_blur') {
+              onUiBlur?.call(
+                data['requestId']?.toString() ?? '',
+                _targetMap(data),
+              );
+            } else if (type == 'ui_submit') {
+              onUiSubmit?.call(
+                data['requestId']?.toString() ?? '',
+                _targetMap(data),
+                data['text']?.toString(),
+              );
+            } else if (type == 'ui_type') {
+              onUiType?.call(
+                data['requestId']?.toString() ?? '',
+                _targetMap(data),
+                data['text']?.toString() ?? '',
               );
             }
           } catch (_) {}
@@ -149,14 +205,28 @@ class LiveConnection {
 
   /// Sends the outcome of a `ui_tap` request (`error` is null on success).
   void sendUiTapResult(String requestId, bool ok, [String? error]) {
+    sendUiActionResult('ui_tap_result', requestId, ok,
+        error: error, viewId: null);
+  }
+
+  /// Sends a trigger outcome (`ui_hover_result`, `ui_focus_result`,
+  /// `ui_blur_result`, `ui_submit_result`, `ui_type_result`).
+  void sendUiActionResult(
+    String type,
+    String requestId,
+    bool ok, {
+    String? error,
+    int? viewId,
+  }) {
     if (!isConnected) return;
     try {
       _socket?.add(
         jsonEncode({
-          'type': 'ui_tap_result',
+          'type': type,
           'requestId': requestId,
           'ok': ok,
           'error': ?error,
+          'viewId': ?viewId,
           'timestamp': DateTime.now().millisecondsSinceEpoch,
         }),
       );

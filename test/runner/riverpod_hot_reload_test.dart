@@ -8,37 +8,7 @@ import 'package:dartnative_go/src/cli/ast_builder.dart';
 import 'package:dartnative_go/src/interpreter/auto_import_parser.dart';
 import 'package:dartnative_go/src/runner/ast_interpreter_runner.dart';
 import 'package:dartnative_go/src/runner/interpreter_runner.dart';
-
-class _FakeBuildContext implements BuildContext {
-  @override
-  Widget get widget => throw UnimplementedError();
-
-  @override
-  bool get mounted => true;
-
-  @override
-  T? dependOnInheritedWidgetOfExactType<T extends InheritedWidget>() => null;
-
-  @override
-  T? getInheritedWidgetOfExactType<T extends InheritedWidget>() => null;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _TestConsumerHost implements ConsumerHost {
-  @override
-  final BuildContext context = _FakeBuildContext();
-
-  @override
-  final ProviderContainer container = ProviderContainer();
-
-  @override
-  void markNeedsBuild() {}
-
-  @override
-  void onNextBuild(void Function() teardown) {}
-}
+import '../test_lab/fixtures/riverpod_fixture.dart';
 
 void main() {
   test('Riverpod state and top-level providers persist across Hot Reload in Source and AST modes', () async {
@@ -174,7 +144,7 @@ void main() {
       final scopeV1 = rootV1 as ProviderScope;
       final screenV1 = scopeV1.child;
 
-      final host = _TestConsumerHost();
+      final host = TestConsumerHost();
       final ref = ConsumerRef(host);
 
       // 1. Initial build: Count = 10
@@ -315,7 +285,7 @@ class CounterScreen extends ConsumerWidget {
       final astScopeV1 = astRootV1 as ProviderScope;
       final astScreenV1 = astScopeV1.child;
 
-      final astHost = _TestConsumerHost();
+      final astHost = TestConsumerHost();
       final astRef = ConsumerRef(astHost);
 
       // 1. AST initial build

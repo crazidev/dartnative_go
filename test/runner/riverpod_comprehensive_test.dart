@@ -9,36 +9,7 @@ import 'package:dartnative_go/src/interpreter/auto_import_parser.dart';
 import 'package:dartnative_go/src/runner/ast_interpreter_runner.dart';
 import 'package:dartnative_go/src/runner/interpreter_runner.dart';
 
-class _FakeBuildContext implements BuildContext {
-  @override
-  Widget get widget => throw UnimplementedError();
-
-  @override
-  bool get mounted => true;
-
-  @override
-  T? dependOnInheritedWidgetOfExactType<T extends InheritedWidget>() => null;
-
-  @override
-  T? getInheritedWidgetOfExactType<T extends InheritedWidget>() => null;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _TestConsumerHost implements ConsumerHost {
-  @override
-  final BuildContext context = _FakeBuildContext();
-
-  @override
-  final ProviderContainer container = ProviderContainer();
-
-  @override
-  void markNeedsBuild() {}
-
-  @override
-  void onNextBuild(void Function() teardown) {}
-}
+import '../test_lab/fixtures/riverpod_fixture.dart';
 
 /// Generates a test project containing all major Riverpod provider types:
 /// - NotifierProvider (synchronous state + mutation methods)
@@ -47,17 +18,8 @@ class _TestConsumerHost implements ConsumerHost {
 /// - StreamProvider (streaming data)
 /// - ConsumerWidget (build with ref.watch & button callback calling notifier method)
 Directory _createRiverpodTestProject(Directory parent, String name) {
-  final dir = Directory('${parent.path}/$name')..createSync(recursive: true);
-  File('${dir.path}/pubspec.yaml').writeAsStringSync('''
-name: $name
-dependencies:
-  dartnative: ^1.0.0
-  riverpod_kit:
-    hosted: https://dartpub.dev
-    version: ^0.1.0
-''');
-
-  final lib = Directory('${dir.path}/lib')..createSync();
+  final dir = createRiverpodProjectShell(parent, name);
+  final lib = Directory('${dir.path}/lib');
 
   // providers.dart
   File('${lib.path}/providers.dart').writeAsStringSync('''
@@ -236,7 +198,7 @@ void main() {
 
       final astScope = astRoot as ProviderScope;
       final astScreen = astScope.child;
-      final astHost = _TestConsumerHost();
+      final astHost = TestConsumerHost();
       final astRef = ConsumerRef(astHost);
 
       // 1. Initial Build
@@ -347,7 +309,7 @@ void main() {
 
       final sourceScope = sourceRoot as ProviderScope;
       final sourceScreen = sourceScope.child;
-      final sourceHost = _TestConsumerHost();
+      final sourceHost = TestConsumerHost();
       final sourceRef = ConsumerRef(sourceHost);
 
       // 1. Initial Build

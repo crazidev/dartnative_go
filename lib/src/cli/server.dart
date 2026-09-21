@@ -422,6 +422,69 @@ class DartGoServer {
                   }
                   print('   👉 Type c to resume execution.\n');
                   return;
+                } else if (data['type'] == 'reload' &&
+                    data['origin'] == 'test') {
+                  // UI automation: a test script without filesystem access
+                  // asks for a reload. Only `origin: test` messages are
+                  // relayed — device reloads originate server-side, so this
+                  // cannot loop back.
+                  print('[DevServer] 📲 Test-triggered reload requested');
+                  _broadcastReload(
+                    data['changedFile']?.toString(),
+                    options.projectDir.path,
+                  );
+                  return;
+                } else if (data['type'] == 'restart' &&
+                    data['origin'] == 'test') {
+                  // UI automation: a test script asks for a full restart
+                  // (fresh interpreter, e.g. before a scenario). Same
+                  // loop-safety as the test reload above.
+                  print('[DevServer] 📲 Test-triggered restart requested');
+                  _broadcast({
+                    'type': 'restart',
+                    'origin': 'test',
+                    'timestamp': DateTime.now().millisecondsSinceEpoch,
+                  });
+                  return;
+                } else if (data['type'] == 'ui_probe_request' ||
+                    data['type'] == 'ui_tap' ||
+                    data['type'] == 'ui_hover' ||
+                    data['type'] == 'ui_focus' ||
+                    data['type'] == 'ui_blur' ||
+                    data['type'] == 'ui_submit' ||
+                    data['type'] == 'ui_type') {
+                  // UI automation: a test script drives the connected
+                  // device(s) — probe, tap, hover, focus, blur, submit, type.
+                  // Relay to everyone; the device answers with `ui_tree` /
+                  // `*_result` messages handled below.
+                  _broadcast(Map<String, dynamic>.from(data));
+                  return;
+                } else if (data['type'] == 'ui_tree') {
+                  final req = data['requestId'] ?? '?';
+                  print('[DevServer] 📲 UI tree received (request $req)');
+                  _broadcast(Map<String, dynamic>.from(data));
+                  return;
+                } else if (data['type'] == 'ui_tap_result' ||
+                    data['type'] == 'ui_hover_result' ||
+                    data['type'] == 'ui_focus_result' ||
+                    data['type'] == 'ui_blur_result' ||
+                    data['type'] == 'ui_submit_result' ||
+                    data['type'] == 'ui_type_result') {
+                  final req = data['requestId'] ?? '?';
+                  final action = (data['type'] as String)
+                      .replaceFirst('ui_', '')
+                      .replaceFirst('_result', '');
+                  final ok = data['ok'] == true;
+                  final err = data['error'];
+                  final view = data['viewId'];
+                  if (ok) {
+                    print('[DevServer] 📲 UI $action ok (request $req'
+                        '${view != null ? ', view $view' : ''})');
+                  } else {
+                    print('[DevServer] 📲 UI $action FAILED (request $req): $err');
+                  }
+                  _broadcast(Map<String, dynamic>.from(data));
+                  return;
                 }
               }
             } catch (_) {}

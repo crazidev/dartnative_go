@@ -1,0 +1,39 @@
+# Real-device scenario for the example/ guest app (Riverpod login flow).
+# Needs: `dart_go start` in example/ + app connected with guest mounted.
+# Needs a device: run with --server http://<lan-ip>:<port>
+# (Fake mode is rejected: no fake: block by design.)
+name: example-login-reload
+server: http://192.168.3.159:8088
+project_dir: ./example
+defaults: { step_timeout_s: 10, probe_interval_ms: 300 }
+
+steps:
+  # Whole-state reset: restore leftover edits instead of blocking, so an
+  # aborted run never poisons the next one.
+  - require_clean: { files: [lib/home_screen.dart], restore: true }
+  # Fresh start: hot-restart drops interpreter state (logged-out, count 0)
+  # and (re)mounts the guest before the first assertion.
+  # - restart: { text: "Not logged in", timeout_s: 30 }
+  # - probe: {}
+  # - expect_text: "Not logged in"
+  # - expect_button: Login
+  # - tap: { title: Login }
+  # - probe_until: { text: "Logged in as Alice", timeout_s: 10 }
+  # - probe_until: { text: "Login count: 1", timeout_s: 10 }
+  # - tap: { title: Logout }
+  # - probe_until: { text: "Not logged in", timeout_s: 10 }
+
+  # - reload:
+  #     edit:
+  #       {
+  #         file: lib/home_screen.dart,
+  #         search: "Login count:",
+  #         replace: "Sign-ins:",
+  #       }
+  #     # NOTE: logout() preserves loginCount, so the count is 1 here, not 0.
+  #     settle: { text: "Sign-ins: 1", timeout_s: 30 }
+  #     revert: true
+  #     revert_settle: { text: "Login count: 1", timeout_s: 30 }
+
+  # - tap: { title: Login }
+  # - probe_until: { text: "Logged in as Alice", timeout_s: 10 }
