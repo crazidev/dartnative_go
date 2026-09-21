@@ -209,6 +209,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.0"
+  native_bottomsheet:
+    dependency: "direct main"
+    description:
+      name: native_bottomsheet
+      sha256: e9397a8febb00f8c8545bb3907a81b4f2dcd0777083e250786852cbae1b6920f
+      url: "https://dartpub.dev"
+    source: hosted
+    version: "0.1.0"
   node_preamble:
     dependency: transitive
     description:

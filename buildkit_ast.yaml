@@ -59,6 +59,11 @@ d4rtgen:
         - package:crypto/crypto.dart
       barrelImport: package:crypto/crypto.dart
       outputPath: lib/src/interpreter/ast/crypto_bridges.b.dart
+    - name: native_bottomsheet
+      barrelFiles:
+        - package:native_bottomsheet/native_bottomsheet.dart
+      barrelImport: package:native_bottomsheet/native_bottomsheet.dart
+      outputPath: lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart
     - name: riverpod_kit
       barrelFiles:
         - package:riverpod_kit/riverpod_kit.dart

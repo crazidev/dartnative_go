@@ -11,12 +11,16 @@
 //
 // To hand-own this file, delete the header line above; the CLI then stops
 // overwriting it.
+//
+// Plugins loaded:
+//   • native_bottomsheet
 
 import 'dart:io' show Platform;
 
 import 'package:dartnative/dartnative.dart';
 import 'package:dartnative_ios/dartnative_ios.dart';
 import 'package:dartnative_android/dartnative_android.dart';
+import 'package:native_bottomsheet/native_bottomsheet.dart';
 
 abstract final class DartNativePluginRegistrant {
   /// Registers the platform bindings and loads every DartNative plugin's
@@ -35,6 +39,7 @@ abstract final class DartNativePluginRegistrant {
       DartNativeLicense.instance.noteTrialEnded();
     }
     DartNativeLicense.instance.reportPluginUsage(const <String>[
+      'native_bottomsheet',
       'riverpod_kit',
     ]);
     registerNativeBindings(
@@ -42,5 +47,24 @@ abstract final class DartNativePluginRegistrant {
           ? AndroidNativeBindings.instance
           : IOSNativeBindings.instance,
     );
+    _load('native_bottomsheet', () {
+      BottomSheetFFIBindings.loadSymbols();
+    });
+  }
+
+  /// Loads one plugin's FFI symbols, turning a missing native side into a
+  /// message that names the fix.
+  static void _load(String plugin, void Function() load) {
+    try {
+      load();
+    } catch (e) {
+      dnLog(
+        '[dartnative] $plugin: its native symbols are not in this build.\n'
+        '  iOS:     run `pod install` in ios/, then rebuild.\n'
+        '  Android: rebuild so the plugin library is packaged.\n'
+        '  The app keeps going; this plugin will not work until then.\n'
+        '  $e',
+      );
+    }
   }
 }

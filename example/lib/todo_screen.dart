@@ -1,5 +1,6 @@
 import 'package:dartnative/dartnative.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
+import 'package:native_bottomsheet/native_bottomsheet.dart';
 
 // ---------------------------------------------------------------------------
 // Note Colors
@@ -138,6 +139,7 @@ class TodoScreen extends ConsumerStatefulWidget {
 class _TodoScreenState extends ConsumerState<TodoScreen> {
   TodoLayout layout = TodoLayout.sticky;
   bool isCreating = false;
+  DNSheetController? sheet;
 
   @override
   Widget build(BuildContext context) {
@@ -149,54 +151,73 @@ class _TodoScreenState extends ConsumerState<TodoScreen> {
       ...todos.where((todo) => !todo.pinned),
     ];
 
+    void showCreateNote(BuildContext context) {
+      sheet = showBottomSheet(
+        context,
+        detents: const [DNSheetDetent.medium, DNSheetDetent.large],
+        initialDetent: DNSheetDetent.medium,
+        showGrabber: true,
+        builder: (ctx, controller) => _CreateNotePanel(
+          onClose: () {
+            controller.dismiss();
+          },
+          onCreate:
+              ({
+                required String title,
+                required String description,
+                required Color color,
+              }) {
+                print("Add todo ${title} ${description} ${color}");
+                notifier.addTodo(
+                  title: title,
+                  description: description,
+                  color: color,
+                );
+
+                controller.dismiss();
+              },
+        ),
+        onDetentChanged: (detent) => print('settled at ${detent.label}'),
+        onDismissed: () => print('sheet closed'),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F7F2),
-
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         backgroundColor: const Color(0xFF292524),
-
+        titleGlassBackground: true,
         title: const Text(
           'My Notes',
           style: TextStyle(
             color: Color(0xFFFFFFFF),
-            fontSize: 21,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w500,
+            fontSize: 25,
           ),
         ),
-
         actions: [
-          Button(
-            title: '▦',
+          BarButtonItem(
+            fontIcon: CupertinoIcons.rectangle_stack,
+            titleStyle: TextStyle(color: Colors.white, fontSize: 16),
             onPressed: () {
-              setState(() {
-                layout = TodoLayout.sticky;
-              });
+              layout = (layout == TodoLayout.sticky
+                  ? TodoLayout.cards
+                  : TodoLayout.sticky);
+              setState(() {});
             },
-            color: layout == TodoLayout.sticky
-                ? const Color(0xFF57534E)
-                : const Color(0xFF292524),
-            foregroundColor: const Color(0xFFFFFFFF),
           ),
-
-          const SizedBox(width: 4),
-
-          Button(
-            title: '☰',
+          BarButtonItem(
+            fontIcon: CupertinoIcons.plus,
+            titleStyle: TextStyle(color: Colors.white, fontSize: 16),
             onPressed: () {
-              setState(() {
-                layout = TodoLayout.cards;
-              });
+              showCreateNote(context);
+              // setState(() {});
             },
-            color: layout == TodoLayout.cards
-                ? const Color(0xFF57534E)
-                : const Color(0xFF292524),
-            foregroundColor: const Color(0xFFFFFFFF),
           ),
-
-          const SizedBox(width: 12),
         ],
       ),
-
+      extendBodyBehindAppBar: false,
       body: Stack(
         children: [
           // ---------------------------------------------------------------
@@ -223,75 +244,6 @@ class _TodoScreenState extends ConsumerState<TodoScreen> {
           // ---------------------------------------------------------------
           // Floating composer
           // ---------------------------------------------------------------
-          if (isCreating)
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 12,
-              child: _CreateNotePanel(
-                onClose: () {
-                  // FocusScope.of(context).unfocus();
-
-                  setState(() {
-                    isCreating = false;
-                  });
-                },
-                onCreate:
-                    ({
-                      required String title,
-                      required String description,
-                      required Color color,
-                    }) {
-                      notifier.addTodo(
-                        title: title,
-                        description: description,
-                        color: color,
-                      );
-
-                      // FocusScope.of(context).unfocus();
-
-                      setState(() {
-                        isCreating = false;
-                      });
-                    },
-              ),
-            ),
-
-          // ---------------------------------------------------------------
-          // Add button
-          // ---------------------------------------------------------------
-          if (!isCreating)
-            Positioned(
-              right: 20,
-              bottom: 20,
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    isCreating = true;
-                  });
-                },
-                child: Container(
-                  width: 58,
-                  height: 58,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF292524),
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x33000000),
-                        blurRadius: 12,
-                        offset: Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    CupertinoIcons.plus,
-                    color: Color(0xFFFFFFFF),
-                    size: 28,
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -617,7 +569,10 @@ class _CreateNotePanel extends StatefulWidget {
   })
   onCreate;
 
-  const _CreateNotePanel({required this.onClose, required this.onCreate});
+  const _CreateNotePanel({
+    required this.onClose,
+    required this.onCreate,
+  });
 
   @override
   State<_CreateNotePanel> createState() => _CreateNotePanelState();
@@ -653,32 +608,25 @@ class _CreateNotePanelState extends State<_CreateNotePanel> {
           // Header
           // ---------------------------------------------------------------
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'New note',
-                style: TextStyle(
-                  color: Color(0xFF292524),
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: const Text(
+                  'New note',
+                  style: TextStyle(
+                    color: Color(0xFF292524),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
 
-              const Spacer(),
-
-              GestureDetector(
-                onTap: widget.onClose,
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F4),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    CupertinoIcons.xmark,
-                    size: 15,
-                    color: Color(0xFF57534E),
-                  ),
+              IconButton(
+                onPressed: widget.onClose,
+                icon: const Icon(
+                  CupertinoIcons.xmark,
+                  size: 15,
+                  color: Color(0xFF57534E),
                 ),
               ),
             ],
@@ -692,6 +640,7 @@ class _CreateNotePanelState extends State<_CreateNotePanel> {
           TextField(
             controller: titleController,
             autofocus: true,
+            textInputAction: TextInputAction.next,
             style: const TextStyle(
               color: Color(0xFF292524),
               fontSize: 17,
@@ -746,51 +695,57 @@ class _CreateNotePanelState extends State<_CreateNotePanel> {
           Row(
             children: [
               // Colors
-              Expanded(
-                child: Row(
-                  children: [
-                    for (final color in NoteColors.all)
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            selectedColor = color;
-                          });
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 7),
-                          width: 27,
-                          height: 27,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: selectedColor == color
-                                  ? const Color(0xFF292524)
-                                  : const Color(0x22000000),
-                              width: selectedColor == color ? 2 : 1,
-                            ),
-                          ),
-                          child: selectedColor == color
-                              ? const Icon(
-                                  CupertinoIcons.checkmark,
-                                  size: 13,
-                                  color: Color(0xFF292524),
-                                )
-                              : null,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-
+              // Expanded(
+              //   child: Row(
+              //     children: [
+              //       for (final color in NoteColors.all)
+              //         GestureDetector(
+              //           onTap: () {
+              //             setState(() {
+              //               selectedColor = color;
+              //             });
+              //           },
+              //           child: Container(
+              //             margin: const EdgeInsets.only(right: 7),
+              //             width: 27,
+              //             height: 27,
+              //             decoration: BoxDecoration(
+              //               color: color,
+              //               shape: BoxShape.circle,
+              //               border: Border.all(
+              //                 color: selectedColor == color
+              //                     ? const Color(0xFF292524)
+              //                     : const Color(0x22000000),
+              //                 width: selectedColor == color ? 2 : 1,
+              //               ),
+              //             ),
+              //             child: selectedColor == color
+              //                 ? const Icon(
+              //                     CupertinoIcons.checkmark,
+              //                     size: 13,
+              //                     color: Color(0xFF292524),
+              //                   )
+              //                 : null,
+              //           ),
+              //         ),
+              //     ],
+              //   ),
+              // ),
               const SizedBox(width: 8),
 
               // Create
-              GestureDetector(
-                onTap: () {
-                  if (titleController.text.trim().isEmpty) {
-                    return;
-                  }
+              Button(
+                title: 'Create',
+                color: const Color(0xFF292524),
+                foregroundColor: const Color(0xFFFFFFFF),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 11,
+                ),
+                onPressed: () {
+                  // if (titleController.text.trim().isEmpty) {
+                  //   return;
+                  // }
 
                   widget.onCreate(
                     title: titleController.text,
@@ -798,24 +753,6 @@ class _CreateNotePanelState extends State<_CreateNotePanel> {
                     color: selectedColor,
                   );
                 },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 11,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF292524),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    'Create',
-                    style: TextStyle(
-                      color: Color(0xFFFFFFFF),
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
               ),
             ],
           ),
@@ -829,5 +766,18 @@ class _CreateNotePanelState extends State<_CreateNotePanel> {
     titleController.dispose();
     descriptionController.dispose();
     super.dispose();
+  }
+}
+
+class CreateNoteBottomsheet extends StatelessWidget {
+  const CreateNoteBottomsheet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: const Center(
+        child: Text('Create Note 22334'),
+      ),
+    );
   }
 }

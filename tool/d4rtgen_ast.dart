@@ -69,11 +69,38 @@ void _applyAstBridgePostFixes() {
   }
 
   _patchRiverpodBridges(File('lib/src/interpreter/ast/riverpod_kit_bridges.b.dart'));
+  _patchNativeBottomsheetBridges(File('lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart'));
+}
+
+void _patchNativeBottomsheetBridges(File file) {
+  if (!file.existsSync()) return;
+  var content = file.readAsStringSync();
+  content = content.replaceAll(
+    'final builder = (dynamic p0,',
+    'final dynamic builder = (dynamic p0,',
+  );
+  // Same Widget-return coercion as tool/d4rtgen.dart (see above). DN-PATCH.
+  if (!content.contains("as \$flutter_widgets;")) {
+    content = content.replaceFirst(
+      "import 'package:native_bottomsheet/",
+      "import 'package:dartnative/dartnative.dart' as \$flutter_widgets;\nimport 'package:native_bottomsheet/",
+    );
+  }
+  content = content.replaceAll(
+    "D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]))",
+    "D4.extractBridgedArg<\$flutter_widgets.Widget>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]), 'builder', visitor)",
+  );
+  file.writeAsStringSync(content);
 }
 
 void _patchRiverpodBridges(File file) {
   if (!file.existsSync()) return;
   var content = file.readAsStringSync();
+
+  content = content.replaceFirst(
+    '// ignore_for_file: ',
+    '// ignore_for_file: experimental_member_use, ',
+  );
 
   // 1. Remove internal ClassBaseX and $RefArg extension blocks cleanly
   content = content.replaceAll(
@@ -118,6 +145,91 @@ void _patchRiverpodBridges(File file) {
     "final child = D4.getRequiredNamedArg<dynamic>(\n          named,\n          'child',\n          'UncontrolledProviderScope',\n        );",
     "final child = D4.extractBridgedArg<\$flutter_widgets.Widget>(\n          D4.getRequiredNamedArg<dynamic>(\n            named,\n            'child',\n            'UncontrolledProviderScope',\n          ),\n          'child',\n          visitor,\n        );",
   );
+
+  // 4b. Same patch for single-line emission (see tool/d4rtgen.dart). DN-PATCH.
+  content = content.replaceAll(
+    "final child = D4.getRequiredNamedArg<dynamic>(named, 'child', 'ProviderScope');",
+    "final child = D4.extractBridgedArg<\$flutter_widgets.Widget>(D4.getRequiredNamedArg<dynamic>(named, 'child', 'ProviderScope'), 'child', visitor);",
+  );
+  content = content.replaceAll(
+    "final child = D4.getRequiredNamedArg<dynamic>(named, 'child', 'UncontrolledProviderScope');",
+    "final child = D4.extractBridgedArg<\$flutter_widgets.Widget>(D4.getRequiredNamedArg<dynamic>(named, 'child', 'UncontrolledProviderScope'), 'child', visitor);",
+  );
+  content = content.replaceAll(
+    "final child = D4.getRequiredNamedArg<dynamic>(named, 'child', 'Consumer');",
+    "final child = D4.extractBridgedArgOrNull<\$flutter_widgets.Widget>(D4.getRequiredNamedArg<dynamic>(named, 'child', 'Consumer'), 'child', visitor);",
+  );
+
+  // 5. Proxy import for Notifier bridging (mirrors tool/d4rtgen.dart).
+  const proxyImport = "import 'ast_widget_proxies.dart';";
+  if (!content.contains(proxyImport)) {
+    content = content.replaceFirst(
+      "import 'package:dartnative/dartnative.dart' as \$flutter_widgets;",
+      "import 'package:dartnative/dartnative.dart' as \$flutter_widgets;\n$proxyImport",
+    );
+  }
+
+  // 6. Define _unwrapInterpretedProxy helper if absent.
+  if (!content.contains('Object? _unwrapInterpretedProxy(')) {
+    content = content.replaceFirst(
+      'class RiverpodKitBridge {',
+      'Object? _unwrapInterpretedProxy(Object? val) {\n  if (val is InterpretedNotifierProxy) {\n    return val.instance;\n  }\n  if (val is InterpretedAsyncNotifierProxy) {\n    return val.instance;\n  }\n  if (val is InterpretedStreamNotifierProxy) {\n    return val.instance;\n  }\n  return val;\n}\n\nclass RiverpodKitBridge {',
+    );
+  }
+
+  // 7d. Notifier factory wraps for single-line emission (see tool/d4rtgen.dart).
+  content = content.replaceAll(
+    "(() { return D4.extractBridgedArg<\$riverpod_8.Notifier<dynamic>>(D4.callInterpreterCallback(visitor!, createNotifierRaw, []), 'callback', visitor) as \$riverpod_8.Notifier<dynamic>; })",
+    "(() { final rawNotifier = D4.callInterpreterCallback(visitor!, createNotifierRaw, []); if (rawNotifier is InterpretedInstance) { return InterpretedNotifierProxy(visitor!, rawNotifier); } return D4.extractBridgedArg<\$riverpod_8.Notifier<dynamic>>(rawNotifier, 'callback', visitor) as \$riverpod_8.Notifier<dynamic>; })",
+  );
+  content = content.replaceAll(
+    "(() { return D4.extractBridgedArg<\$riverpod_6.AsyncNotifier<dynamic>>(D4.callInterpreterCallback(visitor!, createNotifierRaw, []), 'callback', visitor) as \$riverpod_6.AsyncNotifier<dynamic>; })",
+    "(() { final rawNotifier = D4.callInterpreterCallback(visitor!, createNotifierRaw, []); if (rawNotifier is InterpretedInstance) { return InterpretedAsyncNotifierProxy(visitor!, rawNotifier); } return D4.extractBridgedArg<\$riverpod_6.AsyncNotifier<dynamic>>(rawNotifier, 'callback', visitor) as \$riverpod_6.AsyncNotifier<dynamic>; })",
+  );
+  content = content.replaceAll(
+    "(() { return D4.extractBridgedArg<\$riverpod_10.StreamNotifier<dynamic>>(D4.callInterpreterCallback(visitor!, createNotifierRaw, []), 'callback', visitor) as \$riverpod_10.StreamNotifier<dynamic>; })",
+    "(() { final rawNotifier = D4.callInterpreterCallback(visitor!, createNotifierRaw, []); if (rawNotifier is InterpretedInstance) { return InterpretedStreamNotifierProxy(visitor!, rawNotifier); } return D4.extractBridgedArg<\$riverpod_10.StreamNotifier<dynamic>>(rawNotifier, 'callback', visitor) as \$riverpod_10.StreamNotifier<dynamic>; })",
+  );
+
+  // 8. Unwrap InterpretedNotifierProxy on watch, read, and refresh.
+  content = content.replaceAll(
+    "        return t.watch(provider);",
+    "        return _unwrapInterpretedProxy(t.watch(provider));",
+  );
+  content = content.replaceAll(
+    "        return t.read(provider);",
+    "        return _unwrapInterpretedProxy(t.read(provider));",
+  );
+  content = content.replaceAll(
+    "        return t.refresh(provider);",
+    "        return _unwrapInterpretedProxy(t.refresh(provider));",
+  );
+  content = content.replaceAll(
+    "        return t.read(listenable);",
+    "        return _unwrapInterpretedProxy(t.read(listenable));",
+  );
+  content = content.replaceAll(
+    "        return t.watch(listenable);",
+    "        return _unwrapInterpretedProxy(t.watch(listenable));",
+  );
+
+  // 9b. AsyncValue getters for single-line emission (see tool/d4rtgen.dart).
+  // riverpod 3.x has no valueOrNull: alias `.value` (nullable there).
+  if (!content.contains("'valueOrNull':")) {
+    for (final name in ['AsyncValue', 'AsyncData', 'AsyncLoading', 'AsyncError']) {
+      final targetType = '\$riverpod_5.$name';
+      content = content.replaceFirst(
+        "      'hashCode': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hashCode,",
+        "      'valueOrNull': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').value,\n"
+        "      'isLoading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isLoading,\n"
+        "      'isRefreshing': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isRefreshing,\n"
+        "      'isReloading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isReloading,\n"
+        "      'hasValue': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hasValue,\n"
+        "      'hasError': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hasError,\n"
+        "      'hashCode': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hashCode,",
+      );
+    }
+  }
 
   file.writeAsStringSync(content);
 }

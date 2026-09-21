@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 63 files
-// Generated: 2026-09-20T04:31:32.283108 by tom_d4rt_generator 1.26.2
+// Generated: 2026-09-21T20:32:52.065449 by tom_d4rt_generator 1.26.2
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -11641,35 +11641,6 @@ BridgedClass _createSliderMenuContainerStateBridge() {
 // IconData Bridge
 // =============================================================================
 
-class _DynamicIconData implements $dartnative_35.IconData {
-  @override
-  final int codePoint;
-  @override
-  final String? fontFamily;
-  @override
-  final String? fontPackage;
-
-  const _DynamicIconData(
-    this.codePoint, {
-    this.fontFamily = 'MaterialSymbolsRounded',
-    this.fontPackage,
-  });
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is $dartnative_35.IconData &&
-          codePoint == other.codePoint &&
-          fontFamily == other.fontFamily &&
-          fontPackage == other.fontPackage;
-
-  @override
-  int get hashCode => Object.hash(codePoint, fontFamily, fontPackage);
-
-  @override
-  String toString() => 'IconData(U+${codePoint.toRadixString(16).toUpperCase().padLeft(5, '0')})';
-}
-
 BridgedClass _createIconDataBridge() {
   return BridgedClass(
     nativeType: $dartnative_35.IconData,
@@ -11681,7 +11652,7 @@ BridgedClass _createIconDataBridge() {
         final codePoint = D4.getRequiredArg<int>(positional, 0, 'codePoint', 'IconData');
         final fontFamily = D4.getNamedArgWithDefault<String?>(named, 'fontFamily', 'MaterialSymbolsRounded');
         final fontPackage = D4.getOptionalNamedArg<String?>(named, 'fontPackage');
-        return _DynamicIconData(codePoint, fontFamily: fontFamily, fontPackage: fontPackage);
+        return $dartnative_35.IconData(codePoint, fontFamily: fontFamily, fontPackage: fontPackage);
       },
     },
     getters: {

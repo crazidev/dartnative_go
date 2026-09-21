@@ -426,6 +426,292 @@ class InterpretedStateProxy extends State<StatefulWidget> {
   }
 }
 
+/// Hot-reload rebind core for [InterpretedConsumerStateProxy].
+///
+/// Recreates the interpreted state from [newOwner]'s (new) interpreter,
+/// carries over the previous state's fields (e.g. `setState` values like
+/// `layout`/`isCreating`), and rewires [proxy] to delegate to it.
+///
+/// Extracted from `didUpdateWidget` so the mount-dependent parts
+/// (`super.didUpdateWidget`, `setState` mark-dirty) stay in the override
+/// while this pure interpreter handoff is unit-testable headless with two
+/// interpreters. Throws when the new interpreter cannot produce a state
+/// (caller falls back to the previous instance and logs).
+void rebindConsumerStateForReload(
+  InterpretedConsumerStateProxy proxy,
+  InterpretedConsumerStatefulWidget newOwner,
+) {
+  proxy.visitor = newOwner.visitor;
+  proxy.ownerWidget = newOwner;
+  final createStateMethod =
+      newOwner.instance.get('createState', visitor: proxy.visitor);
+  if (createStateMethod is! Callable) {
+    throw StateError(
+      'Hot reload rebind: ${newOwner.instance.klass.name} has no callable createState',
+    );
+  }
+  final newStateResult = createStateMethod.call(proxy.visitor, [], {});
+  if (newStateResult is! InterpretedInstance) {
+    throw StateError(
+      'Hot reload rebind: createState did not return an interpreted state '
+      '(got ${newStateResult.runtimeType})',
+    );
+  }
+  proxy.transferStateFields(proxy.stateInstance, newStateResult);
+  proxy.wireStateInstance(newStateResult, newOwner.instance);
+  proxy.stateInstance = newStateResult;
+}
+
+/// Native proxy for interpreted classes that extend [ConsumerStatefulWidget].
+///
+/// `ConsumerStatefulWidget extends StatefulWidget` (riverpod_kit), but the
+/// generated `classSupertypes()` table drops that cross-barrel edge, so the
+/// generic `StatefulWidget` proxy never matches. Registered under the exact
+/// name `ConsumerStatefulWidget` so `D4.tryCreateInterfaceProxyWithVisitor`
+/// resolves `TodoScreen`-style classes passed as `Widget` (e.g.
+/// `ProviderScope(child: TodoScreen())`).
+class InterpretedConsumerStatefulWidget extends ConsumerStatefulWidget {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedConsumerStatefulWidget(this.visitor, this.instance, {Key? key})
+      : super(key: key ?? _resolveKey(instance)) {
+    instance.nativeProxy = this;
+  }
+
+  static Key _resolveKey(InterpretedInstance instance) {
+    final gen = WidgetGenerationTracker.getGeneration(instance.klass.name);
+    try {
+      if (instance.hasInstanceMember('key')) {
+        final k = instance.get('key');
+        if (k is Key) return ValueKey('${k}_gen_$gen');
+      }
+    } catch (_) {}
+    return ValueKey('ConsumerStateful_${instance.klass.name}_gen_$gen');
+  }
+
+  @override
+  ConsumerState<ConsumerStatefulWidget> createState() {
+    return _runWithLogCapture(() {
+      final method = instance.get('createState', visitor: visitor);
+      if (method is Callable) {
+        final stateResult = method.call(visitor, [], {});
+        if (stateResult is InterpretedInstance) {
+          final existing = stateResult.nativeProxy;
+          if (existing is ConsumerState<ConsumerStatefulWidget>) {
+            return existing;
+          }
+          return InterpretedConsumerStateProxy(visitor, stateResult, this);
+        } else if (stateResult is ConsumerState<ConsumerStatefulWidget>) {
+          return stateResult;
+        } else if (stateResult is State<ConsumerStatefulWidget>) {
+          // Fallback: plain State returned for a consumer widget — wrap its
+          // fields into a consumer proxy so `ref` is available.
+          return InterpretedConsumerStateProxy(visitor, stateResult as dynamic, this);
+        }
+      }
+      throw StateError('Interpreted ConsumerStatefulWidget failed to create state');
+    });
+  }
+}
+
+/// Native proxy for interpreted classes that extend [ConsumerState].
+///
+/// Extends the real [ConsumerState] so interpreted code gets the native
+/// `ref` getter (`ConsumerRef(_StateHost(this))`, container lookup,
+/// subscription teardown). A plain `State` proxy cannot provide `ref`;
+/// field snapshot/restore only copies interpreted fields and cannot
+/// synthesize this lifecycle.
+class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget> {
+  InterpreterVisitor visitor;
+  InterpretedInstance stateInstance;
+  InterpretedConsumerStatefulWidget? ownerWidget;
+
+  bool _isDispatchingInitState = false;
+  bool _isDispatchingDidChangeDependencies = false;
+  bool _isDispatchingDidUpdateWidget = false;
+  bool _isDispatchingDispose = false;
+
+  InterpretedConsumerStateProxy(this.visitor, this.stateInstance, [this.ownerWidget]) {
+    _wireStateInstance(stateInstance, ownerWidget?.instance);
+  }
+
+  void _wireStateInstance(InterpretedInstance state, InterpretedInstance? widgetInstance) {
+    state.nativeProxy = this;
+    state.bridgedSuperObject = this;
+    state.nativeStateProxy = this;
+    if (widgetInstance != null) {
+      state.interpretedStatefulWidget = widgetInstance;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isDispatchingInitState) return;
+    _isDispatchingInitState = true;
+    try {
+      _runWithLogCapture(() {
+        final method = stateInstance.klass.findInstanceMethod('initState');
+        if (method != null) {
+          stateInstance.bindMethodCached(method).call(visitor, [], {});
+        }
+      });
+    } finally {
+      _isDispatchingInitState = false;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_isDispatchingDidChangeDependencies) return;
+    _isDispatchingDidChangeDependencies = true;
+    try {
+      _runWithLogCapture(() {
+        final method = stateInstance.klass.findInstanceMethod('didChangeDependencies');
+        if (method != null) {
+          stateInstance.bindMethodCached(method).call(visitor, [], {});
+        }
+      });
+    } finally {
+      _isDispatchingDidChangeDependencies = false;
+    }
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    if (!mounted) return;
+    if (DebugController().isPaused) {
+      DebugController().waitIfPaused().then((_) {
+        if (mounted) setState(fn);
+      });
+      return;
+    }
+    try {
+      super.setState(fn);
+    } catch (_) {
+      scheduleMicrotask(() {
+        if (mounted) super.setState(fn);
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ConsumerStatefulWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_isDispatchingDidUpdateWidget) return;
+    _isDispatchingDidUpdateWidget = true;
+    try {
+      _runWithLogCapture(() {
+        if (widget is InterpretedConsumerStatefulWidget) {
+          final newOwner = widget as InterpretedConsumerStatefulWidget;
+          try {
+            rebindConsumerStateForReload(this, newOwner);
+            onGuestLog?.call(
+              '[HotReload] ${newOwner.instance.klass.name} rebound to new '
+              'code, state fields preserved',
+            );
+          } catch (e) {
+            // Never leave the UI silently stale: the previous instance is
+            // bound to the disposed interpreter, so surface the cause.
+            onGuestLog?.call(
+              '[HotReload] rebind failed for '
+              '${newOwner.instance.klass.name}: $e — keeping previous state',
+            );
+            stateInstance.interpretedStatefulWidget = newOwner.instance;
+          }
+        }
+        final method = stateInstance.klass.findInstanceMethod('didUpdateWidget');
+        if (method != null) {
+          stateInstance.bindMethodCached(method).call(visitor, [oldWidget], {});
+        }
+        setState(() {});
+      });
+    } finally {
+      _isDispatchingDidUpdateWidget = false;
+    }
+  }
+
+  /// Re-points [state] at [widgetInstance] (or detaches when null).
+  ///
+  /// Public so [rebindConsumerStateForReload] can share the exact wiring
+  /// used at construction.
+  void wireStateInstance(
+      InterpretedInstance state, InterpretedInstance? widgetInstance) {
+    _wireStateInstance(state, widgetInstance);
+  }
+
+  /// Copies setState fields from [oldState] to [newState] across reloads.
+  ///
+  /// Public so [rebindConsumerStateForReload] (and tests) share the exact
+  /// transfer used by [didUpdateWidget]. Uses the proxy's current visitor
+  /// for member reads.
+  void transferStateFields(
+    InterpretedInstance oldState,
+    InterpretedInstance newState,
+  ) {
+    _transferStateFields(oldState, newState, visitor);
+  }
+
+  void _transferStateFields(
+    InterpretedInstance oldState,
+    InterpretedInstance newState,
+    InterpreterVisitor currentVisitor,
+  ) {
+    try {
+      for (final fieldName in oldState.klass.getInstanceFieldNames()) {
+        if (fieldName == 'widget' || fieldName == 'context') continue;
+        Object? val;
+        bool hasVal = false;
+        try {
+          val = oldState.getField(fieldName);
+          hasVal = true;
+        } catch (_) {
+          try {
+            val = oldState.get(fieldName, visitor: currentVisitor);
+            hasVal = true;
+          } catch (_) {}
+        }
+        if (hasVal) {
+          try {
+            newState.set(fieldName, val);
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _runWithLogCapture(() {
+      final method = stateInstance.get('build', visitor: visitor);
+      if (method is Callable) {
+        final rawResult = method.call(visitor, [context], {});
+        return D4.extractBridgedArg<Widget>(rawResult, 'buildResult', visitor);
+      }
+      throw StateError('Interpreted ConsumerState has no callable build(context) method');
+    });
+  }
+
+  @override
+  void dispose() {
+    if (_isDispatchingDispose) return;
+    _isDispatchingDispose = true;
+    try {
+      _runWithLogCapture(() {
+        final method = stateInstance.klass.findInstanceMethod('dispose');
+        if (method != null) {
+          stateInstance.bindMethodCached(method).call(visitor, [], {});
+        }
+      });
+    } finally {
+      _isDispatchingDispose = false;
+    }
+    super.dispose();
+  }
+}
+
 /// Resolves and wraps an interpreted widget or native proxy into a native [Widget].
 Widget? wrapInterpretedWidget(Object? arg, {InterpreterVisitor? visitor}) {
   if (arg == null) return null;
@@ -435,9 +721,17 @@ Widget? wrapInterpretedWidget(Object? arg, {InterpreterVisitor? visitor}) {
     if (arg.bridgedSuperObject is Widget) return arg.bridgedSuperObject as Widget;
     final effectiveVisitor = visitor ?? D4.activeVisitor;
     if (effectiveVisitor != null) {
-      // Walk class inheritance chain to find StatefulWidget or StatelessWidget
+      // Walk class inheritance chain to find Consumer/Stateful/Stateless widgets.
+      // ConsumerStatefulWidget is checked first: it extends StatefulWidget
+      // natively, but the generated supertype table drops that cross-barrel
+      // edge, so a StatefulWidget-only check would miss TodoScreen-style
+      // classes whose direct bridged super is ConsumerStatefulWidget.
       var cur = arg.klass;
       while (true) {
+        if (cur.name == 'ConsumerStatefulWidget' ||
+            cur.bridgedSuperclass?.name == 'ConsumerStatefulWidget') {
+          return InterpretedConsumerStatefulWidget(effectiveVisitor, arg);
+        }
         if (cur.name == 'ConsumerWidget' || cur.bridgedSuperclass?.name == 'ConsumerWidget') {
           return InterpretedConsumerWidget(effectiveVisitor, arg);
         }
@@ -503,6 +797,25 @@ void registerWidgetInterfaceProxies(D4rt interpreter, {void Function(String mess
     return InterpretedConsumerWidget(visitor, instance);
   });
 
+  // Exact-name registration for the riverpod_kit intermediate base. The
+  // generated classSupertypes() table omits
+  // ConsumerStatefulWidget -> StatefulWidget, so the StatefulWidget factory
+  // above never fires for TodoScreen-style classes. Registering under the
+  // exact bridged-superclass name bypasses the supertype walk.
+  D4.registerInterfaceProxy('ConsumerStatefulWidget', (visitor, instance) {
+    final existing = instance.nativeProxy;
+    if (existing is ConsumerStatefulWidget) return existing;
+    return InterpretedConsumerStatefulWidget(visitor, instance);
+  });
+
+  D4.registerInterfaceProxy('ConsumerState', (visitor, instance) {
+    final existing = instance.nativeProxy;
+    if (existing is ConsumerState<ConsumerStatefulWidget>) return existing;
+    return InterpretedConsumerStateProxy(visitor, instance, null);
+  });
+
+  _registerConsumerStateSupplements();
+
   // Register Notifier proxy so NotifierProvider(MyNotifier.new) works.
   D4.registerInterfaceProxy('Notifier', (visitor, instance) {
     return InterpretedNotifierProxy(visitor, instance);
@@ -518,4 +831,67 @@ void registerWidgetInterfaceProxies(D4rt interpreter, {void Function(String mess
     }
     return null;
   });
+}
+
+/// Closes the inherited-member gap for interpreted `ConsumerState`
+/// subclasses (e.g. `_TodoScreenState`).
+///
+/// Member lookup (`InterpretedInstance.get`) consults only each level's
+/// DIRECT bridged superclass — never the native chain — and the generated
+/// `ConsumerState` bridge carries just `ref`/`dispose`. Without these,
+/// `setState(...)` inside an interpreted consumer state throws
+/// `Undefined property 'setState' on _TodoScreenState` on tap.
+///
+/// RC-5 supplementary adapters fill the gap with the generated `State`
+/// semantics; the native target is the `InterpretedConsumerStateProxy`,
+/// which IS a `State`, so `validateTarget<State>` accepts it and
+/// `setState` routes through the proxy's mounted-guarded override.
+void _registerConsumerStateSupplements() {
+  D4.registerSupplementaryMethod(
+    'ConsumerState',
+    'setState',
+    (visitor, target, positional, named, typeArgs) {
+      final t = D4.validateTarget<State>(target, 'ConsumerState');
+      D4.requireMinArgs(positional, 1, 'setState');
+      final fnRaw = positional[0];
+      t.setState(() {
+        D4.callInterpreterCallback(visitor, fnRaw, []);
+      });
+      return null;
+    },
+  );
+  D4.registerSupplementaryMethod(
+    'ConsumerState',
+    'initState',
+    (visitor, target, positional, named, typeArgs) {
+      final t = D4.validateTarget<State>(target, 'ConsumerState');
+      (t as dynamic).initState();
+      return null;
+    },
+  );
+  D4.registerSupplementaryMethod(
+    'ConsumerState',
+    'didChangeDependencies',
+    (visitor, target, positional, named, typeArgs) {
+      final t = D4.validateTarget<State>(target, 'ConsumerState');
+      (t as dynamic).didChangeDependencies();
+      return null;
+    },
+  );
+  D4.registerSupplementaryMethod(
+    'ConsumerState',
+    'didUpdateWidget',
+    (visitor, target, positional, named, typeArgs) {
+      final t = D4.validateTarget<State>(target, 'ConsumerState');
+      D4.requireMinArgs(positional, 1, 'didUpdateWidget');
+      final oldWidget = D4.getRequiredArg<StatefulWidget>(
+        positional,
+        0,
+        'oldWidget',
+        'didUpdateWidget',
+      );
+      (t as dynamic).didUpdateWidget(oldWidget);
+      return null;
+    },
+  );
 }

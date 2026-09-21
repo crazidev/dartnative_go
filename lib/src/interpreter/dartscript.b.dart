@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Dartscript registration for dartnative_go
-// Generated: 2026-09-20T04:30:56.449507 by tom_d4rt_generator 1.26.2
+// Generated: 2026-09-21T20:32:07.294703 by tom_d4rt_generator 1.26.2
 
 /// D4rt Bridge Registration for dartnative_go
 library;
@@ -14,6 +14,7 @@ import 'dartnative_path_provider_bridges.b.dart' as dartnative_path_provider_bri
 import 'dartnative_url_launcher_bridges.b.dart' as dartnative_url_launcher_bridges;
 import 'dartnative_splash_bridges.b.dart' as dartnative_splash_bridges;
 import 'crypto_bridges.b.dart' as crypto_bridges;
+import 'native_bottomsheet_bridges.b.dart' as native_bottomsheet_bridges;
 import 'riverpod_kit_bridges.b.dart' as riverpod_kit_bridges;
 import 'relaxers.b.dart' as relaxer_factories;
 
@@ -87,6 +88,14 @@ class DartnativeGoBridges {
     for (final barrel in crypto_bridges.CryptoBridge.subPackageBarrels()) {
       crypto_bridges.CryptoBridge.registerBridges(d4rt, barrel);
     }
+    native_bottomsheet_bridges.NativeBottomsheetBridge.registerBridges(
+      d4rt,
+      'package:native_bottomsheet/native_bottomsheet.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel in native_bottomsheet_bridges.NativeBottomsheetBridge.subPackageBarrels()) {
+      native_bottomsheet_bridges.NativeBottomsheetBridge.registerBridges(d4rt, barrel);
+    }
     riverpod_kit_bridges.RiverpodKitBridge.registerBridges(
       d4rt,
       'package:riverpod_kit/riverpod_kit.dart',
@@ -113,6 +122,7 @@ class DartnativeGoBridges {
     buffer.writeln(dartnative_url_launcher_bridges.DartnativeUrlLauncherBridge.getImportBlock());
     buffer.writeln(dartnative_splash_bridges.DartnativeSplashBridge.getImportBlock());
     buffer.writeln(crypto_bridges.CryptoBridge.getImportBlock());
+    buffer.writeln(native_bottomsheet_bridges.NativeBottomsheetBridge.getImportBlock());
     buffer.writeln(riverpod_kit_bridges.RiverpodKitBridge.getImportBlock());
     return buffer.toString();
   }

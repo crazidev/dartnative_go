@@ -8,6 +8,8 @@ PODS:
   - dartnative_webview (1.0.0)
   - DartNativeCore (1.0.0)
   - FlexLayout (2.0.10)
+  - native_bottomsheet (0.1.0):
+    - FlexLayout
 
 DEPENDENCIES:
   - dartnative_ios (from `.symlinks/plugins/dartnative_ios/ios`)
@@ -17,6 +19,7 @@ DEPENDENCIES:
   - dartnative_url_launcher (from `.symlinks/plugins/dartnative_url_launcher/ios`)
   - dartnative_webview (from `.symlinks/plugins/dartnative_webview/ios`)
   - DartNativeCore (from `DartNative`)
+  - native_bottomsheet (from `.symlinks/plugins/native_bottomsheet/ios`)
 
 SPEC REPOS:
   trunk:
@@ -37,6 +40,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/dartnative_webview/ios"
   DartNativeCore:
     :path: DartNative
+  native_bottomsheet:
+    :path: ".symlinks/plugins/native_bottomsheet/ios"
 
 SPEC CHECKSUMS:
   dartnative_ios: 88d434758a21de28291d1ca70f9a144bd28548c7
@@ -47,6 +52,7 @@ SPEC CHECKSUMS:
   dartnative_webview: 545bebb91ae75cbe11a8ed64460aeb30a37da42a
   DartNativeCore: 97106aef3a975e6b1a268568d58dfb74dcbebd9f
   FlexLayout: ea94491c923485f7f28891cb5b10245d22df380b
+  native_bottomsheet: 40a0aacac11fa4016e5e5d63ac142eb0d1fc9f24
 
 PODFILE CHECKSUM: c2c431d0cbd20e6f56301edf7263446ca8d5fd90
 

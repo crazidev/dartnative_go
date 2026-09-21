@@ -74,11 +74,47 @@ void _applyBridgePostFixes() {
     File('lib/src/interpreter/ast/riverpod_kit_bridges.b.dart'),
     isAst: true,
   );
+
+  _patchNativeBottomsheetBridges(
+    File('lib/src/interpreter/native_bottomsheet_bridges.b.dart'),
+  );
+  _patchNativeBottomsheetBridges(
+    File('lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart'),
+  );
+}
+
+void _patchNativeBottomsheetBridges(File file) {
+  if (!file.existsSync()) return;
+  var content = file.readAsStringSync();
+  content = content.replaceAll(
+    'final builder = (dynamic p0,',
+    'final dynamic builder = (dynamic p0,',
+  );
+  // Builder callbacks return interpreted Widgets: castCallbackResult<dynamic>
+  // leaves them dynamic and the native `Widget Function(...)` parameter
+  // rejects the closure (tap-time TypeError). Coerce via the Widget proxy
+  // path instead. DN-PATCH.
+  if (!content.contains("as \$flutter_widgets;")) {
+    content = content.replaceFirst(
+      "import 'package:native_bottomsheet/",
+      "import 'package:dartnative/dartnative.dart' as \$flutter_widgets;\nimport 'package:native_bottomsheet/",
+    );
+  }
+  content = content.replaceAll(
+    "D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]))",
+    "D4.extractBridgedArg<\$flutter_widgets.Widget>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]), 'builder', visitor)",
+  );
+  file.writeAsStringSync(content);
 }
 
 void _patchRiverpodBridges(File file, {required bool isAst}) {
   if (!file.existsSync()) return;
   var content = file.readAsStringSync();
+
+  content = content.replaceFirst(
+    '// ignore_for_file: ',
+    '// ignore_for_file: experimental_member_use, ',
+  );
 
   // 1. Remove internal ClassBaseX and $RefArg extension blocks cleanly
   content = content.replaceAll(
@@ -124,6 +160,24 @@ void _patchRiverpodBridges(File file, {required bool isAst}) {
     "final child = D4.extractBridgedArg<\$flutter_widgets.Widget>(\n          D4.getRequiredNamedArg<dynamic>(\n            named,\n            'child',\n            'UncontrolledProviderScope',\n          ),\n          'child',\n          visitor,\n        );",
   );
 
+  // 4b. Same patch for single-line emission. Current generator versions
+  // emit the getRequiredNamedArg call on one line, so the multi-line
+  // patterns above silently no-op and interpreted Widget children hit the
+  // native constructor as `dynamic` -> bare `type 'InterpretedInstance'
+  // is not a subtype of type 'Widget'` on hot reload. DN-PATCH.
+  content = content.replaceAll(
+    "final child = D4.getRequiredNamedArg<dynamic>(named, 'child', 'ProviderScope');",
+    "final child = D4.extractBridgedArg<\$flutter_widgets.Widget>(D4.getRequiredNamedArg<dynamic>(named, 'child', 'ProviderScope'), 'child', visitor);",
+  );
+  content = content.replaceAll(
+    "final child = D4.getRequiredNamedArg<dynamic>(named, 'child', 'UncontrolledProviderScope');",
+    "final child = D4.extractBridgedArg<\$flutter_widgets.Widget>(D4.getRequiredNamedArg<dynamic>(named, 'child', 'UncontrolledProviderScope'), 'child', visitor);",
+  );
+  content = content.replaceAll(
+    "final child = D4.getRequiredNamedArg<dynamic>(named, 'child', 'Consumer');",
+    "final child = D4.extractBridgedArgOrNull<\$flutter_widgets.Widget>(D4.getRequiredNamedArg<dynamic>(named, 'child', 'Consumer'), 'child', visitor);",
+  );
+
   // 5. Proxy import for Notifier bridging
   final proxyImport = isAst ? "import 'ast_widget_proxies.dart';" : "import 'widget_proxies.dart';";
   if (!content.contains(proxyImport)) {
@@ -159,7 +213,19 @@ void _patchRiverpodBridges(File file, {required bool isAst}) {
     "        final retryRaw = named['retry'];\n        return \$riverpod_10.StreamNotifierProvider(\n          (() {\n                final rawNotifier = D4.callInterpreterCallback(\n                  visitor!,\n                  createNotifierRaw,\n                  [],\n                );\n                // DN-PATCH: InterpretedInstance → native StreamNotifier proxy.\n                if (rawNotifier is InterpretedInstance) {\n                  return InterpretedStreamNotifierProxy(visitor!, rawNotifier);\n                }\n                return D4.extractBridgedArg<\n                      \$riverpod_10.StreamNotifier<dynamic>\n                    >(\n                      rawNotifier,\n                      'callback',\n                      visitor,\n                    )\n                    as \$riverpod_10.StreamNotifier<dynamic>;\n              })",
   );
 
-  // 8. Unwrap InterpretedNotifierProxy on WidgetRef watch, read, and refresh
+  // 7d. Same factory wraps for single-line emission (see 4b). DN-PATCH.
+  content = content.replaceAll(
+    "(() { return D4.extractBridgedArg<\$riverpod_8.Notifier<dynamic>>(D4.callInterpreterCallback(visitor!, createNotifierRaw, []), 'callback', visitor) as \$riverpod_8.Notifier<dynamic>; })",
+    "(() { final rawNotifier = D4.callInterpreterCallback(visitor!, createNotifierRaw, []); if (rawNotifier is InterpretedInstance) { return InterpretedNotifierProxy(visitor!, rawNotifier); } return D4.extractBridgedArg<\$riverpod_8.Notifier<dynamic>>(rawNotifier, 'callback', visitor) as \$riverpod_8.Notifier<dynamic>; })",
+  );
+  content = content.replaceAll(
+    "(() { return D4.extractBridgedArg<\$riverpod_6.AsyncNotifier<dynamic>>(D4.callInterpreterCallback(visitor!, createNotifierRaw, []), 'callback', visitor) as \$riverpod_6.AsyncNotifier<dynamic>; })",
+    "(() { final rawNotifier = D4.callInterpreterCallback(visitor!, createNotifierRaw, []); if (rawNotifier is InterpretedInstance) { return InterpretedAsyncNotifierProxy(visitor!, rawNotifier); } return D4.extractBridgedArg<\$riverpod_6.AsyncNotifier<dynamic>>(rawNotifier, 'callback', visitor) as \$riverpod_6.AsyncNotifier<dynamic>; })",
+  );
+  content = content.replaceAll(
+    "(() { return D4.extractBridgedArg<\$riverpod_10.StreamNotifier<dynamic>>(D4.callInterpreterCallback(visitor!, createNotifierRaw, []), 'callback', visitor) as \$riverpod_10.StreamNotifier<dynamic>; })",
+    "(() { final rawNotifier = D4.callInterpreterCallback(visitor!, createNotifierRaw, []); if (rawNotifier is InterpretedInstance) { return InterpretedStreamNotifierProxy(visitor!, rawNotifier); } return D4.extractBridgedArg<\$riverpod_10.StreamNotifier<dynamic>>(rawNotifier, 'callback', visitor) as \$riverpod_10.StreamNotifier<dynamic>; })",
+  );
   content = content.replaceAll(
     "        return t.watch(provider);",
     "        return _unwrapInterpretedProxy(t.watch(provider));",
@@ -202,6 +268,27 @@ void _patchRiverpodBridges(File file, {required bool isAst}) {
       final snippet = asyncGetters.replaceAll('TARGET_TYPE', targetType).replaceAll('TARGET_NAME', name);
       final search = "      'hashCode': (visitor, target) => D4\n          .validateTarget<$targetType>(target, '$name')\n          .hashCode,";
       content = content.replaceFirst(search, snippet + search.substring(search.indexOf(" (visitor, target)")));
+    }
+  }
+
+  // 9b. Same AsyncValue getters for single-line emission: the multi-line
+  // hashCode anchor above misses current output, so valueOrNull etc. were
+  // silently dropped (AsyncLoading crash). riverpod 3.x has no valueOrNull,
+  // so it aliases `.value` (nullable there) like the original patch.
+  // DN-PATCH.
+  if (!content.contains("'valueOrNull':")) {
+    for (final name in ['AsyncValue', 'AsyncData', 'AsyncLoading', 'AsyncError']) {
+      final targetType = '\$riverpod_5.$name';
+      content = content.replaceFirst(
+        "      'hashCode': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hashCode,",
+        "      'valueOrNull': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').value,\n"
+        "      'isLoading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isLoading,\n"
+        "      'isRefreshing': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isRefreshing,\n"
+        "      'isReloading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isReloading,\n"
+        "      'hasValue': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hasValue,\n"
+        "      'hasError': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hasError,\n"
+        "      'hashCode': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hashCode,",
+      );
     }
   }
 

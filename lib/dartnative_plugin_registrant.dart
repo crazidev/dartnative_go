@@ -17,6 +17,7 @@
 //   • dartnative_shared_preferences
 //   • dartnative_url_launcher
 //   • dartnative_webview
+//   • native_bottomsheet
 
 import 'dart:io' show Platform;
 
@@ -27,6 +28,7 @@ import 'package:dartnative_share/dartnative_share.dart';
 import 'package:dartnative_shared_preferences/dartnative_shared_preferences.dart';
 import 'package:dartnative_url_launcher/dartnative_url_launcher.dart';
 import 'package:dartnative_webview/dartnative_webview.dart';
+import 'package:native_bottomsheet/native_bottomsheet.dart';
 
 abstract final class DartNativePluginRegistrant {
   /// Registers the platform bindings and loads every DartNative plugin's
@@ -51,6 +53,7 @@ abstract final class DartNativePluginRegistrant {
       'dartnative_splash',
       'dartnative_url_launcher',
       'dartnative_webview',
+      'native_bottomsheet',
       'riverpod_kit',
     ]);
     registerNativeBindings(
@@ -69,6 +72,9 @@ abstract final class DartNativePluginRegistrant {
     });
     _load('dartnative_webview', () {
       WebViewFFIBindings.loadSymbols();
+    });
+    _load('native_bottomsheet', () {
+      BottomSheetFFIBindings.loadSymbols();
     });
   }
 

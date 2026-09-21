@@ -8,7 +8,7 @@
       "name": "dartnative_go",
       "request": "launch",
       "type": "dart",
-      "args": ["--no-pub", "--no-build"]
+      "args": ["--no-pub"]
     },
     {
       "name": "dartnative_go (profile mode)",

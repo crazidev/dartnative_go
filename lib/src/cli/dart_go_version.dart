@@ -107,6 +107,12 @@ const List<SupportedPlugin> kSupportedNativePlugins = [
     description: 'System browser and external URL launcher',
   ),
   SupportedPlugin(
+    name: 'native_bottomsheet',
+    supportedConstraint: '^0.1.0',
+    isCore: false,
+    description: 'Native modal bottom sheet with multi-detent drawer support',
+  ),
+  SupportedPlugin(
     name: 'riverpod_kit',
     supportedConstraint: '^0.1.0',
     isCore: false,

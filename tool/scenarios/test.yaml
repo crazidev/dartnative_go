@@ -10,7 +10,7 @@ defaults: { step_timeout_s: 10, probe_interval_ms: 300 }
 steps:
   # Whole-state reset: restore leftover edits instead of blocking, so an
   # aborted run never poisons the next one.
-  - require_clean: { files: [lib/home_screen.dart], restore: true }
+  # - require_clean: { files: [lib/home_screen.dart], restore: true }
   # Fresh start: hot-restart drops interpreter state (logged-out, count 0)
   # and (re)mounts the guest before the first assertion.
   # - restart: { text: "Not logged in", timeout_s: 30 }
