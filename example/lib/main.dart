@@ -1,5 +1,5 @@
 import 'package:dartnative/dartnative.dart';
-import 'package:example/home_screen.dart';
+import 'package:example/todo_screen.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 
 import 'dartnative_plugin_registrant.dart';
@@ -18,9 +18,5 @@ void main() {
     systemNavigationBarColor: Colors.transparent,
     systemNavigationBarIconBrightness: Brightness.dark,
   );
-  runApp(
-    const ProviderScope(
-      child: HomeScreen(),
-    ),
-  );
+  runApp(const ProviderScope(child: TodoScreen()));
 }

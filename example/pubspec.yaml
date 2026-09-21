@@ -12,6 +12,8 @@ dependencies:
   dartnative: ^1.0.0
   dartnative_ios: ^1.0.0
   dartnative_android: ^1.0.0
+  ffi: ^2.1.4
+  meta: ^1.17.0
   riverpod_kit:
     hosted: https://dartpub.dev
     version: ^0.1.0
