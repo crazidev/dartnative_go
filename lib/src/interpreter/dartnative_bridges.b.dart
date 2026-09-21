@@ -11641,6 +11641,10 @@ BridgedClass _createSliderMenuContainerStateBridge() {
 // IconData Bridge
 // =============================================================================
 
+class _DynamicIconData extends $dartnative_35.IconData {
+  const _DynamicIconData(super.codePoint, {super.fontFamily, super.fontPackage});
+}
+
 BridgedClass _createIconDataBridge() {
   return BridgedClass(
     nativeType: $dartnative_35.IconData,
@@ -11652,7 +11656,7 @@ BridgedClass _createIconDataBridge() {
         final codePoint = D4.getRequiredArg<int>(positional, 0, 'codePoint', 'IconData');
         final fontFamily = D4.getNamedArgWithDefault<String?>(named, 'fontFamily', 'MaterialSymbolsRounded');
         final fontPackage = D4.getOptionalNamedArg<String?>(named, 'fontPackage');
-        return $dartnative_35.IconData(codePoint, fontFamily: fontFamily, fontPackage: fontPackage);
+        return _DynamicIconData(codePoint, fontFamily: fontFamily, fontPackage: fontPackage);
       },
     },
     getters: {
