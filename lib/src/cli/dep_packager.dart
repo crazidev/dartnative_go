@@ -97,7 +97,11 @@ class DepPackager {
       archive.addFile(ArchiveFile(entry.key, bytes.length, bytes));
     }
     final encoder = ZipEncoder();
-    return encoder.encode(archive);
+    final dynamic encoded = encoder.encode(archive);
+    if (encoded is List<int>) {
+      return encoded;
+    }
+    return <int>[];
   }
 
   /// Resolves all pure Dart dependencies, builds their ZIPs, and caches them.
