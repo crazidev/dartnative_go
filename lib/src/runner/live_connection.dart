@@ -12,6 +12,13 @@ class LiveConnection {
   final void Function(bool enabled)? onSetVerbose;
   final void Function(String error)? onError;
 
+  /// UI automation (see `lib/src/runner/ui_probe.dart` for the protocol).
+  /// `onUiProbeRequest` fires when a test script asks for the widget tree;
+  /// the handler should reply with [sendUiTree]. `onUiTap` fires with the
+  /// button title; the handler should reply with [sendUiTapResult].
+  final void Function(String requestId)? onUiProbeRequest;
+  final void Function(String requestId, String title)? onUiTap;
+
   WebSocket? _socket;
   bool _isDisposed = false;
 
@@ -23,6 +30,8 @@ class LiveConnection {
     this.onSetVmDebugger,
     this.onSetVerbose,
     this.onError,
+    this.onUiProbeRequest,
+    this.onUiTap,
   });
 
   bool get isConnected => _socket != null && _socket!.readyState == WebSocket.open;
@@ -59,6 +68,13 @@ class LiveConnection {
               onSetVmDebugger?.call(data['enabled'] == true);
             } else if (type == 'set_verbose') {
               onSetVerbose?.call(data['enabled'] == true);
+            } else if (type == 'ui_probe_request') {
+              onUiProbeRequest?.call(data['requestId']?.toString() ?? '');
+            } else if (type == 'ui_tap') {
+              onUiTap?.call(
+                data['requestId']?.toString() ?? '',
+                data['title']?.toString() ?? '',
+              );
             }
           } catch (_) {}
         },
@@ -112,6 +128,37 @@ class LiveConnection {
         jsonEncode(
           Map<String, dynamic>.from(event)..['type'] = 'breakpoint_hit',
         ),
+      );
+    } catch (_) {}
+  }
+
+  /// Sends the serialized widget tree answering a `ui_probe_request`.
+  void sendUiTree(String requestId, Map<String, dynamic> tree) {
+    if (!isConnected) return;
+    try {
+      _socket?.add(
+        jsonEncode({
+          'type': 'ui_tree',
+          'requestId': requestId,
+          'tree': tree,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        }),
+      );
+    } catch (_) {}
+  }
+
+  /// Sends the outcome of a `ui_tap` request (`error` is null on success).
+  void sendUiTapResult(String requestId, bool ok, [String? error]) {
+    if (!isConnected) return;
+    try {
+      _socket?.add(
+        jsonEncode({
+          'type': 'ui_tap_result',
+          'requestId': requestId,
+          'ok': ok,
+          'error': ?error,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        }),
       );
     } catch (_) {}
   }

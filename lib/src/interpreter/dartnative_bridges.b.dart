@@ -11641,8 +11641,33 @@ BridgedClass _createSliderMenuContainerStateBridge() {
 // IconData Bridge
 // =============================================================================
 
-class _DynamicIconData extends $dartnative_35.IconData {
-  const _DynamicIconData(super.codePoint, {super.fontFamily, super.fontPackage});
+class _DynamicIconData implements $dartnative_35.IconData {
+  @override
+  final int codePoint;
+  @override
+  final String? fontFamily;
+  @override
+  final String? fontPackage;
+
+  const _DynamicIconData(
+    this.codePoint, {
+    this.fontFamily = 'MaterialSymbolsRounded',
+    this.fontPackage,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is $dartnative_35.IconData &&
+          codePoint == other.codePoint &&
+          fontFamily == other.fontFamily &&
+          fontPackage == other.fontPackage;
+
+  @override
+  int get hashCode => Object.hash(codePoint, fontFamily, fontPackage);
+
+  @override
+  String toString() => 'IconData(U+${codePoint.toRadixString(16).toUpperCase().padLeft(5, '0')})';
 }
 
 BridgedClass _createIconDataBridge() {
