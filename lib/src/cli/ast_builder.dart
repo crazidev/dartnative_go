@@ -5,7 +5,9 @@ import 'package:analyzer/dart/ast/ast.dart' as analyzer;
 import 'package:path/path.dart' as p;
 import 'package:tom_ast_generator/tom_ast_generator.dart';
 
+import '../runner/bytecode/bundle_codec.dart';
 import '../runner/logger.dart';
+import 'bytecode_emitter.dart';
 
 /// Extended [AstConverter] that handles newer/unmapped analyzer nodes
 /// such as [analyzer.LibraryIdentifier] in `library foo;` directives.
@@ -388,11 +390,16 @@ Future<AstBuildResult> buildGuestAstBundle(
 
   // Incremental fast path: unchanged sources since last success → skip parse.
   final codeRoot = _codeRootFor(projectDir, entryFile);
+  final bcPath = outPath.endsWith('.ast')
+      ? '${outPath.substring(0, outPath.length - 4)}.bc'
+      : '$outPath.bc';
+  final bcFile = File(bcPath);
+
   if (incremental && !force) {
     final last = _lastBuilds[projectDir.path];
     if (last != null && last.outputPath == outFile.path) {
       final fp = await fingerprintGuestSources(codeRoot, projectDir);
-      if (fp == last.fingerprint && outFile.existsSync()) {
+      if (fp == last.fingerprint && outFile.existsSync() && bcFile.existsSync()) {
         final size = await outFile.length();
         return AstBuildResult(
           success: true,
@@ -429,6 +436,21 @@ Future<AstBuildResult> buildGuestAstBundle(
     await outFile.parent.create(recursive: true);
     bundle.saveToFile(outFile.path);
     final size = await outFile.length();
+
+    // Auto-build Bytecode bundle (.bc) alongside .ast so both runtimes stay in sync.
+    try {
+      final bcEmitter = BytecodeEmitter();
+      final bcBundle = bcEmitter.compileBundle(bundle);
+      final bcBytes = BytecodeBundleCodec.encodeBundle(bcBundle);
+      await bcFile.parent.create(recursive: true);
+      await bcFile.writeAsBytes(bcBytes, flush: true);
+    } catch (bcError, bcSt) {
+      DartGoLogger.warn(
+        'Bytecode auto-build error: $bcError\n$bcSt',
+        tag: 'AstBuilder',
+      );
+    }
+
     final fp = await fingerprintGuestSources(codeRoot, projectDir);
     _lastBuilds[projectDir.path] = _LastBuild(
       fingerprint: fp,
@@ -440,7 +462,7 @@ Future<AstBuildResult> buildGuestAstBundle(
     final writeMs = t3.elapsedMilliseconds;
     DartGoLogger.bench(
       'AstBuilder',
-      'guest.ast generated',
+      'guest.ast & guest.bc generated',
       resolveMs + parseBundleMs + writeMs,
       {'resolve': resolveMs, 'parse': parseBundleMs, 'write': writeMs},
     );

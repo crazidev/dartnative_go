@@ -34,8 +34,14 @@ class ProjectBundle {
   /// Entry function inside [astBytes] (defaults to `main`).
   final String? astEntryPoint;
 
+  /// Raw pre-compiled `BytecodeBundle` bytes. Null when server has no `/guest.bc`.
+  final List<int>? bytecodeBytes;
+
   /// Whether an AST bundle is available for opt-in testing.
   bool get hasAst => astBytes != null && astBytes!.isNotEmpty;
+
+  /// Whether a Bytecode bundle is available.
+  bool get hasBytecode => bytecodeBytes != null && bytecodeBytes!.isNotEmpty;
 
   const ProjectBundle({
     required this.appName,
@@ -51,6 +57,7 @@ class ProjectBundle {
     this.assets = const [],
     this.astBytes,
     this.astEntryPoint,
+    this.bytecodeBytes,
   });
 }
 
@@ -108,6 +115,23 @@ class BundleLoader {
     final baseUrl = normalizeUrl(serverUrl);
     try {
       final req = await _client.getUrl(Uri.parse('$baseUrl/guest.ast'));
+      final res = await req.close();
+      if (res.statusCode != HttpStatus.ok) return null;
+      final bytes = await res.fold<List<int>>(
+        <int>[],
+        (prev, el) => prev..addAll(el),
+      );
+      return bytes.isEmpty ? null : bytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Best-effort fetch of pre-compiled `BytecodeBundle` bytes from `/guest.bc`.
+  Future<List<int>?> fetchBytecodeBytes(String serverUrl) async {
+    final baseUrl = normalizeUrl(serverUrl);
+    try {
+      final req = await _client.getUrl(Uri.parse('$baseUrl/guest.bc'));
       final res = await req.close();
       if (res.statusCode != HttpStatus.ok) return null;
       final bytes = await res.fold<List<int>>(
@@ -198,7 +222,9 @@ class BundleLoader {
     Map<String, dynamic>? preloadedManifest,
     Map<String, Set<int>>? breakpointsByFile,
     bool fetchAst = true,
+    bool fetchBytecode = true,
     bool onlyAst = false,
+    bool onlyBytecode = false,
     void Function(int downloaded, int total)? onProgress,
   }) async {
     final totalSw = Stopwatch()..start();
@@ -224,7 +250,40 @@ class BundleLoader {
       rawAssets.addAll((manifest['assets'] as List).map((e) => e.toString()));
     }
 
-    // 1. Fast AST Mode Path (zero source downloading)
+    // 1. Fast Bytecode Mode Path (zero source downloading)
+    if (onlyBytecode || (manifest['hasBytecodeBundle'] == true && onlyBytecode)) {
+      final bcSw = Stopwatch()..start();
+      final bcBytes = await fetchBytecodeBytes(baseUrl);
+      final bcMs = bcSw.elapsedMilliseconds;
+      if (bcBytes != null && bcBytes.isNotEmpty) {
+        DartGoLogger.bench(
+          'BundleLoader',
+          'Bytecode fetchBundle',
+          totalSw.elapsedMilliseconds,
+          {
+            'manifest': manifestMs,
+            'bytecode_download': bcMs,
+            'size': '${bcBytes.length}B',
+          },
+        );
+        return ProjectBundle(
+          appName: appName,
+          appVersion: appVersion,
+          splashUrl: splashUrl,
+          iconUrl: iconUrl,
+          splashBackgroundColor: splashBg,
+          serverUrl: baseUrl,
+          sources: const {},
+          entrypointCode: '',
+          entrypointLibrary: '',
+          breakpoints: const [],
+          assets: rawAssets,
+          bytecodeBytes: bcBytes,
+        );
+      }
+    }
+
+    // 1b. Fast AST Mode Path (zero source downloading)
     if (onlyAst && (manifest['hasAstBundle'] == true || fetchAst)) {
       final astSw = Stopwatch()..start();
       final astBytes = await fetchAstBytes(baseUrl);
@@ -254,6 +313,7 @@ class BundleLoader {
           assets: rawAssets,
           astBytes: astBytes,
           astEntryPoint: manifest['astEntryPoint']?.toString(),
+          bytecodeBytes: await fetchBytecodeBytes(baseUrl),
         );
       }
     }
@@ -366,6 +426,7 @@ class BundleLoader {
         assets: rawAssets,
         astBytes: fetchAst ? await fetchAstBytes(baseUrl) : null,
         astEntryPoint: manifest['astEntryPoint']?.toString(),
+        bytecodeBytes: fetchBytecode ? await fetchBytecodeBytes(baseUrl) : null,
       );
     }
 
@@ -446,6 +507,7 @@ class BundleLoader {
           assets: rawAssets,
           astBytes: fetchAst ? await fetchAstBytes(baseUrl) : null,
           astEntryPoint: manifest['astEntryPoint']?.toString(),
+          bytecodeBytes: fetchBytecode ? await fetchBytecodeBytes(baseUrl) : null,
         );
       }
     } catch (_) {}
@@ -475,6 +537,7 @@ class BundleLoader {
       entrypointCode: virtualSources['main.dart'] ?? code,
       entrypointLibrary: 'main.dart',
       astBytes: fetchAst ? await fetchAstBytes(baseUrl) : null,
+      bytecodeBytes: fetchBytecode ? await fetchBytecodeBytes(baseUrl) : null,
     );
   }
 

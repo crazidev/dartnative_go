@@ -153,12 +153,19 @@ Map<String, dynamic> _serializeElement(Element element) {
 /// what `key:` step args and `findKeyNodes` match on. Non-value keys
 /// (GlobalKey, UniqueKey) only carry the opaque `key` string.
 void _attachKey(Map<String, dynamic> node, Key? key) {
+  if (key == null) return;
   try {
-    if (key == null) return;
-    node['key'] = key.toString();
-    try {
-      node['key_value'] = '${(key as dynamic).value}';
-    } catch (_) {}
+    if (key is ValueKey) {
+      node['key_value'] = '${key.value}';
+      node['key'] = "[<'${key.value}'>]";
+    } else {
+      try {
+        node['key_value'] = '${(key as dynamic).value}';
+      } catch (_) {}
+      try {
+        node['key'] = key.toString();
+      } catch (_) {}
+    }
   } catch (_) {}
 }
 
@@ -524,10 +531,17 @@ bool _matchesWidget(Widget w, TargetSpec spec) {
     String? raw;
     try {
       final k = w.key;
-      full = k?.toString();
-      try {
-        raw = k == null ? null : '${(k as dynamic).value}';
-      } catch (_) {}
+      if (k is ValueKey) {
+        raw = '${k.value}';
+        full = "[<'${k.value}'>]";
+      } else if (k != null) {
+        try {
+          raw = '${(k as dynamic).value}';
+        } catch (_) {}
+        try {
+          full = k.toString();
+        } catch (_) {}
+      }
     } catch (_) {}
     if (raw != spec.key && full != spec.key) return false;
   }
@@ -1348,9 +1362,7 @@ TriggerOutcome typeIntoTarget({
   if (controller != null) {
     try {
       controller.text = text;
-    } catch (e) {
-      return TriggerOutcome.fail('setting controller text threw: $e');
-    }
+    } catch (_) {}
     try {
       controller.value = TextEditingValue(
         text: text,

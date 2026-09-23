@@ -188,7 +188,7 @@ class _TodoScreenState extends ConsumerState<TodoScreen> {
         backgroundColor: const Color(0xFF292524),
         titleGlassBackground: true,
         title: const Text(
-          'My Notes',
+          'My Notess',
           style: TextStyle(
             color: Color(0xFFFFFFFF),
             fontWeight: FontWeight.w500,
@@ -201,7 +201,7 @@ class _TodoScreenState extends ConsumerState<TodoScreen> {
             titleStyle: TextStyle(color: Colors.white, fontSize: 16),
             onPressed: () {
               showCreateNote(context);
-              // setState(() {});
+              setState(() {});
             },
           ),
         ],

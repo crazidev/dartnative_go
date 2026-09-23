@@ -27,6 +27,10 @@ class DevToolOverlay extends StatefulWidget {
   final bool useAst;
   final void Function(bool enabled)? onToggleAst;
 
+  /// True when testing Bytecode stack VM.
+  final bool useBytecode;
+  final void Function()? onCycleMode;
+
   /// Whether verbose benchmark & diagnostic logs are enabled.
   final bool verboseLogs;
   final void Function(bool enabled)? onToggleVerbose;
@@ -45,6 +49,8 @@ class DevToolOverlay extends StatefulWidget {
     this.runtimeModeLabel = 'Source (tom_d4rt)',
     this.useAst = false,
     this.onToggleAst,
+    this.useBytecode = false,
+    this.onCycleMode,
     this.verboseLogs = false,
     this.onToggleVerbose,
   });
@@ -361,11 +367,15 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Runtime mode (source default, AST opt-in test)
+                  // Runtime mode (Source, AST, Bytecode)
                   GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () {
-                      widget.onToggleAst?.call(!widget.useAst);
+                      if (widget.onCycleMode != null) {
+                        widget.onCycleMode!();
+                      } else {
+                        widget.onToggleAst?.call(!widget.useAst);
+                      }
                     },
                     child: Container(
                       width: double.infinity,
@@ -398,7 +408,7 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
                                   ),
                                 ),
                                 const Text(
-                                  'Tap to toggle AST test mode (default: source)',
+                                  'Tap to cycle (Source ➔ AST ➔ Bytecode)',
                                   style: TextStyle(
                                     color: Colors.white38,
                                     fontSize: 11,
@@ -408,7 +418,9 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
                             ),
                           ),
                           Text(
-                            widget.useAst ? 'AST' : 'Source',
+                            widget.useBytecode
+                                ? 'Bytecode'
+                                : (widget.useAst ? 'AST' : 'Source'),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,

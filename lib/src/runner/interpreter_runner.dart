@@ -9,16 +9,13 @@ import '../interpreter/dartscript.b.dart';
 import '../interpreter/debug_controller.dart';
 import '../interpreter/dn_bridge.dart';
 import 'ast_interpreter_runner.dart';
+import 'bytecode/bytecode_models.dart';
+import 'bytecode_interpreter_runner.dart';
 import 'bundle_loader.dart';
 import 'logger.dart';
 import 'runtime_mode.dart';
 
-/// Manages dynamic execution of DartNative guest apps using tom_d4rt.
-///
-/// Dual-mode: [RuntimeMode.source] (default) executes Dart source on-device.
-/// [RuntimeMode.ast] executes pre-compiled `AstBundle` bytes once
-/// `tom_d4rt_ast` lands in the closed SDK. The flag defaults to source so
-/// existing hot-reload behavior is unchanged.
+/// Manages dynamic execution of DartNative guest apps using tom_d4rt, tom_d4rt_ast, or Bytecode VM.
 class InterpreterRunner {
   late D4rt _interpreter;
   final DebugController _debugController = DebugController();
@@ -30,18 +27,23 @@ class InterpreterRunner {
   VoidCallback? onExit;
 
   /// When true, [evaluateBundle] prefers pre-compiled AST bytes.
-  /// Defaults to [kUseAst] (false → source).
-  bool useAst;  // Per-module snapshots for hot reload state preservation
+  bool useAst;
+  /// When true, [evaluateBundle] prefers Bytecode stack VM execution.
+  bool useBytecode;
+
+  // Per-module snapshots for hot reload state preservation
   final Map<String, Map<String, Object?>> _moduleTopLevelSnapshots = {};
   final Map<String, Map<String, Map<String, Object?>>> _moduleStaticSnapshots = {};
   final Map<String, Object?> _globalTopLevelSnapshot = {};
   final Map<String, Map<String, Object?>> _globalStaticSnapshot = {};
 
   AstInterpreterRunner? _astRunner;
+  BytecodeInterpreterRunner? _bytecodeRunner;
 
   DebugController get debugController => _debugController;
   D4rt get interpreter => _interpreter;
-  RuntimeMode get runtimeMode => runtimeModeFromBool(useAst);
+  RuntimeMode get runtimeMode => runtimeModeFromBool(useAst, useBytecode);
+  BytecodeInterpreterRunner? get bytecodeRunner => _bytecodeRunner;
   Object? get activeVisitor => useAst ? _astRunner?.visitor : _interpreter.visitor;
 
   InterpreterRunner({
@@ -49,6 +51,7 @@ class InterpreterRunner {
     this.onExit,
     this.currentServerUrl,
     this.useAst = kUseAst,
+    this.useBytecode = kUseBytecode,
   }) {
     initInterpreter();
   }
@@ -462,14 +465,22 @@ class InterpreterRunner {
     return resolvedWidget;
   }
 
-  /// Dispatches to source or AST evaluation based on [useAst].
-  ///
-  /// Source stays the default. AST requires [ProjectBundle.astBytes] (served
-  /// from `GET /guest.ast`, see `BundleLoader.fetchAstBytes`).
+  /// Dispatches to Bytecode, AST, or Source evaluation based on flags.
   Future<Widget> evaluateBundle(
     ProjectBundle bundle, {
     bool isHotReload = false,
   }) async {
+    if (useBytecode) {
+      if (bundle.hasBytecode) {
+        return evaluateBytecodeBundle(
+          bundle.bytecodeBytes!,
+          isHotReload: isHotReload,
+        );
+      }
+      onLog?.call(
+        '[Runner] Bytecode mode enabled but no /guest.bc on server — falling back.',
+      );
+    }
     if (useAst) {
       if (bundle.hasAst) {
         return evaluateAstBundle(
@@ -488,6 +499,31 @@ class InterpreterRunner {
       sources: bundle.sources,
       isHotReload: isHotReload,
     );
+  }
+
+  /// Executes pre-compiled `BytecodeBundle` bytes on the Stack VM.
+  Future<Widget> evaluateBytecodeBundle(
+    List<int> bytecodeBytes, {
+    bool isHotReload = false,
+  }) async {
+    _bytecodeRunner ??= BytecodeInterpreterRunner(
+      onLog: onLog,
+      onExit: onExit,
+      currentServerUrl: currentServerUrl,
+    );
+    _bytecodeRunner!.currentServerUrl = currentServerUrl;
+    _bytecodeRunner!.onLog = onLog;
+    _bytecodeRunner!.onExit = onExit;
+
+    return await _bytecodeRunner!.evaluateBytecodeBundle(
+      bytecodeBytes,
+      isHotReload: isHotReload,
+    );
+  }
+
+  /// Applies a [BytecodeDelta] hot patch in-place.
+  Set<String>? applyBytecodeDelta(BytecodeDelta delta) {
+    return _bytecodeRunner?.applyBytecodeDelta(delta);
   }
 
   /// Executes pre-compiled `AstBundle` bytes via `tom_d4rt_ast`.
@@ -528,5 +564,7 @@ class InterpreterRunner {
     } catch (_) {}
     _astRunner?.dispose();
     _astRunner = null;
+    _bytecodeRunner?.dispose();
+    _bytecodeRunner = null;
   }
 }

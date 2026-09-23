@@ -9,6 +9,7 @@ import 'src/client/project_storage.dart';
 import 'src/devtool/devtool_overlay.dart';
 import 'src/runner/bundle_loader.dart';
 import 'src/runner/interpreter_runner.dart';
+import 'src/runner/bytecode/bytecode_models.dart';
 import 'src/runner/live_connection.dart';
 import 'src/runner/logger.dart';
 import 'src/runner/native_bottomsheet_manager.dart';
@@ -52,8 +53,9 @@ class _DartNativeGoState extends State<DartNativeGo> {
   late InterpreterRunner _interpreterRunner;
   LiveConnection? _liveConnection;
 
-  /// Engine mode. Source default; AST opt-in for testing (see runtime_mode.dart).
+  /// Engine mode. Source default; AST opt-in; Bytecode stack VM.
   bool _useAst = kUseAst;
+  bool _useBytecode = kUseBytecode;
   bool _verboseLogs = DartGoLogger.verbose;
 
   double? _downloadProgress;
@@ -76,6 +78,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       onLog: (msg) => _liveConnection?.sendDeviceLog(msg),
       onExit: _unmountApp,
       useAst: _useAst,
+      useBytecode: _useBytecode,
     );
     _initScanner();
   }
@@ -138,6 +141,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       final bundle = await _bundleLoader.fetchBundle(
         serverUrl,
         onlyAst: _useAst,
+        onlyBytecode: _useBytecode,
         onProgress: (downloaded, total) {
           if (mounted) {
             setState(() {
@@ -162,6 +166,19 @@ class _DartNativeGoState extends State<DartNativeGo> {
       _liveConnection = LiveConnection(
         serverUrl: bundle.serverUrl,
         onReload: (changed) => _reloadApp(changedFile: changed),
+        onBytecodeDelta: (deltaJson) {
+          try {
+            final delta = BytecodeDelta.fromJson(deltaJson);
+            if (delta.hasStructuralChange) {
+              _reloadApp();
+            } else {
+              _interpreterRunner.applyBytecodeDelta(delta);
+              if (mounted) setState(() {});
+            }
+          } catch (_) {
+            _reloadApp();
+          }
+        },
         onRestart: () => _restartApp(),
         onBreakpoints: (bps) {
           _interpreterRunner.debugController.setBreakpoints(bps);
@@ -366,6 +383,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       final updatedBundle = await _bundleLoader.fetchBundle(
         _activeBundle!.serverUrl,
         onlyAst: _useAst,
+        onlyBytecode: _useBytecode,
       );
       final fetchMs = fetchSw.elapsedMilliseconds;
       if (!mounted) return;
@@ -382,6 +400,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
 
       final evalSw = Stopwatch()..start();
       _interpreterRunner.useAst = _useAst;
+      _interpreterRunner.useBytecode = _useBytecode;
       final widget = await _interpreterRunner.evaluateBundle(
         updatedBundle,
         isHotReload: true,
@@ -402,7 +421,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       final totalMs = reloadSw.elapsedMilliseconds;
 
       DartGoLogger.reload(
-        mode: _useAst ? 'AST' : 'Source',
+        mode: _useBytecode ? 'Bytecode' : (_useAst ? 'AST' : 'Source'),
         totalMs: totalMs,
         timings: {
           'fetch': fetchMs,
@@ -423,11 +442,6 @@ class _DartNativeGoState extends State<DartNativeGo> {
 
   /// Drops interpreter state and evaluates the current bundle fresh upon
   /// Hot Restart (test scripts: `restart` broadcast, usually `origin: test`).
-  ///
-  /// Unlike [_reloadApp] nothing is preserved: generation tracking resets,
-  /// the runner is unmounted + re-initialized, and the bundle is re-fetched
-  /// so the app also (re)mounts when a previous evaluation left it in an
-  /// error/empty state. Requires a dispatched project (`_activeBundle`).
   Future<void> _restartApp() async {
     if (_activeBundle == null) return;
     final restartSw = Stopwatch()..start();
@@ -441,6 +455,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       final updatedBundle = await _bundleLoader.fetchBundle(
         _activeBundle!.serverUrl,
         onlyAst: _useAst,
+        onlyBytecode: _useBytecode,
       );
       if (!mounted) return;
       _activeBundle = updatedBundle;
@@ -451,6 +466,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       _interpreterRunner.unmount();
       _interpreterRunner.currentServerUrl = updatedBundle.serverUrl;
       _interpreterRunner.useAst = _useAst;
+      _interpreterRunner.useBytecode = _useBytecode;
       _interpreterRunner.initInterpreter();
       final widget = await _interpreterRunner.evaluateBundle(
         updatedBundle,
@@ -466,7 +482,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       });
       DartGoLogger.bench(
         'Runner',
-        'Hot Restart (${_useAst ? 'AST' : 'Source'})',
+        'Hot Restart (${_useBytecode ? "Bytecode" : (_useAst ? "AST" : "Source")})',
         restartSw.elapsedMilliseconds,
       );
     } catch (e, stack) {
@@ -541,12 +557,23 @@ class _DartNativeGoState extends State<DartNativeGo> {
         onGoHome: _unmountApp,
         onReload: () => _reloadApp(),
         depCache: _bundleLoader.depCache,
-        runtimeModeLabel: runtimeModeFromBool(_useAst).label,
+        runtimeModeLabel: runtimeModeFromBool(_useAst, _useBytecode).label,
         useAst: _useAst,
-        onToggleAst: (enabled) {
+        useBytecode: _useBytecode,
+        onCycleMode: () {
           setState(() {
-            _useAst = enabled;
-            _interpreterRunner.useAst = enabled;
+            if (!_useAst && !_useBytecode) {
+              _useAst = true;
+              _useBytecode = false;
+            } else if (_useAst && !_useBytecode) {
+              _useAst = false;
+              _useBytecode = true;
+            } else {
+              _useAst = false;
+              _useBytecode = false;
+            }
+            _interpreterRunner.useAst = _useAst;
+            _interpreterRunner.useBytecode = _useBytecode;
           });
           _reloadApp();
         },

@@ -58,6 +58,8 @@ class HomeScreen extends ConsumerWidget {
     final state = ref.watch(appStateProvider);
     final notifier = ref.read(appStateProvider.notifier);
 
+    print("Hello 1 =====");
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFFFFF),
       body: Center(
