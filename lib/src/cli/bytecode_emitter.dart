@@ -39,14 +39,30 @@ class _LocalScope {
   final Map<String, int> _variables = {};
   final Set<String> thisFieldNames;
   final String? enclosingClass;
+  final String? uri;
+  final String? enclosingFunction;
   int _nextSlot;
+  int _nextClosureIndex = 0;
 
   _LocalScope({
     this.parent,
     int initialSlot = 0,
     this.thisFieldNames = const {},
     this.enclosingClass,
+    this.uri,
+    this.enclosingFunction,
   }) : _nextSlot = parent != null ? parent._nextSlot : initialSlot;
+
+  String? get currentUri => uri ?? parent?.currentUri;
+  String? get currentEnclosingFunction =>
+      enclosingFunction ?? parent?.currentEnclosingFunction;
+
+  int nextClosureIndex() {
+    if (parent != null) {
+      return parent!.nextClosureIndex();
+    }
+    return _nextClosureIndex++;
+  }
 
   bool isThisField(String name) {
     if (thisFieldNames.contains(name)) return true;
@@ -137,6 +153,7 @@ class BytecodeEmitter {
   final List<BytecodeClass> _classes = [];
   final Map<String, int> _globalFuncIdMap = {};
   final Set<String> _knownClassNames = {};
+  final Set<int> _allocatedIds = {};
   int _nextFuncId = 1;
   int _nextClosureIndex = 1;
 
@@ -150,9 +167,20 @@ class BytecodeEmitter {
     if (_globalFuncIdMap.containsKey(qualifiedName)) {
       return _globalFuncIdMap[qualifiedName]!;
     }
-    final id = _nextFuncId++;
-    _globalFuncIdMap[qualifiedName] = id;
-    return id;
+    // FNV-1a 31-bit hash for stable, deterministic IDs across builds & files
+    var hash = 0x811c9dc5;
+    for (var i = 0; i < qualifiedName.length; i++) {
+      hash ^= qualifiedName.codeUnitAt(i);
+      hash = (hash * 0x01000193) & 0x7FFFFFFF;
+    }
+    if (hash == 0) hash = 1;
+    while (_allocatedIds.contains(hash)) {
+      hash = (hash + 1) & 0x7FFFFFFF;
+      if (hash == 0) hash = 1;
+    }
+    _allocatedIds.add(hash);
+    _globalFuncIdMap[qualifiedName] = hash;
+    return hash;
   }
 
   /// Compiles a whole [AstBundle] into a [BytecodeBundle].
@@ -161,11 +189,15 @@ class BytecodeEmitter {
     _classes.clear();
     _globalFuncIdMap.clear();
     _knownClassNames.clear();
+    _allocatedIds.clear();
     _nextFuncId = 1;
     _nextClosureIndex = 1;
 
+    final sortedEntries = astBundle.modules.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+
     // First pass: register all classes and function signatures to assign stable IDs
-    for (final entry in astBundle.modules.entries) {
+    for (final entry in sortedEntries) {
       final uri = entry.key;
       final unit = entry.value;
       _preIndexUnit(uri, unit);
@@ -173,7 +205,7 @@ class BytecodeEmitter {
 
     // Second pass: compile function and method bodies
     int? entryFuncId;
-    for (final entry in astBundle.modules.entries) {
+    for (final entry in sortedEntries) {
       final uri = entry.key;
       final unit = entry.value;
       final mainId = _compileUnit(uri, unit);
@@ -229,7 +261,10 @@ class BytecodeEmitter {
     if (staticVarEntries.isNotEmpty) {
       initGlobalsFuncId = _allocateFuncId(r'$initGlobals');
       final buffer = _BytecodeBuffer();
-      final scope = _LocalScope();
+      final scope = _LocalScope(
+        uri: astBundle.entryPointUri,
+        enclosingFunction: r'$initGlobals',
+      );
 
       for (final entry in staticVarEntries) {
         final entryScope = _LocalScope(
@@ -316,23 +351,36 @@ class BytecodeEmitter {
       if (decl is SFunctionDeclaration) {
         final name = decl.name?.name;
         if (name != null) {
-          _allocateFuncId('$uri#$name');
-          if (name == 'main') _allocateFuncId('main');
+          final id = _allocateFuncId('$uri#$name');
+          if (name == 'main') _globalFuncIdMap['main'] = id;
         }
       } else if (decl is SClassDeclaration) {
         final className = decl.name?.name;
         if (className != null) {
           _knownClassNames.add(className);
+          var hasExplicitConstructor = false;
           for (final member in decl.members) {
-            if (member is SMethodDeclaration) {
+            if (member is SFieldDeclaration && !member.isStatic) {
+              for (final v
+                  in member.fields?.variables ?? const <SVariableDeclaration>[]) {
+                final vName = v.name?.name;
+                if (vName != null && v.initializer != null) {
+                  _allocateFuncId('$uri#$className.#init_$vName');
+                }
+              }
+            } else if (member is SMethodDeclaration) {
               final methodName = member.name?.name;
               if (methodName != null) {
                 _allocateFuncId('$uri#$className.$methodName');
               }
             } else if (member is SConstructorDeclaration) {
+              hasExplicitConstructor = true;
               final ctorName = member.name?.name ?? 'new';
               _allocateFuncId('$uri#$className.$ctorName');
             }
+          }
+          if (!hasExplicitConstructor) {
+            _allocateFuncId('$uri#$className.new');
           }
         }
       } else if (decl is SEnumDeclaration) {
@@ -393,6 +441,7 @@ class BytecodeEmitter {
     final fieldInitializers = <SVariableDeclaration>[];
     final methodFuncIds = <String, int>{};
     final constructorFuncIds = <String, int>{};
+    final fieldInitializerFuncIds = <String, int>{};
 
     for (final member in decl.members) {
       if (member is SFieldDeclaration) {
@@ -404,6 +453,32 @@ class BytecodeEmitter {
               fieldNames.add(vName);
               if (v.initializer != null) {
                 fieldInitializers.add(v);
+                final initFuncId =
+                    _allocateFuncId('$uri#$className.#init_$vName');
+                fieldInitializerFuncIds[vName] = initFuncId;
+
+                final buffer = _BytecodeBuffer();
+                final scope = _LocalScope(
+                  uri: uri,
+                  enclosingFunction: '$className.#init_$vName',
+                  thisFieldNames: fieldNames.toSet(),
+                  enclosingClass: className,
+                );
+                scope.define('this');
+                _compileExpression(v.initializer!, buffer, scope);
+                buffer.emitOp(OpCode.retValue);
+
+                _functions.add(
+                  BytecodeFunction(
+                    id: initFuncId,
+                    name: '#init_$vName',
+                    uri: uri,
+                    enclosingClass: className,
+                    code: buffer.toBytes(),
+                    localSlotsCount: scope.maxSlots,
+                    sourceMap: buffer.toSourceMap(),
+                  ),
+                );
               }
             }
           }
@@ -469,6 +544,7 @@ class BytecodeEmitter {
         fieldNames: fieldNames,
         methodFuncIds: methodFuncIds,
         constructorFuncIds: constructorFuncIds,
+        fieldInitializerFuncIds: fieldInitializerFuncIds,
       ),
     );
   }
@@ -488,6 +564,9 @@ class BytecodeEmitter {
   }) {
     final buffer = _BytecodeBuffer();
     final scope = _LocalScope(
+      uri: uri,
+      enclosingFunction:
+          enclosingClass != null ? '$enclosingClass.$name' : name,
       thisFieldNames: fieldNames?.toSet() ?? const {},
       enclosingClass: enclosingClass,
     );
@@ -1222,13 +1301,16 @@ class BytecodeEmitter {
       }
       buffer.emitOp(OpCode.loadIndex);
     } else if (expr is SFunctionExpression) {
-      final closureId = _allocateFuncId('closure_${_nextClosureIndex++}');
+      final closureIndex = scope.nextClosureIndex();
+      final closureName =
+          '${scope.currentUri ?? ""}#${scope.currentEnclosingFunction ?? "global"}#closure_$closureIndex';
+      final closureId = _allocateFuncId(closureName);
       final hasThis = scope.lookup('this') != null;
       final fn = _compileFunction(
         id: closureId,
-        name: 'closure',
-        uri: '',
-        enclosingClass: null,
+        name: 'closure_$closureIndex',
+        uri: scope.currentUri ?? '',
+        enclosingClass: scope.currentEnclosingClass,
         params: expr.parameters,
         body: expr.body,
         isMethod: hasThis,

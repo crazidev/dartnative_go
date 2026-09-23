@@ -51,7 +51,7 @@ class FunctionTable {
 
   /// Clears the function table.
   void clear() {
-    _table.clear;
+    _table.clear();
     _qualifiedNameToId.clear();
     _classToMethodIds.clear();
   }

@@ -37,6 +37,18 @@ class BytecodeVM {
 
   BytecodeInstance _createInstance(BytecodeClass bytecodeClass) {
     final instance = BytecodeInstance(bytecodeClass);
+    for (final entry in bytecodeClass.fieldInitializerFuncIds.entries) {
+      try {
+        instance.fields[entry.key] = executeFunction(
+          funcId: entry.value,
+          thisTarget: instance,
+        );
+        final fn = functionTable.get(entry.value);
+        if (fn != null) {
+          instance.recordInitHash(entry.key, fn.contentHash);
+        }
+      } catch (_) {}
+    }
     final sc = bytecodeClass.superclass ?? '';
     if (sc == 'Notifier' || sc.startsWith('Notifier<')) {
       BytecodeNotifierProxy(this, instance);
@@ -44,8 +56,17 @@ class BytecodeVM {
     return instance;
   }
 
+  /// Resolves and synchronizes the latest [BytecodeClass] for a [BytecodeInstance].
+  BytecodeClass _resolveClass(BytecodeInstance instance) {
+    final latest = classes[instance.bytecodeClass.name];
+    if (latest != null && !identical(instance.bytecodeClass, latest)) {
+      instance.syncClass(latest, this);
+    }
+    return instance.bytecodeClass;
+  }
+
   /// Loads and initializes a [BytecodeBundle].
-  Object? loadBundle(BytecodeBundle bundle) {
+  Object? loadBundle(BytecodeBundle bundle, {bool isHotReload = false}) {
     functionTable.clear();
     functionTable.registerAll(bundle.functions);
     constantPool = bundle.constantPool;
@@ -53,7 +74,9 @@ class BytecodeVM {
     for (final c in bundle.classes) {
       classes[c.name] = c;
     }
-    globals.clear();
+    if (!isHotReload) {
+      globals.clear();
+    }
 
     if (bundle.initGlobalsFuncId != null) {
       executeFunction(funcId: bundle.initGlobalsFuncId!);
@@ -111,7 +134,8 @@ class BytecodeVM {
     List<Object?> posArgs = const [],
     Map<String, Object?> namedArgs = const {},
   ]) {
-    final methodFuncId = instance.bytecodeClass.methodFuncIds[methodName];
+    final cls = _resolveClass(instance);
+    final methodFuncId = cls.methodFuncIds[methodName];
     if (methodFuncId != null) {
       return executeFunction(
         funcId: methodFuncId,
@@ -262,8 +286,9 @@ class BytecodeVM {
           final name = constantPool[nameIdx]?.toString() ?? '';
           final target = _operandStack.removeLast();
           if (target is BytecodeInstance) {
-            if (target.bytecodeClass.methodFuncIds.containsKey(name)) {
-              final funcId = target.bytecodeClass.methodFuncIds[name]!;
+            final cls = _resolveClass(target);
+            if (cls.methodFuncIds.containsKey(name)) {
+              final funcId = cls.methodFuncIds[name]!;
               _operandStack.add(_createTearOff(target, funcId));
             } else {
               _operandStack.add(target.getField(name));
@@ -271,11 +296,14 @@ class BytecodeVM {
           } else if (target is BytecodeNotifierProxy) {
             if (name == 'state') {
               _operandStack.add((target as dynamic).state);
-            } else if (target.instance.bytecodeClass.methodFuncIds.containsKey(name)) {
-              final funcId = target.instance.bytecodeClass.methodFuncIds[name]!;
-              _operandStack.add(_createTearOff(target.instance, funcId));
             } else {
-              _operandStack.add(target.instance.getField(name));
+              final cls = _resolveClass(target.instance);
+              if (cls.methodFuncIds.containsKey(name)) {
+                final funcId = cls.methodFuncIds[name]!;
+                _operandStack.add(_createTearOff(target.instance, funcId));
+              } else {
+                _operandStack.add(target.instance.getField(name));
+              }
             }
           } else if (target != null) {
             _operandStack.add(bridgeAdapter.resolveMember(target, name));
@@ -449,7 +477,8 @@ class BytecodeVM {
           final target = _operandStack.removeLast();
 
           if (target is BytecodeInstance) {
-            final methodFuncId = target.bytecodeClass.methodFuncIds[methodName];
+            final cls = _resolveClass(target);
+            final methodFuncId = cls.methodFuncIds[methodName];
             if (methodFuncId != null) {
               final res = executeFunction(
                 funcId: methodFuncId,
@@ -500,7 +529,8 @@ class BytecodeVM {
               }
             }
           } else if (target is BytecodeNotifierProxy) {
-            final methodFuncId = target.instance.bytecodeClass.methodFuncIds[methodName];
+            final cls = _resolveClass(target.instance);
+            final methodFuncId = cls.methodFuncIds[methodName];
             if (methodFuncId != null) {
               final res = executeFunction(
                 funcId: methodFuncId,
@@ -786,7 +816,8 @@ class BytecodeVM {
 
     // 3. BytecodeNotifierProxy
     if (target is BytecodeNotifierProxy) {
-      final methodFuncId = target.instance.bytecodeClass.methodFuncIds[methodName];
+      final cls = _resolveClass(target.instance);
+      final methodFuncId = cls.methodFuncIds[methodName];
       if (methodFuncId != null) {
         return executeFunction(
           funcId: methodFuncId,

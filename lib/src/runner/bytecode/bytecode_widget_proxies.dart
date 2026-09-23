@@ -15,6 +15,10 @@ class BytecodeStatelessWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final latestClass = vm.classes[instance.bytecodeClass.name];
+    if (latestClass != null) {
+      instance.syncClass(latestClass, vm);
+    }
     final buildFuncId = instance.bytecodeClass.methodFuncIds['build'];
     if (buildFuncId != null) {
       final res = vm.executeFunction(
@@ -40,6 +44,10 @@ class BytecodeStatefulWidget extends StatefulWidget {
 
   @override
   State<StatefulWidget> createState() {
+    final latestClass = vm.classes[instance.bytecodeClass.name];
+    if (latestClass != null) {
+      instance.syncClass(latestClass, vm);
+    }
     final createStateFuncId = instance.bytecodeClass.methodFuncIds['createState'];
     if (createStateFuncId != null) {
       final stateRes = vm.executeFunction(
@@ -129,6 +137,10 @@ class BytecodeStateProxy extends State<StatefulWidget> {
     if (widget is BytecodeStatefulWidget) {
       ownerWidget = widget as BytecodeStatefulWidget;
     }
+    final latestClass = vm.classes[stateInstance.bytecodeClass.name];
+    if (latestClass != null) {
+      stateInstance.syncClass(latestClass, vm);
+    }
     final updateFuncId = stateInstance.bytecodeClass.methodFuncIds['didUpdateWidget'];
     if (updateFuncId != null) {
       vm.executeFunction(
@@ -143,6 +155,10 @@ class BytecodeStateProxy extends State<StatefulWidget> {
   @override
   Widget build(BuildContext context) {
     stateInstance.nativeProxy = this;
+    final latestClass = vm.classes[stateInstance.bytecodeClass.name];
+    if (latestClass != null) {
+      stateInstance.syncClass(latestClass, vm);
+    }
     final buildFuncId = stateInstance.bytecodeClass.methodFuncIds['build'];
     if (buildFuncId != null) {
       final res = vm.executeFunction(
@@ -183,6 +199,10 @@ class BytecodeConsumerWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final latestClass = vm.classes[instance.bytecodeClass.name];
+    if (latestClass != null) {
+      instance.syncClass(latestClass, vm);
+    }
     final buildFuncId = instance.bytecodeClass.methodFuncIds['build'];
     if (buildFuncId != null) {
       final res = vm.executeFunction(
@@ -208,6 +228,10 @@ class BytecodeConsumerStatefulWidget extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<ConsumerStatefulWidget> createState() {
+    final latestClass = vm.classes[instance.bytecodeClass.name];
+    if (latestClass != null) {
+      instance.syncClass(latestClass, vm);
+    }
     final createStateFuncId = instance.bytecodeClass.methodFuncIds['createState'];
     if (createStateFuncId != null) {
       final stateRes = vm.executeFunction(
@@ -297,6 +321,10 @@ class BytecodeConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget> {
     if (widget is BytecodeConsumerStatefulWidget) {
       ownerWidget = widget as BytecodeConsumerStatefulWidget;
     }
+    final latestClass = vm.classes[stateInstance.bytecodeClass.name];
+    if (latestClass != null) {
+      stateInstance.syncClass(latestClass, vm);
+    }
     final updateFuncId = stateInstance.bytecodeClass.methodFuncIds['didUpdateWidget'];
     if (updateFuncId != null) {
       vm.executeFunction(
@@ -311,6 +339,10 @@ class BytecodeConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget> {
   @override
   Widget build(BuildContext context) {
     stateInstance.nativeProxy = this;
+    final latestClass = vm.classes[stateInstance.bytecodeClass.name];
+    if (latestClass != null) {
+      stateInstance.syncClass(latestClass, vm);
+    }
     final buildFuncId = stateInstance.bytecodeClass.methodFuncIds['build'];
     if (buildFuncId != null) {
       final res = vm.executeFunction(
@@ -351,6 +383,10 @@ class BytecodeNotifierProxy extends Notifier<dynamic> {
 
   @override
   dynamic build() {
+    final latestClass = vm.classes[instance.bytecodeClass.name];
+    if (latestClass != null) {
+      instance.syncClass(latestClass, vm);
+    }
     final buildFuncId = instance.bytecodeClass.methodFuncIds['build'];
     if (buildFuncId != null) {
       final res = vm.executeFunction(

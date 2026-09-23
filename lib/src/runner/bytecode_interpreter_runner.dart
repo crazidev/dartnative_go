@@ -38,8 +38,9 @@ class BytecodeInterpreterRunner {
       initRunner();
     }
 
+    _vm.bridgeAdapter.capturedApp = null;
     final bundle = BytecodeBundleCodec.decodeBundle(bytecodeBytes);
-    final rawResult = _vm.loadBundle(bundle);
+    final rawResult = _vm.loadBundle(bundle, isHotReload: isHotReload);
 
     final resolvedWidget = _vm.bridgeAdapter.capturedApp ??
         _vm.unwrapWidget(rawResult);

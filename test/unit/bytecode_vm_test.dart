@@ -268,5 +268,221 @@ void main() {
       expect(res3, equals(12));
       expect(instance.fields['count'], equals(12));
     });
+
+    test('BytecodeInstance dynamically syncs to updated BytecodeClass on bundle reload', () {
+      // 1. Initial Bundle: Counter class with increment()
+      final ctorFn = BytecodeFunction(
+        id: 101,
+        name: 'new',
+        uri: 'package:test/counter.dart',
+        enclosingClass: 'Counter',
+        contentHash: 'ctor_v1',
+        localSlotsCount: 1,
+        code: Uint8List.fromList([OpCode.pushNull, OpCode.ret]),
+      );
+
+      final incFnV1 = BytecodeFunction(
+        id: 102,
+        name: 'increment',
+        uri: 'package:test/counter.dart',
+        enclosingClass: 'Counter',
+        contentHash: 'inc_v1',
+        localSlotsCount: 1,
+        code: Uint8List.fromList([
+          OpCode.pushInt, 0, 0, 0, 5,
+          OpCode.retValue,
+        ]),
+      );
+
+      final counterClassV1 = BytecodeClass(
+        name: 'Counter',
+        uri: 'package:test/counter.dart',
+        fieldNames: ['count'],
+        constructorFuncIds: {'new': 101},
+        methodFuncIds: {'increment': 102},
+      );
+
+      final bundleV1 = BytecodeBundle(
+        entryPointUri: 'package:test/main.dart',
+        entryPointFuncId: 101,
+        constantPool: const ConstantPool([]),
+        functions: [ctorFn, incFnV1],
+        classes: [counterClassV1],
+      );
+
+      vm.loadBundle(bundleV1);
+      vm.globals['myGlobal'] = 999;
+
+      final instance = vm.instantiateClass('Counter', 'new');
+      expect(instance.bytecodeClass, equals(counterClassV1));
+      expect(vm.invokeMethod(instance, 'increment'), equals(5));
+
+      // 2. Hot Reload: Another class added (e.g. Example), new method added to Counter, func IDs change
+      final incFnV2 = BytecodeFunction(
+        id: 202,
+        name: 'increment',
+        uri: 'package:test/counter.dart',
+        enclosingClass: 'Counter',
+        contentHash: 'inc_v2',
+        localSlotsCount: 1,
+        code: Uint8List.fromList([
+          OpCode.pushInt, 0, 0, 0, 42,
+          OpCode.retValue,
+        ]),
+      );
+
+      final exampleCtor = BytecodeFunction(
+        id: 301,
+        name: 'new',
+        uri: 'package:test/main.dart',
+        enclosingClass: 'Example',
+        contentHash: 'ex_ctor',
+        localSlotsCount: 1,
+        code: Uint8List.fromList([OpCode.pushNull, OpCode.ret]),
+      );
+
+      final exampleClass = BytecodeClass(
+        name: 'Example',
+        uri: 'package:test/main.dart',
+        fieldNames: [],
+        constructorFuncIds: {'new': 301},
+        methodFuncIds: {},
+      );
+
+      final counterClassV2 = BytecodeClass(
+        name: 'Counter',
+        uri: 'package:test/counter.dart',
+        fieldNames: ['count', 'extraField'],
+        constructorFuncIds: {'new': 101},
+        methodFuncIds: {'increment': 202},
+      );
+
+      final bundleV2 = BytecodeBundle(
+        entryPointUri: 'package:test/main.dart',
+        entryPointFuncId: 101,
+        constantPool: const ConstantPool([]),
+        functions: [ctorFn, incFnV2, exampleCtor],
+        classes: [exampleClass, counterClassV2],
+      );
+
+      vm.loadBundle(bundleV2, isHotReload: true);
+
+      // Globals preserved
+      expect(vm.globals['myGlobal'], equals(999));
+
+      // Same instance invoked -> automatically resolves counterClassV2 and calls incFnV2 (funcId 202)
+      final result = vm.invokeMethod(instance, 'increment');
+      expect(result, equals(42));
+      expect(instance.bytecodeClass, equals(counterClassV2));
+      expect(instance.fields.containsKey('extraField'), isTrue);
+    });
+
+    test('Newly added class field with initializer is evaluated on existing instance on hot reload', () {
+      // 1. Initial bundle: Screen class with only isCreating field
+      final pool = ConstantPool(['My Notes', 'My App']);
+
+      final screenCtorV1 = BytecodeFunction(
+        id: 401,
+        name: 'new',
+        uri: 'package:test/screen.dart',
+        enclosingClass: 'Screen',
+        contentHash: 'screen_ctor_v1',
+        localSlotsCount: 1,
+        code: Uint8List.fromList([OpCode.pushNull, OpCode.ret]),
+      );
+
+      final screenClassV1 = BytecodeClass(
+        name: 'Screen',
+        uri: 'package:test/screen.dart',
+        fieldNames: ['isCreating'],
+        constructorFuncIds: {'new': 401},
+      );
+
+      final bundleV1 = BytecodeBundle(
+        entryPointUri: 'package:test/main.dart',
+        entryPointFuncId: 401,
+        constantPool: pool,
+        functions: [screenCtorV1],
+        classes: [screenClassV1],
+      );
+
+      vm.loadBundle(bundleV1);
+      final instance = vm.instantiateClass('Screen', 'new');
+      expect(instance.fields.containsKey('isCreating'), isTrue);
+      expect(instance.fields.containsKey('title'), isFalse);
+
+      // 2. Hot reload: Added 'var title = "My Notes";'
+      // Field initializer function returns 'My Notes' (constant pool index 0)
+      final initTitleFnV1 = BytecodeFunction(
+        id: 402,
+        name: '#init_title',
+        uri: 'package:test/screen.dart',
+        enclosingClass: 'Screen',
+        contentHash: 'init_title_notes',
+        localSlotsCount: 1,
+        code: Uint8List.fromList([
+          OpCode.pushConst, 0, 0, // push 'My Notes'
+          OpCode.retValue,
+        ]),
+      );
+
+      final screenClassV2 = BytecodeClass(
+        name: 'Screen',
+        uri: 'package:test/screen.dart',
+        fieldNames: ['isCreating', 'title'],
+        constructorFuncIds: {'new': 401},
+        fieldInitializerFuncIds: {'title': 402},
+      );
+
+      final bundleV2 = BytecodeBundle(
+        entryPointUri: 'package:test/main.dart',
+        entryPointFuncId: 401,
+        constantPool: pool,
+        functions: [screenCtorV1, initTitleFnV1],
+        classes: [screenClassV2],
+      );
+
+      vm.loadBundle(bundleV2, isHotReload: true);
+
+      // Verify that syncClass automatically evaluated the initializer for 'title'
+      instance.syncClass(screenClassV2, vm);
+      expect(instance.fields['title'], equals('My Notes'));
+
+      // 3. User swaps 'var title = "My Notes";' to 'var title = "My App";'
+      final initTitleFnV2 = BytecodeFunction(
+        id: 402,
+        name: '#init_title',
+        uri: 'package:test/screen.dart',
+        enclosingClass: 'Screen',
+        contentHash: 'init_title_app',
+        localSlotsCount: 1,
+        code: Uint8List.fromList([
+          OpCode.pushConst, 0, 1, // push 'My App'
+          OpCode.retValue,
+        ]),
+      );
+
+      final screenClassV3 = BytecodeClass(
+        name: 'Screen',
+        uri: 'package:test/screen.dart',
+        fieldNames: ['isCreating', 'title'],
+        constructorFuncIds: {'new': 401},
+        fieldInitializerFuncIds: {'title': 402},
+      );
+
+      final bundleV3 = BytecodeBundle(
+        entryPointUri: 'package:test/main.dart',
+        entryPointFuncId: 401,
+        constantPool: pool,
+        functions: [screenCtorV1, initTitleFnV2],
+        classes: [screenClassV3],
+      );
+
+      vm.loadBundle(bundleV3, isHotReload: true);
+
+      // Verify that changed initializer is re-evaluated on existing instance!
+      instance.syncClass(screenClassV3, vm);
+      expect(instance.fields['title'], equals('My App'));
+    });
   });
 }

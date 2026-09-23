@@ -126,6 +126,7 @@ class BytecodeClass {
   final List<String> fieldNames;
   final Map<String, int> methodFuncIds; // methodName -> funcId
   final Map<String, int> constructorFuncIds; // ctorName -> funcId
+  final Map<String, int> fieldInitializerFuncIds; // fieldName -> funcId
 
   const BytecodeClass({
     required this.name,
@@ -134,6 +135,7 @@ class BytecodeClass {
     this.fieldNames = const [],
     this.methodFuncIds = const {},
     this.constructorFuncIds = const {},
+    this.fieldInitializerFuncIds = const {},
   });
 
   Map<String, dynamic> toJson() => {
@@ -143,6 +145,8 @@ class BytecodeClass {
         'fields': fieldNames,
         'methods': methodFuncIds,
         'constructors': constructorFuncIds,
+        if (fieldInitializerFuncIds.isNotEmpty)
+          'fieldInits': fieldInitializerFuncIds,
       };
 
   factory BytecodeClass.fromJson(Map<String, dynamic> json) => BytecodeClass(
@@ -156,6 +160,11 @@ class BytecodeClass {
             const {},
         constructorFuncIds:
             (json['constructors'] as Map<String, dynamic>?)?.map(
+                  (k, v) => MapEntry(k, v as int),
+                ) ??
+                const {},
+        fieldInitializerFuncIds:
+            (json['fieldInits'] as Map<String, dynamic>?)?.map(
                   (k, v) => MapEntry(k, v as int),
                 ) ??
                 const {},

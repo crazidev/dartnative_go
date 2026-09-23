@@ -67,13 +67,51 @@ class BytecodeClosure implements Callable {
 
 /// Represents an instantiated interpreted class instance.
 class BytecodeInstance {
-  final BytecodeClass bytecodeClass;
+  BytecodeClass bytecodeClass;
   final Map<String, Object?> fields = {};
+  final Map<String, String> _appliedInitHashes = {};
   Object? nativeProxy;
 
   BytecodeInstance(this.bytecodeClass) {
     for (final f in bytecodeClass.fieldNames) {
       fields[f] = null;
+    }
+  }
+
+  void recordInitHash(String fieldName, String hash) {
+    _appliedInitHashes[fieldName] = hash;
+  }
+
+  /// Synchronizes this instance to a newer [BytecodeClass] definition (e.g. after hot reload).
+  void syncClass(BytecodeClass newClass, [BytecodeVM? vm]) {
+    bytecodeClass = newClass;
+    for (final f in newClass.fieldNames) {
+      final isNewField = !fields.containsKey(f);
+      final newInitId = newClass.fieldInitializerFuncIds[f];
+      final newHash = newInitId != null
+          ? vm?.functionTable.get(newInitId)?.contentHash
+          : null;
+      final initChanged = newHash != null &&
+          _appliedInitHashes.containsKey(f) &&
+          _appliedInitHashes[f] != newHash;
+
+      if (isNewField || fields[f] == null || initChanged) {
+        if (newInitId != null && vm != null) {
+          try {
+            fields[f] = vm.executeFunction(
+              funcId: newInitId,
+              thisTarget: this,
+            );
+            if (newHash != null) {
+              _appliedInitHashes[f] = newHash;
+            }
+          } catch (_) {
+            fields.putIfAbsent(f, () => null);
+          }
+        } else {
+          fields.putIfAbsent(f, () => null);
+        }
+      }
     }
   }
 
