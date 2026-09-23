@@ -41,8 +41,12 @@ import 'package:dartnative/dartnative.dart';
 // ignore: implementation_imports
 import 'package:dartnative/src/reconciler/element.dart';
 
+export 'icon_registry.dart' show resolveIcon, ResolvedIcon;
 export 'ui_tree_json.dart'
     show findButtonNodes, findIconNodes, findKeyNodes, findTextNodes;
+
+import 'icon_registry.dart';
+import 'native_bottomsheet_manager.dart';
 
 /// Serializes a widget subtree into a JSON-safe map (Level 1).
 ///
@@ -67,8 +71,22 @@ Map<String, dynamic> _serializeWidget(
   } else if (w is Button) {
     node['title'] = w.title;
     node['tappable'] = w.onPressed != null;
+  } else if (w is IconButton) {
+    node['tappable'] = w.onPressed != null;
+    if (w.icon is Icon) {
+      _attachIcon(node, w.icon as Icon);
+    }
   } else if (w is Icon) {
     _attachIcon(node, w);
+  } else if (w is TextField) {
+    try {
+      if (w.controller != null) node['text'] = w.controller!.text;
+      final hint = w.decoration?.hintText;
+      if (hint != null) {
+        node['hint'] = hint;
+        node['placeholder'] = hint;
+      }
+    } catch (_) {}
   }
   final element = elementIndex?[w];
   if (element != null) _attachElementData(node, element);
@@ -102,8 +120,22 @@ Map<String, dynamic> _serializeElement(Element element) {
     } else if (widget is Button) {
       node['title'] = widget.title;
       node['tappable'] = widget.onPressed != null;
+    } else if (widget is IconButton) {
+      node['tappable'] = widget.onPressed != null;
+      if (widget.icon is Icon) {
+        _attachIcon(node, widget.icon as Icon);
+      }
     } else if (widget is Icon) {
       _attachIcon(node, widget);
+    } else if (widget is TextField) {
+      try {
+        if (widget.controller != null) node['text'] = widget.controller!.text;
+        final hint = widget.decoration?.hintText;
+        if (hint != null) {
+          node['hint'] = hint;
+          node['placeholder'] = hint;
+        }
+      } catch (_) {}
     }
   }
   _attachElementData(node, element);
@@ -184,30 +216,83 @@ Map<Widget, Element> indexElementsByWidget(Element root) {
 /// Best-available guest-tree snapshot.
 ///
 /// Prefers the DNTree ([elementRoot]) so nodes carry native `viewId`s;
-/// falls back to the widget walk ([widgetRoot]). Returns the tree plus
-/// whether it came from reconciled elements.
+/// falls back to the widget walk ([widgetRoot]). Also discovers and attaches
+/// any active native bottom sheets ([NativeBottomSheetManager.activeSheets])
+/// so modal sheet content is visible to probes and automations.
+/// Returns the tree plus whether it came from reconciled elements.
 ({Map<String, dynamic> tree, bool fromElements}) probeGuest({
   Element? elementRoot,
   Widget? widgetRoot,
+  List<NativeBottomSheetScopeState>? activeSheets,
 }) {
+  Map<String, dynamic> mainTree;
+  bool fromElements = false;
   if (elementRoot != null) {
     try {
       // Touch the tree once to detect host stubs before committing.
       elementRoot.widget;
+      mainTree = serializeElementTree(elementRoot);
+      fromElements = true;
+    } catch (_) {
+      final widget = widgetRoot;
+      if (widget == null) {
+        return (
+          tree: const {'type': 'Error', 'error': 'no app mounted'},
+          fromElements: false,
+        );
+      }
+      mainTree = serializeTree(widget);
+    }
+  } else {
+    final widget = widgetRoot;
+    if (widget == null) {
       return (
-        tree: serializeElementTree(elementRoot),
-        fromElements: true,
+        tree: const {'type': 'Error', 'error': 'no app mounted'},
+        fromElements: false,
       );
-    } catch (_) {}
+    }
+    mainTree = serializeTree(widget);
   }
-  final widget = widgetRoot;
-  if (widget == null) {
+
+  final sheets = activeSheets ?? NativeBottomSheetManager.activeSheets;
+  final validSheets = sheets.where((s) => s.isScopeActive).toList();
+  if (validSheets.isEmpty) {
+    return (tree: mainTree, fromElements: fromElements);
+  }
+
+  final sheetNodes = <Map<String, dynamic>>[];
+  for (final s in validSheets) {
+    final el = s.elementRoot;
+    Map<String, dynamic>? sheetTree;
+    if (el != null) {
+      try {
+        el.widget;
+        sheetTree = serializeElementTree(el);
+      } catch (_) {}
+    }
+    final scope = s.scopeWidget;
+    sheetTree ??= serializeTree(scope.child);
+    sheetNodes.add({
+      'type': 'NativeBottomSheet',
+      'sheetId': scope.controller.sheetId,
+      'children': [sheetTree],
+    });
+  }
+
+  if (mainTree['children'] is List) {
+    final children = List<dynamic>.from(mainTree['children'] as List);
+    children.addAll(sheetNodes);
+    mainTree['children'] = children;
+    return (tree: mainTree, fromElements: fromElements);
+  } else {
     return (
-      tree: const {'type': 'Error', 'error': 'no app mounted'},
-      fromElements: false,
+      tree: {
+        'type': 'AppRoot',
+        'children': [mainTree, ...sheetNodes],
+      },
+      fromElements: fromElements,
     );
   }
-  return (tree: serializeTree(widget), fromElements: false);
 }
 
 /// Resolves the guest-root `Element` from a `GlobalKey` mounted above it.
@@ -223,18 +308,43 @@ Element? probeRootElement(GlobalKey key) {
 /// Direct children for the layout widgets guest apps commonly use.
 List<Widget> directChildrenOf(Widget w) {
   if (w is Scaffold) {
-    final body = w.body;
-    return body == null ? const [] : [body];
+    return [
+      if (w.appBar != null) w.appBar!,
+      if (w.body != null) w.body!,
+    ];
+  }
+  if (w is AppBar) {
+    return [
+      if (w.leading != null) w.leading!,
+      if (w.title != null) w.title!,
+      if (w.actions != null) ...w.actions!,
+    ];
   }
   if (w is Center) return [w.child];
   if (w is Column) return List<Widget>.of(w.children);
   if (w is Row) return List<Widget>.of(w.children);
+  if (w is Stack) return List<Widget>.of(w.children);
   if (w is Container) {
     final child = w.child;
     return child == null ? const [] : [child];
   }
   if (w is Padding) return [w.child];
   if (w is SingleChildScrollView) return [w.child];
+  if (w is ListView && w.children != null) {
+    return List<Widget>.of(w.children!);
+  }
+  if (w is GestureDetector) {
+    final child = w.child;
+    return child == null ? const [] : [child];
+  }
+  if (w is IconButton) return [w.icon];
+  if (w is NativeBottomSheetScope) return [w.child];
+  if (w is Expanded) return [w.child];
+  if (w is Positioned) return [w.child];
+  if (w is SizedBox) {
+    final child = w.child;
+    return child == null ? const [] : [child];
+  }
   final typeName = w.runtimeType.toString();
   if (typeName.contains('ProviderScope')) {
     try {
@@ -242,69 +352,47 @@ List<Widget> directChildrenOf(Widget w) {
       if (child != null) return [child];
     } catch (_) {}
   }
+  try {
+    final dynamic dyn = w;
+    final child = dyn.child as Widget?;
+    if (child != null) return [child];
+  } catch (_) {}
+  try {
+    final dynamic dyn = w;
+    final children = dyn.children as List<Widget>?;
+    if (children != null) return List<Widget>.of(children);
+  } catch (_) {}
   return const [];
 }
 
 /// Taps the first `Button` titled [title] under the widget [root].
 ///
-/// Returns `null` on success, or an error description. The device handler
-/// sends this back as `ui_tap_result`. Prefer [tapButtonInElementTree] on
-/// device so the tap resolves through the reconciled DNTree.
+/// Returns `null` on success, or an error description. Preserved for backward
+/// compatibility; prefer [tapTarget] on modern test suites.
 String? tapButtonByTitle(Widget root, String title) {
-  final button = _findButton(root, title);
-  if (button == null) {
-    return 'no Button titled "$title" '
-        '(have: ${_allButtons(root).map((b) => b.title).toList()})';
-  }
-  return _invokeButton(button, title);
+  final outcome = tapTarget(
+    widgetRoot: root,
+    spec: TargetSpec(title: title),
+  );
+  if (outcome.ok) return null;
+  return outcome.error;
 }
 
 /// Taps the first `Button` titled [title] under the element-tree [root].
 ///
-/// Walks reconciled elements and dispatches through `element.widget`, so the
-/// tapped node is guaranteed to be the mounted instance. Returns `null` on
-/// success, or an error description.
+/// Walks reconciled elements and dispatches through mounted instances.
+/// Preserved for backward compatibility; prefer [tapTarget] on modern test suites.
 String? tapButtonInElementTree(Element root, String title) {
-  Button? found;
-  String? foundTitle;
-  void visit(Element element) {
-    if (found != null) return;
-    Widget? widget;
-    try {
-      widget = element.widget;
-    } catch (_) {}
-    if (widget is Button && widget.title == title) {
-      found = widget;
-      return;
-    }
-    if (widget is Button) foundTitle ??= widget.title;
-    for (final child in _safeChildren(element)) {
-      visit(child);
-    }
-  }
-
-  visit(root);
-  final button = found;
-  if (button == null) {
-    return 'no Button titled "$title" in the reconciled tree'
-        '${foundTitle == null ? '' : ' (e.g. "$foundTitle")'}';
-  }
-  return _invokeButton(button, title);
-}
-
-String? _invokeButton(Button button, String title) {
-  final cb = button.onPressed;
-  if (cb == null) return 'Button "$title" has null onPressed';
-  try {
-    cb();
-  } catch (e) {
-    return 'Button "$title" onPressed threw: $e';
-  }
-  return null;
+  final outcome = tapTarget(
+    elementRoot: root,
+    spec: TargetSpec(title: title),
+  );
+  if (outcome.ok) return null;
+  return outcome.error;
 }
 
 class TargetSpec {
-  /// `Button.title`.
+  /// `Button.title` or `BarButtonItem.title`.
   final String? title;
 
   /// `Text.data`.
@@ -315,6 +403,12 @@ class TargetSpec {
   /// icons, and layout widgets.
   final String? key;
 
+  /// `TextField.decoration.hintText` or placeholder text.
+  final String? placeholder;
+
+  /// Matches any `TextField` (or the currently focused/autofocused one).
+  final bool anyTextField;
+
   /// `Icon` code point and/or font family.
   final int? iconCodePoint;
   final String? iconFontFamily;
@@ -323,6 +417,8 @@ class TargetSpec {
     this.title,
     this.text,
     this.key,
+    this.placeholder,
+    this.anyTextField = false,
     this.iconCodePoint,
     this.iconFontFamily,
   });
@@ -331,6 +427,8 @@ class TargetSpec {
       title == null &&
       text == null &&
       key == null &&
+      placeholder == null &&
+      !anyTextField &&
       iconCodePoint == null &&
       iconFontFamily == null;
 
@@ -338,19 +436,65 @@ class TargetSpec {
         if (title != null) 'title': title,
         if (text != null) 'text': text,
         if (key != null) 'key': key,
+        if (placeholder != null) 'placeholder': placeholder,
+        if (anyTextField) 'any_text_field': true,
         if (iconCodePoint != null) 'icon_code_point': iconCodePoint,
         if (iconFontFamily != null) 'icon_font_family': iconFontFamily,
       };
 
-  static TargetSpec fromJson(Map<String, dynamic> json) => TargetSpec(
-        title: json['title']?.toString(),
-        text: json['text']?.toString(),
-        key: json['key']?.toString(),
-        iconCodePoint: json['icon_code_point'] is int
+  static TargetSpec fromJson(Map<String, dynamic> json) {
+    int? cp;
+    String? ff;
+
+    final resolved = resolveIcon(json);
+    if (resolved != null) {
+      cp = resolved.codePoint;
+      ff = resolved.fontFamily;
+    } else {
+      if (json['icon_code_point'] != null) {
+        cp = json['icon_code_point'] is int
             ? json['icon_code_point'] as int
-            : int.tryParse('${json['icon_code_point']}'),
-        iconFontFamily: json['icon_font_family']?.toString(),
-      );
+            : int.tryParse('${json['icon_code_point']}');
+      } else if (json['code_point'] != null) {
+        cp = json['code_point'] is int
+            ? json['code_point'] as int
+            : int.tryParse('${json['code_point']}');
+      } else if (json['icon'] != null) {
+        if (json['icon'] is int) {
+          cp = json['icon'] as int;
+        } else if (json['icon'] is Map) {
+          final iconMap = json['icon'] as Map;
+          cp = iconMap['code_point'] is int
+              ? iconMap['code_point'] as int
+              : int.tryParse('${iconMap['code_point']}');
+        } else {
+          cp = int.tryParse('${json['icon']}');
+        }
+      }
+
+      ff = json['icon_font_family']?.toString() ??
+          json['font_family']?.toString();
+      if (ff == null && json['icon'] is Map) {
+        ff = (json['icon'] as Map)['font_family']?.toString();
+      }
+    }
+
+    final placeholder = json['placeholder']?.toString() ??
+        json['hint']?.toString() ??
+        (json['into'] is String ? json['into'] as String : null);
+    final anyTextField = json['any_text_field'] == true ||
+        json['type'] == 'TextField';
+
+    return TargetSpec(
+      title: json['title']?.toString(),
+      text: json['text']?.toString(),
+      key: json['key']?.toString(),
+      placeholder: placeholder,
+      anyTextField: anyTextField,
+      iconCodePoint: cp,
+      iconFontFamily: ff,
+    );
+  }
 
   @override
   String toString() => toJson().toString();
@@ -374,6 +518,7 @@ class ResolvedTarget {
 }
 
 bool _matchesWidget(Widget w, TargetSpec spec) {
+  if (spec.anyTextField && w is! TextField) return false;
   if (spec.key != null) {
     String? full;
     String? raw;
@@ -386,22 +531,78 @@ bool _matchesWidget(Widget w, TargetSpec spec) {
     } catch (_) {}
     if (raw != spec.key && full != spec.key) return false;
   }
-  if (spec.title != null) {
-    if (w is! Button || w.title != spec.title) return false;
-  }
-  if (spec.text != null) {
-    if (w is! Text || w.data != spec.text) return false;
-  }
-  if (spec.iconCodePoint != null || spec.iconFontFamily != null) {
-    if (w is! Icon) return false;
-    int? cp;
-    String? ff;
-    try {
-      cp = w.icon.codePoint;
-      ff = w.icon.fontFamily;
-    } catch (_) {
+  if (spec.placeholder != null) {
+    if (w is! TextField) return false;
+    final hint = w.decoration?.hintText;
+    if (hint == null ||
+        (hint != spec.placeholder &&
+            (spec.placeholder!.isEmpty || !hint.contains(spec.placeholder!)))) {
       return false;
     }
+  }
+  if (spec.title != null) {
+    String? title;
+    if (w is Button) {
+      title = w.title;
+    } else if (w is BarButtonItem) {
+      title = w.title;
+    } else if (w is TextField) {
+      title = w.decoration?.hintText;
+    } else {
+      try {
+        title = (w as dynamic).title?.toString();
+      } catch (_) {}
+    }
+    if (title != spec.title &&
+        (title == null ||
+            spec.title!.isEmpty ||
+            !title.contains(spec.title!))) {
+      return false;
+    }
+  }
+  if (spec.text != null) {
+    if (w is Text) {
+      final t = w.data;
+      if (t != spec.text && (spec.text!.isEmpty || !t.contains(spec.text!))) {
+        return false;
+      }
+    } else if (w is TextField) {
+      final hint = w.decoration?.hintText;
+      final current = w.controller?.text;
+      final matchesHint = hint != null &&
+          (hint == spec.text ||
+              (spec.text!.isNotEmpty && hint.contains(spec.text!)));
+      final matchesCurrent = current != null &&
+          (current == spec.text ||
+              (spec.text!.isNotEmpty && current.contains(spec.text!)));
+      if (!matchesHint && !matchesCurrent) return false;
+    } else {
+      return false;
+    }
+  }
+  if (spec.iconCodePoint != null || spec.iconFontFamily != null) {
+    int? cp;
+    String? ff;
+    if (w is Icon) {
+      try {
+        cp = w.icon.codePoint;
+        ff = w.icon.fontFamily;
+      } catch (_) {}
+    } else if (w is BarButtonItem) {
+      try {
+        cp = w.fontIcon?.codePoint;
+        ff = w.fontIcon?.fontFamily;
+      } catch (_) {}
+    } else if (w is IconButton) {
+      try {
+        final iconWidget = w.icon;
+        if (iconWidget is Icon) {
+          cp = iconWidget.icon.codePoint;
+          ff = iconWidget.icon.fontFamily;
+        }
+      } catch (_) {}
+    }
+    if (cp == null && ff == null) return false;
     if (spec.iconCodePoint != null && cp != spec.iconCodePoint) return false;
     if (spec.iconFontFamily != null && ff != spec.iconFontFamily) {
       return false;
@@ -410,18 +611,89 @@ bool _matchesWidget(Widget w, TargetSpec spec) {
   return true;
 }
 
+VoidCallback? _resolveTapCallback(Widget w) {
+  if (w is Button) return w.onPressed;
+  if (w is BarButtonItem) return w.onPressed;
+  if (w is IconButton) return w.onPressed;
+  if (w is GestureDetector) {
+    if (w.onTap != null) return w.onTap;
+    if (w.onTapUp != null) {
+      return () => w.onTapUp!(const TapUpDetails());
+    }
+  }
+  try {
+    final dynamic dyn = w;
+    final cb = dyn.onPressed;
+    if (cb is VoidCallback) return cb;
+  } catch (_) {}
+  try {
+    final dynamic dyn = w;
+    final cb = dyn.onTap;
+    if (cb is VoidCallback) return cb;
+  } catch (_) {}
+  return null;
+}
+
 /// Resolves [spec] against the element tree when available (preferred —
 /// guarantees the mounted instance), else the widget tree.
 ///
-/// Returns the target or an error description (never throws).
+/// Searches active bottom sheets first (newest sheet on top), then falls back
+/// to the main app tree. Returns the target or an error description (never throws).
 ({ResolvedTarget? target, String? error}) resolveTarget({
   Widget? widgetRoot,
   Element? elementRoot,
   required TargetSpec spec,
+  List<NativeBottomSheetScopeState>? activeSheets,
 }) {
   if (spec.isEmpty) {
     return (target: null, error: 'empty target: set title/text/key/icon');
   }
+
+  // 1. Search active bottom sheets first (modal content overlays the main app)
+  final sheets = activeSheets ?? NativeBottomSheetManager.activeSheets;
+  final validSheets = sheets.where((s) => s.isScopeActive).toList();
+  for (final sheet in validSheets.reversed) {
+    final sheetElement = sheet.elementRoot;
+    if (sheetElement != null) {
+      ResolvedTarget? found;
+      void visit(Element element) {
+        if (found != null) return;
+        Widget? widget;
+        try {
+          widget = element.widget;
+        } catch (_) {}
+        if (widget != null && _matchesWidget(widget, spec)) {
+          found = ResolvedTarget(widget, element);
+          return;
+        }
+        for (final child in _safeChildren(element)) {
+          visit(child);
+        }
+      }
+
+      try {
+        visit(sheetElement);
+      } catch (_) {}
+      if (found != null) return (target: found, error: null);
+    }
+
+    ResolvedTarget? found;
+    void visitWidget(Widget w) {
+      if (found != null) return;
+      if (_matchesWidget(w, spec)) {
+        found = ResolvedTarget(w);
+        return;
+      }
+      for (final child in directChildrenOf(w)) {
+        visitWidget(child);
+      }
+    }
+
+    visitWidget(sheet.scopeWidget.child);
+    if (found != null) return (target: found, error: null);
+  }
+
+  // 2. Search main app elementRoot and widgetRoot
   if (elementRoot != null) {
     ResolvedTarget? found;
     void visit(Element element) {
@@ -464,6 +736,431 @@ bool _matchesWidget(Widget w, TargetSpec spec) {
   return (target: null, error: 'no element matching $spec');
 }
 
+/// Taps the target matching [spec] (by title, text, key, icon code point/font).
+///
+/// Resolves through active bottom sheets first, then the element tree (Level 2)
+/// or widget tree (Level 1).
+///
+/// Once the target node is located, searches the node itself and its ancestor
+/// chain for a tap callback:
+/// - `Button.onPressed`
+/// - `GestureDetector.onTap` (or `onTapUp`)
+/// - `BarButtonItem.onPressed`
+/// - `IconButton.onPressed`
+/// - Any widget with `onTap` or `onPressed`
+///
+/// Returns [TriggerOutcome.ok] on success, or [TriggerOutcome.fail] with details.
+TriggerOutcome tapTarget({
+  Widget? widgetRoot,
+  Element? elementRoot,
+  required TargetSpec spec,
+  List<NativeBottomSheetScopeState>? activeSheets,
+}) {
+  if (spec.isEmpty) {
+    return TriggerOutcome.fail('empty target: set title/text/key/icon');
+  }
+
+  // 1. Search active bottom sheets first (modal content on top of screen)
+  final sheets = activeSheets ?? NativeBottomSheetManager.activeSheets;
+  final validSheets = sheets.where((s) => s.isScopeActive).toList();
+  for (final sheet in validSheets.reversed) {
+    final sheetElement = sheet.elementRoot;
+    if (sheetElement != null) {
+      ResolvedTarget? foundTarget;
+      VoidCallback? foundCallback;
+      String? callbackWidgetType;
+
+      void visit(Element element, List<Element> ancestors) {
+        if (foundTarget != null) return;
+        Widget? widget;
+        try {
+          widget = element.widget;
+        } catch (_) {}
+        if (widget != null && _matchesWidget(widget, spec)) {
+          foundTarget = ResolvedTarget(widget, element);
+          var cb = _resolveTapCallback(widget);
+          if (cb != null) {
+            foundCallback = cb;
+            callbackWidgetType = widget.runtimeType.toString();
+            return;
+          }
+          for (final a in ancestors.reversed) {
+            Widget? aw;
+            try {
+              aw = a.widget;
+            } catch (_) {}
+            if (aw != null) {
+              cb = _resolveTapCallback(aw);
+              if (cb != null) {
+                foundCallback = cb;
+                callbackWidgetType = aw.runtimeType.toString();
+                return;
+              }
+            }
+          }
+          for (final child in _safeChildren(element)) {
+            Widget? cw;
+            try {
+              cw = child.widget;
+            } catch (_) {}
+            if (cw != null) {
+              cb = _resolveTapCallback(cw);
+              if (cb != null) {
+                foundCallback = cb;
+                callbackWidgetType = cw.runtimeType.toString();
+                return;
+              }
+            }
+          }
+          return;
+        }
+        final nextAncestors = [...ancestors, element];
+        for (final child in _safeChildren(element)) {
+          visit(child, nextAncestors);
+        }
+      }
+
+      try {
+        visit(sheetElement, const []);
+      } catch (_) {}
+
+      if (foundTarget != null) {
+        if (foundCallback != null) {
+          try {
+            foundCallback!();
+            return TriggerOutcome.ok(foundTarget!.viewId);
+          } catch (e) {
+            return TriggerOutcome.fail('$callbackWidgetType tap callback threw: $e');
+          }
+        }
+        return TriggerOutcome.fail(
+          'target matching $spec (${foundTarget!.widget.runtimeType}) has no tappable ancestor (checked Button, GestureDetector, BarButtonItem, IconButton)',
+        );
+      }
+    }
+
+    // Fallback to widget walk for sheet
+    ResolvedTarget? foundTarget;
+    VoidCallback? foundCallback;
+    String? callbackWidgetType;
+
+    void visit(Widget w, List<Widget> ancestors) {
+      if (foundTarget != null) return;
+      if (_matchesWidget(w, spec)) {
+        foundTarget = ResolvedTarget(w);
+        var cb = _resolveTapCallback(w);
+        if (cb != null) {
+          foundCallback = cb;
+          callbackWidgetType = w.runtimeType.toString();
+          return;
+        }
+        for (final a in ancestors.reversed) {
+          cb = _resolveTapCallback(a);
+          if (cb != null) {
+            foundCallback = cb;
+            callbackWidgetType = a.runtimeType.toString();
+            return;
+          }
+        }
+        for (final child in directChildrenOf(w)) {
+          cb = _resolveTapCallback(child);
+          if (cb != null) {
+            foundCallback = cb;
+            callbackWidgetType = child.runtimeType.toString();
+            return;
+          }
+        }
+        return;
+      }
+      final nextAncestors = [...ancestors, w];
+      for (final child in directChildrenOf(w)) {
+        visit(child, nextAncestors);
+      }
+    }
+
+    visit(sheet.scopeWidget.child, const []);
+    if (foundTarget != null) {
+      if (foundCallback != null) {
+        try {
+          foundCallback!();
+          return TriggerOutcome.ok(foundTarget!.viewId);
+        } catch (e) {
+          return TriggerOutcome.fail('$callbackWidgetType tap callback threw: $e');
+        }
+      }
+      return TriggerOutcome.fail(
+        'target matching $spec (${foundTarget!.widget.runtimeType}) has no tappable ancestor (checked Button, GestureDetector, BarButtonItem, IconButton)',
+      );
+    }
+  }
+
+  // 2. Search main app elementRoot and widgetRoot
+  if (elementRoot != null) {
+    ResolvedTarget? foundTarget;
+    VoidCallback? foundCallback;
+    String? callbackWidgetType;
+
+    void visit(Element element, List<Element> ancestors) {
+      if (foundTarget != null) return;
+      Widget? widget;
+      try {
+        widget = element.widget;
+      } catch (_) {}
+      if (widget != null && _matchesWidget(widget, spec)) {
+        foundTarget = ResolvedTarget(widget, element);
+        var cb = _resolveTapCallback(widget);
+        if (cb != null) {
+          foundCallback = cb;
+          callbackWidgetType = widget.runtimeType.toString();
+          return;
+        }
+        for (final a in ancestors.reversed) {
+          Widget? aw;
+          try {
+            aw = a.widget;
+          } catch (_) {}
+          if (aw != null) {
+            cb = _resolveTapCallback(aw);
+            if (cb != null) {
+              foundCallback = cb;
+              callbackWidgetType = aw.runtimeType.toString();
+              return;
+            }
+          }
+        }
+        for (final child in _safeChildren(element)) {
+          Widget? cw;
+          try {
+            cw = child.widget;
+          } catch (_) {}
+          if (cw != null) {
+            cb = _resolveTapCallback(cw);
+            if (cb != null) {
+              foundCallback = cb;
+              callbackWidgetType = cw.runtimeType.toString();
+              return;
+            }
+          }
+        }
+        return;
+      }
+      final nextAncestors = [...ancestors, element];
+      for (final child in _safeChildren(element)) {
+        visit(child, nextAncestors);
+      }
+    }
+
+    try {
+      visit(elementRoot, const []);
+    } catch (_) {}
+
+    if (foundTarget != null) {
+      if (foundCallback != null) {
+        try {
+          foundCallback!();
+          return TriggerOutcome.ok(foundTarget!.viewId);
+        } catch (e) {
+          return TriggerOutcome.fail('$callbackWidgetType tap callback threw: $e');
+        }
+      }
+      return TriggerOutcome.fail(
+        'target matching $spec (${foundTarget!.widget.runtimeType}) has no tappable ancestor (checked Button, GestureDetector, BarButtonItem, IconButton)',
+      );
+    }
+  }
+
+  final root = widgetRoot;
+  if (root != null) {
+    ResolvedTarget? foundTarget;
+    VoidCallback? foundCallback;
+    String? callbackWidgetType;
+
+    void visit(Widget w, List<Widget> ancestors) {
+      if (foundTarget != null) return;
+      if (_matchesWidget(w, spec)) {
+        foundTarget = ResolvedTarget(w);
+        var cb = _resolveTapCallback(w);
+        if (cb != null) {
+          foundCallback = cb;
+          callbackWidgetType = w.runtimeType.toString();
+          return;
+        }
+        for (final a in ancestors.reversed) {
+          cb = _resolveTapCallback(a);
+          if (cb != null) {
+            foundCallback = cb;
+            callbackWidgetType = a.runtimeType.toString();
+            return;
+          }
+        }
+        for (final child in directChildrenOf(w)) {
+          cb = _resolveTapCallback(child);
+          if (cb != null) {
+            foundCallback = cb;
+            callbackWidgetType = child.runtimeType.toString();
+            return;
+          }
+        }
+        return;
+      }
+      final nextAncestors = [...ancestors, w];
+      for (final child in directChildrenOf(w)) {
+        visit(child, nextAncestors);
+      }
+    }
+
+    visit(root, const []);
+    if (foundTarget != null) {
+      if (foundCallback != null) {
+        try {
+          foundCallback!();
+          return TriggerOutcome.ok(foundTarget!.viewId);
+        } catch (e) {
+          return TriggerOutcome.fail('$callbackWidgetType tap callback threw: $e');
+        }
+      }
+      return TriggerOutcome.fail(
+        'target matching $spec (${foundTarget!.widget.runtimeType}) has no tappable ancestor (checked Button, GestureDetector, BarButtonItem, IconButton)',
+      );
+    }
+  }
+
+  if (spec.title != null) {
+    return TriggerOutcome.fail(
+      'no Button titled "${spec.title}" in the reconciled tree',
+    );
+  }
+  return TriggerOutcome.fail('no element matching $spec');
+}
+
+/// Scroll trigger: scroll a [SingleChildScrollView] / [ListView] or target.
+TriggerOutcome scrollTarget({
+  Widget? widgetRoot,
+  Element? elementRoot,
+  TargetSpec? spec,
+  double deltaX = 0,
+  double deltaY = 100,
+  List<NativeBottomSheetScopeState>? activeSheets,
+}) {
+  Widget? scrollWidget;
+  Element? scrollElement;
+
+  if (spec != null && !spec.isEmpty) {
+    final res = resolveTarget(
+      widgetRoot: widgetRoot,
+      elementRoot: elementRoot,
+      spec: spec,
+      activeSheets: activeSheets,
+    );
+    if (res.target != null) {
+      scrollWidget = res.target!.widget;
+      scrollElement = res.target!.element;
+    }
+  }
+
+  if (scrollWidget == null) {
+    final sheets = activeSheets ?? NativeBottomSheetManager.activeSheets;
+    for (final sheet in sheets.where((s) => s.isScopeActive).toList().reversed) {
+      final sheetEl = sheet.elementRoot;
+      if (sheetEl != null) {
+        void findScrollElement(Element element) {
+          if (scrollWidget != null) return;
+          Widget? w;
+          try {
+            w = element.widget;
+          } catch (_) {}
+          if (w is SingleChildScrollView || w is ListView) {
+            scrollWidget = w;
+            scrollElement = element;
+            return;
+          }
+          for (final child in _safeChildren(element)) {
+            findScrollElement(child);
+          }
+        }
+        try {
+          findScrollElement(sheetEl);
+        } catch (_) {}
+      }
+      if (scrollWidget != null) break;
+
+      void findScrollWidget(Widget w) {
+        if (scrollWidget != null) return;
+        if (w is SingleChildScrollView || w is ListView) {
+          scrollWidget = w;
+          return;
+        }
+        for (final child in directChildrenOf(w)) {
+          findScrollWidget(child);
+        }
+      }
+      findScrollWidget(sheet.scopeWidget.child);
+      if (scrollWidget != null) break;
+    }
+  }
+
+  if (scrollWidget == null) {
+    if (elementRoot != null) {
+      void findScrollElement(Element element) {
+        if (scrollWidget != null) return;
+        Widget? w;
+        try {
+          w = element.widget;
+        } catch (_) {}
+        if (w is SingleChildScrollView || w is ListView) {
+          scrollWidget = w;
+          scrollElement = element;
+          return;
+        }
+        for (final child in _safeChildren(element)) {
+          findScrollElement(child);
+        }
+      }
+      try {
+        findScrollElement(elementRoot);
+      } catch (_) {}
+    } else if (widgetRoot != null) {
+      void findScrollWidget(Widget w) {
+        if (scrollWidget != null) return;
+        if (w is SingleChildScrollView || w is ListView) {
+          scrollWidget = w;
+          return;
+        }
+        for (final child in directChildrenOf(w)) {
+          findScrollWidget(child);
+        }
+      }
+      findScrollWidget(widgetRoot);
+    }
+  }
+
+  if (scrollWidget == null) {
+    return TriggerOutcome.fail('no scrollable widget (SingleChildScrollView / ListView) found');
+  }
+
+  try {
+    final dynamic w = scrollWidget;
+    final dynamic controller = w.controller;
+    if (controller != null) {
+      try {
+        final currentOffset = (controller.offset as num).toDouble();
+        controller.jumpTo(currentOffset + deltaY);
+      } catch (_) {
+        try {
+          controller.jumpTo(deltaY);
+        } catch (_) {}
+      }
+    }
+  } catch (_) {}
+
+  int? viewId;
+  try {
+    viewId = scrollElement?.viewId;
+  } catch (_) {}
+
+  return TriggerOutcome.ok(viewId);
+}
+
 /// Outcome of a trigger action.
 class TriggerOutcome {
   final bool ok;
@@ -498,11 +1195,13 @@ TriggerOutcome hoverTarget({
   Widget? widgetRoot,
   Element? elementRoot,
   required TargetSpec spec,
+  List<NativeBottomSheetScopeState>? activeSheets,
 }) {
   final resolved = resolveTarget(
     widgetRoot: widgetRoot,
     elementRoot: elementRoot,
     spec: spec,
+    activeSheets: activeSheets,
   );
   if (resolved.target == null) {
     return TriggerOutcome.fail(resolved.error ?? 'target not found');
@@ -517,11 +1216,14 @@ TriggerOutcome focusTarget({
   Widget? widgetRoot,
   Element? elementRoot,
   required TargetSpec spec,
+  List<NativeBottomSheetScopeState>? activeSheets,
 }) {
+  final targetSpec = spec.isEmpty ? const TargetSpec(anyTextField: true) : spec;
   final resolved = resolveTarget(
     widgetRoot: widgetRoot,
     elementRoot: elementRoot,
-    spec: spec,
+    spec: targetSpec,
+    activeSheets: activeSheets,
   );
   final target = resolved.target;
   if (target == null) {
@@ -550,11 +1252,14 @@ TriggerOutcome blurTarget({
   Widget? widgetRoot,
   Element? elementRoot,
   required TargetSpec spec,
+  List<NativeBottomSheetScopeState>? activeSheets,
 }) {
+  final targetSpec = spec.isEmpty ? const TargetSpec(anyTextField: true) : spec;
   final resolved = resolveTarget(
     widgetRoot: widgetRoot,
     elementRoot: elementRoot,
-    spec: spec,
+    spec: targetSpec,
+    activeSheets: activeSheets,
   );
   final target = resolved.target;
   if (target == null) {
@@ -578,20 +1283,22 @@ TriggerOutcome blurTarget({
   return TriggerOutcome.ok(target.viewId);
 }
 
-/// Type into a `TextField`: set `controller.text`, then fire `onChanged`.
-///
-/// Needs a `TextEditingController`; fails cleanly without one (host SDK
-/// stubs also throw here — same graceful path).
+/// Type into a `TextField`: updates `controller.text`, `controller.value`,
+/// notifies `controller` listeners, invokes `onChanged`, and updates the
+/// mounted native element (e.g. `TextFieldNativeElement`).
 TriggerOutcome typeIntoTarget({
   Widget? widgetRoot,
   Element? elementRoot,
   required TargetSpec spec,
   required String text,
+  List<NativeBottomSheetScopeState>? activeSheets,
 }) {
+  final targetSpec = spec.isEmpty ? const TargetSpec(anyTextField: true) : spec;
   final resolved = resolveTarget(
     widgetRoot: widgetRoot,
     elementRoot: elementRoot,
-    spec: spec,
+    spec: targetSpec,
+    activeSheets: activeSheets,
   );
   final target = resolved.target;
   if (target == null) {
@@ -603,20 +1310,85 @@ TriggerOutcome typeIntoTarget({
       'type needs a TextField, got ${widget.runtimeType}',
     );
   }
-  final controller = widget.controller;
-  if (controller == null) {
-    return TriggerOutcome.fail('TextField has no controller');
+  TextEditingController? controller = widget.controller;
+  if (controller == null && target.element != null) {
+    try {
+      final dynamic el = target.element;
+      final dynamic tf = el.widget ?? el._tf;
+      if (tf is TextField && tf.controller != null) {
+        controller = tf.controller;
+      }
+    } catch (_) {}
+    if (controller == null) {
+      try {
+        final state = (target.element as dynamic).state;
+        if (state != null) {
+          controller =
+              (state as dynamic).controller ?? (state as dynamic)._controller;
+        }
+      } catch (_) {}
+    }
   }
-  try {
-    controller.text = text;
-  } catch (e) {
-    return TriggerOutcome.fail('setting controller text threw: $e');
+
+  ValueChanged<String>? onChanged = widget.onChanged;
+  if (onChanged == null && target.element != null) {
+    try {
+      final dynamic el = target.element;
+      final dynamic tf = el.widget ?? el._tf;
+      if (tf != null && tf.onChanged != null) {
+        onChanged = tf.onChanged as ValueChanged<String>?;
+      }
+    } catch (_) {}
   }
-  try {
-    widget.onChanged?.call(text);
-  } catch (e) {
-    return TriggerOutcome.fail('onChanged threw: $e');
+
+  if (controller == null && onChanged == null) {
+    return TriggerOutcome.fail('TextField has no controller or onChanged');
   }
+
+  if (controller != null) {
+    try {
+      controller.text = text;
+    } catch (e) {
+      return TriggerOutcome.fail('setting controller text threw: $e');
+    }
+    try {
+      controller.value = TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      );
+    } catch (_) {}
+    try {
+      (controller as dynamic).notifyListeners();
+    } catch (_) {}
+  }
+
+  if (onChanged != null) {
+    try {
+      onChanged(text);
+    } catch (e) {
+      return TriggerOutcome.fail('onChanged threw: $e');
+    }
+  }
+
+  final el = target.element;
+  if (el != null) {
+    try {
+      (el as dynamic)._onControllerChanged();
+    } catch (_) {}
+    try {
+      el.markDirty();
+    } catch (_) {}
+  }
+
+  final sheets = activeSheets ?? NativeBottomSheetManager.activeSheets;
+  for (final sheet in sheets) {
+    if (sheet.isScopeActive) {
+      try {
+        sheet.triggerRebuild();
+      } catch (_) {}
+    }
+  }
+
   return TriggerOutcome.ok(target.viewId);
 }
 
@@ -629,11 +1401,14 @@ TriggerOutcome submitTarget({
   Element? elementRoot,
   required TargetSpec spec,
   String? text,
+  List<NativeBottomSheetScopeState>? activeSheets,
 }) {
+  final targetSpec = spec.isEmpty ? const TargetSpec(anyTextField: true) : spec;
   final resolved = resolveTarget(
     widgetRoot: widgetRoot,
     elementRoot: elementRoot,
-    spec: spec,
+    spec: targetSpec,
+    activeSheets: activeSheets,
   );
   final target = resolved.target;
   if (target == null) {
@@ -650,7 +1425,16 @@ TriggerOutcome submitTarget({
       'submit needs a TextField, got ${widget.runtimeType}',
     );
   }
-  final submit = widget.onSubmitted;
+  void Function(String)? submit = widget.onSubmitted;
+  if (submit == null && target.element != null) {
+    try {
+      final dynamic el = target.element;
+      final dynamic tf = el.widget ?? el._tf;
+      if (tf != null && tf.onSubmitted != null) {
+        submit = tf.onSubmitted as void Function(String)?;
+      }
+    } catch (_) {}
+  }
   if (submit == null) {
     return TriggerOutcome.fail('TextField has no onSubmitted');
   }
@@ -659,6 +1443,15 @@ TriggerOutcome submitTarget({
     try {
       value = widget.controller?.text ?? '';
     } catch (_) {}
+    if (value.isEmpty && target.element != null) {
+      try {
+        final dynamic el = target.element;
+        final dynamic tf = el.widget ?? el._tf;
+        if (tf is TextField && tf.controller != null) {
+          value = tf.controller!.text;
+        }
+      } catch (_) {}
+    }
   }
   try {
     submit(value);
@@ -666,24 +1459,4 @@ TriggerOutcome submitTarget({
     return TriggerOutcome.fail('onSubmitted threw: $e');
   }
   return TriggerOutcome.ok(target.viewId);
-}
-
-Button? _findButton(Widget root, String title) {
-  for (final b in _allButtons(root)) {
-    if (b.title == title) return b;
-  }
-  return null;
-}
-
-List<Button> _allButtons(Widget root) {
-  final out = <Button>[];
-  void visit(Widget w) {
-    if (w is Button) out.add(w);
-    for (final child in directChildrenOf(w)) {
-      visit(child);
-    }
-  }
-
-  visit(root);
-  return out;
 }

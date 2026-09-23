@@ -7,6 +7,7 @@
 import 'package:tom_d4rt_ast/d4rt.dart';
 import 'package:tom_d4rt_ast/runtime.dart';
 import 'package:dartnative/dartnative.dart' as $flutter_widgets;
+import 'package:dartnative_go/src/runner/native_bottomsheet_manager.dart' as $bottomsheet_mgr;
 
 import 'package:native_bottomsheet/src/ffi_bindings.dart' as $native_bottomsheet_1;
 import 'package:native_bottomsheet/src/sheet_controller.dart' as $native_bottomsheet_2;
@@ -211,7 +212,7 @@ class NativeBottomsheetBridge {
         if (builderRaw == null) {
           throw ArgumentError('showBottomSheet: Missing required named argument "builder"');
         }
-        final dynamic builder = (dynamic p0, $native_bottomsheet_2.DNSheetController p1) { return D4.extractBridgedArg<$flutter_widgets.Widget>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]), 'builder', visitor); };
+        final dynamic builder = (dynamic p0, $native_bottomsheet_2.DNSheetController p1) { return $bottomsheet_mgr.NativeBottomSheetScope(controller: p1, child: D4.extractBridgedArg<$flutter_widgets.Widget>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]), 'builder', visitor)); };
         final initialDetent = D4.getOptionalNamedArg<$native_bottomsheet_3.DNSheetDetent?>(named, 'initialDetent');
         final showGrabber = D4.getNamedArgWithDefault<bool>(named, 'showGrabber', true);
         final cornerRadius = D4.getOptionalNamedArg<double?>(named, 'cornerRadius');

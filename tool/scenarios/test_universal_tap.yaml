@@ -1,0 +1,39 @@
+name: test-universal-tap
+defaults: { step_timeout_s: 5, probe_interval_ms: 100 }
+
+fake:
+  trees:
+    - type: Scaffold
+      children:
+        - type: AppBar
+          children:
+            - type: BarButtonItem
+              children:
+                - type: GestureDetector
+                  children:
+                    - type: Icon
+                      icon: { code_point: 62601, font_family: CupertinoIcons }
+        - type: SingleChildScrollView
+          children:
+            - type: Text
+              text: "Hello World"
+    - type: Scaffold
+      children:
+        - type: Text
+          text: "Note Created"
+  taps:
+    "62601": ok
+    "CupertinoIcons.plus": ok
+
+steps:
+  - probe: {}
+  - expect_icon: CupertinoIcons.plus
+  - expect_icon: CupertinoIcons.plus as add_button
+  - tap: add_button
+  - tap: CupertinoIcons.plus
+  - tap: { icon: CupertinoIcons.plus }
+  - set: { plus_icon: CupertinoIcons.plus }
+  - tap: plus_icon
+  - tap: { icon: 62601, font_family: CupertinoIcons }
+  - scroll: { delta_y: 150 }
+  - log: { msg: "Universal tap and named icon resolution verified" }

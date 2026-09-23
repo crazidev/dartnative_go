@@ -73,6 +73,7 @@ class FakeDevServer {
               case 'ui_blur':
               case 'ui_submit':
               case 'ui_type':
+              case 'ui_scroll':
               case 'ui_tree':
               case 'ui_tap_result':
               case 'ui_hover_result':
@@ -80,6 +81,7 @@ class FakeDevServer {
               case 'ui_blur_result':
               case 'ui_submit_result':
               case 'ui_type_result':
+              case 'ui_scroll_result':
               case 'reload':
               case 'restart':
                 _broadcast(data);

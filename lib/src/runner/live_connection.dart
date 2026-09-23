@@ -20,9 +20,9 @@ class LiveConnection {
   /// UI automation (see `lib/src/runner/ui_probe.dart` for the protocol).
   /// `onUiProbeRequest` fires when a test script asks for the widget tree;
   /// the handler should reply with [sendUiTree]. `onUiTap` fires with the
-  /// button title; the handler should reply with [sendUiTapResult].
+  /// button title and/or target spec; the handler should reply with [sendUiTapResult].
   final void Function(String requestId)? onUiProbeRequest;
-  final void Function(String requestId, String title)? onUiTap;
+  final void Function(String requestId, String? title, Map<String, dynamic>? target)? onUiTap;
 
   /// UI automation triggers (see `lib/src/runner/ui_probe.dart`). Each fires
   /// with the request id plus the decoded target (and text for type/submit);
@@ -32,6 +32,7 @@ class LiveConnection {
   final void Function(String requestId, Map<String, dynamic> target)? onUiBlur;
   final void Function(String requestId, Map<String, dynamic> target, String? text)? onUiSubmit;
   final void Function(String requestId, Map<String, dynamic> target, String text)? onUiType;
+  final void Function(String requestId, Map<String, dynamic>? target, double deltaX, double deltaY)? onUiScroll;
 
   WebSocket? _socket;
   bool _isDisposed = false;
@@ -52,6 +53,7 @@ class LiveConnection {
     this.onUiBlur,
     this.onUiSubmit,
     this.onUiType,
+    this.onUiScroll,
   });
 
   bool get isConnected => _socket != null && _socket!.readyState == WebSocket.open;
@@ -102,7 +104,15 @@ class LiveConnection {
             } else if (type == 'ui_tap') {
               onUiTap?.call(
                 data['requestId']?.toString() ?? '',
-                data['title']?.toString() ?? '',
+                data['title']?.toString(),
+                _targetMap(data),
+              );
+            } else if (type == 'ui_scroll') {
+              onUiScroll?.call(
+                data['requestId']?.toString() ?? '',
+                _targetMap(data),
+                (data['deltaX'] as num?)?.toDouble() ?? 0.0,
+                (data['deltaY'] as num?)?.toDouble() ?? 100.0,
               );
             } else if (type == 'ui_hover') {
               onUiHover?.call(

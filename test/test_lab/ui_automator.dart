@@ -24,6 +24,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dartnative_go/src/runner/icon_registry.dart';
 import 'package:dartnative_go/src/runner/ui_tree_json.dart';
 
 /// Failure of a UI automation step (assertion or device-side error).
@@ -112,24 +113,102 @@ class UiAutomator {
     return tree;
   }
 
-  /// Taps the button titled [title]; throws when the device reports failure.
-  Future<void> tap(String title) async {
+  /// Taps [target] (a button title String, a named icon string like
+  /// `CupertinoIcons.plus`, or a target map with title/text/key/icon/code_point/font_family);
+  /// throws when the device reports failure.
+  Future<void> tap(dynamic target) async {
     final requestId = _requestId();
     final pending = Completer<Map<String, dynamic>>();
     _pendingTaps[requestId] = pending;
-    _send({'type': 'ui_tap', 'requestId': requestId, 'title': title});
+
+    final String? title;
+    final Map<String, dynamic> targetMap;
+    if (target is String) {
+      final resolved = resolveIcon(target);
+      if (resolved != null) {
+        title = null;
+        targetMap = {
+          'icon_code_point': resolved.codePoint,
+          'icon_font_family': resolved.fontFamily,
+          'icon_name': target,
+        };
+      } else {
+        title = target;
+        targetMap = {'title': target};
+      }
+    } else if (target is Map<String, dynamic>) {
+      targetMap = Map<String, dynamic>.from(target);
+      final resolved = resolveIcon(targetMap);
+      if (resolved != null) {
+        targetMap['icon_code_point'] ??= resolved.codePoint;
+        targetMap['icon_font_family'] ??= resolved.fontFamily;
+      }
+      title = targetMap['title']?.toString();
+    } else if (target is Map) {
+      targetMap = Map<String, dynamic>.from(target);
+      final resolved = resolveIcon(targetMap);
+      if (resolved != null) {
+        targetMap['icon_code_point'] ??= resolved.codePoint;
+        targetMap['icon_font_family'] ??= resolved.fontFamily;
+      }
+      title = targetMap['title']?.toString();
+    } else {
+      title = '$target';
+      targetMap = {'title': '$target'};
+    }
+
+    _send({
+      'type': 'ui_tap',
+      'requestId': requestId,
+      'title': ?title,
+      'target': targetMap,
+    });
     final answer = await pending.future.timeout(
       stepTimeout,
       onTimeout: () {
         _pendingTaps.remove(requestId);
+        final label = title ?? targetMap['icon_name'] ?? targetMap.toString();
         throw UiAutomationFailure(
-          'tap "$title" timed out after ${stepTimeout.inSeconds}s',
+          'tap "$label" timed out after ${stepTimeout.inSeconds}s',
         );
       },
     );
     if (answer['ok'] != true) {
-      throw UiAutomationFailure('tap "$title" failed: ${answer['error']}');
+      final label = title ?? targetMap['icon_name'] ?? targetMap.toString();
+      throw UiAutomationFailure('tap "$label" failed: ${answer['error']}');
     }
+  }
+
+  /// Scroll: scroll container or target by [deltaX] and [deltaY].
+  Future<int?> scroll({
+    Map<String, dynamic>? target,
+    double deltaX = 0,
+    double deltaY = 100,
+  }) async {
+    final requestId = _requestId();
+    final pending = Completer<Map<String, dynamic>>();
+    _pendingActions[requestId] = pending;
+    _send({
+      'type': 'ui_scroll',
+      'requestId': requestId,
+      'target': target ?? const {},
+      'deltaX': deltaX,
+      'deltaY': deltaY,
+    });
+    final answer = await pending.future.timeout(
+      stepTimeout,
+      onTimeout: () {
+        _pendingActions.remove(requestId);
+        throw UiAutomationFailure(
+          'ui_scroll timed out after ${stepTimeout.inSeconds}s',
+        );
+      },
+    );
+    if (answer['ok'] != true) {
+      throw UiAutomationFailure('ui_scroll failed: ${answer['error']}');
+    }
+    final viewId = answer['viewId'];
+    return viewId is int ? viewId : null;
   }
 
   /// Sends a trigger action (`ui_hover`, `ui_focus`, `ui_blur`, `ui_submit`,
@@ -146,10 +225,18 @@ class UiAutomator {
     final requestId = _requestId();
     final pending = Completer<Map<String, dynamic>>();
     _pendingActions[requestId] = pending;
+    final Map<String, dynamic> targetMap = target != null
+        ? Map<String, dynamic>.from(target)
+        : <String, dynamic>{};
+    final resolved = resolveIcon(targetMap);
+    if (resolved != null) {
+      targetMap['icon_code_point'] ??= resolved.codePoint;
+      targetMap['icon_font_family'] ??= resolved.fontFamily;
+    }
     _send({
       'type': type,
       'requestId': requestId,
-      'target': target ?? const {},
+      'target': targetMap,
       'text': ?text,
     });
     final answer = await pending.future.timeout(
@@ -208,11 +295,19 @@ class UiAutomator {
     String? absentText,
     String? button,
     String? key,
+    dynamic icon,
     int? iconCodePoint,
     String? iconFontFamily,
     Duration timeout = const Duration(seconds: 10),
     Duration interval = const Duration(milliseconds: 300),
   }) async {
+    if (icon != null) {
+      final res = resolveIcon(icon);
+      if (res != null) {
+        iconCodePoint ??= res.codePoint;
+        iconFontFamily ??= res.fontFamily;
+      }
+    }
     final deadline = DateTime.now().add(timeout);
     Map<String, dynamic>? last;
     while (DateTime.now().isBefore(deadline)) {
@@ -235,6 +330,7 @@ class UiAutomator {
       if (absentText != null) 'no text "$absentText"',
       if (button != null) 'button "$button"',
       if (key != null) 'key "$key"',
+      if (icon != null) 'icon "$icon"',
       if (iconCodePoint != null) 'icon $iconCodePoint',
       if (iconFontFamily != null) 'icon font "$iconFontFamily"',
     ].join(', ');
@@ -306,18 +402,28 @@ class UiAutomator {
 
   static void expectIcon(
     Map<String, dynamic> tree, {
+    dynamic icon,
     int? codePoint,
     String? fontFamily,
   }) {
+    if (icon != null) {
+      final res = resolveIcon(icon);
+      if (res != null) {
+        codePoint ??= res.codePoint;
+        fontFamily ??= res.fontFamily;
+      }
+    }
     if (codePoint == null && fontFamily == null) {
       throw UiAutomationFailure(
-          'expectIcon needs code_point and/or font_family');
+          'expectIcon needs icon, code_point and/or font_family');
     }
     if (findIconNodes(tree, codePoint: codePoint, fontFamily: fontFamily)
         .isEmpty) {
+      final desc = icon != null
+          ? '$icon (codePoint: $codePoint, fontFamily: $fontFamily)'
+          : 'Icon(codePoint: $codePoint, fontFamily: $fontFamily)';
       throw UiAutomationFailure(
-        'expected Icon(codePoint: $codePoint, fontFamily: $fontFamily) '
-        'in tree, got:\n${jsonEncode(tree)}',
+        'expected $desc in tree, got:\n${jsonEncode(tree)}',
       );
     }
   }

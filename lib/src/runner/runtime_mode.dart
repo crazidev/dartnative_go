@@ -8,8 +8,8 @@
 /// Toggle via [kUseAst] or per-runner [InterpreterRunner.useAst].
 enum RuntimeMode { source, ast }
 
-/// Global default. Keep `false` (source) for now; AST is test-only.
-const bool kUseAst = false;
+/// Global default. Keep `true` (source) for now; AST is default.
+const bool kUseAst = true;
 
 const RuntimeMode kDefaultRuntimeMode = RuntimeMode.source;
 

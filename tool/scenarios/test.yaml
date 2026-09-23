@@ -8,32 +8,23 @@ project_dir: ./example
 defaults: { step_timeout_s: 10, probe_interval_ms: 300 }
 
 steps:
-  # Whole-state reset: restore leftover edits instead of blocking, so an
-  # aborted run never poisons the next one.
-  # - require_clean: { files: [lib/home_screen.dart], restore: true }
-  # Fresh start: hot-restart drops interpreter state (logged-out, count 0)
-  # and (re)mounts the guest before the first assertion.
-  # - restart: { text: "Not logged in", timeout_s: 30 }
-  # - probe: {}
-  # - expect_text: "Not logged in"
-  # - expect_button: Login
-  # - tap: { title: Login }
-  # - probe_until: { text: "Logged in as Alice", timeout_s: 10 }
-  # - probe_until: { text: "Login count: 1", timeout_s: 10 }
-  # - tap: { title: Logout }
-  # - probe_until: { text: "Not logged in", timeout_s: 10 }
+  - restart: { text: "Your board is empty", timeout_s: 30 }
+  - probe: {}
+  - expect_text: "Your board is empty"
+  - expect_icon: CupertinoIcons.plus
+  - tap: CupertinoIcons.plus
 
-  # - reload:
-  #     edit:
-  #       {
-  #         file: lib/home_screen.dart,
-  #         search: "Login count:",
-  #         replace: "Sign-ins:",
-  #       }
-  #     # NOTE: logout() preserves loginCount, so the count is 1 here, not 0.
-  #     settle: { text: "Sign-ins: 1", timeout_s: 30 }
-  #     revert: true
-  #     revert_settle: { text: "Login count: 1", timeout_s: 30 }
+  # Wait for bottom sheet to present
+  - probe_until: { text: "New note", timeout_s: 3 }
 
-  # - tap: { title: Login }
-  # - probe_until: { text: "Logged in as Alice", timeout_s: 10 }
+  # Type note title & description
+  - type: { into: "Note title", text: "Buy groceries" }
+  - type: { into: "Add a description", text: "Organic milk and apples" }
+  # - tap: CupertinoIcons.xmark
+  # Tap Create button to save note and dismiss bottom sheet
+  - tap: { title: "Create" }
+
+  # Verify the new note appears on the board
+  - probe_until: { text: "Buy groceries", timeout_s: 5 }
+  - expect_text: "Buy groceries"
+  - expect_text: "Organic milk and apples"

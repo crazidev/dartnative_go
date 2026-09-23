@@ -80,7 +80,7 @@ class TodoNotifier extends Notifier<List<Todo>> {
     final id = DateTime.now().microsecondsSinceEpoch;
 
     // Give each note a slightly different rotation.
-    const rotations = [-0.025, 0.018, -0.012, 0.028, -0.018, 0.012];
+    const rotations = [-0.035, 0.028, -0.022, 0.038, -0.028, 0.042];
 
     final rotation = rotations[state.length % rotations.length];
 
@@ -137,7 +137,6 @@ class TodoScreen extends ConsumerStatefulWidget {
 }
 
 class _TodoScreenState extends ConsumerState<TodoScreen> {
-  TodoLayout layout = TodoLayout.sticky;
   bool isCreating = false;
   DNSheetController? sheet;
 
@@ -167,7 +166,7 @@ class _TodoScreenState extends ConsumerState<TodoScreen> {
                 required String description,
                 required Color color,
               }) {
-                print("Add todo ${title} ${description} ${color}");
+                print("Add todo $title $description $color");
                 notifier.addTodo(
                   title: title,
                   description: description,
@@ -198,16 +197,6 @@ class _TodoScreenState extends ConsumerState<TodoScreen> {
         ),
         actions: [
           BarButtonItem(
-            fontIcon: CupertinoIcons.rectangle_stack,
-            titleStyle: TextStyle(color: Colors.white, fontSize: 16),
-            onPressed: () {
-              layout = (layout == TodoLayout.sticky
-                  ? TodoLayout.cards
-                  : TodoLayout.sticky);
-              setState(() {});
-            },
-          ),
-          BarButtonItem(
             fontIcon: CupertinoIcons.plus,
             titleStyle: TextStyle(color: Colors.white, fontSize: 16),
             onPressed: () {
@@ -221,19 +210,12 @@ class _TodoScreenState extends ConsumerState<TodoScreen> {
       body: Stack(
         children: [
           // ---------------------------------------------------------------
-          // Notes
+          // Not es
           // ---------------------------------------------------------------
           Positioned.fill(
             child: sortedTodos.isEmpty
                 ? const _EmptyState()
-                : layout == TodoLayout.sticky
-                ? _StickyGrid(
-                    todos: sortedTodos,
-                    onToggle: notifier.toggleTodo,
-                    onPin: notifier.togglePin,
-                    onDelete: notifier.deleteTodo,
-                  )
-                : _CardList(
+                : _StickyGrid(
                     todos: sortedTodos,
                     onToggle: notifier.toggleTodo,
                     onPin: notifier.togglePin,
@@ -315,17 +297,16 @@ class _StickyNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: todo.color,
-        borderRadius: BorderRadius.circular(3),
-
+        borderRadius: BorderRadius.circular(20),
         // Fake paper shadow.
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
             color: Color(0x22000000),
-            blurRadius: 7,
-            offset: Offset(2, 5),
+            blurRadius: 20,
+            offset: Offset(2, 3),
           ),
         ],
       ),
@@ -344,9 +325,9 @@ class _StickyNote extends StatelessWidget {
               const Spacer(),
 
               Button(
-                title: '×',
+                child: Icon(CupertinoIcons.xmark, size: 20),
                 onPressed: onDelete,
-                color: const Color(0x00000000),
+                variant: ButtonVariant.plain,
                 foregroundColor: const Color(0xFF57534E),
               ),
             ],
@@ -390,11 +371,16 @@ class _StickyNote extends StatelessWidget {
           const SizedBox(height: 8),
 
           // Complete
-          Button(
-            title: todo.completed ? '✓ Done' : 'Mark done',
-            onPressed: onToggle,
-            color: const Color(0x33000000),
-            foregroundColor: const Color(0xFF292524),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Button(
+                title: todo.completed ? '✓ Done' : 'Mark done',
+                onPressed: onToggle,
+                color: const Color(0x33000000),
+                foregroundColor: const Color(0xFF292524),
+              ),
+            ],
           ),
         ],
       ),
@@ -406,6 +392,7 @@ class _StickyNote extends StatelessWidget {
 // Card Layout
 // ---------------------------------------------------------------------------
 
+// ignore: unused_element
 class _CardList extends StatelessWidget {
   final List<Todo> todos;
   final void Function(int id) onToggle;
@@ -500,7 +487,11 @@ class _CardList extends StatelessWidget {
 
               // Pin
               Button(
-                title: todo.pinned ? '📌' : '○',
+                child: Icon(
+                  todo.pinned
+                      ? CupertinoIcons.pin_fill
+                      : CupertinoIcons.pin_slash,
+                ),
                 onPressed: () => onPin(todo.id),
                 color: const Color(0x00000000),
                 foregroundColor: const Color(0xFF57534E),
@@ -640,12 +631,14 @@ class _CreateNotePanelState extends State<_CreateNotePanel> {
           TextField(
             controller: titleController,
             autofocus: true,
+            key: Key('title_input'),
             textInputAction: TextInputAction.next,
             style: const TextStyle(
               color: Color(0xFF292524),
               fontSize: 17,
               fontWeight: FontWeight.w600,
             ),
+            onChanged: (value) => print('title: $value'),
             decoration: InputDecoration(
               hintText: 'Note title',
               hintStyle: const TextStyle(color: Color(0xFFA8A29E)),
@@ -694,43 +687,44 @@ class _CreateNotePanelState extends State<_CreateNotePanel> {
           // ---------------------------------------------------------------
           Row(
             children: [
-              // Colors
-              // Expanded(
-              //   child: Row(
-              //     children: [
-              //       for (final color in NoteColors.all)
-              //         GestureDetector(
-              //           onTap: () {
-              //             setState(() {
-              //               selectedColor = color;
-              //             });
-              //           },
-              //           child: Container(
-              //             margin: const EdgeInsets.only(right: 7),
-              //             width: 27,
-              //             height: 27,
-              //             decoration: BoxDecoration(
-              //               color: color,
-              //               shape: BoxShape.circle,
-              //               border: Border.all(
-              //                 color: selectedColor == color
-              //                     ? const Color(0xFF292524)
-              //                     : const Color(0x22000000),
-              //                 width: selectedColor == color ? 2 : 1,
-              //               ),
-              //             ),
-              //             child: selectedColor == color
-              //                 ? const Icon(
-              //                     CupertinoIcons.checkmark,
-              //                     size: 13,
-              //                     color: Color(0xFF292524),
-              //                   )
-              //                 : null,
-              //           ),
-              //         ),
-              //     ],
-              //   ),
-              // ),
+              Expanded(
+                child: Row(
+                  children: [
+                    for (final color in NoteColors.all)
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedColor = color;
+                          });
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 7),
+                          width: 35,
+                          height: 35,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: selectedColor == color
+                                  ? const Color(0xFF292524)
+                                  : const Color(0x22000000),
+                              width: selectedColor == color ? 2 : 1,
+                            ),
+                          ),
+                          child: selectedColor == color
+                              ? Center(
+                                  child: const Icon(
+                                    CupertinoIcons.checkmark,
+                                    size: 16,
+                                    color: Color(0xFF292524),
+                                  ),
+                                )
+                              : null,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
               const SizedBox(width: 8),
 
               // Create
@@ -743,9 +737,9 @@ class _CreateNotePanelState extends State<_CreateNotePanel> {
                   vertical: 11,
                 ),
                 onPressed: () {
-                  // if (titleController.text.trim().isEmpty) {
-                  //   return;
-                  // }
+                  if (titleController.text.trim().isEmpty) {
+                    return;
+                  }
 
                   widget.onCreate(
                     title: titleController.text,

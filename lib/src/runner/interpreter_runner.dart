@@ -42,6 +42,7 @@ class InterpreterRunner {
   DebugController get debugController => _debugController;
   D4rt get interpreter => _interpreter;
   RuntimeMode get runtimeMode => runtimeModeFromBool(useAst);
+  Object? get activeVisitor => useAst ? _astRunner?.visitor : _interpreter.visitor;
 
   InterpreterRunner({
     this.onLog,

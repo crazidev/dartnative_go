@@ -14,8 +14,7 @@ dependencies:
   dartnative_android: ^1.0.0
   # == Supported plugins starts ===
   native_bottomsheet:
-    hosted: https://dartpub.dev
-    version: ^0.1.0
+    path: ../dartnative_bottomsheet
   dartnative_share: ^1.0.0
   dartnative_webview: ^1.0.0
   dartnative_shared_preferences: ^1.0.0

@@ -7,6 +7,7 @@ import 'package:tom_d4rt/tom_d4rt.dart';
 
 import 'debug_controller.dart';
 import 'widget_generation_tracker.dart';
+import '../runner/native_bottomsheet_manager.dart';
 
 export 'widget_generation_tracker.dart';
 
@@ -28,12 +29,26 @@ R _runWithLogCapture<R>(R Function() action) {
 
 /// Native proxy for interpreted classes that extend [StatelessWidget].
 class InterpretedStatelessWidget extends StatelessWidget {
-  final InterpreterVisitor visitor;
-  final InterpretedInstance instance;
+  InterpreterVisitor visitor;
+  InterpretedInstance instance;
 
   InterpretedStatelessWidget(this.visitor, this.instance, {Key? key})
       : super(key: key ?? _resolveKey(instance)) {
     instance.nativeProxy = this;
+  }
+
+  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
+    visitor = newVisitor as InterpreterVisitor;
+    if (newClass is InterpretedClass) {
+      final newInstance = InterpretedInstance(newClass);
+      for (final f in instance.klass.getInstanceFieldNames()) {
+        try {
+          newInstance.set(f, instance.getField(f));
+        } catch (_) {}
+      }
+      newInstance.nativeProxy = this;
+      instance = newInstance;
+    }
   }
 
   static Key _resolveKey(InterpretedInstance instance) {
@@ -63,12 +78,26 @@ class InterpretedStatelessWidget extends StatelessWidget {
 
 /// Native proxy for interpreted classes that extend [ConsumerWidget].
 class InterpretedConsumerWidget extends ConsumerWidget {
-  final InterpreterVisitor visitor;
-  final InterpretedInstance instance;
+  InterpreterVisitor visitor;
+  InterpretedInstance instance;
 
   InterpretedConsumerWidget(this.visitor, this.instance, {Key? key})
       : super(key: key ?? _resolveKey(instance)) {
     instance.nativeProxy = this;
+  }
+
+  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
+    visitor = newVisitor as InterpreterVisitor;
+    if (newClass is InterpretedClass) {
+      final newInstance = InterpretedInstance(newClass);
+      for (final f in instance.klass.getInstanceFieldNames()) {
+        try {
+          newInstance.set(f, instance.getField(f));
+        } catch (_) {}
+      }
+      newInstance.nativeProxy = this;
+      instance = newInstance;
+    }
   }
 
   static Key _resolveKey(InterpretedInstance instance) {
@@ -240,6 +269,7 @@ class InterpretedStateProxy extends State<StatefulWidget> {
   bool _isDispatchingDidChangeDependencies = false;
   bool _isDispatchingDidUpdateWidget = false;
   bool _isDispatchingDispose = false;
+  NativeBottomSheetScopeState? _sheetScope;
 
   InterpretedStateProxy(this.visitor, this.stateInstance, this.ownerWidget) {
     _wireStateInstance(stateInstance, ownerWidget.instance);
@@ -256,6 +286,13 @@ class InterpretedStateProxy extends State<StatefulWidget> {
   @override
   void initState() {
     super.initState();
+    try {
+      final scope = NativeBottomSheetScope.of(context);
+      if (scope != null) {
+        _sheetScope = scope;
+        scope.registerProxy(this);
+      }
+    } catch (_) {}
     if (_isDispatchingInitState) {
       // Re-entrant call originating from guest code's super.initState()
       return;
@@ -277,6 +314,14 @@ class InterpretedStateProxy extends State<StatefulWidget> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    try {
+      final scope = NativeBottomSheetScope.of(context);
+      if (scope != null && scope != _sheetScope) {
+        _sheetScope?.unregisterProxy(this);
+        _sheetScope = scope;
+        scope.registerProxy(this);
+      }
+    } catch (_) {}
     if (_isDispatchingDidChangeDependencies) return;
     _isDispatchingDidChangeDependencies = true;
     try {
@@ -407,8 +452,27 @@ class InterpretedStateProxy extends State<StatefulWidget> {
     });
   }
 
+  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
+    if (!mounted) return;
+    try {
+      visitor = newVisitor as InterpreterVisitor;
+      if (newClass is InterpretedClass) {
+        final oldState = stateInstance;
+        final newState = InterpretedInstance(newClass);
+        _transferStateFields(oldState, newState, visitor);
+        _wireStateInstance(newState, ownerWidget.instance);
+        stateInstance = newState;
+      }
+      setState(() {});
+    } catch (_) {
+      setState(() {});
+    }
+  }
+
   @override
   void dispose() {
+    _sheetScope?.unregisterProxy(this);
+    _sheetScope = null;
     if (_isDispatchingDispose) return;
     _isDispatchingDispose = true;
     try {
@@ -531,6 +595,7 @@ class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget
   bool _isDispatchingDidChangeDependencies = false;
   bool _isDispatchingDidUpdateWidget = false;
   bool _isDispatchingDispose = false;
+  NativeBottomSheetScopeState? _sheetScope;
 
   InterpretedConsumerStateProxy(this.visitor, this.stateInstance, [this.ownerWidget]) {
     _wireStateInstance(stateInstance, ownerWidget?.instance);
@@ -548,6 +613,13 @@ class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget
   @override
   void initState() {
     super.initState();
+    try {
+      final scope = NativeBottomSheetScope.of(context);
+      if (scope != null) {
+        _sheetScope = scope;
+        scope.registerProxy(this);
+      }
+    } catch (_) {}
     if (_isDispatchingInitState) return;
     _isDispatchingInitState = true;
     try {
@@ -565,6 +637,14 @@ class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    try {
+      final scope = NativeBottomSheetScope.of(context);
+      if (scope != null && scope != _sheetScope) {
+        _sheetScope?.unregisterProxy(this);
+        _sheetScope = scope;
+        scope.registerProxy(this);
+      }
+    } catch (_) {}
     if (_isDispatchingDidChangeDependencies) return;
     _isDispatchingDidChangeDependencies = true;
     try {
@@ -694,8 +774,27 @@ class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget
     });
   }
 
+  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
+    if (!mounted) return;
+    try {
+      visitor = newVisitor as InterpreterVisitor;
+      if (newClass is InterpretedClass) {
+        final oldState = stateInstance;
+        final newState = InterpretedInstance(newClass);
+        _transferStateFields(oldState, newState, visitor);
+        _wireStateInstance(newState, ownerWidget?.instance);
+        stateInstance = newState;
+      }
+      setState(() {});
+    } catch (_) {
+      setState(() {});
+    }
+  }
+
   @override
   void dispose() {
+    _sheetScope?.unregisterProxy(this);
+    _sheetScope = null;
     if (_isDispatchingDispose) return;
     _isDispatchingDispose = true;
     try {

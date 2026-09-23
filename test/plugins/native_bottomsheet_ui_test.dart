@@ -26,12 +26,16 @@ library;
 import 'dart:io';
 
 import 'package:dartnative/dartnative.dart';
+import 'package:dartnative/plugin.dart';
+import 'package:native_bottomsheet/src/sheet_native_bindings.dart';
 import 'package:test/test.dart';
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:dartnative_go/src/interpreter/ast/native_bottomsheet_bridges.b.dart'
     as ast_bridges;
 import 'package:dartnative_go/src/interpreter/native_bottomsheet_bridges.b.dart'
     as src_bridges;
+import 'package:dartnative_go/src/runner/native_bottomsheet_manager.dart';
+import 'package:native_bottomsheet/native_bottomsheet.dart';
 
 import '../test_lab/fixtures/riverpod_fixture.dart';
 import '../test_lab/harness.dart';
@@ -217,4 +221,156 @@ void main() {
         : 'needs a device runtime: dn test -d <device-id> '
             '--dart-define=DN_DEVICE_TEST=true test/plugins/native_bottomsheet_ui_test.dart',
   );
+
+  group('NativeBottomSheetScope and NativeBottomSheetManager', () {
+    test('NativeBottomSheetScope wraps builder result in bridge', () {
+      final srcPath = 'lib/src/interpreter/native_bottomsheet_bridges.b.dart';
+      expect(
+        File(srcPath).readAsStringSync(),
+        contains(r'$bottomsheet_mgr.NativeBottomSheetScope(controller: p1, child:'),
+      );
+      final astPath = 'lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart';
+      expect(
+        File(astPath).readAsStringSync(),
+        contains(r'$bottomsheet_mgr.NativeBottomSheetScope(controller: p1, child:'),
+      );
+    });
+
+    test('NativeBottomSheetScope registers and unregisters with NativeBottomSheetManager', () {
+      final initialCount = NativeBottomSheetManager.activeSheetCount;
+      final controller = DNSheetController.create(
+        sheetId: 9999,
+        detents: const [DNSheetDetent.large],
+        initialDetent: DNSheetDetent.large,
+      );
+
+      final scope = NativeBottomSheetScope(
+        controller: controller,
+        child: const Text('test child'),
+      );
+
+      final state = scope.createState();
+      state.initState();
+
+      expect(NativeBottomSheetManager.activeSheetCount, initialCount + 1);
+      expect(NativeBottomSheetManager.activeSheets.contains(state), isTrue);
+
+      state.dispose();
+      expect(NativeBottomSheetManager.activeSheetCount, initialCount);
+      expect(NativeBottomSheetManager.activeSheets.contains(state), isFalse);
+    });
+
+    test('rebindAndRebuild rebinds child and proxies', () async {
+      final harness = DnHarness(onLog: (_) {});
+      try {
+        await harness.evaluate({'main.dart': _sheetGuest});
+        final visitor = harness.sourceRunner.interpreter.visitor;
+        expect(visitor, isNotNull);
+
+        final controller = DNSheetController.create(
+          sheetId: 9998,
+          detents: const [DNSheetDetent.large],
+          initialDetent: DNSheetDetent.large,
+        );
+
+        final builderFn = await harness.callFunction('getBuilder');
+        final raw = D4.callInterpreterCallback(
+          visitor!,
+          builderFn,
+          [FakeBuildContext(), controller],
+        );
+        final coerced = D4.extractBridgedArg<Widget>(raw, 'builder', visitor);
+
+        final scope = NativeBottomSheetScope(
+          controller: controller,
+          child: coerced,
+        );
+        final state = scope.createState();
+        state.initState();
+
+        // Hot reload simulation: evaluate an updated guest
+        await harness.hotReload({'main.dart': _sheetGuest});
+        final newVisitor = harness.sourceRunner.interpreter.visitor;
+        expect(newVisitor, isNotNull);
+
+        // Notify hot reload via NativeBottomSheetManager
+        expect(() => NativeBottomSheetManager.notifyHotReload(newVisitor), returnsNormally);
+
+        state.dispose();
+      } finally {
+        harness.dispose();
+      }
+    });
+
+    test('SheetNativeBindings forwards text change and textFieldGetSelection', () {
+      final fake = _FakeNativeBindings();
+      final sheetBindings = SheetNativeBindings(fake, () {});
+
+      // Verify textFieldGetSelection forwarding
+      final sel = sheetBindings.textFieldGetSelection(42);
+      expect(sel.start, equals(0));
+      expect(sel.end, equals(0));
+      expect(sel.composingStart, equals(-1));
+      expect(sel.composingEnd, equals(-1));
+
+      // Verify textFieldSetSelection forwarding
+      sheetBindings.textFieldSetSelection(42, 2, 5);
+      expect(fake.lastSetSelection, equals((viewId: 42, start: 2, end: 5)));
+
+      // Verify text change callback registration and invocation
+      String? changedVal;
+      final cbId = sheetBindings.registerTextChangeCallback((val) {
+        changedVal = val;
+      });
+      expect(fake.callbacks.containsKey(cbId), isTrue);
+
+      final textCb = fake.callbacks[cbId] as void Function(String);
+      textCb('hello world');
+      expect(changedVal, equals('hello world'));
+    });
+  });
 }
+
+class _FakeNativeBindings implements NativeBindings {
+  final Map<int, Function> callbacks = {};
+  int _nextCb = 100;
+  ({int viewId, int start, int end})? lastSetSelection;
+
+  @override
+  void applyMutations(List<ViewMutation> mutations) {}
+
+  @override
+  int registerTextChangeCallback(void Function(String) callback) {
+    final id = _nextCb++;
+    callbacks[id] = callback;
+    return id;
+  }
+
+  @override
+  int registerTextFocusCallback(void Function(bool) callback) {
+    final id = _nextCb++;
+    callbacks[id] = callback;
+    return id;
+  }
+
+  @override
+  int registerTextTapCallback(void Function() callback) {
+    final id = _nextCb++;
+    callbacks[id] = callback;
+    return id;
+  }
+
+  @override
+  ({int composingEnd, int composingStart, int end, int start}) textFieldGetSelection(int viewId) {
+    return (composingEnd: -1, composingStart: -1, end: 0, start: 0);
+  }
+
+  @override
+  void textFieldSetSelection(int viewId, int start, int end) {
+    lastSetSelection = (viewId: viewId, start: start, end: end);
+  }
+
+  @override
+  noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+

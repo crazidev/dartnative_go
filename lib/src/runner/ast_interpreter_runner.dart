@@ -30,6 +30,8 @@ class AstInterpreterRunner {
 
   AstInterpreterRunner({this.onLog, this.onExit, this.currentServerUrl});
 
+  ast.InterpreterVisitor? get visitor => _runner?.visitor;
+
   void _snapshotState() {
     final visitor = _runner?.visitor;
     if (visitor == null) return;

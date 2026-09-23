@@ -161,6 +161,27 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.4"
+  dartnative:
+    dependency: "direct overridden"
+    description:
+      path: ".dart_tool/dartnative_sdk/dartnative"
+      relative: true
+    source: path
+    version: "1.0.0"
+  dartnative_android:
+    dependency: "direct overridden"
+    description:
+      path: ".dart_tool/dartnative_sdk/dartnative_android"
+      relative: true
+    source: path
+    version: "1.0.0"
+  dartnative_ios:
+    dependency: "direct overridden"
+    description:
+      path: ".dart_tool/dartnative_sdk/dartnative_ios"
+      relative: true
+    source: path
+    version: "1.0.0"
   dcli:
     dependency: transitive
     description:
@@ -364,10 +385,9 @@ packages:
   native_bottomsheet:
     dependency: "direct main"
     description:
-      name: native_bottomsheet
-      sha256: e9397a8febb00f8c8545bb3907a81b4f2dcd0777083e250786852cbae1b6920f
-      url: "https://dartpub.dev"
-    source: hosted
+      path: "../dartnative_bottomsheet"
+      relative: true
+    source: path
     version: "0.1.0"
   native_synchronization_temp:
     dependency: transitive

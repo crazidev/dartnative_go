@@ -11,6 +11,7 @@ import 'src/runner/bundle_loader.dart';
 import 'src/runner/interpreter_runner.dart';
 import 'src/runner/live_connection.dart';
 import 'src/runner/logger.dart';
+import 'src/runner/native_bottomsheet_manager.dart';
 import 'src/runner/runtime_mode.dart';
 import 'src/runner/ui_probe.dart';
 import 'src/interpreter/widget_generation_tracker.dart';
@@ -189,23 +190,49 @@ class _DartNativeGoState extends State<DartNativeGo> {
           );
           _liveConnection?.sendUiTree(requestId, probed.tree);
         },
-        onUiTap: (requestId, title) {
+        onUiTap: (requestId, title, target) {
           final elementRoot = probeRootElement(_guestProbeKey);
           final widget = _interpretedWidget;
-          final String? error;
-          if (elementRoot != null) {
-            error = tapButtonInElementTree(elementRoot, title);
-          } else if (widget != null) {
-            error = tapButtonByTitle(widget, title);
+          final TargetSpec spec;
+          if (target != null && target.isNotEmpty) {
+            spec = TargetSpec.fromJson(target);
+          } else if (title != null && title.isNotEmpty) {
+            spec = TargetSpec(title: title);
           } else {
-            error = 'no app mounted';
+            spec = const TargetSpec();
           }
-          if (error == null && mounted) {
+          final outcome = tapTarget(
+            elementRoot: elementRoot,
+            widgetRoot: widget,
+            spec: spec,
+          );
+          if (outcome.ok && mounted) {
             // Rebuild so the tapped callback's effects become visible to the
             // next probe (guest setState/Provider notification still applies).
             setState(() {});
           }
-          _liveConnection?.sendUiTapResult(requestId, error == null, error);
+          _liveConnection?.sendUiTapResult(requestId, outcome.ok, outcome.error);
+        },
+        onUiScroll: (requestId, target, deltaX, deltaY) {
+          final outcome = scrollTarget(
+            elementRoot: probeRootElement(_guestProbeKey),
+            widgetRoot: _interpretedWidget,
+            spec: target != null && target.isNotEmpty
+                ? TargetSpec.fromJson(target)
+                : null,
+            deltaX: deltaX,
+            deltaY: deltaY,
+          );
+          if (outcome.ok && mounted) {
+            setState(() {});
+          }
+          _liveConnection?.sendUiActionResult(
+            'ui_scroll_result',
+            requestId,
+            outcome.ok,
+            error: outcome.error,
+            viewId: outcome.viewId,
+          );
         },
         // UI automation triggers: hover / focus / blur / submit / type.
         // Resolve through the reconciled DNTree when available, else the
@@ -275,7 +302,16 @@ class _DartNativeGoState extends State<DartNativeGo> {
             spec: TargetSpec.fromJson(target),
             text: text,
           );
-          if (outcome.ok && mounted) setState(() {});
+          if (outcome.ok) {
+            if (mounted) setState(() {});
+            for (final sheet in NativeBottomSheetManager.activeSheets) {
+              if (sheet.isScopeActive) {
+                try {
+                  sheet.triggerRebuild();
+                } catch (_) {}
+              }
+            }
+          }
           _liveConnection?.sendUiActionResult(
             'ui_type_result',
             requestId,
@@ -358,6 +394,10 @@ class _DartNativeGoState extends State<DartNativeGo> {
         _interpretedWidget = widget;
         _errorMessage = null;
       });
+      NativeBottomSheetManager.notifyHotReload(
+        _interpreterRunner.activeVisitor,
+        changedFile: changedFile,
+      );
       final remountMs = remountSw.elapsedMilliseconds;
       final totalMs = reloadSw.elapsedMilliseconds;
 

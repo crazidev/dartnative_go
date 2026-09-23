@@ -18,8 +18,7 @@ dependencies:
     hosted: https://dartpub.dev
     version: ^0.1.0
   native_bottomsheet:
-    hosted: https://dartpub.dev
-    version: ^0.1.0
+    path: ../../dartnative_bottomsheet
   # Skia GPU canvas: SkSL runtime shaders and rich shaped text. Adds about
   # 9 MB to an iPhone app; on Android the library is already in the platform
   # binding. For shapes, paths and charts use CustomPaint, which is native

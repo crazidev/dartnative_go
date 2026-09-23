@@ -69,22 +69,26 @@ reload targets via `git diff`, or `restore: true` to auto-restore leftover
 edits instead of blocking — whole-state reset; start device scenarios
 with it), `restart` (hot-restart + settle; doubles as load-the-app —
 start every device scenario with it), `probe`,
-`expect_text`/`expect_no_text`/`expect_button`/`expect_key`/`expect_icon`,
-`tap`, `hover` (reachability + native `viewId` report — the SDK exposes no
+`expect_text`/`expect_no_text`/`expect_button`/`expect_key`/`expect_icon`
+(`expect_icon` supports `as: var_name` alias binding),
+`set` (defines target variables, e.g. `set: { my_icon: { icon: 62601 } }`),
+`tap` (universal tap: targets `title`, `key`, `icon`, `text`, or variable alias;
+walks up to invoke `GestureDetector.onTap`, `BarButtonItem.onPressed`,
+`Button.onPressed`, or `IconButton.onPressed`), `scroll` (`delta_y`, `delta_x`,
+or `target:` against `SingleChildScrollView` / `ListView`),
+`hover` (reachability + native `viewId` report — the SDK exposes no
 hover callbacks), `focus`/`blur` (need `TextField.focusNode`),
 `submit` (needs `TextField.onSubmitted`; buttons fail with "use tap"),
 `type` (needs `TextField` controller + fires `onChanged`), `probe_until`
 (poll after every tap/reload; also takes `key:`/`icon_code_point:`),
-`expect_text`/`expect_no_text`/`expect_button`/`expect_key`/`expect_icon`,
-`tap`, `hover`/`focus`/`blur`/`submit`/`type` (target via
-title/text/key/icon_code_point; submit/type take `text:`), `probe_until`
-(poll after every tap/reload; also accepts key:/icon: conditions),
 `reload` (file `edit:` with exactly-once `search→replace` or `append:`,
 optional `signal: true`, `settle:`/`revert`/`revert_settle:` — NO
 full-file write in v1), `sleep`, `log`.
 
-Trigger semantics (honest limits): `hover` = reachability + native viewId
-reporting (the SDK exposes no hover callbacks on Button/TextField);
+Trigger semantics (honest limits): `tap` = universal tap matching `Button`,
+`GestureDetector`, `BarButtonItem`, and `IconButton` directly or on ancestors
+of matched icons/keys/text; `hover` = reachability + native viewId
+reporting; `scroll` = jumps controller offset or native view scroll;
 `focus`/`blur` need `TextField.focusNode` (`requestFocus`/`unfocus`);
 `type` needs a `TextEditingController` (+ fires `onChanged`); `submit`
 needs `onSubmitted` (Buttons: use `tap` — submit fails saying so). All

@@ -452,9 +452,10 @@ class DartGoServer {
                     data['type'] == 'ui_focus' ||
                     data['type'] == 'ui_blur' ||
                     data['type'] == 'ui_submit' ||
-                    data['type'] == 'ui_type') {
+                    data['type'] == 'ui_type' ||
+                    data['type'] == 'ui_scroll') {
                   // UI automation: a test script drives the connected
-                  // device(s) — probe, tap, hover, focus, blur, submit, type.
+                  // device(s) — probe, tap, hover, focus, blur, submit, type, scroll.
                   // Relay to everyone; the device answers with `ui_tree` /
                   // `*_result` messages handled below.
                   _broadcast(Map<String, dynamic>.from(data));
@@ -469,7 +470,8 @@ class DartGoServer {
                     data['type'] == 'ui_focus_result' ||
                     data['type'] == 'ui_blur_result' ||
                     data['type'] == 'ui_submit_result' ||
-                    data['type'] == 'ui_type_result') {
+                    data['type'] == 'ui_type_result' ||
+                    data['type'] == 'ui_scroll_result') {
                   final req = data['requestId'] ?? '?';
                   final action = (data['type'] as String)
                       .replaceFirst('ui_', '')

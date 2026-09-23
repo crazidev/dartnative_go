@@ -83,12 +83,21 @@ void _patchNativeBottomsheetBridges(File file) {
   if (!content.contains("as \$flutter_widgets;")) {
     content = content.replaceFirst(
       "import 'package:native_bottomsheet/",
-      "import 'package:dartnative/dartnative.dart' as \$flutter_widgets;\nimport 'package:native_bottomsheet/",
+      "import 'package:dartnative/dartnative.dart' as \$flutter_widgets;\nimport 'package:dartnative_go/src/runner/native_bottomsheet_manager.dart' as \$bottomsheet_mgr;\nimport 'package:native_bottomsheet/",
+    );
+  } else if (!content.contains("as \$bottomsheet_mgr;")) {
+    content = content.replaceFirst(
+      "import 'package:native_bottomsheet/",
+      "import 'package:dartnative_go/src/runner/native_bottomsheet_manager.dart' as \$bottomsheet_mgr;\nimport 'package:native_bottomsheet/",
     );
   }
   content = content.replaceAll(
     "D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]))",
-    "D4.extractBridgedArg<\$flutter_widgets.Widget>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]), 'builder', visitor)",
+    "\$bottomsheet_mgr.NativeBottomSheetScope(controller: p1, child: D4.extractBridgedArg<\$flutter_widgets.Widget>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]), 'builder', visitor))",
+  );
+  content = content.replaceAll(
+    "return D4.extractBridgedArg<\$flutter_widgets.Widget>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]), 'builder', visitor);",
+    "return \$bottomsheet_mgr.NativeBottomSheetScope(controller: p1, child: D4.extractBridgedArg<\$flutter_widgets.Widget>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]), 'builder', visitor));",
   );
   file.writeAsStringSync(content);
 }

@@ -23,6 +23,7 @@ import 'dart:io';
 
 import 'package:yaml/yaml.dart';
 
+import 'package:dartnative_go/src/runner/icon_registry.dart';
 import '../test/test_lab/fake_server.dart';
 import '../test/test_lab/ui_automator.dart';
 
@@ -207,6 +208,7 @@ class _ScenarioRunner {
   _CannedDevice? _canned;
   Directory? _fakeSandbox;
   Map<String, dynamic>? _lastTree;
+  final Map<String, dynamic> _variables = {};
 
   _ScenarioRunner({
     required this.scenario,
@@ -320,6 +322,16 @@ class _ScenarioRunner {
   String _describe(String kind, dynamic arg) {
     if (arg is Map) {
       if (arg.isEmpty) return kind;
+      if (kind == 'type') {
+        final text = arg['text'];
+        final target = arg['into'] ??
+            arg['placeholder'] ??
+            arg['hint'] ??
+            arg['key'] ??
+            arg['title'];
+        if (target != null && text != null) return 'type "$text" into $target';
+        if (text != null) return 'type "$text"';
+      }
       final first = arg.entries.first;
       return '$kind ${first.key}=${first.value}';
     }
@@ -339,8 +351,14 @@ class _ScenarioRunner {
       case 'expect_button':
         UiAutomator.expectButton(_requireTree(), '$arg');
       case 'tap':
-        await auto.tap(_stringArg(arg, 'title'));
+        final target = _resolveTargetArg(arg);
+        await auto.tap(target);
         _lastTree = null; // stale after a tap; next probe refreshes
+      case 'set':
+        final vars = _mapArg(arg);
+        for (final e in vars.entries) {
+          _variables[e.key] = _resolveTargetArg(e.value);
+        }
       case 'hover':
       case 'focus':
       case 'blur':
@@ -348,28 +366,94 @@ class _ScenarioRunner {
       case 'type':
         await _runTrigger(kind, arg);
         _lastTree = null;
+      case 'scroll':
+        final spec = _mapArg(arg);
+        final dy = (spec['delta_y'] as num?)?.toDouble() ?? 100.0;
+        final dx = (spec['delta_x'] as num?)?.toDouble() ?? 0.0;
+        final targetArg = spec['target'];
+        final target = targetArg != null ? _resolveTargetArg(targetArg) : null;
+        await auto.scroll(
+          target: target is Map<String, dynamic> ? target : null,
+          deltaX: dx,
+          deltaY: dy,
+        );
+        _lastTree = null;
       case 'expect_key':
         UiAutomator.expectKey(_requireTree(), '$arg');
       case 'expect_icon':
-        final iconCond = _mapArg(arg);
+        int? cp;
+        String? ff;
+        dynamic iconRef;
+        if (arg is String) {
+          var iconExpr = arg.trim();
+          String? asVar;
+          if (iconExpr.contains(' as ')) {
+            final parts = iconExpr.split(' as ');
+            iconExpr = parts[0].trim();
+            asVar = parts[1].trim();
+          }
+          final resolvedTarget = _resolveTargetArg(iconExpr);
+          if (asVar != null) {
+            _variables[asVar] = resolvedTarget;
+          }
+          if (resolvedTarget is Map) {
+            cp = resolvedTarget['icon_code_point'] is int
+                ? resolvedTarget['icon_code_point'] as int
+                : int.tryParse('${resolvedTarget['icon_code_point']}');
+            ff = resolvedTarget['icon_font_family']?.toString();
+            iconRef = resolvedTarget['icon_name'] ?? iconExpr;
+          } else {
+            cp = int.tryParse(iconExpr);
+            iconRef = iconExpr;
+          }
+        } else {
+          final iconCond = _mapArg(arg);
+          final asVar = iconCond['as']?.toString();
+          final resolvedTarget = _resolveTargetArg(iconCond);
+          if (asVar != null) {
+            _variables[asVar] = resolvedTarget;
+          }
+          if (resolvedTarget is Map) {
+            cp = resolvedTarget['icon_code_point'] is int
+                ? resolvedTarget['icon_code_point'] as int
+                : int.tryParse('${resolvedTarget['icon_code_point']}');
+            ff = resolvedTarget['icon_font_family']?.toString();
+            iconRef = resolvedTarget['icon_name'] ?? iconCond['icon'];
+          }
+        }
         UiAutomator.expectIcon(
           _requireTree(),
-          codePoint: iconCond['code_point'] is int
-              ? iconCond['code_point'] as int
-              : int.tryParse('${iconCond['code_point']}'),
-          fontFamily: iconCond['font_family']?.toString(),
+          icon: iconRef,
+          codePoint: cp,
+          fontFamily: ff,
         );
       case 'probe_until':
         final cond = _mapArg(arg);
+        final iconTarget = cond['icon'] != null
+            ? _resolveTargetArg(cond['icon'])
+            : null;
+        int? iconCp;
+        String? iconFf = cond['icon_font_family']?.toString();
+        dynamic iconRef = cond['icon'];
+        if (iconTarget is Map) {
+          iconCp = iconTarget['icon_code_point'] is int
+              ? iconTarget['icon_code_point'] as int
+              : int.tryParse('${iconTarget['icon_code_point']}');
+          iconFf ??= iconTarget['icon_font_family']?.toString();
+          iconRef = iconTarget['icon_name'] ?? iconRef;
+        } else if (iconTarget is int) {
+          iconCp = iconTarget;
+        } else if (cond['icon'] != null) {
+          iconCp = int.tryParse('${cond['icon']}');
+        }
         _lastTree = await auto.probeUntil(
           text: cond['text']?.toString(),
           absentText: cond['absent_text']?.toString(),
           button: cond['button']?.toString(),
           key: cond['key']?.toString(),
-          iconCodePoint: cond['icon'] is int
-              ? cond['icon'] as int
-              : int.tryParse('${cond['icon']}'),
-          iconFontFamily: cond['icon_font_family']?.toString(),
+          icon: iconRef,
+          iconCodePoint: iconCp,
+          iconFontFamily: iconFf,
           timeout: _seconds(cond['timeout_s']) ?? defaultStepTimeout,
           interval: scenario.probeInterval,
         );
@@ -435,6 +519,62 @@ class _ScenarioRunner {
     if (listTrees && _lastTree != null) print(jsonEncode(_lastTree));
   }
 
+  dynamic _resolveTargetArg(dynamic arg) {
+    if (arg is String) {
+      final varName = arg.startsWith(r'$') ? arg.substring(1) : arg;
+      if (_variables.containsKey(varName)) {
+        return _variables[varName];
+      }
+      final resolved = resolveIcon(arg);
+      if (resolved != null) {
+        return {
+          'icon_code_point': resolved.codePoint,
+          'icon_font_family': resolved.fontFamily,
+          'icon_name': arg,
+        };
+      }
+      return arg;
+    }
+    if (arg is Map) {
+      final map = Map<String, dynamic>.from(arg);
+      final resolved = resolveIcon(map);
+      final out = <String, dynamic>{};
+      for (final e in map.entries) {
+        final k = e.key.toString();
+        final v = e.value;
+        if (k == 'icon' || k == 'code_point') {
+          if (v is int) {
+            out['icon_code_point'] = v;
+          } else if (v is Map) {
+            out['icon_code_point'] = v['code_point'] ?? v['icon'];
+            out['icon_font_family'] = v['font_family'];
+          } else if (v is String) {
+            final named = resolveIcon(v);
+            if (named != null) {
+              out['icon_code_point'] = named.codePoint;
+              out['icon_font_family'] = named.fontFamily;
+              out['icon_name'] = v;
+            } else {
+              out['icon_code_point'] = int.tryParse(v);
+            }
+          } else {
+            out['icon_code_point'] = int.tryParse('$v');
+          }
+        } else if (k == 'font_family') {
+          out['icon_font_family'] = '$v';
+        } else {
+          out[k] = v;
+        }
+      }
+      if (resolved != null) {
+        out['icon_code_point'] ??= resolved.codePoint;
+        out['icon_font_family'] ??= resolved.fontFamily;
+      }
+      return out;
+    }
+    return arg;
+  }
+
   String _stringArg(dynamic arg, String key) {
     if (arg is Map<String, dynamic>) return '${arg[key]}';
     return '$arg';
@@ -457,10 +597,40 @@ class _ScenarioRunner {
   /// `submit: {key: search, text: query}`. Fails with the device-reported
   /// error (e.g. focus on a Button, submit without onSubmitted).
   Future<void> _runTrigger(String kind, dynamic arg) async {
-    final spec = arg is Map<String, dynamic> ? arg : <String, dynamic>{};
+    final resolved = _resolveTargetArg(arg);
+    Map<String, dynamic> spec;
+    String? text;
+
+    if (resolved is String && (kind == 'type' || kind == 'submit')) {
+      spec = const {};
+      text = resolved;
+    } else if (resolved is Map<String, dynamic>) {
+      spec = resolved;
+      text = spec['text']?.toString();
+    } else if (resolved is Map) {
+      spec = Map<String, dynamic>.from(resolved);
+      text = spec['text']?.toString();
+    } else {
+      spec = const {};
+    }
+
     final target = <String, dynamic>{};
     if (spec['title'] != null) target['title'] = '${spec['title']}';
     if (spec['key'] != null) target['key'] = '${spec['key']}';
+
+    final placeholder = spec['placeholder'] ??
+        spec['hint'] ??
+        (spec['into'] is String ? spec['into'] : null) ??
+        (spec['target'] is String ? spec['target'] : null);
+    if (placeholder != null) target['placeholder'] = '$placeholder';
+
+    if (spec['into'] is Map) {
+      target.addAll(Map<String, dynamic>.from(spec['into'] as Map));
+    }
+    if (spec['target'] is Map) {
+      target.addAll(Map<String, dynamic>.from(spec['target'] as Map));
+    }
+
     // `text:` doubles as target Text-data match for find-only actions…
     if (spec['text'] != null && kind != 'submit' && kind != 'type') {
       target['text'] = '${spec['text']}';
@@ -474,7 +644,11 @@ class _ScenarioRunner {
     if (spec['icon_font_family'] != null) {
       target['icon_font_family'] = '${spec['icon_font_family']}';
     }
-    final text = spec['text']?.toString();
+
+    if (target.isEmpty && (kind == 'type' || kind == 'focus' || kind == 'submit')) {
+      target['any_text_field'] = true;
+    }
+
     switch (kind) {
       case 'hover':
         await _auto!.hover(target: target);
@@ -486,7 +660,9 @@ class _ScenarioRunner {
         await _auto!.submit(target: target, text: text);
       case 'type':
         if (text == null) {
-          throw UiAutomationFailure('type: needs text: {title/text/key, text}');
+          throw UiAutomationFailure(
+            'type: needs text: {into/placeholder/key/text, text} or type: "text"',
+          );
         }
         await _auto!.type(target: target, text: text);
     }
@@ -731,15 +907,25 @@ class _CannedDevice {
         } else if (type == 'restart') {
           // Fresh start over: subsequent probes replay from the first tree.
           _probeCount = 0;
-        } else if (type == 'ui_tap') {          final title = data['title']?.toString() ?? '';
-          final verdict = taps[title];
-          if (verdict == null) {
-            _send({
-              'type': 'ui_tap_result',
-              'requestId': requestId,
-              'ok': true,
-            });
-          } else if (verdict == 'ok') {
+        } else if (type == 'ui_tap') {
+          final title = data['title']?.toString();
+          final target = data['target'];
+          final String tapKey;
+          if (title != null && title.isNotEmpty) {
+            tapKey = title;
+          } else if (target is Map && target['icon_code_point'] != null) {
+            tapKey = '${target['icon_code_point']}';
+          } else if (target is Map && target['key'] != null) {
+            tapKey = '${target['key']}';
+          } else {
+            tapKey = target?.toString() ?? '';
+          }
+          final verdict = taps[tapKey] ??
+              (title != null ? taps[title] : null) ??
+              (target is Map && target['icon_name'] != null
+                  ? taps[target['icon_name']]
+                  : null);
+          if (verdict == null || verdict == 'ok') {
             _send({
               'type': 'ui_tap_result',
               'requestId': requestId,
@@ -757,7 +943,8 @@ class _CannedDevice {
             type == 'ui_focus' ||
             type == 'ui_blur' ||
             type == 'ui_submit' ||
-            type == 'ui_type') {
+            type == 'ui_type' ||
+            type == 'ui_scroll') {
           // Canned flow validation: acknowledge triggers; semantic
           // verification (focus nodes, controllers) happens on-device and
           // in `dn test` suites via SimulatedDevice.

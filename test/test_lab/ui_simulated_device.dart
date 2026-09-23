@@ -52,13 +52,42 @@ class SimulatedDevice {
             });
             return;
           }
-          final error = tapButtonByTitle(root, data['title']?.toString() ?? '');
+          final target = data['target'];
+          final TargetSpec spec;
+          if (target is Map<String, dynamic> && target.isNotEmpty) {
+            spec = TargetSpec.fromJson(target);
+          } else if (target is Map && target.isNotEmpty) {
+            spec = TargetSpec.fromJson(Map<String, dynamic>.from(target));
+          } else if (data['title'] != null) {
+            spec = TargetSpec(title: data['title']?.toString());
+          } else {
+            spec = const TargetSpec();
+          }
+          final outcome = tapTarget(widgetRoot: root, spec: spec);
           _send({
             'type': 'ui_tap_result',
             'requestId': requestId,
-            'ok': error == null,
-            'error': ?error,
+            'ok': outcome.ok,
+            'error': outcome.error,
           });
+        } else if (type == 'ui_scroll') {
+          final root = harness.lastRoot;
+          if (root == null) {
+            _send({
+              'type': 'ui_scroll_result',
+              'requestId': requestId,
+              'ok': false,
+              'error': 'no app mounted',
+            });
+            return;
+          }
+          final outcome = scrollTarget(
+            widgetRoot: root,
+            spec: TargetSpec.fromJson(_targetMap(data)),
+            deltaX: (data['deltaX'] as num?)?.toDouble() ?? 0.0,
+            deltaY: (data['deltaY'] as num?)?.toDouble() ?? 100.0,
+          );
+          _send(outcome.toJson(requestId, 'ui_scroll_result'));
         } else if (type == 'ui_hover' ||
             type == 'ui_focus' ||
             type == 'ui_blur' ||

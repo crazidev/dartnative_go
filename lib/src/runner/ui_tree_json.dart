@@ -7,6 +7,8 @@
 /// `'viewType'` on reconciled nodes, nested `'children'` lists.
 library;
 
+import 'icon_registry.dart';
+
 /// Finds all `Text` nodes with [data] in a serialized [tree].
 List<Map<String, dynamic>> findTextNodes(
   Map<String, dynamic> tree,
@@ -14,7 +16,13 @@ List<Map<String, dynamic>> findTextNodes(
 ) {
   final out = <Map<String, dynamic>>[];
   void visit(Map<String, dynamic> node) {
-    if (node['type'] == 'Text' && node['text'] == data) out.add(node);
+    final t = node['text']?.toString() ??
+        node['title']?.toString() ??
+        node['hint']?.toString() ??
+        node['placeholder']?.toString();
+    if (t != null && (t == data || (data.isNotEmpty && t.contains(data)))) {
+      out.add(node);
+    }
     final children = node['children'];
     if (children is List) {
       for (final child in children) {
@@ -34,10 +42,14 @@ List<Map<String, dynamic>> findButtonNodes(
 ) {
   final out = <Map<String, dynamic>>[];
   void visit(Map<String, dynamic> node) {
-    if ((node['type'] == 'Button' ||
-            node['type'].toString().contains('Button')) &&
-        node['title'] == title) {
-      out.add(node);
+    if (node['type'] == 'Button' ||
+        node['type'] == 'IconButton' ||
+        node['type'] == 'BarButtonItem' ||
+        node['type'].toString().contains('Button')) {
+      final t = node['title']?.toString();
+      if (t != null && (t == title || (title.isNotEmpty && t.contains(title)))) {
+        out.add(node);
+      }
     }
     final children = node['children'];
     if (children is List) {
@@ -75,18 +87,28 @@ List<Map<String, dynamic>> findKeyNodes(
 }
 
 /// Finds all `Icon` nodes in a serialized [tree], optionally filtered by
-/// [codePoint] and/or [fontFamily].
+/// [icon] (named icon or spec), [codePoint] and/or [fontFamily].
 List<Map<String, dynamic>> findIconNodes(
   Map<String, dynamic> tree, {
+  dynamic icon,
   int? codePoint,
   String? fontFamily,
 }) {
+  if (icon != null) {
+    final res = resolveIcon(icon);
+    if (res != null) {
+      codePoint ??= res.codePoint;
+      fontFamily ??= res.fontFamily;
+    }
+  }
   final out = <Map<String, dynamic>>[];
   void visit(Map<String, dynamic> node) {
-    if (node['type'] == 'Icon') {
-      final icon = node['icon'];
-      final cp = icon is Map ? icon['code_point'] : null;
-      final ff = icon is Map ? icon['font_family'] : null;
+    if (node['type'] == 'Icon' || node['icon'] != null) {
+      final nodeIcon = node['icon'];
+      final cp = nodeIcon is Map
+          ? nodeIcon['code_point']
+          : (nodeIcon is int ? nodeIcon : node['code_point']);
+      final ff = nodeIcon is Map ? nodeIcon['font_family'] : node['font_family'];
       if ((codePoint == null || cp == codePoint) &&
           (fontFamily == null || ff == fontFamily)) {
         out.add(node);
