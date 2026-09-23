@@ -1,4 +1,7 @@
+import 'package:tom_d4rt_ast/runtime.dart'
+    show Callable, InterpreterVisitor, RuntimeType;
 import 'bytecode_models.dart';
+import 'vm.dart';
 
 /// Call frame representing an active execution frame on the VM call stack.
 class CallFrame {
@@ -25,14 +28,41 @@ class CallFrame {
 }
 
 /// Represents an interpreted closure capturing its lexical environment.
-class BytecodeClosure {
+class BytecodeClosure implements Callable {
   final int funcId;
   final List<Object?> capturedSlots;
+  final BytecodeVM? vm;
+  final BytecodeInstance? thisTarget;
 
   const BytecodeClosure({
     required this.funcId,
     required this.capturedSlots,
+    this.vm,
+    this.thisTarget,
   });
+
+  @override
+  int get arity => 0;
+
+  @override
+  Object? call(
+    InterpreterVisitor visitor,
+    List<Object?> positionalArguments, [
+    Map<String, Object?>? namedArguments,
+    List<RuntimeType>? typeArguments,
+  ]) {
+    final activeVm = vm ?? BytecodeVM.current;
+    if (activeVm == null) {
+      throw StateError('Cannot invoke BytecodeClosure without active BytecodeVM');
+    }
+    return activeVm.executeFunction(
+      funcId: funcId,
+      positionalArgs: positionalArguments,
+      namedArgs: namedArguments ?? const {},
+      capturedEnv: capturedSlots,
+      thisTarget: thisTarget,
+    );
+  }
 }
 
 /// Represents an instantiated interpreted class instance.

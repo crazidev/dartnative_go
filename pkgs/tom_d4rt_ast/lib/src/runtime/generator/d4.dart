@@ -2678,12 +2678,19 @@ class D4 {
   /// `.map()`. If a callback returns a List/Map containing BridgedInstance
   /// values, the generated bridge code must handle the element-level
   /// unwrapping explicitly.
+  /// Optional custom unwrapper hook (e.g. for BytecodeInstance native proxies).
+  static Object? Function(Object? value)? customUnwrapper;
+
   static Object? unwrapInterpreterValue(Object? value) {
     if (value is BridgedInstance) {
       return value.nativeObject;
     }
     if (value is BridgedEnumValue) {
       return value.nativeValue;
+    }
+    if (customUnwrapper != null) {
+      final custom = customUnwrapper!(value);
+      if (custom != null) return custom;
     }
     return value;
   }

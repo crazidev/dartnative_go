@@ -38,21 +38,21 @@ void main() {
       expect(widget, isA<BytecodeStatefulWidget>());
       final stateful = widget as BytecodeStatefulWidget;
       final state = stateful.createState() as BytecodeStateProxy;
-      expect(state.stateInstance.fields['isLoggedIn'], isFalse);
+      expect(state.stateInstance.fields['currentIndex'], 0);
 
       final builtTree = state.build(FakeBuildContext());
       expect(builtTree, isA<Scaffold>());
       final scaffold = builtTree as Scaffold;
       expect(scaffold.body, isA<Column>());
       final column = scaffold.body as Column;
-      expect(column.children.length, 2);
+      expect(column.children.length, 3);
 
-      final button = column.children[1] as Button;
+      final button = column.children[2] as Button;
       expect(button.onPressed, isNotNull);
 
       // Trigger button callback:
       button.onPressed!();
-      expect(state.stateInstance.fields['isLoggedIn'], isTrue);
+      expect(state.stateInstance.fields['currentIndex'], 1);
     });
   });
 }

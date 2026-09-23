@@ -12,6 +12,8 @@ import 'opcodes.dart';
 
 /// Lightweight, high-performance Stack Virtual Machine for DartNative Go.
 class BytecodeVM {
+  static BytecodeVM? current;
+
   final FunctionTable functionTable = FunctionTable();
   ConstantPool constantPool = ConstantPool(const []);
   final Map<String, BytecodeClass> classes = {};
@@ -152,9 +154,12 @@ class BytecodeVM {
     }
 
     _callStack.add(frame);
+    final prevCurrent = current;
+    current = this;
     try {
       return _run(frame);
     } finally {
+      current = prevCurrent;
       if (_callStack.isNotEmpty) _callStack.removeLast();
     }
   }
@@ -374,6 +379,12 @@ class BytecodeVM {
           _operandStack.add(BytecodeClosure(
             funcId: funcId,
             capturedSlots: captured,
+            vm: this,
+            thisTarget: captured.isNotEmpty && captured[0] is BytecodeInstance
+                ? captured[0] as BytecodeInstance
+                : (frame.slots.isNotEmpty && frame.slots[0] is BytecodeInstance
+                    ? frame.slots[0] as BytecodeInstance
+                    : null),
           ));
           break;
 
@@ -978,7 +989,16 @@ class BytecodeVM {
       }
     }
 
-    // 12. Fallback to bridged top-level function
+    // 12. Delegate to bridged instance method from AST bridges
+    final bridgedResult = bridgeAdapter.invokeInstanceMethod(
+      target,
+      methodName,
+      posArgs,
+      namedArgs,
+    );
+    if (bridgedResult != null) return bridgedResult;
+
+    // 13. Fallback to bridged top-level function
     return bridgeAdapter.invokeTopLevel(methodName, posArgs, namedArgs);
   }
 

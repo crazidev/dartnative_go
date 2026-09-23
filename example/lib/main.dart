@@ -46,13 +46,13 @@ class _MyAppState extends State<MyApp> {
     Colors.blue,
   ];
 
-  void chnageColor() {
+  void changeColor() {
     if (currentIndex >= colors.length) {
       currentIndex = 0;
     } else {
       currentIndex = currentIndex + 1;
     }
-    print("currentIndex $currentIndex");
+    print("currentIndex $currentIndex ${currentIndex >= colors.length}");
     setState(() {
       textColor = colors[currentIndex];
     });
@@ -75,7 +75,7 @@ class _MyAppState extends State<MyApp> {
           Button(
             child: Text("Change State"),
             onPressed: () {
-              chnageColor();
+              changeColor();
             },
           ),
         ],

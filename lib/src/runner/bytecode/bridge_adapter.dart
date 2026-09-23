@@ -1,7 +1,10 @@
 import 'package:dartnative/dartnative.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
+import 'package:tom_d4rt_ast/d4rt.dart';
+import 'package:tom_d4rt_ast/runtime.dart';
 
+import '../../interpreter/ast/dartscript.b.dart' as ast_bridges;
 import '../logger.dart';
 import 'bytecode_widget_proxies.dart';
 import 'call_frame.dart';
@@ -9,6 +12,93 @@ import 'vm.dart';
 
 /// Adapter providing reflection-free dispatch to native DartNative host widgets and plugins.
 class BytecodeBridgeAdapter {
+  static final Map<String, LibraryClass> _classByName = {};
+  static final Map<Type, LibraryClass> _classByType = {};
+  static final Map<String, LibraryEnum> _enumByName = {};
+  static final Map<String, LibraryFunction> _topLevelFuncByName = {};
+  static final Map<String, LibraryVariable> _topLevelVarByName = {};
+  static final Map<String, LibraryGetter> _topLevelGetterByName = {};
+  static bool _bridgesInitialized = false;
+  static late final InterpreterVisitor _sharedVisitor;
+
+  static void ensureInitialized() {
+    if (_bridgesInitialized) return;
+    _bridgesInitialized = true;
+
+    D4.customUnwrapper = (value) {
+      if (value is BytecodeInstance && value.nativeProxy != null) {
+        return value.nativeProxy;
+      }
+      return null;
+    };
+
+    final runner = D4rtRunner();
+    ast_bridges.DartnativeGoAstBridges.register(runner);
+
+    for (final libMap in runner.bridgedClasses.values) {
+      for (final entry in libMap.entries) {
+        _classByName[entry.key] = entry.value;
+        _classByType[entry.value.nativeType] = entry.value;
+      }
+    }
+
+    for (final alias in runner.classAliases) {
+      final target = _classByName[alias.targetName];
+      if (target != null) {
+        _classByName[alias.aliasName] = target;
+      }
+    }
+
+    for (final enumMap in runner.bridgedEnumDefinitions.values) {
+      for (final entry in enumMap.entries) {
+        _enumByName[entry.key] = entry.value;
+      }
+    }
+
+    for (final funcMap in runner.libraryFunctions.values) {
+      for (final entry in funcMap.entries) {
+        _topLevelFuncByName[entry.key] = entry.value;
+      }
+    }
+
+    for (final varMap in runner.libraryVariables.values) {
+      for (final entry in varMap.entries) {
+        _topLevelVarByName[entry.key] = entry.value;
+      }
+    }
+
+    for (final getterMap in runner.libraryGetters.values) {
+      for (final entry in getterMap.entries) {
+        _topLevelGetterByName[entry.key] = entry.value;
+      }
+    }
+
+    final env = Environment();
+    final moduleContext = NoOpModuleContext(globalEnvironment: env);
+    _sharedVisitor = InterpreterVisitor(
+      globalEnvironment: env,
+      moduleContext: moduleContext,
+    );
+  }
+
+  static Object? unwrapArgument(Object? arg) {
+    if (arg == null) return null;
+    if (arg is BytecodeInstance) {
+      if (arg.nativeProxy != null) return arg.nativeProxy;
+      return arg;
+    }
+    if (arg is List) {
+      return arg.map((item) => unwrapArgument(item)).toList();
+    }
+    if (arg is Set) {
+      return arg.map((item) => unwrapArgument(item)).toSet();
+    }
+    if (arg is Map) {
+      return arg.map((k, v) => MapEntry(k, unwrapArgument(v)));
+    }
+    return arg;
+  }
+
   Widget? capturedApp;
   void Function(String)? onLog;
   String? Function()? serverUrlProvider;
@@ -20,7 +110,9 @@ class BytecodeBridgeAdapter {
     this.serverUrlProvider,
     this.widgetUnwrapper,
     this.vm,
-  });
+  }) {
+    ensureInitialized();
+  }
 
   /// Resolves an instantiated class, constructor, or bridged function call.
   Object? invokeConstructor(
@@ -29,6 +121,27 @@ class BytecodeBridgeAdapter {
     List<Object?> positional,
     Map<String, Object?> named,
   ) {
+    ensureInitialized();
+
+    final libClass = _classByName[className];
+    if (libClass != null) {
+      final bridgedClass = libClass.bridgedClass;
+      final ctorKey = (ctorName == 'new' || ctorName.isEmpty) ? '' : ctorName;
+      final ctor = bridgedClass.constructors[ctorKey] ?? bridgedClass.constructors[ctorName];
+      if (ctor != null) {
+        final posUnwrapped = positional.map(unwrapArgument).toList();
+        final namedUnwrapped = named.map((k, v) => MapEntry(k, unwrapArgument(v)));
+        try {
+          return ctor(_sharedVisitor, posUnwrapped, namedUnwrapped);
+        } catch (e) {
+          DartGoLogger.debug(
+            'Generated bridge ctor $className.$ctorName failed: $e, falling back to manual adapter',
+            tag: 'BytecodeBridge',
+          );
+        }
+      }
+    }
+
     switch (className) {
       // Core UI Widgets
       case 'Text':
@@ -660,6 +773,52 @@ class BytecodeBridgeAdapter {
 
   /// Resolves static identifiers, constants, and enums.
   Object? resolveGlobalOrStatic(String name) {
+    ensureInitialized();
+
+    final dot = name.indexOf('.');
+    if (dot != -1) {
+      final prefix = name.substring(0, dot);
+      final member = name.substring(dot + 1);
+
+      // 1. Check Enum
+      final libEnum = _enumByName[prefix];
+      if (libEnum != null) {
+        final enumDef = libEnum.enumDefinition;
+        for (final val in enumDef.values) {
+          if (val.name == member) return val;
+        }
+        final staticGetter = enumDef.staticGetters[member];
+        if (staticGetter != null) {
+          try {
+            return staticGetter();
+          } catch (_) {}
+        }
+      }
+
+      // 2. Check BridgedClass static getters / fields
+      final libClass = _classByName[prefix];
+      if (libClass != null) {
+        final bridgedClass = libClass.bridgedClass;
+        final staticGetter = bridgedClass.staticGetters[member];
+        if (staticGetter != null) {
+          try {
+            return staticGetter(_sharedVisitor);
+          } catch (_) {}
+        }
+      }
+    }
+
+    final topVar = _topLevelVarByName[name];
+    if (topVar != null) {
+      return topVar.value;
+    }
+    final topGetter = _topLevelGetterByName[name];
+    if (topGetter != null) {
+      try {
+        return topGetter.getter();
+      } catch (_) {}
+    }
+
     switch (name) {
       // Colors
       case 'Colors.transparent':
@@ -916,6 +1075,41 @@ class BytecodeBridgeAdapter {
 
   /// Resolves member properties on native Dart objects (strings, lists, maps, colors).
   Object? resolveMember(Object target, String name) {
+    ensureInitialized();
+
+    var libClass = _classByType[target.runtimeType];
+    if (libClass == null) {
+      for (final lc in _classByName.values) {
+        final bc = lc.bridgedClass;
+        if (bc.isAssignable != null && bc.isAssignable!(target)) {
+          libClass = lc;
+          _classByType[target.runtimeType] = lc;
+          break;
+        }
+      }
+    }
+    if (libClass != null) {
+      final getter = libClass.bridgedClass.getters[name];
+      if (getter != null) {
+        try {
+          return getter(_sharedVisitor, target);
+        } catch (_) {}
+      }
+    }
+
+    if (target is Enum) {
+      if (name == 'name') return target.name;
+      if (name == 'index') return target.index;
+      final libEnum = _enumByName[target.runtimeType.toString()];
+      if (libEnum != null) {
+        final getter = libEnum.enumDefinition.getters[name];
+        if (getter != null) {
+          try {
+            return getter(_sharedVisitor, target);
+          } catch (_) {}
+        }
+      }
+    }
     if (target is NotifierProvider) {
       if (name == 'notifier') return target.notifier;
     }
@@ -1050,6 +1244,59 @@ class BytecodeBridgeAdapter {
     } else if (functionName == 'DartNativePluginRegistrant.registerAll' ||
         functionName == 'registerAll') {
       return null;
+    }
+
+    ensureInitialized();
+    final libFunc = _topLevelFuncByName[functionName];
+    if (libFunc != null) {
+      final posUnwrapped = positional.map(unwrapArgument).toList();
+      final namedUnwrapped = named.map((k, v) => MapEntry(k, unwrapArgument(v)));
+      try {
+        return libFunc.function.call(_sharedVisitor, posUnwrapped, namedUnwrapped, null);
+      } catch (e) {
+        DartGoLogger.debug(
+          'Bridged top-level function $functionName failed: $e',
+          tag: 'BytecodeBridge',
+        );
+      }
+    }
+    return null;
+  }
+
+  /// Invokes an instance method on a native host object using AST bridges.
+  Object? invokeInstanceMethod(
+    Object target,
+    String methodName,
+    List<Object?> posArgs,
+    Map<String, Object?> namedArgs,
+  ) {
+    ensureInitialized();
+
+    var libClass = _classByType[target.runtimeType];
+    if (libClass == null) {
+      for (final lc in _classByName.values) {
+        final bc = lc.bridgedClass;
+        if (bc.isAssignable != null && bc.isAssignable!(target)) {
+          libClass = lc;
+          _classByType[target.runtimeType] = lc;
+          break;
+        }
+      }
+    }
+    if (libClass != null) {
+      final method = libClass.bridgedClass.methods[methodName];
+      if (method != null) {
+        final posUnwrapped = posArgs.map(unwrapArgument).toList();
+        final namedUnwrapped = namedArgs.map((k, v) => MapEntry(k, unwrapArgument(v)));
+        try {
+          return method(_sharedVisitor, target, posUnwrapped, namedUnwrapped, null);
+        } catch (e) {
+          DartGoLogger.debug(
+            'Bridged method $methodName failed on ${target.runtimeType}: $e',
+            tag: 'BytecodeBridge',
+          );
+        }
+      }
     }
     return null;
   }
