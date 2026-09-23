@@ -26,8 +26,17 @@ class BytecodeBridgeAdapter {
     _bridgesInitialized = true;
 
     D4.customUnwrapper = (value) {
-      if (value is BytecodeInstance && value.nativeProxy != null) {
-        return value.nativeProxy;
+      if (value is BytecodeInstance) {
+        if (value.nativeProxy != null) {
+          return value.nativeProxy;
+        }
+        final sc = value.bytecodeClass.superclass ?? '';
+        if (sc == 'Notifier' || sc.startsWith('Notifier<')) {
+          final vm = BytecodeVM.current;
+          if (vm != null) {
+            return BytecodeNotifierProxy(vm, value);
+          }
+        }
       }
       return null;
     };

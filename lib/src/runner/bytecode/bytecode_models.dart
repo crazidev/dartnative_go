@@ -185,6 +185,7 @@ class BytecodeBundle {
   final int version;
   final String entryPointUri;
   final int entryPointFuncId;
+  final int? initGlobalsFuncId;
   final ConstantPool constantPool;
   final List<BytecodeFunction> functions;
   final List<BytecodeClass> classes;
@@ -194,6 +195,7 @@ class BytecodeBundle {
     this.version = kCurrentVersion,
     required this.entryPointUri,
     required this.entryPointFuncId,
+    this.initGlobalsFuncId,
     required this.constantPool,
     required this.functions,
     required this.classes,
@@ -204,6 +206,7 @@ class BytecodeBundle {
         'version': version,
         'entryUri': entryPointUri,
         'entryFunc': entryPointFuncId,
+        if (initGlobalsFuncId != null) 'initGlobals': initGlobalsFuncId,
         'constants': constantPool.toJson(),
         'functions': functions.map((f) => f.toJson()).toList(),
         'classes': classes.map((c) => c.toJson()).toList(),
@@ -214,6 +217,7 @@ class BytecodeBundle {
         version: json['version'] as int? ?? kCurrentVersion,
         entryPointUri: json['entryUri'] as String,
         entryPointFuncId: json['entryFunc'] as int,
+        initGlobalsFuncId: json['initGlobals'] as int?,
         constantPool: ConstantPool.fromJson(json['constants'] as List<dynamic>),
         functions: (json['functions'] as List<dynamic>)
             .map((f) => BytecodeFunction.fromJson(f as Map<String, dynamic>))

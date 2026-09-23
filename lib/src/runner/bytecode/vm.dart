@@ -35,6 +35,15 @@ class BytecodeVM {
     );
   }
 
+  BytecodeInstance _createInstance(BytecodeClass bytecodeClass) {
+    final instance = BytecodeInstance(bytecodeClass);
+    final sc = bytecodeClass.superclass ?? '';
+    if (sc == 'Notifier' || sc.startsWith('Notifier<')) {
+      BytecodeNotifierProxy(this, instance);
+    }
+    return instance;
+  }
+
   /// Loads and initializes a [BytecodeBundle].
   Object? loadBundle(BytecodeBundle bundle) {
     functionTable.clear();
@@ -45,6 +54,10 @@ class BytecodeVM {
       classes[c.name] = c;
     }
     globals.clear();
+
+    if (bundle.initGlobalsFuncId != null) {
+      executeFunction(funcId: bundle.initGlobalsFuncId!);
+    }
 
     return executeFunction(funcId: bundle.entryPointFuncId);
   }
@@ -76,7 +89,7 @@ class BytecodeVM {
     if (bytecodeClass == null) {
       throw StateError('Class $className not found in VM');
     }
-    final instance = BytecodeInstance(bytecodeClass);
+    final instance = _createInstance(bytecodeClass);
     final ctorFuncId = bytecodeClass.constructorFuncIds[ctorName] ??
         bytecodeClass.constructorFuncIds['new'] ??
         bytecodeClass.constructorFuncIds[''];
@@ -227,6 +240,9 @@ class BytecodeVM {
           frame.pc += 2;
           final name = constantPool[nameIdx]?.toString() ?? '';
           var val = globals[name];
+          if (val == null && frame.function.enclosingClass != null) {
+            val = globals['${frame.function.enclosingClass}.$name'];
+          }
           val ??= bridgeAdapter.resolveGlobalOrStatic(name);
           _operandStack.add(val);
           break;
@@ -452,7 +468,7 @@ class BytecodeVM {
               _operandStack.add(res);
             } else if (classes.containsKey(methodName)) {
               final bytecodeClass = classes[methodName]!;
-              final instance = BytecodeInstance(bytecodeClass);
+              final instance = _createInstance(bytecodeClass);
               final ctorFuncId = bytecodeClass.constructorFuncIds['new'] ??
                   bytecodeClass.constructorFuncIds[''] ??
                   bytecodeClass.constructorFuncIds[methodName];
@@ -533,7 +549,7 @@ class BytecodeVM {
             // Target is null
             if (classes.containsKey(methodName)) {
               final bytecodeClass = classes[methodName]!;
-              final instance = BytecodeInstance(bytecodeClass);
+              final instance = _createInstance(bytecodeClass);
               final ctorFuncId = bytecodeClass.constructorFuncIds['new'] ??
                   bytecodeClass.constructorFuncIds[''] ??
                   bytecodeClass.constructorFuncIds[methodName];
@@ -590,7 +606,7 @@ class BytecodeVM {
 
           if (classes.containsKey(className)) {
             final bytecodeClass = classes[className]!;
-            final instance = BytecodeInstance(bytecodeClass);
+            final instance = _createInstance(bytecodeClass);
             final ctorFuncId = bytecodeClass.constructorFuncIds[ctorName] ??
                 bytecodeClass.constructorFuncIds['new'] ??
                 bytecodeClass.constructorFuncIds[''];

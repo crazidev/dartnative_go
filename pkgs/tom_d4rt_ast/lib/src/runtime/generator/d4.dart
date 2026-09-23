@@ -1699,11 +1699,13 @@ class D4 {
     String paramName, [
     InterpreterVisitor? visitor,
   ]) {
-    // Unwrap BridgedInstance or BridgedEnumValue if needed
+    // Unwrap BridgedInstance, BridgedEnumValue, or custom unwrapper if needed
     final unwrapped = arg is BridgedInstance
         ? arg.nativeObject
         : arg is BridgedEnumValue
         ? arg.nativeValue
+        : customUnwrapper != null
+        ? (customUnwrapper!(arg) ?? arg)
         : arg;
 
     if (unwrapped is T) {
@@ -2756,6 +2758,11 @@ class D4 {
     }
 
     if (value is T) return value as T;
+
+    if (customUnwrapper != null) {
+      final custom = customUnwrapper!(value);
+      if (custom is T) return custom;
+    }
 
     if (value is InterpretedInstance) {
       final bridgedSuper = value.bridgedSuperObject;

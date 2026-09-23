@@ -37,10 +37,24 @@ class ConstantPoolBuilder {
 class _LocalScope {
   final _LocalScope? parent;
   final Map<String, int> _variables = {};
+  final Set<String> thisFieldNames;
+  final String? enclosingClass;
   int _nextSlot;
 
-  _LocalScope({this.parent, int initialSlot = 0})
-    : _nextSlot = parent != null ? parent._nextSlot : initialSlot;
+  _LocalScope({
+    this.parent,
+    int initialSlot = 0,
+    this.thisFieldNames = const {},
+    this.enclosingClass,
+  }) : _nextSlot = parent != null ? parent._nextSlot : initialSlot;
+
+  bool isThisField(String name) {
+    if (thisFieldNames.contains(name)) return true;
+    return parent?.isThisField(name) ?? false;
+  }
+
+  String? get currentEnclosingClass =>
+      enclosingClass ?? parent?.currentEnclosingClass;
 
   int define(String name) {
     final slot = _nextSlot++;
@@ -170,9 +184,123 @@ class BytecodeEmitter {
 
     entryFuncId ??= _globalFuncIdMap['main'] ?? 1;
 
+    // Third pass: collect and compile top-level variables, static fields, and enums into $initGlobals
+    int? initGlobalsFuncId;
+    final staticVarEntries = <_StaticVarEntry>[];
+
+    for (final entry in astBundle.modules.entries) {
+      final uri = entry.key;
+      final unit = entry.value;
+
+      for (final decl in unit.declarations) {
+        if (decl is STopLevelVariableDeclaration) {
+          for (final v in decl.variables?.variables ?? const <SVariableDeclaration>[]) {
+            final vName = v.name?.name;
+            if (vName != null && v.initializer != null) {
+              staticVarEntries.add(_StaticVarEntry(
+                uri: uri,
+                enclosingClass: null,
+                name: vName,
+                initializer: v.initializer!,
+              ));
+            }
+          }
+        } else if (decl is SClassDeclaration) {
+          final className = decl.name?.name ?? '';
+          for (final member in decl.members) {
+            if (member is SFieldDeclaration && member.isStatic) {
+              for (final v in member.fields?.variables ?? const <SVariableDeclaration>[]) {
+                final vName = v.name?.name;
+                if (vName != null && v.initializer != null) {
+                  staticVarEntries.add(_StaticVarEntry(
+                    uri: uri,
+                    enclosingClass: className,
+                    name: vName,
+                    initializer: v.initializer!,
+                  ));
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (staticVarEntries.isNotEmpty) {
+      initGlobalsFuncId = _allocateFuncId(r'$initGlobals');
+      final buffer = _BytecodeBuffer();
+      final scope = _LocalScope();
+
+      for (final entry in staticVarEntries) {
+        final entryScope = _LocalScope(
+          parent: scope,
+          enclosingClass: entry.enclosingClass,
+        );
+        _compileExpression(entry.initializer, buffer, entryScope);
+
+        if (entry.enclosingClass != null) {
+          final fullName = '${entry.enclosingClass}.${entry.name}';
+          buffer.emitOp(OpCode.dup);
+          final nameIdx = _pool.add(fullName);
+          buffer.emitOp(OpCode.storeGlobal);
+          buffer.emitU16(nameIdx);
+
+          final qualIdx = _pool.add('${entry.uri}#$fullName');
+          buffer.emitOp(OpCode.storeGlobal);
+          buffer.emitU16(qualIdx);
+        } else {
+          buffer.emitOp(OpCode.dup);
+          final nameIdx = _pool.add(entry.name);
+          buffer.emitOp(OpCode.storeGlobal);
+          buffer.emitU16(nameIdx);
+
+          final qualIdx = _pool.add('${entry.uri}#${entry.name}');
+          buffer.emitOp(OpCode.storeGlobal);
+          buffer.emitU16(qualIdx);
+        }
+      }
+
+      // Also initialize enums
+      for (final entry in astBundle.modules.entries) {
+        final unit = entry.value;
+        for (final decl in unit.declarations) {
+          if (decl is SEnumDeclaration) {
+            final enumName = decl.name?.name;
+            if (enumName != null) {
+              for (final c in decl.constants) {
+                final cName = c.name?.name;
+                if (cName != null) {
+                  final fullName = '$enumName.$cName';
+                  final constIdx = _pool.add(fullName);
+                  buffer.emitOp(OpCode.pushConst);
+                  buffer.emitU16(constIdx);
+                  buffer.emitOp(OpCode.storeGlobal);
+                  buffer.emitU16(constIdx);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      buffer.emitOp(OpCode.pushNull);
+      buffer.emitOp(OpCode.ret);
+
+      final initFn = BytecodeFunction(
+        id: initGlobalsFuncId,
+        name: r'$initGlobals',
+        uri: astBundle.entryPointUri,
+        code: buffer.toBytes(),
+        localSlotsCount: scope.maxSlots,
+        sourceMap: buffer.toSourceMap(),
+      );
+      _functions.add(initFn);
+    }
+
     return BytecodeBundle(
       entryPointUri: astBundle.entryPointUri,
       entryPointFuncId: entryFuncId,
+      initGlobalsFuncId: initGlobalsFuncId,
       constantPool: _pool.build(),
       functions: List.unmodifiable(_functions),
       classes: List.unmodifiable(_classes),
@@ -206,6 +334,11 @@ class BytecodeEmitter {
               _allocateFuncId('$uri#$className.$ctorName');
             }
           }
+        }
+      } else if (decl is SEnumDeclaration) {
+        final enumName = decl.name?.name;
+        if (enumName != null) {
+          _knownClassNames.add(enumName);
         }
       }
     }
@@ -248,19 +381,30 @@ class BytecodeEmitter {
       superclassName = superType.name?.name;
     }
     final fieldNames = <String>[];
+    if (superclassName == 'ConsumerState' || superclassName == 'ConsumerStatefulWidget') {
+      fieldNames.addAll(['ref', 'widget', 'context', 'mounted']);
+    } else if (superclassName == 'State' || superclassName == 'StatefulWidget') {
+      fieldNames.addAll(['widget', 'context', 'mounted']);
+    } else if (superclassName == 'Notifier' ||
+        (superclassName != null && superclassName.startsWith('Notifier<'))) {
+      fieldNames.addAll(['state', 'ref']);
+    }
+
     final fieldInitializers = <SVariableDeclaration>[];
     final methodFuncIds = <String, int>{};
     final constructorFuncIds = <String, int>{};
 
     for (final member in decl.members) {
       if (member is SFieldDeclaration) {
-        final vars = member.fields?.variables ?? const [];
-        for (final v in vars) {
-          final vName = v.name?.name;
-          if (vName != null) {
-            fieldNames.add(vName);
-            if (v.initializer != null) {
-              fieldInitializers.add(v);
+        if (!member.isStatic) {
+          final vars = member.fields?.variables ?? const [];
+          for (final v in vars) {
+            final vName = v.name?.name;
+            if (vName != null) {
+              fieldNames.add(vName);
+              if (v.initializer != null) {
+                fieldInitializers.add(v);
+              }
             }
           }
         }
@@ -343,7 +487,10 @@ class BytecodeEmitter {
     bool isConstructor = false,
   }) {
     final buffer = _BytecodeBuffer();
-    final scope = _LocalScope();
+    final scope = _LocalScope(
+      thisFieldNames: fieldNames?.toSet() ?? const {},
+      enclosingClass: enclosingClass,
+    );
     final namedParamList = <BytecodeParam>[];
     int positionalCount = 0;
 
@@ -707,7 +854,7 @@ class BytecodeEmitter {
       if (localSlot != null) {
         buffer.emitOp(OpCode.loadLocal);
         buffer.emitU16(localSlot);
-      } else if (scope.lookup('this') != null) {
+      } else if (scope.lookup('this') != null && scope.isThisField(name)) {
         // Class field fallback
         final thisSlot = scope.lookup('this')!;
         buffer.emitOp(OpCode.loadLocal);
@@ -792,7 +939,7 @@ class BytecodeEmitter {
         if (slot != null) {
           buffer.emitOp(OpCode.storeLocal);
           buffer.emitU16(slot);
-        } else if (scope.lookup('this') != null) {
+        } else if (scope.lookup('this') != null && scope.isThisField(lhs.name)) {
           final thisSlot = scope.lookup('this')!;
           buffer.emitOp(OpCode.loadLocal);
           buffer.emitU16(thisSlot);
@@ -821,9 +968,7 @@ class BytecodeEmitter {
           final nameIdx = _pool.add(identifierName);
           buffer.emitOp(OpCode.storeField);
           buffer.emitU16(nameIdx);
-        } else if (scope.lookup('this') != null &&
-            !_knownClassNames.contains(prefixName) &&
-            !_isPascalCase(prefixName)) {
+        } else if (scope.lookup('this') != null && scope.isThisField(prefixName)) {
           final thisSlot = scope.lookup('this')!;
           buffer.emitOp(OpCode.loadLocal);
           buffer.emitU16(thisSlot);
@@ -833,10 +978,17 @@ class BytecodeEmitter {
           final nameIdx = _pool.add(identifierName);
           buffer.emitOp(OpCode.storeField);
           buffer.emitU16(nameIdx);
-        } else {
+        } else if (_knownClassNames.contains(prefixName) || _isPascalCase(prefixName)) {
           final fullName = '$prefixName.$identifierName';
           final nameIdx = _pool.add(fullName);
           buffer.emitOp(OpCode.storeGlobal);
+          buffer.emitU16(nameIdx);
+        } else {
+          final prefixIdx = _pool.add(prefixName);
+          buffer.emitOp(OpCode.loadGlobal);
+          buffer.emitU16(prefixIdx);
+          final nameIdx = _pool.add(identifierName);
+          buffer.emitOp(OpCode.storeField);
           buffer.emitU16(nameIdx);
         }
       } else if (lhs is SPropertyAccess) {
@@ -1023,9 +1175,7 @@ class BytecodeEmitter {
         final nameIdx = _pool.add(identifierName);
         buffer.emitOp(OpCode.loadField);
         buffer.emitU16(nameIdx);
-      } else if (scope.lookup('this') != null &&
-          !_knownClassNames.contains(prefixName) &&
-          !_isPascalCase(prefixName)) {
+      } else if (scope.lookup('this') != null && scope.isThisField(prefixName)) {
         final thisSlot = scope.lookup('this')!;
         buffer.emitOp(OpCode.loadLocal);
         buffer.emitU16(thisSlot);
@@ -1035,10 +1185,18 @@ class BytecodeEmitter {
         final nameIdx = _pool.add(identifierName);
         buffer.emitOp(OpCode.loadField);
         buffer.emitU16(nameIdx);
-      } else {
+      } else if (_knownClassNames.contains(prefixName) || _isPascalCase(prefixName)) {
         final fullName = '$prefixName.$identifierName';
         final nameIdx = _pool.add(fullName);
         buffer.emitOp(OpCode.loadGlobal);
+        buffer.emitU16(nameIdx);
+      } else {
+        // Global / top-level variable property access (e.g. todoProvider.notifier)
+        final prefixIdx = _pool.add(prefixName);
+        buffer.emitOp(OpCode.loadGlobal);
+        buffer.emitU16(prefixIdx);
+        final nameIdx = _pool.add(identifierName);
+        buffer.emitOp(OpCode.loadField);
         buffer.emitU16(nameIdx);
       }
     } else if (expr is SPropertyAccess) {
@@ -1318,4 +1476,18 @@ class BytecodeEmitter {
     }
     return true;
   }
+}
+
+class _StaticVarEntry {
+  final String uri;
+  final String? enclosingClass;
+  final String name;
+  final SExpression initializer;
+
+  _StaticVarEntry({
+    required this.uri,
+    required this.enclosingClass,
+    required this.name,
+    required this.initializer,
+  });
 }
