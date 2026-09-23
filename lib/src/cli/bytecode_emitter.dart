@@ -743,7 +743,8 @@ class BytecodeEmitter {
       } else if (op == '??') {
         if (left != null) _compileExpression(left, buffer, scope);
         buffer.emitOp(OpCode.dup);
-        final jumpPos = buffer.emitJumpPlaceholder(OpCode.jumpIfNull);
+        final jumpPos = buffer.emitJumpPlaceholder(OpCode.jumpIfNotNull);
+        buffer.emitOp(OpCode.pop);
         if (right != null) _compileExpression(right, buffer, scope);
         buffer.patchJump(jumpPos);
       } else {
@@ -810,6 +811,25 @@ class BytecodeEmitter {
         if (localSlot != null) {
           buffer.emitOp(OpCode.loadLocal);
           buffer.emitU16(localSlot);
+          final nameIdx = _pool.add(identifierName);
+          buffer.emitOp(OpCode.storeField);
+          buffer.emitU16(nameIdx);
+        } else if (prefixName == 'this' && scope.lookup('this') != null) {
+          final thisSlot = scope.lookup('this')!;
+          buffer.emitOp(OpCode.loadLocal);
+          buffer.emitU16(thisSlot);
+          final nameIdx = _pool.add(identifierName);
+          buffer.emitOp(OpCode.storeField);
+          buffer.emitU16(nameIdx);
+        } else if (scope.lookup('this') != null &&
+            !_knownClassNames.contains(prefixName) &&
+            !_isPascalCase(prefixName)) {
+          final thisSlot = scope.lookup('this')!;
+          buffer.emitOp(OpCode.loadLocal);
+          buffer.emitU16(thisSlot);
+          final prefixIdx = _pool.add(prefixName);
+          buffer.emitOp(OpCode.loadField);
+          buffer.emitU16(prefixIdx);
           final nameIdx = _pool.add(identifierName);
           buffer.emitOp(OpCode.storeField);
           buffer.emitU16(nameIdx);
@@ -1000,6 +1020,18 @@ class BytecodeEmitter {
         final thisSlot = scope.lookup('this')!;
         buffer.emitOp(OpCode.loadLocal);
         buffer.emitU16(thisSlot);
+        final nameIdx = _pool.add(identifierName);
+        buffer.emitOp(OpCode.loadField);
+        buffer.emitU16(nameIdx);
+      } else if (scope.lookup('this') != null &&
+          !_knownClassNames.contains(prefixName) &&
+          !_isPascalCase(prefixName)) {
+        final thisSlot = scope.lookup('this')!;
+        buffer.emitOp(OpCode.loadLocal);
+        buffer.emitU16(thisSlot);
+        final prefixIdx = _pool.add(prefixName);
+        buffer.emitOp(OpCode.loadField);
+        buffer.emitU16(prefixIdx);
         final nameIdx = _pool.add(identifierName);
         buffer.emitOp(OpCode.loadField);
         buffer.emitU16(nameIdx);

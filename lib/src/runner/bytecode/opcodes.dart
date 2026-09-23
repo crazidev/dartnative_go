@@ -42,6 +42,7 @@ abstract final class OpCode {
   static const int makeEmptyMap = 0x27;
   static const int mapPut = 0x28;
   static const int mapPutAll = 0x29;
+  static const int jumpIfNotNull = 0x2A; // [i32 offset]
 
   static String nameOf(int op) => switch (op) {
         nop => 'Nop',
@@ -77,6 +78,7 @@ abstract final class OpCode {
         jumpIfFalse => 'JumpIfFalse',
         jumpIfTrue => 'JumpIfTrue',
         jumpIfNull => 'JumpIfNull',
+        jumpIfNotNull => 'JumpIfNotNull',
         ret => 'Return',
         retValue => 'ReturnValue',
         typeCheck => 'TypeCheck',

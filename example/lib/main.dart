@@ -1,5 +1,6 @@
 import 'package:dartnative/dartnative.dart';
 import 'package:example/todo_screen.dart';
+import 'package:riverpod_kit/riverpod_kit.dart';
 // import 'package:example/home_screen.dart';
 // import 'package:example/todo_screen.dart';
 // import 'package:riverpod_kit/riverpod_kit.dart';
@@ -52,7 +53,7 @@ class _MyAppState extends State<MyApp> {
     } else {
       currentIndex = currentIndex + 1;
     }
-    print("currentIndex $currentIndex ${currentIndex >= colors.length}");
+    print("currentIndex $currentIndex ${(currentIndex == colors.length)}");
     setState(() {
       textColor = colors[currentIndex];
     });

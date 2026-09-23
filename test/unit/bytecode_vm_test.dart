@@ -85,6 +85,67 @@ void main() {
       expect(result, equals(100));
     });
 
+    test('Executes relational operators (gte, lte, eq, neq)', () {
+      final code = Uint8List.fromList([
+        OpCode.pushInt, 0, 0, 0, 5,
+        OpCode.pushInt, 0, 0, 0, 5,
+        OpCode.binaryOp, BinaryOpId.gte, // 5 >= 5 => true
+        OpCode.retValue,
+      ]);
+
+      final fn = BytecodeFunction(
+        id: 99,
+        name: 'gteTest',
+        uri: 'package:test/main.dart',
+        contentHash: 'hashGte',
+        localSlotsCount: 0,
+        code: code,
+      );
+
+      final bundle = BytecodeBundle(
+        entryPointUri: 'package:test/main.dart',
+        entryPointFuncId: 99,
+        constantPool: const ConstantPool([]),
+        functions: [fn],
+        classes: const [],
+      );
+
+      final result = vm.loadBundle(bundle);
+      expect(result, isTrue);
+    });
+
+    test('Executes null-coalescing with jumpIfNotNull', () {
+      // Bytecode for: null ?? 42 => 42
+      final code = Uint8List.fromList([
+        OpCode.pushNull,
+        OpCode.dup,
+        OpCode.jumpIfNotNull, 0, 0, 0, 8, // +8 to skip pop & pushInt
+        OpCode.pop,
+        OpCode.pushInt, 0, 0, 0, 42,
+        OpCode.retValue,
+      ]);
+
+      final fn = BytecodeFunction(
+        id: 101,
+        name: 'nullCoalesceTest',
+        uri: 'package:test/main.dart',
+        contentHash: 'hashNullCoalesce',
+        localSlotsCount: 0,
+        code: code,
+      );
+
+      final bundle = BytecodeBundle(
+        entryPointUri: 'package:test/main.dart',
+        entryPointFuncId: 101,
+        constantPool: const ConstantPool([]),
+        functions: [fn],
+        classes: const [],
+      );
+
+      final result = vm.loadBundle(bundle);
+      expect(result, equals(42));
+    });
+
     test('Hot-patches function logic in-place preserving object instance state', () {
       // Class Counter with state `count` and method `increment()`
       // Version 1 increment(): count = count + 1

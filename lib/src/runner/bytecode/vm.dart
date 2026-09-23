@@ -648,6 +648,14 @@ class BytecodeVM {
           }
           break;
 
+        case OpCode.jumpIfNotNull:
+          final offset = data.getInt32(frame.pc);
+          frame.pc += 4;
+          if (_operandStack.last != null) {
+            frame.pc += offset;
+          }
+          break;
+
         case OpCode.ret:
           return null;
 
@@ -1005,7 +1013,7 @@ class BytecodeVM {
   Object? _evalBinary(int opId, Object? l, Object? r) {
     if (opId == BinaryOpId.add) {
       if (l is num && r is num) return l + r;
-      return '${l ?? ""}${r ?? ""}';
+      return '$l$r';
     }
     if (l is num && r is num) {
       switch (opId) {
@@ -1031,6 +1039,12 @@ class BytecodeVM {
     }
     if (opId == BinaryOpId.eq) return l == r;
     if (opId == BinaryOpId.neq) return l != r;
+    if (opId == BinaryOpId.lt ||
+        opId == BinaryOpId.lte ||
+        opId == BinaryOpId.gt ||
+        opId == BinaryOpId.gte) {
+      return false;
+    }
     return null;
   }
 
