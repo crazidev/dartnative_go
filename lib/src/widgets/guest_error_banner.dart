@@ -8,12 +8,14 @@ import 'package:dartnative/dartnative.dart';
 /// it automatically (the host nulls the error on success).
 class GuestErrorBanner extends StatefulWidget {
   final String errorMessage;
+  final String? stackTrace;
   final VoidCallback onDismiss;
   final VoidCallback onRestart;
 
   const GuestErrorBanner({
     super.key,
     required this.errorMessage,
+    this.stackTrace,
     required this.onDismiss,
     required this.onRestart,
   });
@@ -28,7 +30,8 @@ class _GuestErrorBannerState extends State<GuestErrorBanner> {
   @override
   void didUpdateWidget(covariant GuestErrorBanner oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.errorMessage != widget.errorMessage) {
+    if (oldWidget.errorMessage != widget.errorMessage ||
+        oldWidget.stackTrace != widget.stackTrace) {
       _expanded = false;
     }
   }
@@ -56,26 +59,53 @@ class _GuestErrorBannerState extends State<GuestErrorBanner> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
-                      CupertinoIcons.exclamationmark_triangle_fill,
-                      color: Color(0xFFFF453A),
-                      size: 18,
+                    const Padding(
+                      padding: EdgeInsets.only(top: 2),
+                      child: Icon(
+                        CupertinoIcons.exclamationmark_triangle_fill,
+                        color: Color(0xFFFF453A),
+                        size: 18,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        _expanded ? widget.errorMessage : summary,
-                        maxLines: _expanded ? null : 2,
-                        overflow: _expanded
-                            ? TextOverflow.visible
-                            : TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontFamily: 'Courier',
-                          height: 1.35,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _expanded ? widget.errorMessage : summary,
+                            maxLines: _expanded ? null : 2,
+                            overflow: _expanded
+                                ? TextOverflow.visible
+                                : TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontFamily: 'Courier',
+                              height: 1.35,
+                            ),
+                          ),
+                          if (_expanded && widget.stackTrace != null) ...[
+                            const SizedBox(height: 6),
+                            Container(
+                              constraints: const BoxConstraints(maxHeight: 220),
+                              child: SingleChildScrollView(
+                                child: Text(
+                                  widget.stackTrace!,
+                                  style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 11,
+                                    fontFamily: 'Courier',
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                     GestureDetector(

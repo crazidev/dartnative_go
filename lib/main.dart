@@ -52,6 +52,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
   bool _isLoadingBundle = false;
   String _statusMessage = 'Connecting to project...';
   String? _errorMessage;
+  String? _errorStackTrace;
   ProjectBundle? _activeBundle;
   Widget? _interpretedWidget;
 
@@ -93,7 +94,8 @@ class _DartNativeGoState extends State<DartNativeGo> {
       onExit: _unmountApp,
       useAst: _useAst,
       useBytecode: _useBytecode,
-      onGuestError: (error, stack) => _showGuestErrorBanner(error),
+      onGuestError: (error, stack) =>
+          _showGuestErrorBanner(error, stack),
     );
     _restoreSavedRuntimeMode();
     _initScanner();
@@ -123,19 +125,32 @@ class _DartNativeGoState extends State<DartNativeGo> {
   /// Records a guest failure for the on-device error surface without
   /// unmounting the working tree. The same failure is already on the CLI
   /// through [DartGoLogger]; this only decides what the device shows.
-  void _showGuestErrorBanner(Object error) {
+  void _showGuestErrorBanner(Object error, [StackTrace? stack]) {
     final msg = 'Guest runtime error: $error';
     if (!mounted || _errorMessage == msg) return;
     setState(() {
       _errorMessage = msg;
+      _errorStackTrace = stack?.toString();
+    });
+  }
+
+  void _recordError(String message, [StackTrace? stack]) {
+    setState(() {
+      _errorMessage = message;
+      _errorStackTrace = stack?.toString();
+    });
+  }
+
+  void _clearError() {
+    if (_errorMessage == null && _errorStackTrace == null) return;
+    setState(() {
+      _errorMessage = null;
+      _errorStackTrace = null;
     });
   }
 
   void _dismissGuestError() {
-    if (_errorMessage == null) return;
-    setState(() {
-      _errorMessage = null;
-    });
+    _clearError();
   }
 
   /// Sets how guest failures surface on the device and persists the choice.
@@ -185,6 +200,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
     setState(() {
       _isLoadingBundle = true;
       _errorMessage = null;
+      _errorStackTrace = null;
       _statusMessage = 'Connecting to dev server...';
       _downloadProgress = null;
       _downloadedCount = null;
@@ -448,11 +464,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       final err = e.toString();
       DartGoLogger.error('Interpreter Error: $err', null, stack);
       if (!mounted) return;
-      setState(() {
-        _isLoadingBundle = false;
-        _isAppMounted = true;
-        _errorMessage = err;
-      });
+      _recordError(err, stack);
     }
   }
 
@@ -505,6 +517,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       setState(() {
         _interpretedWidget = widget;
         _errorMessage = null;
+        _errorStackTrace = null;
       });
       NativeBottomSheetManager.notifyHotReload(
         _interpreterRunner.activeVisitor,
@@ -531,9 +544,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       // rolled its generation back, so record the error for the on-device
       // surface (overlay banner or error screen, per setting) and keep
       // showing the mounted generation.
-      setState(() {
-        _errorMessage = err;
-      });
+      _recordError(err, stack);
     }
   }
 
@@ -550,6 +561,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
         setState(() {
           _statusMessage = 'Restarting application...';
           _errorMessage = null;
+          _errorStackTrace = null;
         });
       }
       final mode = await RuntimeModeStorage.loadMode();
@@ -584,6 +596,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
         _isAppMounted = true;
         _isLoadingBundle = false;
         _errorMessage = null;
+        _errorStackTrace = null;
       });
       DartGoLogger.bench(
         'Runner',
@@ -594,11 +607,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       final err = 'Hot Restart Error: $e';
       DartGoLogger.error(err, null, stack);
       if (!mounted || seq != _restartSeq) return;
-      setState(() {
-        _isLoadingBundle = false;
-        _isAppMounted = true;
-        _errorMessage = err;
-      });
+      _recordError(err, stack);
     }
   }
 
@@ -633,6 +642,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       _isLoadingBundle = false;
       _interpretedWidget = null;
       _errorMessage = null;
+      _errorStackTrace = null;
     });
   }
 
@@ -663,6 +673,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
               _errorDisplayMode == ErrorDisplayMode.fullscreen)) {
         return InterpreterErrorView(
           errorMessage: _errorMessage!,
+          stackTrace: _errorStackTrace,
           onGoHome: _unmountApp,
           onRetry: () => _restartApp(),
           onLogToTerminal: (error) {
@@ -721,6 +732,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
               right: 0,
               child: GuestErrorBanner(
                 errorMessage: _errorMessage!,
+                stackTrace: _errorStackTrace,
                 onDismiss: _dismissGuestError,
                 onRestart: () => _restartApp(),
               ),

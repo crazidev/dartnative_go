@@ -53,11 +53,13 @@ void main() {
     late Directory projectDir;
     late List<String> logs;
     late List<String> errors;
+    late List<String> stacks;
     late AstInterpreterRunner runner;
 
     setUp(() {
       logs = <String>[];
       errors = <String>[];
+      stacks = <String>[];
       tmp = Directory.systemTemp.createTempSync('dn_guest_error_');
       projectDir = Directory('${tmp.path}/guest_error_guest')
         ..createSync(recursive: true);
@@ -66,7 +68,10 @@ void main() {
       Directory('${projectDir.path}/lib').createSync();
       runner = AstInterpreterRunner(
         onLog: logs.add,
-        onGuestError: (error, stack) => errors.add('$error'),
+        onGuestError: (error, stack) {
+          errors.add('$error');
+          stacks.add('$stack');
+        },
       );
     });
 
@@ -118,6 +123,11 @@ void main() {
         isNotEmpty,
         reason: 'a throwing callback must reach the host error channel',
       );
+      expect(
+        stacks.where((s) => s.contains('callInterpreterCallback')),
+        isNotEmpty,
+        reason: 'the host channel must also capture the stack trace',
+      );
     });
 
     test('a throwing build reaches the host error channel', () async {
@@ -136,6 +146,11 @@ void main() {
         errors.where((e) => e.contains('build blew up')),
         isNotEmpty,
         reason: 'a throwing build must reach the host error channel',
+      );
+      expect(
+        stacks.where((s) => s.contains('visitThrowExpression')),
+        isNotEmpty,
+        reason: 'the host channel must also capture the stack trace',
       );
     });
   });

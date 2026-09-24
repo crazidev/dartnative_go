@@ -6,6 +6,7 @@ import 'package:dartnative/dartnative.dart';
 /// encountered while running interpreted guest code in DartNative Go.
 class InterpreterErrorView extends StatefulWidget {
   final String errorMessage;
+  final String? stackTrace;
   final VoidCallback onGoHome;
   final VoidCallback onRetry;
   final void Function(String error)? onLogToTerminal;
@@ -13,6 +14,7 @@ class InterpreterErrorView extends StatefulWidget {
   const InterpreterErrorView({
     super.key,
     required this.errorMessage,
+    this.stackTrace,
     required this.onGoHome,
     required this.onRetry,
     this.onLogToTerminal,
@@ -47,9 +49,13 @@ class _InterpreterErrorViewState extends State<InterpreterErrorView> {
     super.dispose();
   }
 
+  String get _fullErrorText => widget.stackTrace == null
+      ? widget.errorMessage
+      : '${widget.errorMessage}\n\n${widget.stackTrace}';
+
   void _copyError() {
     try {
-      Clipboard.setData(ClipboardData(text: widget.errorMessage));
+      Clipboard.setData(ClipboardData(text: _fullErrorText));
     } catch (_) {
       // Fallback if clipboard platform channel is unavailable
     }
@@ -238,6 +244,59 @@ class _InterpreterErrorViewState extends State<InterpreterErrorView> {
                     ],
                   ),
                 ),
+                if (widget.stackTrace != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0E1012),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: const Color(0xFF2C2C2E),
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF16181D),
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(10),
+                              topRight: Radius.circular(10),
+                            ),
+                          ),
+                          child: const Text(
+                            'STACK TRACE',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Text(
+                            widget.stackTrace!,
+                            style: const TextStyle(
+                              color: Color(0xFFB0B0B0),
+                              fontSize: 11,
+                              fontFamily: 'Courier',
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 24),
 
                 // Primary Actions: Retry & Back to Launcher
