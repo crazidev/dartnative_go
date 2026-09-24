@@ -14,9 +14,11 @@ import 'src/runner/live_connection.dart';
 import 'src/runner/logger.dart';
 import 'src/runner/native_bottomsheet_manager.dart';
 import 'src/runner/runtime_mode.dart';
+import 'src/client/error_display_storage.dart';
 import 'src/client/runtime_mode_storage.dart';
 import 'src/runner/ui_probe.dart';
 import 'src/interpreter/widget_generation_tracker.dart';
+import 'src/widgets/guest_error_banner.dart';
 import 'src/widgets/interpreter_error_view.dart';
 import 'src/widgets/project_splash_screen.dart';
 import 'src/launcher/launcher_screen.dart';
@@ -61,6 +63,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
   bool _useAst = kUseAst;
   bool _useBytecode = kUseBytecode;
   bool _verboseLogs = DartGoLogger.verbose;
+  ErrorDisplayMode _errorDisplayMode = ErrorDisplayMode.overlay;
 
   /// Monotonic tokens for lifecycle operations. The dev server pushes
   /// `reload`/`restart` over a WebSocket without awaiting the handler, so two
@@ -90,6 +93,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       onExit: _unmountApp,
       useAst: _useAst,
       useBytecode: _useBytecode,
+      onGuestError: (error, stack) => _showGuestErrorBanner(error),
     );
     _restoreSavedRuntimeMode();
     _initScanner();
@@ -98,11 +102,13 @@ class _DartNativeGoState extends State<DartNativeGo> {
   Future<void> _restoreSavedRuntimeMode() async {
     final mode = await RuntimeModeStorage.loadMode();
     final (useAst, useBytecode) = flagsFromRuntimeMode(mode);
+    final errorDisplayMode = await ErrorDisplayStorage.loadMode();
     if (!mounted) {
       _useAst = useAst;
       _useBytecode = useBytecode;
       _interpreterRunner.useAst = _useAst;
       _interpreterRunner.useBytecode = _useBytecode;
+      _errorDisplayMode = errorDisplayMode;
       return;
     }
     setState(() {
@@ -110,7 +116,34 @@ class _DartNativeGoState extends State<DartNativeGo> {
       _useBytecode = useBytecode;
       _interpreterRunner.useAst = _useAst;
       _interpreterRunner.useBytecode = _useBytecode;
+      _errorDisplayMode = errorDisplayMode;
     });
+  }
+
+  /// Records a guest failure for the on-device error surface without
+  /// unmounting the working tree. The same failure is already on the CLI
+  /// through [DartGoLogger]; this only decides what the device shows.
+  void _showGuestErrorBanner(Object error) {
+    final msg = 'Guest runtime error: $error';
+    if (!mounted || _errorMessage == msg) return;
+    setState(() {
+      _errorMessage = msg;
+    });
+  }
+
+  void _dismissGuestError() {
+    if (_errorMessage == null) return;
+    setState(() {
+      _errorMessage = null;
+    });
+  }
+
+  /// Sets how guest failures surface on the device and persists the choice.
+  void _setErrorDisplayMode(ErrorDisplayMode mode) {
+    setState(() {
+      _errorDisplayMode = mode;
+    });
+    ErrorDisplayStorage.saveMode(mode);
   }
 
   Future<void> _initScanner() async {
@@ -495,14 +528,12 @@ class _DartNativeGoState extends State<DartNativeGo> {
       DartGoLogger.error(err, null, stack);
       if (!mounted || seq != _reloadSeq) return;
       // A failed RELOAD must not take down the working tree: the interpreter
-      // rolled its generation back, so keep showing it and leave the failure
-      // on the CLI. Only an initial load with nothing mounted gets the error
-      // screen.
-      if (_interpretedWidget == null) {
-        setState(() {
-          _errorMessage = err;
-        });
-      }
+      // rolled its generation back, so record the error for the on-device
+      // surface (overlay banner or error screen, per setting) and keep
+      // showing the mounted generation.
+      setState(() {
+        _errorMessage = err;
+      });
     }
   }
 
@@ -623,9 +654,13 @@ class _DartNativeGoState extends State<DartNativeGo> {
       );
     }
 
-    // 2. Mounted state: Show guest app wrapped in DevToolOverlay (or error screen)
+    // 2. Mounted state: Show guest app wrapped in DevToolOverlay. A guest
+    // failure either takes over the screen (fullscreen setting, or no tree
+    // mounted yet) or floats on top of the working app (overlay setting).
     if (_isAppMounted) {
-      if (_errorMessage != null) {
+      if (_errorMessage != null &&
+          (_interpretedWidget == null ||
+              _errorDisplayMode == ErrorDisplayMode.fullscreen)) {
         return InterpreterErrorView(
           errorMessage: _errorMessage!,
           onGoHome: _unmountApp,
@@ -640,7 +675,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
         );
       }
 
-      return DevToolOverlay(
+      final overlay = DevToolOverlay(
         appName: _activeBundle?.appName ?? 'DartNative App',
         appVersion: _activeBundle?.appVersion,
         serverUrl: _activeBundle?.serverUrl ?? '',
@@ -661,6 +696,8 @@ class _DartNativeGoState extends State<DartNativeGo> {
           });
           _liveConnection?.sendSetVerbose(enabled);
         },
+        errorDisplayMode: _errorDisplayMode,
+        onSelectErrorMode: _setErrorDisplayMode,
         child: KeyedSubtree(
           key: _guestProbeKey,
           child: KeyedSubtree(
@@ -673,6 +710,25 @@ class _DartNativeGoState extends State<DartNativeGo> {
           ),
         ),
       );
+      if (_errorMessage != null && _interpretedWidget != null) {
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            overlay,
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: GuestErrorBanner(
+                errorMessage: _errorMessage!,
+                onDismiss: _dismissGuestError,
+                onRestart: () => _restartApp(),
+              ),
+            ),
+          ],
+        );
+      }
+      return overlay;
     }
 
     // 3. Default state: Launcher Screen

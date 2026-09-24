@@ -1,6 +1,7 @@
 import 'package:dartnative/dartnative.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
 
+import '../client/error_display_storage.dart';
 import '../runner/dep_cache.dart';
 import '../runner/runtime_mode.dart';
 
@@ -21,6 +22,8 @@ class DevToolSheet extends StatefulWidget {
   final VoidCallback? onClearCache;
   final bool verboseLogs;
   final void Function(bool)? onToggleVerbose;
+  final ErrorDisplayMode errorDisplayMode;
+  final void Function(ErrorDisplayMode mode)? onSelectErrorMode;
   final VoidCallback onGoHome;
   final VoidCallback onReload;
 
@@ -41,6 +44,8 @@ class DevToolSheet extends StatefulWidget {
     this.onClearCache,
     this.verboseLogs = false,
     this.onToggleVerbose,
+    this.errorDisplayMode = ErrorDisplayMode.overlay,
+    this.onSelectErrorMode,
     required this.onGoHome,
     required this.onReload,
   });
@@ -53,6 +58,7 @@ class _DevToolSheetState extends State<DevToolSheet> {
   bool _isCacheCleared = false;
   late bool _verbose;
   late int _selectedModeIndex;
+  late int _selectedErrorModeIndex;
 
   /// Segments follow [selectableRuntimeModes], so the disabled Bytecode engine
   /// is not offered (kBytecodeEnabled).
@@ -68,11 +74,18 @@ class _DevToolSheetState extends State<DevToolSheet> {
     return modes[index];
   }
 
+  static int _errorModeToIndex(ErrorDisplayMode mode) =>
+      mode == ErrorDisplayMode.fullscreen ? 1 : 0;
+
+  static ErrorDisplayMode _indexToErrorMode(int index) =>
+      index == 1 ? ErrorDisplayMode.fullscreen : ErrorDisplayMode.overlay;
+
   @override
   void initState() {
     super.initState();
     _verbose = widget.verboseLogs;
     _selectedModeIndex = _modeToIndex(widget.useAst, widget.useBytecode);
+    _selectedErrorModeIndex = _errorModeToIndex(widget.errorDisplayMode);
   }
 
   @override
@@ -84,6 +97,9 @@ class _DevToolSheetState extends State<DevToolSheet> {
     }
     if (oldWidget.verboseLogs != widget.verboseLogs) {
       _verbose = widget.verboseLogs;
+    }
+    if (oldWidget.errorDisplayMode != widget.errorDisplayMode) {
+      _selectedErrorModeIndex = _errorModeToIndex(widget.errorDisplayMode);
     }
   }
 
@@ -303,6 +319,62 @@ class _DevToolSheetState extends State<DevToolSheet> {
                           ),
                         ),
                       ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Error Display
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C2C2E),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'ERROR DISPLAY',
+                          style: TextStyle(
+                            color: Colors.white38,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: SegmentedControl(
+                            segments: const ['Overlay', 'Full screen'],
+                            selectedIndex: _selectedErrorModeIndex,
+                            onValueChanged: (index) {
+                              if (index == _selectedErrorModeIndex) return;
+                              setState(() {
+                                _selectedErrorModeIndex = index;
+                              });
+                              widget.onSelectErrorMode?.call(
+                                _indexToErrorMode(index),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _selectedErrorModeIndex == 1
+                          ? 'Failures replace the app with the error screen'
+                          : 'Failures float on top, app keeps running',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),

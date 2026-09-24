@@ -1,6 +1,7 @@
 import 'package:dartnative/dartnative.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
 
+import '../client/error_display_storage.dart';
 import '../runner/dep_cache.dart';
 import '../runner/runtime_mode.dart';
 import 'devtool_sheet.dart';
@@ -40,6 +41,10 @@ class DevToolOverlay extends StatefulWidget {
   final bool verboseLogs;
   final void Function(bool enabled)? onToggleVerbose;
 
+  /// How guest failures surface on the device (overlay banner vs fullscreen).
+  final ErrorDisplayMode errorDisplayMode;
+  final void Function(ErrorDisplayMode mode)? onSelectErrorMode;
+
   const DevToolOverlay({
     super.key,
     required this.child,
@@ -59,6 +64,8 @@ class DevToolOverlay extends StatefulWidget {
     this.onSelectMode,
     this.verboseLogs = false,
     this.onToggleVerbose,
+    this.errorDisplayMode = ErrorDisplayMode.overlay,
+    this.onSelectErrorMode,
   });
 
   @override
@@ -113,6 +120,8 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
         onClearCache: widget.onClearCache,
         verboseLogs: widget.verboseLogs,
         onToggleVerbose: widget.onToggleVerbose,
+        errorDisplayMode: widget.errorDisplayMode,
+        onSelectErrorMode: widget.onSelectErrorMode,
         onGoHome: widget.onGoHome,
         onReload: widget.onReload,
       ),

@@ -48,12 +48,19 @@ class InterpreterRunner {
       ? _astRunner?.visitor
       : (useBytecode ? _bytecodeRunner?.vm : _interpreter.visitor);
 
+  /// Extra listener for guest failures outside evaluation (builds,
+  /// lifecycle methods, bridge callbacks). The AST runner always logs these
+  /// through [DartGoLogger]; this callback lets the host surface them too
+  /// (e.g. an on-device error banner) without replacing that logging.
+  void Function(Object error, StackTrace stack)? onGuestError;
+
   InterpreterRunner({
     this.onLog,
     this.onExit,
     this.currentServerUrl,
     this.useAst = kUseAst,
     this.useBytecode = kUseBytecode,
+    this.onGuestError,
   }) {
     initInterpreter();
   }
@@ -543,15 +550,19 @@ class InterpreterRunner {
   }) async {
     _astRunner ??= AstInterpreterRunner(
       onLog: onLog,
-      onGuestError: (error, stack) =>
-          DartGoLogger.error('Guest runtime error', error, stack),
+      onGuestError: (error, stack) {
+        DartGoLogger.error('Guest runtime error', error, stack);
+        onGuestError?.call(error, stack);
+      },
       onExit: onExit,
       currentServerUrl: currentServerUrl,
     );
     _astRunner!.currentServerUrl = currentServerUrl;
     _astRunner!.onLog = onLog;
-    _astRunner!.onGuestError ??= (error, stack) =>
-        DartGoLogger.error('Guest runtime error', error, stack);
+    _astRunner!.onGuestError ??= (error, stack) {
+      DartGoLogger.error('Guest runtime error', error, stack);
+      onGuestError?.call(error, stack);
+    };
     _astRunner!.onExit = onExit;
 
     return await _astRunner!.evaluateAstBundleAs<Widget>(
