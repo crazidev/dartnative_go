@@ -24,23 +24,46 @@ import '../../runner/native_bottomsheet_manager.dart';
 /// Global log handler for AST-interpreted guest code.
 void Function(String message)? onAstGuestLog;
 
+/// Reports guest code that threw inside a framework callback (a build, a
+/// lifecycle method, `createState`) so the host can surface it in its own
+/// diagnostics — the `dart_go` CLI included.
+void Function(Object error, StackTrace stack)? onAstGuestError;
+
 R _runWithLogCapture<R>(R Function() action) {
-  final handler = onAstGuestLog;
-  if (handler == null) return action();
-  return runZoned(
-    action,
-    zoneSpecification: ZoneSpecification(
-      print: (self, parent, zone, line) {
-        handler(line);
-      },
-    ),
-  );
+  try {
+    final handler = onAstGuestLog;
+    if (handler == null) return action();
+    return runZoned(
+      action,
+      zoneSpecification: ZoneSpecification(
+        print: (self, parent, zone, line) {
+          handler(line);
+        },
+      ),
+    );
+  } catch (error, stack) {
+    final report = onAstGuestError;
+    if (report != null) {
+      try {
+        report(error, stack);
+      } catch (_) {}
+    }
+    rethrow;
+  }
 }
 
 /// Native proxy for AST-interpreted classes that extend [StatelessWidget].
-class InterpretedStatelessWidget extends StatelessWidget {
+class InterpretedStatelessWidget extends StatelessWidget
+    implements D4InterpretedProxy {
   InterpreterVisitor visitor;
   InterpretedInstance instance;
+
+  /// A stateless widget has no state to mark; a parent rebuild (or the sheet's
+  /// per-reload subtree key) is what re-runs its build.
+  void markNeedsRebuild() {}
+
+  @override
+  Object get d4rtInstance => instance;
 
   InterpretedStatelessWidget(this.visitor, this.instance, {Key? key})
       : super(key: key ?? _resolveKey(instance)) {
@@ -87,9 +110,13 @@ class InterpretedStatelessWidget extends StatelessWidget {
 }
 
 /// Native proxy for AST-interpreted classes that extend [ConsumerWidget].
-class InterpretedConsumerWidget extends ConsumerWidget {
+class InterpretedConsumerWidget extends ConsumerWidget
+    implements D4InterpretedProxy {
   InterpreterVisitor visitor;
   InterpretedInstance instance;
+
+  @override
+  Object get d4rtInstance => instance;
 
   InterpretedConsumerWidget(this.visitor, this.instance, {Key? key})
       : super(key: key ?? _resolveKey(instance)) {
@@ -242,9 +269,13 @@ class InterpretedStreamNotifierProxy extends StreamNotifier<dynamic> {
 }
 
 /// Native proxy for AST-interpreted classes that extend [StatefulWidget].
-class InterpretedStatefulWidget extends StatefulWidget {
+class InterpretedStatefulWidget extends StatefulWidget
+    implements D4InterpretedProxy {
   InterpreterVisitor visitor;
   InterpretedInstance instance;
+
+  @override
+  Object get d4rtInstance => instance;
 
   InterpretedStatefulWidget(this.visitor, this.instance, {Key? key})
       : super(key: key ?? _resolveKey(instance)) {
@@ -276,6 +307,18 @@ class InterpretedStatefulWidget extends StatefulWidget {
     return ValueKey('Stateful_${instance.klass.name}_gen_$gen');
   }
 
+  /// The state proxy this widget last created.
+  ///
+  /// A bottom sheet's content lives in its own reconciler, where the framework
+  /// gives the child no new widget object on reload. Rebuilding it therefore
+  /// means marking that state dirty, and the sheet's scope cannot reach it
+  /// through the element tree alone.
+  InterpretedStateProxy? lastStateProxy;
+
+  void markNeedsRebuild() {
+    lastStateProxy?.markNeedsRebuild();
+  }
+
   @override
   State<StatefulWidget> createState() {
     return _runWithLogCapture(() {
@@ -283,7 +326,9 @@ class InterpretedStatefulWidget extends StatefulWidget {
       if (method is Callable) {
         final stateResult = method.call(visitor, [], {});
         if (stateResult is InterpretedInstance) {
-          return InterpretedStateProxy(visitor, stateResult, this);
+          final proxy = InterpretedStateProxy(visitor, stateResult, this);
+          lastStateProxy = proxy;
+          return proxy;
         } else if (stateResult is State<StatefulWidget>) {
           return stateResult;
         }
@@ -294,10 +339,14 @@ class InterpretedStatefulWidget extends StatefulWidget {
 }
 
 /// Native proxy for AST-interpreted classes that extend [State].
-class InterpretedStateProxy extends State<StatefulWidget> {
+class InterpretedStateProxy extends State<StatefulWidget>
+    implements D4InterpretedProxy {
   InterpreterVisitor visitor;
   InterpretedInstance stateInstance;
   InterpretedStatefulWidget ownerWidget;
+
+  @override
+  Object get d4rtInstance => stateInstance;
 
   bool _isDispatchingInitState = false;
   bool _isDispatchingDidChangeDependencies = false;
@@ -486,8 +535,20 @@ class InterpretedStateProxy extends State<StatefulWidget> {
     });
   }
 
-  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
+  void _rebuildIfMounted() {
     if (!mounted) return;
+    try {
+      setState(() {});
+    } catch (_) {}
+  }
+
+  /// Marks this proxy dirty so its build runs again — used by a bottom sheet
+  /// whose child widget object never changes across a reload.
+  void markNeedsRebuild() {
+    _rebuildIfMounted();
+  }
+
+  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
     try {
       visitor = newVisitor as InterpreterVisitor;
       if (newClass is InterpretedClass) {
@@ -497,10 +558,8 @@ class InterpretedStateProxy extends State<StatefulWidget> {
         _wireStateInstance(newState, ownerWidget.instance);
         stateInstance = newState;
       }
-      setState(() {});
-    } catch (_) {
-      setState(() {});
-    }
+    } catch (_) {}
+    _rebuildIfMounted();
   }
 
   @override
@@ -562,9 +621,13 @@ void rebindAstConsumerStateForReload(
 /// StatefulWidget` natively, but the generated `classSupertypes()` table
 /// drops that cross-barrel edge, so the generic `StatefulWidget` proxy never
 /// matches. Registered under the exact name `ConsumerStatefulWidget`.
-class InterpretedConsumerStatefulWidget extends ConsumerStatefulWidget {
+class InterpretedConsumerStatefulWidget extends ConsumerStatefulWidget
+    implements D4InterpretedProxy {
   final InterpreterVisitor visitor;
   final InterpretedInstance instance;
+
+  @override
+  Object get d4rtInstance => instance;
 
   InterpretedConsumerStatefulWidget(this.visitor, this.instance, {Key? key})
       : super(key: key ?? _resolveKey(instance)) {
@@ -607,10 +670,14 @@ class InterpretedConsumerStatefulWidget extends ConsumerStatefulWidget {
 ///
 /// Extends the real [ConsumerState] so interpreted code gets the native
 /// `ref` getter. Field snapshot/restore cannot synthesize this lifecycle.
-class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget> {
+class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget>
+    implements D4InterpretedProxy {
   InterpreterVisitor visitor;
   InterpretedInstance stateInstance;
   InterpretedConsumerStatefulWidget? ownerWidget;
+
+  @override
+  Object get d4rtInstance => stateInstance;
 
   bool _isDispatchingInitState = false;
   bool _isDispatchingDidChangeDependencies = false;
@@ -793,8 +860,20 @@ class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget
     });
   }
 
-  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
+  void _rebuildIfMounted() {
     if (!mounted) return;
+    try {
+      setState(() {});
+    } catch (_) {}
+  }
+
+  /// Marks this proxy dirty so its build runs again — used by a bottom sheet
+  /// whose child widget object never changes across a reload.
+  void markNeedsRebuild() {
+    _rebuildIfMounted();
+  }
+
+  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
     try {
       visitor = newVisitor as InterpreterVisitor;
       if (newClass is InterpretedClass) {
@@ -804,10 +883,8 @@ class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget
         _wireStateInstance(newState, ownerWidget?.instance);
         stateInstance = newState;
       }
-      setState(() {});
-    } catch (_) {
-      setState(() {});
-    }
+    } catch (_) {}
+    _rebuildIfMounted();
   }
 
   @override
@@ -875,9 +952,14 @@ Widget? wrapAstInterpretedWidget(Object? arg, {InterpreterVisitor? visitor}) {
 void registerAstWidgetInterfaceProxies(
   D4rt interpreter, {
   void Function(String message)? onLog,
+  void Function(Object error, StackTrace stack)? onError,
 }) {
   if (onLog != null) {
     onAstGuestLog = onLog;
+  }
+  if (onError != null) {
+    onAstGuestError = onError;
+    D4.onCallbackError = onError;
   }
 
   // Intercept top-level print calls directly in interpreted scripts

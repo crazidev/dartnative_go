@@ -11,7 +11,19 @@ import 'frozen_name_map.dart';
 class DeclarationVisitor extends GeneralizingSAstVisitor<void> {
   final Environment environment;
 
-  DeclarationVisitor(this.environment);
+  /// Hot-reload declaration registry (Phase 4 registers class cells here so
+  /// instances follow the reloaded class version). Null disables the mechanism.
+  final DeclarationRegistry? declarationRegistry;
+
+  /// Module URI the declarations being visited belong to; part of a class's
+  /// cross-generation identity.
+  final String moduleUri;
+
+  DeclarationVisitor(
+    this.environment, {
+    this.declarationRegistry,
+    this.moduleUri = '',
+  });
 
   @override
   void visitClassDeclaration(SClassDeclaration node) {
@@ -88,6 +100,28 @@ class DeclarationVisitor extends GeneralizingSAstVisitor<void> {
       typeParameterNames: typeParameterNames,
       typeParameterBounds: typeParameterBounds,
     );
+    // Phase 4: attach the declaration's stable cell. The new class object is
+    // published into it at the end of the Pass-2 wiring (see
+    // InterpreterVisitor.visitClassDeclaration); until then instances keep
+    // dispatching through the previous version.
+    //
+    // The shape check runs FIRST so a breaking edit (signature change or
+    // removed member) retires the cell before it is looked up — instances built
+    // before the edit then keep the previous class version and its call shapes,
+    // while additive and body-only edits share the cell.
+    placeholder.moduleUri = moduleUri;
+    final registry = declarationRegistry;
+    if (registry != null) {
+      registry.reconcileClassShape(
+        moduleUri,
+        className,
+        classMemberShapeKeys(node.members),
+      );
+      placeholder.classCell = registry.classCellFor(
+        DeclarationKey(moduleUri, className, 'class'),
+        placeholder,
+      );
+    }
     environment.define(className, placeholder);
     Logger.debug(
       "[DeclarationVisitor] Defined placeholder for class '$className' in env: [38;5;244m${environment.hashCode}[0m",
@@ -124,6 +158,19 @@ class DeclarationVisitor extends GeneralizingSAstVisitor<void> {
       onClauseTypes: [], // Will be filled in pass 2
       mixins: [], // Initially empty (mixins cannot use 'with')
     );
+    placeholder.moduleUri = moduleUri;
+    final registry = declarationRegistry;
+    if (registry != null) {
+      registry.reconcileClassShape(
+        moduleUri,
+        mixinName,
+        classMemberShapeKeys(node.members),
+      );
+      placeholder.classCell = registry.classCellFor(
+        DeclarationKey(moduleUri, mixinName, 'class'),
+        placeholder,
+      );
+    }
     environment.define(mixinName, placeholder);
     Logger.debug(
       "[DeclarationVisitor] Defined placeholder for mixin '$mixinName' in env: [38;5;244m${environment.hashCode}[0m",
@@ -141,6 +188,16 @@ class DeclarationVisitor extends GeneralizingSAstVisitor<void> {
     final valueNames = node.constants.map((c) => c.name?.name ?? '').toList();
 
     // Create the placeholder enum runtime object, storing only names for now
+    final registry = declarationRegistry;
+    if (registry != null) {
+      // Constant names are part of the enum's shape: removing or reordering a
+      // constant retires the preserved enum values.
+      registry.reconcileClassShape(moduleUri, enumName, {
+        ...classMemberShapeKeys(node.members),
+        for (final constant in node.constants)
+          'const:${constant.name?.name ?? ''}',
+      });
+    }
     final enumPlaceholder = InterpretedEnum.placeholder(
       enumName,
       environment,

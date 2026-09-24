@@ -31,6 +31,9 @@ export 'src/runtime/runtime_types.dart';
 // Function calling infrastructure
 export 'src/runtime/callable.dart';
 
+// Hot-reload declaration registry (stable function/class cells)
+export 'src/runtime/declaration_registry.dart';
+
 // Interpreter visitors
 export 'src/runtime/declaration_visitor.dart';
 export 'src/runtime/interpreter_visitor.dart';

@@ -5,6 +5,13 @@ import 'package:dartnative_go/src/runner/bytecode/bytecode_models.dart';
 import 'package:dartnative_go/src/runner/bytecode/opcodes.dart';
 import 'package:test/test.dart';
 
+/// The Bytecode engine is disabled by default (`kBytecodeEnabled`). Re-enable it
+/// for a run with `--dart-define=DN_ENABLE_BYTECODE=true`.
+const _bytecodeEnabled = bool.fromEnvironment('DN_ENABLE_BYTECODE');
+String get _bytecodeSkipReason =>
+    'Bytecode engine disabled — re-run with '
+    '--dart-define=DN_ENABLE_BYTECODE=true';
+
 void main() {
   group('BytecodeEmitter & ConstantPool Tests', () {
     test('ConstantPool deduplicates constants', () {
@@ -119,5 +126,7 @@ void main() {
       expect(delta.updatedFunctions.first.id, equals(1));
       expect(delta.dirtyClassNames, contains('HomeScreen'));
     });
-  });
+  },
+  skip: _bytecodeEnabled ? false : _bytecodeSkipReason,
+);
 }

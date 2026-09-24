@@ -22,6 +22,18 @@ class WidgetGenerationTracker {
     });
   }
 
+  /// Registers class names against the files that declare them.
+  ///
+  /// The AST engine has no source text to scrape, so the map is derived from
+  /// the decoded bundle's compilation units instead (see
+  /// `AstInterpreterRunner.classFileMap`).
+  static void registerClassFiles(Map<String, String> classFiles) {
+    classFiles.forEach((className, path) {
+      final normPath = _normalizePath(path);
+      if (normPath.isNotEmpty) _classToFile[className] = normPath;
+    });
+  }
+
   /// Increments the generation for classes defined in the changed files.
   /// Returns the set of widget class names whose generations were bumped.
   static Set<String> notifyFilesChanged(Set<String> changedFiles) {

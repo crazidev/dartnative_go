@@ -64,12 +64,20 @@ class DartGoLogger {
   }
 
   /// Logs error messages and optional stack traces (always output).
+  ///
+  /// An error is relayed to the CLI with a short stack even when verbose is
+  /// off: the device screen shows the message but not where it came from, so a
+  /// trimmed trace is what makes a guest failure diagnosable from the terminal.
+  /// Verbose mode sends the whole trace.
   static void error(String message, [dynamic err, StackTrace? stack]) {
     final msg = err != null ? '$message: $err' : message;
     _output('🔴 $msg', level: 'ERROR');
-    if (stack != null && verbose) {
-      _output('$stack', level: 'ERROR');
-    }
+    if (stack == null) return;
+    final lines = '$stack'.split('\n');
+    _output(
+      verbose ? '$stack' : lines.take(8).join('\n'),
+      level: 'ERROR',
+    );
   }
 
   static void _output(String message, {String level = 'INFO'}) {

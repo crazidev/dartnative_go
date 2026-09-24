@@ -8,6 +8,13 @@ import 'package:test/test.dart';
 
 import '../test_lab/fixtures/riverpod_fixture.dart';
 
+/// The Bytecode engine is disabled by default (`kBytecodeEnabled`). Re-enable it
+/// for a run with `--dart-define=DN_ENABLE_BYTECODE=true`.
+const _bytecodeEnabled = bool.fromEnvironment('DN_ENABLE_BYTECODE');
+String get _bytecodeSkipReason =>
+    'Bytecode engine disabled — re-run with '
+    '--dart-define=DN_ENABLE_BYTECODE=true';
+
 void main() {
   group('Bytecode Example App Execution Test', () {
     test('Compiles example app AST & bytecode and executes without blank screen', () async {
@@ -61,6 +68,8 @@ void main() {
         expect(state.stateInstance.fields['currentIndex'], 1);
       }
     });
-  });
+  },
+  skip: _bytecodeEnabled ? false : _bytecodeSkipReason,
+);
 }
 

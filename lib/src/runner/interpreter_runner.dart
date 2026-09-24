@@ -43,6 +43,7 @@ class InterpreterRunner {
   D4rt get interpreter => _interpreter;
   RuntimeMode get runtimeMode => runtimeModeFromBool(useAst, useBytecode);
   BytecodeInterpreterRunner? get bytecodeRunner => _bytecodeRunner;
+  AstInterpreterRunner? get astRunner => _astRunner;
   Object? get activeVisitor => useAst
       ? _astRunner?.visitor
       : (useBytecode ? _bytecodeRunner?.vm : _interpreter.visitor);
@@ -488,6 +489,8 @@ class InterpreterRunner {
           bundle.astBytes!,
           entryPoint: bundle.astEntryPoint,
           isHotReload: isHotReload,
+          // Phase 5: unchanged modules are not re-declared on reload.
+          moduleFingerprints: bundle.astModuleFingerprints,
         );
       }
       onLog?.call(
@@ -536,20 +539,26 @@ class InterpreterRunner {
     List<int> astBytes, {
     String? entryPoint,
     bool isHotReload = false,
+    Map<String, String> moduleFingerprints = const {},
   }) async {
     _astRunner ??= AstInterpreterRunner(
       onLog: onLog,
+      onGuestError: (error, stack) =>
+          DartGoLogger.error('Guest runtime error', error, stack),
       onExit: onExit,
       currentServerUrl: currentServerUrl,
     );
     _astRunner!.currentServerUrl = currentServerUrl;
     _astRunner!.onLog = onLog;
+    _astRunner!.onGuestError ??= (error, stack) =>
+        DartGoLogger.error('Guest runtime error', error, stack);
     _astRunner!.onExit = onExit;
 
     return await _astRunner!.evaluateAstBundleAs<Widget>(
       astBytes,
       entryPoint: entryPoint,
       isHotReload: isHotReload,
+      moduleFingerprints: moduleFingerprints,
     );
   }
 

@@ -452,8 +452,14 @@ class InterpretedStateProxy extends State<StatefulWidget> {
     });
   }
 
-  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
+  void _rebuildIfMounted() {
     if (!mounted) return;
+    try {
+      setState(() {});
+    } catch (_) {}
+  }
+
+  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
     try {
       visitor = newVisitor as InterpreterVisitor;
       if (newClass is InterpretedClass) {
@@ -463,10 +469,8 @@ class InterpretedStateProxy extends State<StatefulWidget> {
         _wireStateInstance(newState, ownerWidget.instance);
         stateInstance = newState;
       }
-      setState(() {});
-    } catch (_) {
-      setState(() {});
-    }
+    } catch (_) {}
+    _rebuildIfMounted();
   }
 
   @override
@@ -774,8 +778,14 @@ class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget
     });
   }
 
-  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
+  void _rebuildIfMounted() {
     if (!mounted) return;
+    try {
+      setState(() {});
+    } catch (_) {}
+  }
+
+  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
     try {
       visitor = newVisitor as InterpreterVisitor;
       if (newClass is InterpretedClass) {
@@ -785,10 +795,8 @@ class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget
         _wireStateInstance(newState, ownerWidget?.instance);
         stateInstance = newState;
       }
-      setState(() {});
-    } catch (_) {
-      setState(() {});
-    }
+    } catch (_) {}
+    _rebuildIfMounted();
   }
 
   @override

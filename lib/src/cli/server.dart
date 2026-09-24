@@ -207,7 +207,7 @@ class DartGoServer {
       final result = await buildGuestAstBundle(projectDir);
       if (result.success) {
         print(
-          '[DevServer] 📦 guest.ast & guest.bc ready '
+          '[DevServer] 📦 guest.ast${result.bytecodeBuilt ? ' & guest.bc' : ''} ready '
           '(${result.moduleCount} modules, ${result.byteSize} bytes)',
         );
       } else {
@@ -249,19 +249,24 @@ class DartGoServer {
       final result = await buildGuestAstBundle(projectDir);
       astSw.stop();
       if (result.success) {
+        final artifacts = result.bytecodeBuilt ? 'guest.ast & guest.bc' : 'guest.ast';
         if (result.cached) {
           DartGoLogger.bench(
             'DevServer',
-            'guest.ast & guest.bc up to date',
+            '$artifacts up to date',
             astSw.elapsedMilliseconds,
             {'bytes': result.byteSize, 'cache': 'hit'},
           );
         } else {
           DartGoLogger.bench(
             'DevServer',
-            'guest.ast & guest.bc rebuilt',
+            '$artifacts rebuilt',
             astSw.elapsedMilliseconds,
-            {'modules': result.moduleCount, 'bytes': result.byteSize},
+            {
+              'modules': result.moduleCount,
+              'bytes': result.byteSize,
+              'bytecode': result.bytecodeBuilt ? 'ok' : 'failed',
+            },
           );
         }
       } else {
@@ -543,6 +548,9 @@ class DartGoServer {
         'assets': _collectProjectAssets(projectDir),
         'hasAstBundle': astFile != null,
         'astUrl': astFile != null ? '$serverUrl/guest.ast' : null,
+        'astModuleFingerprints': astFile != null
+            ? moduleFingerprintsForProject(projectDir)
+            : const <String, String>{},
         'hasBytecodeBundle': bcFile != null,
         'bytecodeUrl': bcFile != null ? '$serverUrl/guest.bc' : null,
         'supportedPlugins': validation.validSupportedPlugins,

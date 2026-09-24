@@ -21,6 +21,16 @@ Directory _makeGuestProject(Directory parent, String name) {
   return dir;
 }
 
+/// Mirrors the builder's sibling-artifact convention (`x.ast` → `x.bc`).
+File _bytecodeFileFor(File astFile) {
+  final path = astFile.path;
+  return File(
+    path.endsWith('.ast')
+        ? '${path.substring(0, path.length - 4)}.bc'
+        : '$path.bc',
+  );
+}
+
 void main() {
   group('AstBuilder', () {
     late Directory tmp;
@@ -101,6 +111,90 @@ void main() {
       final missing = await buildGuestAstBundle(tmp, entryArg: 'nope.dart');
       expect(missing.success, isFalse);
       expect(missing.error, isNotNull);
+    });
+
+    test('reports a fingerprint for every compiled module', () async {
+      final guest = _makeGuestProject(tmp, 'fp_guest');
+      final result = await buildGuestAstBundle(
+        guest,
+        outputArg: '${tmp.path}/fp.ast',
+        force: true,
+      );
+      expect(result.success, isTrue, reason: result.error);
+      expect(result.moduleFingerprints.length, result.moduleCount);
+      expect(result.moduleFingerprints.keys.any((k) => k.contains('main.dart')),
+          isTrue);
+      expect(result.moduleFingerprints.keys.any((k) => k.contains('helper.dart')),
+          isTrue);
+      expect(
+        result.moduleFingerprints.values.every((v) => v.isNotEmpty),
+        isTrue,
+      );
+    });
+
+    test('only the edited module changes fingerprint', () async {
+      final guest = _makeGuestProject(tmp, 'fp_delta_guest');
+      final first = await buildGuestAstBundle(
+        guest,
+        outputArg: '${tmp.path}/fp_delta.ast',
+        force: true,
+      );
+      expect(first.success, isTrue, reason: first.error);
+
+      final helper = File('${guest.path}/lib/helper.dart');
+      final original = helper.readAsStringSync();
+      helper.writeAsStringSync('${original}int tripleIt(int x) => x * 3;\n');
+      try {
+        final second = await buildGuestAstBundle(
+          guest,
+          outputArg: '${tmp.path}/fp_delta.ast',
+          force: true,
+        );
+        expect(second.success, isTrue, reason: second.error);
+
+        String fpFor(Map<String, String> fps, String needle) =>
+            fps.entries.firstWhere((e) => e.key.contains(needle)).value;
+
+        expect(
+          fpFor(second.moduleFingerprints, 'helper.dart'),
+          isNot(equals(fpFor(first.moduleFingerprints, 'helper.dart'))),
+          reason: 'edited module must get a new fingerprint',
+        );
+        expect(
+          fpFor(second.moduleFingerprints, 'main.dart'),
+          equals(fpFor(first.moduleFingerprints, 'main.dart')),
+          reason: 'untouched module keeps its fingerprint',
+        );
+      } finally {
+        helper.writeAsStringSync(original);
+      }
+    });
+
+    test('missing guest.bc does not invalidate the AST cache', () async {
+      final guest = _makeGuestProject(tmp, 'bc_missing_guest');
+      final out = File('${tmp.path}/bc_missing.ast');
+      final first = await buildGuestAstBundle(
+        guest,
+        outputArg: out.path,
+        force: true,
+      );
+      expect(first.success, isTrue, reason: first.error);
+
+      final bcFile = _bytecodeFileFor(out);
+      if (bcFile.existsSync()) bcFile.deleteSync();
+
+      final cached = await buildGuestAstBundle(
+        guest,
+        outputArg: out.path,
+      );
+      expect(cached.success, isTrue);
+      expect(
+        cached.cached,
+        isTrue,
+        reason: 'a missing bytecode artifact must not force a re-parse',
+      );
+      expect(cached.bytecodeBuilt, isFalse);
+      expect(out.existsSync(), isTrue);
     });
   });
 }

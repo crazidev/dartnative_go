@@ -2591,6 +2591,36 @@ class D4 {
     List<Object?> args, [
     Map<String, Object?> namedArgs = const {},
   ]) {
+    try {
+      return _callInterpreterCallbackUnchecked(
+        visitor,
+        callback,
+        args,
+        namedArgs,
+      );
+    } catch (error, stack) {
+      final handler = onCallbackError;
+      if (handler != null) {
+        try {
+          handler(error, stack);
+        } catch (_) {}
+      }
+      rethrow;
+    }
+  }
+
+  /// Reports guest code that threw when invoked from native code (a button
+  /// handler, a timer tick, a stream listener), so a host can surface it in its
+  /// own diagnostics. The error still propagates: reporting must not change
+  /// what the framework does with a failing callback.
+  static void Function(Object error, StackTrace stack)? onCallbackError;
+
+  static Object? _callInterpreterCallbackUnchecked(
+    InterpreterVisitor visitor,
+    Object? callback,
+    List<Object?> args, [
+    Map<String, Object?> namedArgs = const {},
+  ]) {
     final Object? result;
     if (callback is InterpretedFunction) {
       result = callback.call(visitor, args, namedArgs);
@@ -2839,10 +2869,13 @@ class D4 {
       }
     }
 
-    final visitedClasses = <InterpretedClass>{};
+    // Keyed by declaration identity (module + name) rather than class object:
+    // a hot reload builds a new class object per generation, and object
+    // identity would defeat the cycle guard for the current graph.
+    final visitedClasses = <String>{};
     void collectFromInterpreted(InterpretedClass? c) {
       if (c == null) return;
-      if (!visitedClasses.add(c)) return;
+      if (!visitedClasses.add(c.declarationIdentity)) return;
       if (c.bridgedSuperclass != null) {
         addBridged(c.bridgedSuperclass!);
       }

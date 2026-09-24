@@ -84,6 +84,11 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
   Environment environment;
   final Environment globalEnvironment;
   final ModuleContext moduleContext; // Abstract module loading interface
+
+  /// Hot-reload declaration registry. When set, function declarations resolve
+  /// to stable shells whose bodies are swapped in place across generations.
+  /// Null disables the mechanism (each generation gets fresh functions).
+  final DeclarationRegistry? declarationRegistry;
   InterpretedFunction? currentFunction; // Track the function being executed
   AsyncExecutionState? currentAsyncState;
 
@@ -174,6 +179,7 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
     required this.globalEnvironment,
     required this.moduleContext, // Accept ModuleContext in the constructor
     Uri? initialLibrary, // Optional URI for the initial source
+    this.declarationRegistry,
   }) : environment = globalEnvironment {
     if (initialLibrary != null) {
       // Sets the base URI in the ModuleContext for the initial source code.
@@ -332,17 +338,65 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
 
   @override
   Object? visitTopLevelVariableDeclaration(STopLevelVariableDeclaration node) {
-    for (final variable in node.variables!.variables) {
-      if (variable.name!.name == '_') {
+    final registry = declarationRegistry;
+    final moduleUri = moduleContext.currentLibrary?.toString() ?? '';
+    final list = node.variables!;
+    for (final variable in list.variables) {
+      final varName = variable.name!.name;
+      if (varName == '_') {
         // Evaluate initializer for potential side effects, but don't define
         variable.initializer?.accept<Object?>(this);
-      } else {
-        Object? value;
-        if (variable.initializer != null) {
-          value = variable.initializer!.accept<Object?>(this);
-        }
-        environment.define(variable.name!.name, value);
+        continue;
       }
+
+      final initializerNode = variable.initializer;
+      Object? runInitializer() => initializerNode?.accept<Object?>(this);
+
+      if (registry == null) {
+        environment.define(varName, runInitializer());
+        continue;
+      }
+
+      // Phase 3: the binding lives in a stable cell, so a reload keeps the
+      // running program's value unless the initializer itself changed (the
+      // Dart VM hot-reload rule). `late` defers the initializer to the first
+      // read; `final`/`const` are enforced by the cell.
+      final key = DeclarationKey(moduleUri, varName, 'variable');
+      final existing = registry.variableCellFor(key);
+      if (existing == null) {
+        final cell = VariableCell(
+          varName,
+          initializer: initializerNode == null ? null : runInitializer,
+          initializerNode: initializerNode,
+          isFinal: list.isFinal,
+          isConst: list.isConst,
+          isLate: list.isLate,
+          initialized: initializerNode == null && !list.isLate,
+        );
+        registry.registerVariable(key, cell);
+        // Install BEFORE running the initializer so a self-referential or
+        // re-entrant read observes the cell, never a half-built raw binding.
+        environment.defineCell(varName, cell);
+        if (initializerNode != null && !list.isLate) {
+          cell.setFromInitializer(runInitializer());
+        }
+        continue;
+      }
+      // Reload: adopt the new generation's initializer, then decide whether the
+      // stored value survives.
+      final cell = existing;
+      environment.defineCell(varName, cell);
+      if (list.isLate) {
+        registry.adoptLateInitializer(key, runInitializer, initializerNode);
+        continue;
+      }
+      final kept = registry.adoptVariableInitializer(
+        key,
+        runInitializer,
+        initializerNode,
+      );
+      if (kept) continue;
+      registry.setVariableFromInitializer(key, runInitializer());
     }
     return null;
   }
@@ -1131,12 +1185,12 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
         return value;
       }
 
-      // Check static fields
-      if (prefixValue.staticFields.containsKey(memberName)) {
+      // Check static fields (cell-backed first — Phase 3c)
+      if (prefixValue.hasStaticField(memberName)) {
         Logger.debug(
           "[SPrefixedIdentifier] Accessing static field '$memberName' on enum '${prefixValue.name}'.",
         );
-        return prefixValue.staticFields[memberName];
+        return prefixValue.getStaticFieldValue(memberName);
       }
 
       // Check static getters
@@ -2458,30 +2512,6 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
     );
   }
 
-  /// OPEN B.9 — propagate a bare-identifier write that landed on a static-field
-  /// snapshot back to the owner class's authoritative static slot.
-  ///
-  /// Inside a static member, [InterpretedFunction._prepareExecutionEnvironment]
-  /// snapshots the owner class's static fields into the member's top execution
-  /// environment (so they read without a class prefix) and marks that scope via
-  /// [Environment.staticFieldSnapshotOwner]. A bare assignment only mutates that
-  /// snapshot, which is discarded when the call returns — so the write must also
-  /// be mirrored to `InterpretedClass.setStaticField` to survive across calls.
-  ///
-  /// Shadow-safe: a local that shadows a static field lives in a different
-  /// (unmarked) environment, so [definingEnv] is not the snapshot scope and no
-  /// propagation occurs.
-  void _propagateStaticFieldWrite(
-    Environment definingEnv,
-    String variableName,
-    Object? value,
-  ) {
-    final owner = definingEnv.staticFieldSnapshotOwner;
-    if (owner != null && owner.staticFields.containsKey(variableName)) {
-      owner.setStaticField(variableName, value);
-    }
-  }
-
   @override
   Object? visitAssignmentExpression(SAssignmentExpression node) {
     final lhs = node.leftHandSide;
@@ -2510,6 +2540,22 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
       );
 
       if (definingEnv != null) {
+        // Cell-backed binding (Phase 3): check the cell BEFORE reading, because
+        // reading an uninitialized `late` cell throws and a plain `x = v`
+        // assignment must not read x at all.
+        final cell = definingEnv.cellFor(variableName);
+        if (cell != null) {
+          if (operatorType == '=') {
+            return environment.assign(variableName, rhsValue);
+          }
+          final currentValue = cell.read();
+          final newValue = computeCompoundValue(
+            currentValue,
+            rhsValue,
+            operatorType,
+          );
+          return environment.assign(variableName, newValue);
+        }
         // Check if the variable is a LateVariable
         final variableValue = definingEnv.get(variableName);
         if (variableValue is LateVariable) {
@@ -2536,7 +2582,6 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
               variableName,
               rhsValue,
             ); // Use original assign for lexical
-            _propagateStaticFieldWrite(definingEnv, variableName, rhsValue);
             return assigned;
           } else {
             // Handle compound assignments on lexical variables
@@ -2552,7 +2597,6 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
               variableName,
               newValue,
             ); // Assign back to lexical scope
-            _propagateStaticFieldWrite(definingEnv, variableName, newValue);
             return assigned;
           }
         }
@@ -5638,10 +5682,9 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
         // Call the static getter
         return staticGetter.call(this, [], {});
       }
-      Object? staticField = target.staticFields[propertyName];
-      if (target.staticFields.containsKey(propertyName)) {
+      if (target.hasStaticField(propertyName)) {
         // Return static field value (could be null)
-        return staticField;
+        return target.getStaticFieldValue(propertyName);
       }
       InterpretedFunction? staticMethod = target.staticMethods[propertyName];
       if (staticMethod != null) {
@@ -8298,15 +8341,36 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
       resolveEnvironment,
     );
 
-    final function = InterpretedFunction.declaration(
+    final freshFunction = InterpretedFunction.declaration(
       node,
       environment,
       declaredReturnType,
       isNullable,
       declaredReturnTypeApplied: declaredReturnTypeApplied,
     );
+    // Hot reload: resolve the declaration to its stable shell. On a body-only
+    // edit the existing shell is kept and the new body is published into its
+    // cell, so every live reference (timers, stream listeners, other modules'
+    // imports) executes the new code. A signature change retires the shell.
+    final functionName = node.name!.name;
+    final registry = declarationRegistry;
+    final function = registry == null
+        ? freshFunction
+        : registry.stabilizeFunction(
+            DeclarationKey(
+              moduleContext.currentLibrary?.toString() ?? '',
+              functionName,
+              node.isGetter
+                  ? 'getter'
+                  : node.isSetter
+                  ? 'setter'
+                  : 'function',
+            ),
+            freshFunction,
+            home: environment,
+          );
     // Define the function in the current environment
-    environment.define(node.name!.name, function);
+    environment.define(functionName, function);
     return null; // Declaration itself doesn't return a value
   }
 
@@ -9988,18 +10052,43 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
     final staticInitEnv = environment; // Statics use the class definition env
     final originalVisitorEnv = environment; // Backup visitor env
 
+    final moduleUri = moduleContext.currentLibrary?.toString() ?? '';
+
     Logger.debug(
       "[Visitor.visitClassDeclaration] Processing members for '$className' (hash: ${klass.hashCode})",
     );
+
+    InterpretedFunction stabilizeMethod(
+      SMethodDeclaration member,
+      String kind,
+    ) {
+      final function = InterpretedFunction.method(
+        member,
+        staticInitEnv,
+        klass,
+      );
+      final registry = declarationRegistry;
+      if (registry == null) return function;
+      return registry.stabilizeFunction(
+        DeclarationKey(moduleUri, '${klass.name}#${member.name?.name ?? ''}', kind),
+        function,
+        home: staticInitEnv,
+      );
+    }
 
     for (final member in node.members) {
       if (member is SMethodDeclaration) {
         final methodName = member.name!.name;
         // Pass the ALREADY RETRIEVED klass object
-        final function = InterpretedFunction.method(
+        final function = stabilizeMethod(
           member,
-          staticInitEnv,
-          klass,
+          member.isGetter
+              ? 'getter'
+              : member.isSetter
+              ? 'setter'
+              : member.isOperator
+              ? 'operator'
+              : 'method',
         );
 
         if (member.isStatic) {
@@ -10045,12 +10134,24 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           }
         }
       } else if (member is SConstructorDeclaration) {
-        final function = InterpretedFunction.constructor(
+        final freshConstructor = InterpretedFunction.constructor(
           member,
           staticInitEnv,
           klass,
         );
         final constructorName = member.name?.name ?? '';
+        final registry = declarationRegistry;
+        final function = registry == null
+            ? freshConstructor
+            : registry.stabilizeFunction(
+                DeclarationKey(
+                  moduleUri,
+                  '${klass.name}#$constructorName',
+                  'constructor',
+                ),
+                freshConstructor,
+                home: staticInitEnv,
+              );
         klass.constructors[constructorName] = function;
       } else if (member is SFieldDeclaration) {
         // Defer static field processing - collect them for later
@@ -10063,20 +10164,57 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
     }
 
     // TWO-PASS STATIC FIELD PROCESSING to handle sibling references (Bug-23)
-    // Pass 1: Register all static field names in the class environment with null values
+    final registry = declarationRegistry;
+    // Pass 1: Register all static field names with their stable storage cell.
     final staticFieldDecls = <SVariableDeclaration>[];
     final staticFieldMeta =
-        <String, (bool isLate, bool isFinal, SAstNode? initializer)>{};
+        <String, (bool isLate, bool isFinal, bool isConst, SAstNode? initializer)>{};
+    final staticFieldFlags = <String, String>{};
     for (final member in node.members) {
       if (member is SFieldDeclaration && member.isStatic) {
         final isLate = member.fields!.isLate;
         final isFinal = member.fields!.isFinal;
+        final isConst = member.fields!.isConst;
         for (final variable in member.fields!.variables) {
           final fieldName = variable.name!.name;
           staticFieldDecls.add(variable);
-          staticFieldMeta[fieldName] = (isLate, isFinal, variable.initializer);
-          // Pre-register all static fields so they can reference each other
-          klass.staticFields[fieldName] = null;
+          staticFieldMeta[fieldName] = (
+            isLate,
+            isFinal,
+            isConst,
+            variable.initializer,
+          );
+          staticFieldFlags[fieldName] = '$isFinal|$isConst|$isLate';
+          // Pre-register all static fields so they can reference each other.
+          // With a registry the storage is a stable cell (Phase 3); without one
+          // this keeps the legacy null pre-registration.
+          if (registry == null) {
+            klass.staticFields[fieldName] = null;
+          } else {
+            final key = DeclarationKey(
+              moduleUri,
+              '${klass.name}#$fieldName',
+              'static',
+            );
+            if (registry.variableCellFor(key) == null) {
+              final initializerNode = variable.initializer;
+              registry.registerVariable(
+                key,
+                VariableCell(
+                  fieldName,
+                  initializer: initializerNode == null
+                      ? null
+                      : () => initializerNode.accept<Object?>(this),
+                  initializerNode: initializerNode,
+                  isFinal: isFinal,
+                  isConst: isConst,
+                  isLate: isLate,
+                  initialized: initializerNode == null && !isLate,
+                ),
+              );
+            }
+            klass.staticCells[fieldName] = registry.variableCellFor(key)!;
+          }
         }
       }
     }
@@ -10088,7 +10226,20 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
     // initializers can require other classes (and their constructors) that
     // appear later in source order. We support deferring this whole block
     // to after every class has been visited.
+    // Statics that disappeared (or whose declaration flags changed) lose their
+    // cell here; the ones that survived keep their state.
+    registry?.retireMissingVariables(
+      moduleUri,
+      klass.name,
+      'static',
+      staticFieldFlags,
+    );
     final staticFieldEvalEnv = Environment(enclosing: staticInitEnv);
+    // Sibling access inside an initializer must see the authoritative storage,
+    // so the eval env shares the cells rather than copying values.
+    klass.staticCells.forEach((name, cell) {
+      staticFieldEvalEnv.defineCell(name, cell);
+    });
 
     void evaluateStaticFields() {
       final savedEnvOnEntry = environment;
@@ -10096,7 +10247,48 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
         environment = staticFieldEvalEnv;
         for (final variable in staticFieldDecls) {
           final fieldName = variable.name!.name;
-          final (isLate, isFinal, initializer) = staticFieldMeta[fieldName]!;
+          final (isLate, isFinal, isConst, initializer) =
+              staticFieldMeta[fieldName]!;
+          final cell = klass.staticCells[fieldName];
+
+          if (cell != null) {
+            // Phase 3: keep the stored value unless the initializer changed.
+            if (isLate) {
+              registry!.adoptLateInitializer(
+                DeclarationKey(moduleUri, '${klass.name}#$fieldName', 'static'),
+                () {
+                  final savedEnv = environment;
+                  try {
+                    environment = staticFieldEvalEnv;
+                    return initializer?.accept<Object?>(this);
+                  } finally {
+                    environment = savedEnv;
+                  }
+                },
+                initializer,
+              );
+              continue;
+            }
+            final kept = registry!.adoptVariableInitializer(
+              DeclarationKey(moduleUri, '${klass.name}#$fieldName', 'static'),
+              () {
+                final savedEnv = environment;
+                try {
+                  environment = staticFieldEvalEnv;
+                  return initializer?.accept<Object?>(this);
+                } finally {
+                  environment = savedEnv;
+                }
+              },
+              initializer,
+            );
+            if (kept) continue;
+            registry.setVariableFromInitializer(
+              DeclarationKey(moduleUri, '${klass.name}#$fieldName', 'static'),
+              initializer?.accept<Object?>(this),
+            );
+            continue;
+          }
 
           if (isLate) {
             // Handle late static field
@@ -10202,6 +10394,12 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
     // Perf T6: all function tables are fully populated; compact them into
     // their read-only form. staticFields is excluded (deferred init).
     klass.freezeMemberTables();
+
+    // Phase 4: the class is fully wired — publish it as the current version of
+    // this declaration. Instances created in earlier generations (and in this
+    // one) now dispatch through it, so a hot reload's new members and edited
+    // bodies are visible to objects that already exist.
+    registry?.publishClass(klass);
 
     Logger.debug("[Visitor.visitClassDeclaration] END for '$className'");
     // No need to define/assign klass in the environment here, it was done in Pass 1.
@@ -10343,17 +10541,37 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
       "[Visitor.visitMixinDeclaration] Processing members for mixin '$mixinName' (hash: ${mixinClass.hashCode})",
     );
 
+    final mixinRegistry = declarationRegistry;
     try {
       environment = declarationEnv;
+      final mixinModuleUri = moduleContext.currentLibrary?.toString() ?? '';
       for (final member in node.members) {
         if (member is SMethodDeclaration) {
           final methodName = member.name!.name;
           // Methods capture the GLOBAL environment via the mixinClass
-          final function = InterpretedFunction.method(
+          final freshMethod = InterpretedFunction.method(
             member,
             globalEnvironment,
             mixinClass,
           );
+          final registry = declarationRegistry;
+          final function = registry == null
+              ? freshMethod
+              : registry.stabilizeFunction(
+                  DeclarationKey(
+                    mixinModuleUri,
+                    '$mixinName#$methodName',
+                    member.isGetter
+                        ? 'getter'
+                        : member.isSetter
+                        ? 'setter'
+                        : member.isOperator
+                        ? 'operator'
+                        : 'method',
+                  ),
+                  freshMethod,
+                  home: globalEnvironment,
+                );
           if (member.isStatic) {
             // Static members belong to the mixin definition itself
             if (member.isGetter) {
@@ -10397,6 +10615,8 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
 
     // Perf T6: compact the mixin's function tables now that wiring is done.
     mixinClass.freezeMemberTables();
+    // Phase 4: publish the wired mixin as the current class version.
+    mixinRegistry?.publishClass(mixinClass);
 
     Logger.debug("[Visitor.visitMixinDeclaration] END for '$mixinName'");
     return null; // Mixin declaration doesn't return a value
@@ -10405,6 +10625,8 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
   @override
   Object? visitEnumDeclaration(SEnumDeclaration node) {
     final enumName = node.name!.name;
+    final enumModuleUri = moduleContext.currentLibrary?.toString() ?? '';
+    final registry = declarationRegistry;
     Logger.debug(
       "[Visitor.visitEnumDeclaration] START (Pass 2) for '$enumName'",
     );
@@ -10480,11 +10702,27 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
         if (member is SMethodDeclaration) {
           final methodName = member.name!.name;
           // Methods capture the enum's declaration environment implicitly
-          final function = InterpretedFunction.method(
+          final freshMethod = InterpretedFunction.method(
             member,
             environment,
             enumObj,
           );
+          final registry = declarationRegistry;
+          final function = registry == null
+              ? freshMethod
+              : registry.stabilizeFunction(
+                  DeclarationKey(
+                    enumModuleUri,
+                    '$enumName#$methodName',
+                    member.isGetter
+                        ? 'getter'
+                        : member.isSetter
+                        ? 'setter'
+                        : 'method',
+                  ),
+                  freshMethod,
+                  home: environment,
+                );
 
           if (member.isStatic) {
             if (member.isGetter) {
@@ -10528,11 +10766,23 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           // Check if it's the default unnamed constructor or a named one
           final constructorName = member.name?.name ?? '';
           // Constructors also capture the enum's declaration environment
-          final function = InterpretedFunction.constructor(
+          final freshConstructor = InterpretedFunction.constructor(
             member,
             environment,
             enumObj,
           );
+          final registry = declarationRegistry;
+          final function = registry == null
+              ? freshConstructor
+              : registry.stabilizeFunction(
+                  DeclarationKey(
+                    enumModuleUri,
+                    '$enumName#$constructorName',
+                    'constructor',
+                  ),
+                  freshConstructor,
+                  home: environment,
+                );
 
           enumObj.constructors[constructorName] = function;
           Logger.debug(
@@ -10552,13 +10802,57 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
             // Evaluate static fields immediately
             for (final variable in member.fields!.variables) {
               final fieldName = variable.name!.name;
-              Object? value;
-              if (variable.initializer != null) {
-                value = variable.initializer!.accept<Object?>(this);
+              final initializerNode = variable.initializer;
+              final isLate = member.fields!.isLate;
+              final isFinal = member.fields!.isFinal;
+              final isConst = member.fields!.isConst;
+              final key = DeclarationKey(
+                enumModuleUri,
+                '$enumName#$fieldName',
+                'static',
+              );
+              final cell = registry?.variableCellFor(key);
+              if (registry != null) {
+                // Phase 3c: enum statics share the registry's storage cells, so
+                // their values survive a reload unless the initializer changed.
+                final active =
+                    cell ??
+                    VariableCell(
+                      fieldName,
+                      initializer: initializerNode == null
+                          ? null
+                          : () => initializerNode.accept<Object?>(this),
+                      initializerNode: initializerNode,
+                      isFinal: isFinal,
+                      isConst: isConst,
+                      isLate: isLate,
+                      initialized: initializerNode == null && !isLate,
+                    );
+                if (cell == null) {
+                  registry.registerVariable(key, active);
+                } else {
+                  final kept = registry.adoptVariableInitializer(
+                    key,
+                    () => initializerNode?.accept<Object?>(this),
+                    initializerNode,
+                  );
+                  if (!kept) {
+                    registry.setVariableFromInitializer(
+                      key,
+                      initializerNode?.accept<Object?>(this),
+                    );
+                  }
+                }
+                enumObj.staticCells[fieldName] = active;
+              } else {
+                Object? value;
+                if (initializerNode != null) {
+                  value = initializerNode.accept<Object?>(this);
+                }
+                enumObj.staticFields[fieldName] = value;
               }
-              enumObj.staticFields[fieldName] = value;
               Logger.debug(
-                "[Visitor.visitEnumDeclaration]   Evaluated static field: $fieldName = $value",
+                "[Visitor.visitEnumDeclaration]   Evaluated static field: $fieldName",
               );
             }
           }
@@ -10591,8 +10885,38 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
         continue;
       }
 
+      // Phase 3c: reuse the previous generation's value object when the enum's
+      // constant list is unchanged, so a value captured before the reload keeps
+      // its identity (and its field state) and still compares equal to the
+      // enum's current `values` entry. A structural change to the constant list
+      // retires these cells (see the enum shape reconciliation above), so a
+      // reused value always has the same index.
+      final valueKey = DeclarationKey(
+        enumModuleUri,
+        '$enumName#$valueName',
+        'enum-value',
+      );
+      final preserved = registry?.variableCellFor(valueKey);
+      if (preserved != null) {
+        final previous = preserved.rawValue;
+        if (previous is InterpretedEnumValue && previous.index == i) {
+          final previousParent = previous.parentEnum;
+          registry?.journalUndo(() => previous.rebindParent(previousParent));
+          previous.rebindParent(enumObj);
+          enumObj.values[valueName] = previous;
+          continue;
+        }
+        registry!.retireVariable(valueKey);
+      }
+
       // Create the runtime value instance (without initialized fields yet)
       final enumValueInstance = InterpretedEnumValue(enumObj, valueName, i);
+      if (registry != null) {
+        registry.registerVariable(
+          valueKey,
+          VariableCell(valueName, initialValue: enumValueInstance),
+        );
+      }
 
       // Initialize Instance Fields using Constructor
       final constructorInvocation = constantDecl.arguments;
@@ -12208,7 +12532,7 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           );
 
           // Factory constructors should return an instance of the expected type
-          if (result is InterpretedInstance && result.klass == klass) {
+          if (result is InterpretedInstance && result.klass.isSameClassAs(klass)) {
             return applyInterfaceProxy(result);
           } else if (result is InterpretedInstance) {
             throw RuntimeD4rtException(
@@ -12254,7 +12578,7 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           // For regular constructors, check if returned value is valid
           if (e.value != null && e.value is InterpretedInstance) {
             final instance = e.value as InterpretedInstance; // Explicit cast
-            if (instance.klass == klass) {
+            if (instance.klass.isSameClassAs(klass)) {
               // Check on the casted instance
               return applyInterfaceProxy(instance);
             }

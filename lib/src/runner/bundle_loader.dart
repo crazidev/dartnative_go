@@ -34,6 +34,12 @@ class ProjectBundle {
   /// Entry function inside [astBytes] (defaults to `main`).
   final String? astEntryPoint;
 
+  /// Per-module content fingerprints for [astBytes] (module URI → FNV-1a hex),
+  /// as reported by the dev server manifest. Empty when the server predates
+  /// per-module fingerprints. Used to detect which modules changed on reload
+  /// without re-hashing the whole bundle on device.
+  final Map<String, String> astModuleFingerprints;
+
   /// Raw pre-compiled `BytecodeBundle` bytes. Null when server has no `/guest.bc`.
   final List<int>? bytecodeBytes;
 
@@ -57,6 +63,7 @@ class ProjectBundle {
     this.assets = const [],
     this.astBytes,
     this.astEntryPoint,
+    this.astModuleFingerprints = const {},
     this.bytecodeBytes,
   });
 }
@@ -90,6 +97,16 @@ class BundleLoader {
       trimmed = trimmed.substring(0, trimmed.length - 1);
     }
     return trimmed;
+  }
+
+  /// Reads `astModuleFingerprints` from a manifest, tolerating older servers
+  /// (and malformed payloads) by returning an empty map.
+  static Map<String, String> _moduleFingerprintsFrom(Map<String, dynamic>? manifest) {
+    final raw = manifest?['astModuleFingerprints'];
+    if (raw is! Map) return const {};
+    final out = <String, String>{};
+    raw.forEach((k, v) => out[k.toString()] = v.toString());
+    return out;
   }
 
   /// Fetches the project manifest from `$serverUrl/manifest.json`.
@@ -289,6 +306,11 @@ class BundleLoader {
       final astBytes = await fetchAstBytes(baseUrl);
       final astMs = astSw.elapsedMilliseconds;
       if (astBytes != null && astBytes.isNotEmpty) {
+        // In AST-only mode the bytecode artifact is never executed (mode
+        // switches go through a hot restart, which refetches), so skip the
+        // download entirely.
+        final bcBytes = onlyAst ? null : await fetchBytecodeBytes(baseUrl);
+        final moduleFingerprints = _moduleFingerprintsFrom(manifest);
         DartGoLogger.bench(
           'BundleLoader',
           'AST fetchBundle',
@@ -297,6 +319,7 @@ class BundleLoader {
             'manifest': manifestMs,
             'ast_download': astMs,
             'size': '${astBytes.length}B',
+            'module_fps': moduleFingerprints.length,
           },
         );
         return ProjectBundle(
@@ -313,7 +336,8 @@ class BundleLoader {
           assets: rawAssets,
           astBytes: astBytes,
           astEntryPoint: manifest['astEntryPoint']?.toString(),
-          bytecodeBytes: await fetchBytecodeBytes(baseUrl),
+          astModuleFingerprints: moduleFingerprints,
+          bytecodeBytes: bcBytes,
         );
       }
     }
@@ -426,6 +450,7 @@ class BundleLoader {
         assets: rawAssets,
         astBytes: fetchAst ? await fetchAstBytes(baseUrl) : null,
         astEntryPoint: manifest['astEntryPoint']?.toString(),
+        astModuleFingerprints: _moduleFingerprintsFrom(manifest),
         bytecodeBytes: fetchBytecode ? await fetchBytecodeBytes(baseUrl) : null,
       );
     }
@@ -507,6 +532,7 @@ class BundleLoader {
           assets: rawAssets,
           astBytes: fetchAst ? await fetchAstBytes(baseUrl) : null,
           astEntryPoint: manifest['astEntryPoint']?.toString(),
+          astModuleFingerprints: _moduleFingerprintsFrom(manifest),
           bytecodeBytes: fetchBytecode ? await fetchBytecodeBytes(baseUrl) : null,
         );
       }

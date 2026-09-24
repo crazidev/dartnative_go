@@ -104,6 +104,7 @@ class NativeBottomSheetScopeState extends State<NativeBottomSheetScope> {
 
   final Set<dynamic> _proxies = {};
   bool _isDisposed = false;
+  int _contentGeneration = 0;
 
   bool get isScopeActive => !_isDisposed;
 
@@ -201,6 +202,12 @@ class NativeBottomSheetScopeState extends State<NativeBottomSheetScope> {
               className = proxy.stateInstance?.klass?.name?.toString();
             } catch (_) {}
           }
+          try {
+            proxy.visitor = newVisitor;
+          } catch (_) {}
+          try {
+            proxy.vm = newVisitor;
+          } catch (_) {}
           if (className != null) {
             final newClass = findUserClassInVisitor(newVisitor, className);
             if (newClass != null) {
@@ -210,13 +217,6 @@ class NativeBottomSheetScopeState extends State<NativeBottomSheetScope> {
               } catch (_) {}
             }
           }
-          // Fallback if class didn't change name or wasn't found: refresh visitor & rebuild
-          try {
-            proxy.visitor = newVisitor;
-          } catch (_) {}
-          try {
-            proxy.vm = newVisitor;
-          } catch (_) {}
           try {
             proxy.setState(() {});
           } catch (_) {}
@@ -226,7 +226,7 @@ class NativeBottomSheetScopeState extends State<NativeBottomSheetScope> {
 
     // 2. If the root child itself is a stateless or consumer widget, rebind it
     try {
-      final c = widget.child as dynamic;
+      final c = scopeWidget.child as dynamic;
       String? childClassName;
       try {
         childClassName = c.instance?.bytecodeClass?.name?.toString();
@@ -236,22 +236,28 @@ class NativeBottomSheetScopeState extends State<NativeBottomSheetScope> {
           childClassName = c.instance?.klass?.name?.toString();
         } catch (_) {}
       }
+      try {
+        c.visitor = newVisitor;
+      } catch (_) {}
+      try {
+        c.vm = newVisitor;
+      } catch (_) {}
       if (childClassName != null) {
         final newClass = findUserClassInVisitor(newVisitor, childClassName);
         if (newClass != null) {
           try {
             c.rebindForHotReload(newVisitor, newClass);
           } catch (_) {}
-        } else {
-          try {
-            c.visitor = newVisitor;
-          } catch (_) {}
-          try {
-            c.vm = newVisitor;
-          } catch (_) {}
         }
       }
+      // The child widget object is the same one the sheet mounted, so a rebuild
+      // of this scope does not reach it: mark it dirty explicitly.
+      try {
+        c.markNeedsRebuild();
+      } catch (_) {}
     } catch (_) {}
+
+    _contentGeneration += 1;
 
     // 3. Trigger rebuild of this scope in the sheet's DNTree
     try {
@@ -260,23 +266,31 @@ class NativeBottomSheetScopeState extends State<NativeBottomSheetScope> {
 
     // 4. Invalidate detents so the native sheet adjusts its height post-frame
     try {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        try {
-          widget.controller.invalidateDetents();
-        } catch (_) {}
-      });
-    } catch (_) {
+      final controller = scopeWidget.controller;
       try {
-        widget.controller.invalidateDetents();
-      } catch (_) {}
-    }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          try {
+            controller.invalidateDetents();
+          } catch (_) {}
+        });
+      } catch (_) {
+        controller.invalidateDetents();
+      }
+    } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
+    final child = widget.child;
+    final isStateless = child is StatelessWidget && child is! StatefulWidget;
     return _InheritedNativeBottomSheetScope(
       state: this,
-      child: widget.child,
+      child: isStateless
+          ? KeyedSubtree(
+              key: ValueKey('sheet_content_gen_$_contentGeneration'),
+              child: child,
+            )
+          : child,
     );
   }
 }

@@ -7,6 +7,7 @@ import 'package:tom_ast_generator/tom_ast_generator.dart';
 
 import '../runner/bytecode/bundle_codec.dart';
 import '../runner/logger.dart';
+import '../runner/runtime_mode.dart';
 import 'bytecode_emitter.dart';
 
 /// Extended [AstConverter] that handles newer/unmapped analyzer nodes
@@ -80,6 +81,16 @@ class AstBuildResult {
   /// "no changes").
   final bool cached;
 
+  /// True when the sibling `guest.bc` was (re)generated successfully in this
+  /// build. False means no bytecode artifact exists for this fingerprint, so
+  /// callers must not serve a stale one.
+  final bool bytecodeBuilt;
+
+  /// Per-module content fingerprints (module URI → FNV-1a hex of the module's
+  /// serialized AST). Lets the device tell which modules actually changed
+  /// between reloads instead of re-declaring the whole bundle.
+  final Map<String, String> moduleFingerprints;
+
   const AstBuildResult({
     required this.success,
     required this.outputPath,
@@ -88,7 +99,58 @@ class AstBuildResult {
     this.entryPointUri = '',
     this.error,
     this.cached = false,
+    this.bytecodeBuilt = false,
+    this.moduleFingerprints = const {},
   });
+}
+
+/// FNV-1a 64-bit accumulator shared by source-tree and per-module hashing.
+class _Fnv1a64 {
+  int _hash = 0xcbf29ce484222325;
+  static const int _prime = 0x100000001b3;
+
+  void addByte(int byte) {
+    _hash ^= byte;
+    _hash = (_hash * _prime) & 0xFFFFFFFFFFFFFFFF;
+  }
+
+  void addBytes(List<int> bytes) {
+    for (final b in bytes) {
+      addByte(b);
+    }
+  }
+
+  void addString(String value) {
+    for (final c in value.codeUnits) {
+      addByte(c & 0xFF);
+      addByte((c >> 8) & 0xFF);
+    }
+  }
+
+  String get hex => _hash.toRadixString(16);
+}
+
+/// FNV-1a fingerprints for every compiled module, keyed by module URI.
+///
+/// Hashed from the serialized `SCompilationUnit` (not the source file) so the
+/// fingerprint is exact for what the interpreter will actually execute.
+Map<String, String> fingerprintBundleModules(Map<String, SCompilationUnit> modules) {
+  final out = <String, String>{};
+  modules.forEach((uri, unit) {
+    final hash = _Fnv1a64()..addString(jsonEncode(unit.toJson()));
+    out[uri] = hash.hex;
+  });
+  return out;
+}
+
+/// Last successfully computed per-module fingerprints for [projectDir].
+///
+/// Read by the dev server when serving `/manifest.json`. Empty when the project
+/// has never been built (or the bundle predates per-module fingerprints).
+Map<String, String> moduleFingerprintsForProject(Directory projectDir) {
+  return Map<String, String>.of(
+    _lastBuilds[projectDir.path]?.moduleFingerprints ?? const {},
+  );
 }
 
 /// Stub replacing `dartnative_plugin_registrant.dart` inside AST bundles.
@@ -291,12 +353,7 @@ Future<String> fingerprintGuestSources(
   Directory codeRoot, [
   Directory? projectDir,
 ]) async {
-  var hash = 0xcbf29ce484222325;
-  const prime = 0x100000001b3;
-  void mix(int byte) {
-    hash ^= byte;
-    hash = (hash * prime) & 0xFFFFFFFFFFFFFFFF;
-  }
+  final hash = _Fnv1a64();
 
   final files = <File>[];
   if (codeRoot.existsSync()) {
@@ -310,19 +367,12 @@ Future<String> fingerprintGuestSources(
   }
   files.sort((a, b) => a.path.compareTo(b.path));
   for (final f in files) {
-    final rel = f.path.replaceAll('\\', '/');
-    for (final c in rel.codeUnits) {
-      mix(c & 0xFF);
-      mix((c >> 8) & 0xFF);
-    }
+    hash.addString(f.path.replaceAll('\\', '/'));
     try {
-      final bytes = await f.readAsBytes();
-      for (final b in bytes) {
-        mix(b);
-      }
+      hash.addBytes(await f.readAsBytes());
     } catch (_) {}
   }
-  return hash.toRadixString(16);
+  return hash.hex;
 }
 
 class _LastBuild {
@@ -331,6 +381,8 @@ class _LastBuild {
   final int moduleCount;
   final int byteSize;
   final String entryPointUri;
+  final bool bytecodeBuilt;
+  final Map<String, String> moduleFingerprints;
 
   const _LastBuild({
     required this.fingerprint,
@@ -338,6 +390,8 @@ class _LastBuild {
     required this.moduleCount,
     required this.byteSize,
     required this.entryPointUri,
+    required this.bytecodeBuilt,
+    required this.moduleFingerprints,
   });
 }
 
@@ -399,7 +453,18 @@ Future<AstBuildResult> buildGuestAstBundle(
     final last = _lastBuilds[projectDir.path];
     if (last != null && last.outputPath == outFile.path) {
       final fp = await fingerprintGuestSources(codeRoot, projectDir);
-      if (fp == last.fingerprint && outFile.existsSync() && bcFile.existsSync()) {
+      if (fp == last.fingerprint && outFile.existsSync()) {
+        // The `.ast` artifact is the source of truth for the cache; a missing
+        // sibling `.bc` (deleted after a failed emit, or by hand) must not
+        // force a re-parse on every request.
+        final bcMissing = last.bytecodeBuilt && !bcFile.existsSync();
+        if (bcMissing) {
+          DartGoLogger.warn(
+            'guest.bc is missing for an unchanged source tree — force a '
+            'rebuild to regenerate the bytecode bundle.',
+            tag: 'AstBuilder',
+          );
+        }
         final size = await outFile.length();
         return AstBuildResult(
           success: true,
@@ -408,6 +473,8 @@ Future<AstBuildResult> buildGuestAstBundle(
           byteSize: size,
           entryPointUri: last.entryPointUri,
           cached: true,
+          bytecodeBuilt: last.bytecodeBuilt && !bcMissing,
+          moduleFingerprints: last.moduleFingerprints,
         );
       }
     }
@@ -437,20 +504,51 @@ Future<AstBuildResult> buildGuestAstBundle(
     bundle.saveToFile(outFile.path);
     final size = await outFile.length();
 
-    // Auto-build Bytecode bundle (.bc) alongside .ast so both runtimes stay in sync.
-    try {
-      final bcEmitter = BytecodeEmitter();
-      final bcBundle = bcEmitter.compileBundle(bundle);
-      final bcBytes = BytecodeBundleCodec.encodeBundle(bcBundle);
-      await bcFile.parent.create(recursive: true);
-      await bcFile.writeAsBytes(bcBytes, flush: true);
-    } catch (bcError, bcSt) {
-      DartGoLogger.warn(
-        'Bytecode auto-build error: $bcError\n$bcSt',
-        tag: 'AstBuilder',
-      );
+    // Auto-build Bytecode bundle (.bc) alongside .ast so both runtimes stay in
+    // sync. Skipped entirely while the Bytecode engine is disabled
+    // (kBytecodeEnabled) — nothing can select it, so the artifact would only cost
+    // build time.
+    //
+    // A failed emit is fatal *for bytecode*: the stale artifact is deleted so the
+    // dev server stops advertising `hasBytecodeBundle` and the device falls back
+    // to AST instead of executing a bundle that no longer matches the sources.
+    var bytecodeBuilt = false;
+    if (!kBytecodeEnabled) {
+      if (bcFile.existsSync()) {
+        try {
+          await bcFile.delete();
+        } catch (_) {}
+      }
+    } else {
+      try {
+        final bcEmitter = BytecodeEmitter();
+        final bcBundle = bcEmitter.compileBundle(bundle);
+        final bcBytes = BytecodeBundleCodec.encodeBundle(bcBundle);
+        await bcFile.parent.create(recursive: true);
+        await bcFile.writeAsBytes(bcBytes, flush: true);
+        bytecodeBuilt = true;
+      } catch (bcError, bcSt) {
+        var deletedStale = false;
+        try {
+          if (bcFile.existsSync()) {
+            await bcFile.delete();
+            deletedStale = true;
+          }
+        } catch (_) {}
+        DartGoLogger.error(
+          'Bytecode auto-build failed — guest.bc is unavailable'
+          '${deletedStale ? ' (deleted stale artifact)' : ''}',
+          bcError,
+          bcSt,
+        );
+        DartGoLogger.warn(
+          'Bytecode mode unavailable for this build; AST mode unaffected.',
+          tag: 'AstBuilder',
+        );
+      }
     }
 
+    final moduleFingerprints = fingerprintBundleModules(bundle.modules);
     final fp = await fingerprintGuestSources(codeRoot, projectDir);
     _lastBuilds[projectDir.path] = _LastBuild(
       fingerprint: fp,
@@ -458,13 +556,21 @@ Future<AstBuildResult> buildGuestAstBundle(
       moduleCount: bundle.modules.length,
       byteSize: size,
       entryPointUri: bundle.entryPointUri,
+      bytecodeBuilt: bytecodeBuilt,
+      moduleFingerprints: moduleFingerprints,
     );
     final writeMs = t3.elapsedMilliseconds;
     DartGoLogger.bench(
       'AstBuilder',
       'guest.ast & guest.bc generated',
       resolveMs + parseBundleMs + writeMs,
-      {'resolve': resolveMs, 'parse': parseBundleMs, 'write': writeMs},
+      {
+        'resolve': resolveMs,
+        'parse': parseBundleMs,
+        'write': writeMs,
+        'bytecode': bytecodeBuilt ? 'ok' : 'failed',
+        'module_fps': moduleFingerprints.length,
+      },
     );
 
     return AstBuildResult(
@@ -473,6 +579,8 @@ Future<AstBuildResult> buildGuestAstBundle(
       moduleCount: bundle.modules.length,
       byteSize: size,
       entryPointUri: bundle.entryPointUri,
+      bytecodeBuilt: bytecodeBuilt,
+      moduleFingerprints: moduleFingerprints,
     );
   } catch (e, st) {
     return AstBuildResult(

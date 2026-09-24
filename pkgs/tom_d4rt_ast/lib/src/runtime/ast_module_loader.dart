@@ -48,6 +48,11 @@ class AstModuleLoader implements ModuleContext {
   /// Pre-parsed modules from the bundle, keyed by URI string.
   final Map<String, SCompilationUnit> modules;
 
+  /// Per-module content fingerprints (module URI → hash) supplied by the
+  /// embedder, used to skip re-declaring modules that did not change (Phase 5).
+  /// A module with no fingerprint is always re-declared.
+  final Map<String, String> moduleFingerprints;
+
   @override
   final Environment globalEnvironment;
 
@@ -102,6 +107,7 @@ class AstModuleLoader implements ModuleContext {
     required this.modules,
     required this.globalEnvironment,
     required this.runner,
+    this.moduleFingerprints = const {},
     this.sharedBridgedModuleEnvironments,
     this.sharedModuleEnclosing,
     this.onBridgedModuleEnvBuilt,
@@ -199,7 +205,7 @@ class AstModuleLoader implements ModuleContext {
     final uriString = uri.toString();
     final ast = modules[uriString];
     if (ast != null) {
-      return _loadBundleModule(uri, ast);
+      return _loadBundleModule(uri, ast, fingerprint: moduleFingerprints[uriString]);
     }
 
     // 5. Not found
@@ -777,10 +783,54 @@ class AstModuleLoader implements ModuleContext {
   /// 4. Run interpreter visitor (initialize values)
   /// 5. Build exported environment
   /// 6. Cache and return
-  LoadedModule _loadBundleModule(Uri uri, SCompilationUnit ast) {
+  LoadedModule _loadBundleModule(
+    Uri uri,
+    SCompilationUnit ast, {
+    String? fingerprint,
+  }) {
     // Save and set current library for relative import resolution
     final previousLibrary = currentLibrary;
     currentLibrary = uri;
+
+    // Phase 5: an unchanged module is reused from the registry's cross-
+    // generation cache instead of being re-declared. Its environment is
+    // re-parented to the current generation's global environment so name
+    // lookups chain into the live generation; every mutable binding inside it is
+    // a registry cell, so state stays shared rather than duplicated.
+    final registry = runner.declarationRegistry;
+    if (registry != null) {
+      final cached = registry.cachedModule(uri.toString(), fingerprint);
+      if (cached is LoadedModule) {
+        cached.environment.reparentTo(globalEnvironment);
+        cached.exportedEnvironment.reparentTo(globalEnvironment);
+        _moduleCache[uri] = cached;
+        // The module itself is reused, but its import and export merges run
+        // again against the current generation's dependencies. Without this a
+        // reused importer never sees names its dependencies ADD later: the
+        // cached environment keeps whatever the declaring generation merged,
+        // so a class moved into (or added to) a dependency stays "Undefined"
+        // no matter how often the dependency itself reloads. The merge keeps
+        // its conflict rules — `sameDeclaration` skips bindings that denote
+        // the same declaration, and every mutable binding is a registry cell
+        // shared by reference — so re-running it only adds or refreshes.
+        // Dependency loading terminates on cycles through [_moduleCache]
+        // (populated above) and [_inFlightModules], exactly like the
+        // declaration path.
+        _processImports(uri, ast, cached.environment);
+        _processExports(uri, ast, cached.exportedEnvironment);
+        // Restore the library context before returning: a caller resolving a
+        // RELATIVE import after this point must resolve against ITS OWN module,
+        // not against the reused one. Without this, a relative import in the
+        // importing module (e.g. `import 'dartnative_plugin_registrant.dart';`
+        // in lib/main.dart) resolves against the reused module's URI and fails
+        // to load.
+        currentLibrary = previousLibrary;
+        Logger.debug(
+          '[AstModuleLoader] Reusing unchanged module: $uri',
+        );
+        return cached;
+      }
+    }
 
     Logger.debug('[AstModuleLoader] Processing bundle module: $uri');
 
@@ -804,20 +854,33 @@ class AstModuleLoader implements ModuleContext {
     );
     _inFlightModules[uri] = inFlight;
 
-    // Process import directives first (before declarations)
-    _processImports(uri, ast, moduleEnv);
-
-    // Declaration pass — populate environment with names
-    final declVisitor = DeclarationVisitor(moduleEnv);
+    // Declaration pass — populate environment with names. This runs BEFORE
+    // imports: through a cyclic import the fresh environment can already hold
+    // the previous generation's object under an own-declaration name (merged
+    // from a reused importer's exports), and Pass 1 must still plant a fresh
+    // placeholder for it — otherwise Pass 2 wires members onto the previous
+    // generation's (already frozen) class object. The import merge below keeps
+    // its conflict rules: `sameDeclaration` skips an import that denotes the
+    // same declaration, so the fresh placeholder survives, and a genuinely
+    // different definition still wins the merge (GEN-100).
+    final declVisitor = DeclarationVisitor(
+      moduleEnv,
+      declarationRegistry: runner.declarationRegistry,
+      moduleUri: uri.toString(),
+    );
     for (final decl in ast.declarations) {
       decl.accept<void>(declVisitor);
     }
+
+    // Process import directives (after own declarations, see above)
+    _processImports(uri, ast, moduleEnv);
 
     // Interpretation pass — initialize values, process class/enum bodies
     final interpreter = InterpreterVisitor(
       globalEnvironment: moduleEnv,
       moduleContext: this,
       initialLibrary: uri,
+      declarationRegistry: runner.declarationRegistry,
     );
 
     // Order matters: enums → classes/mixins → functions → extensions → variables
@@ -835,6 +898,7 @@ class AstModuleLoader implements ModuleContext {
     // were handed, so every reference to this module is the same object.
     final module = inFlight.partial;
     _moduleCache[uri] = module;
+    registry?.cacheModule(uri.toString(), fingerprint, module);
     _inFlightModules.remove(uri);
 
     // DFUB10 — this module's exports are complete now, so replay every merge

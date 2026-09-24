@@ -19,11 +19,19 @@ void main() {
     });
 
     test('persists mode change in memory and survives load', () async {
+      // A Bytecode preference is only honoured while the engine is enabled;
+      // otherwise loading falls back to the default engine.
       await RuntimeModeStorage.saveMode(RuntimeMode.bytecode);
-      expect(RuntimeModeStorage.currentMode, equals(RuntimeMode.bytecode));
-
-      final loaded = await RuntimeModeStorage.loadMode();
-      expect(loaded, equals(RuntimeMode.bytecode));
+      expect(
+        RuntimeModeStorage.currentMode,
+        equals(kBytecodeEnabled ? RuntimeMode.bytecode : RuntimeMode.ast),
+      );
+      expect(
+        await RuntimeModeStorage.loadMode(),
+        equals(
+          kBytecodeEnabled ? RuntimeMode.bytecode : RuntimeMode.ast,
+        ),
+      );
 
       await RuntimeModeStorage.saveMode(RuntimeMode.source);
       expect(RuntimeModeStorage.currentMode, equals(RuntimeMode.source));
@@ -36,8 +44,16 @@ void main() {
 
     test('resetForTesting can seed initial mode', () async {
       RuntimeModeStorage.resetForTesting(RuntimeMode.bytecode);
-      expect(RuntimeModeStorage.currentMode, equals(RuntimeMode.bytecode));
-      expect(await RuntimeModeStorage.loadMode(), equals(RuntimeMode.bytecode));
+      expect(
+        RuntimeModeStorage.currentMode,
+        equals(kBytecodeEnabled ? RuntimeMode.bytecode : RuntimeMode.ast),
+      );
+      expect(
+        await RuntimeModeStorage.loadMode(),
+        equals(
+          kBytecodeEnabled ? RuntimeMode.bytecode : RuntimeMode.ast,
+        ),
+      );
     });
   });
 }

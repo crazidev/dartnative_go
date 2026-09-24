@@ -4,6 +4,13 @@ import 'package:dartnative_go/src/runner/bytecode/opcodes.dart';
 import 'package:dartnative_go/src/runner/bytecode/vm.dart';
 import 'package:test/test.dart';
 
+/// The Bytecode engine is disabled by default (`kBytecodeEnabled`). Re-enable it
+/// for a run with `--dart-define=DN_ENABLE_BYTECODE=true`.
+const _bytecodeEnabled = bool.fromEnvironment('DN_ENABLE_BYTECODE');
+String get _bytecodeSkipReason =>
+    'Bytecode engine disabled — re-run with '
+    '--dart-define=DN_ENABLE_BYTECODE=true';
+
 void main() {
   group('BytecodeVM Execution & Hot-Patching', () {
     late BytecodeVM vm;
@@ -484,5 +491,7 @@ void main() {
       instance.syncClass(screenClassV3, vm);
       expect(instance.fields['title'], equals('My App'));
     });
-  });
+  },
+  skip: _bytecodeEnabled ? false : _bytecodeSkipReason,
+);
 }

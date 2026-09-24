@@ -28,6 +28,13 @@ Future<BytecodeVM> compileAndRun(String source) async {
   return vm;
 }
 
+/// The Bytecode engine is disabled by default (`kBytecodeEnabled`). Re-enable it
+/// for a run with `--dart-define=DN_ENABLE_BYTECODE=true`.
+const _bytecodeEnabled = bool.fromEnvironment('DN_ENABLE_BYTECODE');
+String get _bytecodeSkipReason =>
+    'Bytecode engine disabled — re-run with '
+    '--dart-define=DN_ENABLE_BYTECODE=true';
+
 void main() {
   group('scratch repro', () {
     test('const EdgeInsets padding applied to Container', () async {
@@ -461,7 +468,9 @@ void main() {
       final text = proxy.build(FakeBuildContext()) as Text;
       expect(text.data, equals('reloaded'));
     });
-  });
+  },
+  skip: _bytecodeEnabled ? false : _bytecodeSkipReason,
+);
 }
 
 class FakeBuildContext implements BuildContext {

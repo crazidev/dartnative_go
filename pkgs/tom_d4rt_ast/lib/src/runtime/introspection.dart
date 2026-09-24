@@ -490,8 +490,11 @@ class IntrospectionBuilder {
         fields.add(variable.name?.name ?? '');
       }
     }
-    // Include static fields
-    for (final fieldName in klass.staticFields.keys) {
+    // Include static fields (cell-backed statics included — Phase 3)
+    for (final fieldName in {
+      ...klass.staticFields.keys,
+      ...klass.staticCells.keys,
+    }) {
       if (!fields.contains(fieldName)) {
         fields.add(fieldName);
       }

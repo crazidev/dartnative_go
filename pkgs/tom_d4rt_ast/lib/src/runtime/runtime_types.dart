@@ -25,7 +25,35 @@ class InterpretedClass implements Callable, RuntimeType {
   final Map<String, InterpretedFunction> staticMethods;
   final Map<String, InterpretedFunction> staticGetters;
   final Map<String, InterpretedFunction> staticSetters;
+
+  /// Raw static storage: bridge-registered statics, legacy entries and
+  /// non-cell fallbacks. Script-declared statics live in [staticCells] instead,
+  /// so this map never holds a stale mirror of them.
   final Map<String, Object?> staticFields;
+
+  /// Cell-backed static storage (Phase 3). The cells come from the declaration
+  /// registry and therefore outlive this class object across hot reloads, while
+  /// this map is rebuilt per generation.
+  final Map<String, VariableCell> staticCells = {};
+
+  /// Module URI this class was declared in. Part of its cross-generation
+  /// identity (`(moduleUri, name)`), so two same-named classes from different
+  /// libraries never compare as the same type.
+  String? moduleUri;
+
+  /// Stable cell for this declaration (Phase 4). Set by the declaration pass;
+  /// instances created from this class read their class through it, so they
+  /// follow the reloaded version.
+  ClassCell? classCell;
+
+  /// Stable identity of this declaration across hot-reload generations.
+  String get declarationIdentity =>
+      moduleUri == null ? name : '${moduleUri!}#$name';
+
+  /// True when [other] is this same declaration, possibly from another
+  /// generation (identity, or equal module + name).
+  bool isSameClassAs(InterpretedClass other) =>
+      identical(this, other) || declarationIdentity == other.declarationIdentity;
   final Map<String, InterpretedFunction> constructors;
   // Map for operator methods (e.g., '+', '==', '[]', etc.)
   final Map<String, InterpretedFunction> operators;
@@ -376,8 +404,15 @@ class InterpretedClass implements Callable, RuntimeType {
     return null;
   }
 
-  // Get/Set static field values (no change needed here)
+  // Get/Set static field values
+  //
+  // Phase 3: a cell-backed static (a script-declared `static` field wired by
+  // InterpreterVisitor with a DeclarationRegistry) owns its storage, so the
+  // value survives a hot reload whenever its initializer is unchanged. The raw
+  // `staticFields` map keeps bridge/legacy entries and stays the fallback.
   Object? getStaticField(String name) {
+    final cell = staticCells[name];
+    if (cell != null) return cell.read();
     if (staticFields.containsKey(name)) {
       final fieldValue = staticFields[name];
       if (fieldValue is LateVariable) {
@@ -392,6 +427,11 @@ class InterpretedClass implements Callable, RuntimeType {
   }
 
   void setStaticField(String name, Object? value) {
+    final cell = staticCells[name];
+    if (cell != null) {
+      cell.write(value);
+      return;
+    }
     if (staticFields.containsKey(name)) {
       final fieldValue = staticFields[name];
       if (fieldValue is LateVariable) {
@@ -1071,13 +1111,16 @@ class InterpretedClass implements Callable, RuntimeType {
   @override
   bool isSubtypeOf(RuntimeType other, {Object? value}) {
     if (other is InterpretedClass) {
-      // Check for identity (reflexive)
-      if (this == other) return true;
+      // Check for identity (reflexive), including across hot-reload
+      // generations: the same declaration is (moduleUri, name), and an
+      // instance's `klass` already resolves to the current version through its
+      // ClassCell (Phase 4).
+      if (isSameClassAs(other)) return true;
 
       // Check direct inheritance (superclass chain)
       InterpretedClass? current = superclass;
       while (current != null) {
-        if (current == other) return true;
+        if (current.isSameClassAs(other)) return true;
         current = current.superclass;
       }
 
@@ -1144,7 +1187,19 @@ class InterpretedClass implements Callable, RuntimeType {
 
 /// Represents an instance of an InterpretedClass at runtime.
 class InterpretedInstance implements RuntimeValue {
-  final InterpretedClass klass;
+  /// Class this instance was created from. Read through [klass] in normal
+  /// operation — kept only as the fallback for registry-less embedders.
+  final InterpretedClass _classObject;
+
+  /// Stable cell for [_classObject]'s declaration, when the registry is active.
+  /// Through it the instance dispatches to the LATEST generation of the class
+  /// (Phase 4): a body edit is picked up, a newly added method becomes visible,
+  /// and `is`/`as` against the reloaded type succeed.
+  final ClassCell? _classCell;
+
+  /// The class version this instance dispatches through.
+  InterpretedClass get klass => _classCell?.current ?? _classObject;
+
   // Fields are stored here, mapping name to value
   final Map<String, Object?> _fields = {};
 
@@ -1187,7 +1242,15 @@ class InterpretedInstance implements RuntimeValue {
   // Store generic type arguments for this instance (e.g., for List<String>, this would be [StringType])
   final List<RuntimeType>? typeArguments;
 
-  InterpretedInstance(this.klass, {this.typeArguments}) {
+  /// Creates an instance of [klass].
+  ///
+  /// When the class is registry-backed (Phase 4) the instance captures the
+  /// class's *cell*, so it dispatches through the latest published class
+  /// version rather than freezing on the class object that existed at
+  /// construction time.
+  InterpretedInstance(InterpretedClass klass, {this.typeArguments})
+    : _classObject = klass,
+      _classCell = klass.classCell {
     D4rtDiag.instanceAllocs++;
   }
 
@@ -2141,9 +2204,13 @@ class InterpretedInstance implements RuntimeValue {
 // Represents 'super' bound to an instance and a starting class for lookup
 class BoundSuper {
   final InterpretedInstance instance; // The actual 'this' instance
-  final InterpretedClass startLookupClass; // The superclass where lookup begins
 
-  BoundSuper(this.instance, this.startLookupClass);
+  /// Class the `super` walk starts from, resolved through the instance's class
+  /// cell so a `super` call made after a reload follows the current
+  /// generation's hierarchy (Phase 4).
+  InterpretedClass get startLookupClass => instance.klass;
+
+  BoundSuper(this.instance, [InterpretedClass? startLookupClass]);
 }
 
 /// Represents 'super' bound to an instance when the direct superclass is bridged.
@@ -2250,6 +2317,29 @@ class InterpretedEnum implements RuntimeType {
   final Map<String, InterpretedFunction> staticSetters =
       FrozenNameMap<InterpretedFunction>();
   final Map<String, Object?> staticFields = {};
+
+  /// Cell-backed enum statics (Phase 3c); read through [getStaticFieldValue] /
+  /// written through [setStaticFieldValue] so a reload keeps their state.
+  final Map<String, VariableCell> staticCells = {};
+
+  /// Reads an enum static, preferring cell-backed storage.
+  Object? getStaticFieldValue(String name) {
+    final cell = staticCells[name];
+    if (cell != null) return cell.read();
+    return staticFields[name];
+  }
+
+  bool hasStaticField(String name) =>
+      staticCells.containsKey(name) || staticFields.containsKey(name);
+
+  void setStaticFieldValue(String name, Object? value) {
+    final cell = staticCells[name];
+    if (cell != null) {
+      cell.write(value);
+      return;
+    }
+    staticFields[name] = value;
+  }
   final Map<String, InterpretedFunction> constructors =
       FrozenNameMap<InterpretedFunction>();
 
@@ -2323,13 +2413,23 @@ class InterpretedEnum implements RuntimeType {
 
 /// Represents a specific value within an enum at runtime.
 class InterpretedEnumValue implements RuntimeValue /* Add RuntimeValue */ {
-  final InterpretedEnum parentEnum;
+  /// Owning enum. Mutable so a hot reload can re-point a *preserved* value at
+  /// the new generation's enum object (Phase 3c) — without that, a value kept
+  /// across a reload compared unequal to the freshly created one.
+  InterpretedEnum parentEnum;
   final String name;
   final int index;
   final Map<String, Object?> _fields = {};
 
   // Constructor now needs the parent Enum definition
   InterpretedEnumValue(this.parentEnum, this.name, this.index);
+
+  /// Re-points this preserved value at [next]'s enum generation, keeping its
+  /// field state. Called by the declaration pass when the enum's constant list
+  /// is unchanged across a reload.
+  void rebindParent(InterpretedEnum next) {
+    parentEnum = next;
+  }
 
   @override
   String toString() => '${parentEnum.name}.$name';

@@ -15,9 +15,13 @@ class RuntimeModeStorage {
   /// Loads the persisted [RuntimeMode].
   ///
   /// Falls back to in-memory mode or [kDefaultRuntimeMode] (AST)
-  /// if storage is unavailable (e.g. headless host tests).
+  /// if storage is unavailable (e.g. headless host tests). A persisted
+  /// Bytecode choice is ignored while the engine is disabled
+  /// ([kBytecodeEnabled]) so a stale preference cannot lock the app into a mode
+  /// it cannot run.
   static Future<RuntimeMode> loadMode() async {
-    if (_memoryMode != null) return _memoryMode!;
+    final cached = _memoryMode;
+    if (cached != null) return cached.isSelectable ? cached : kDefaultRuntimeMode;
     try {
       final prefs = _prefs ??= await SharedPreferences.getInstance();
       final saved = prefs.getString(kStorageKey);
@@ -25,12 +29,17 @@ class RuntimeModeStorage {
       _memoryMode = mode;
       return mode;
     } catch (_) {
-      return _memoryMode ?? kDefaultRuntimeMode;
+      final memory = _memoryMode;
+      return memory != null && memory.isSelectable ? memory : kDefaultRuntimeMode;
     }
   }
 
   /// Synchronous getter for the currently known mode, or [kDefaultRuntimeMode].
-  static RuntimeMode get currentMode => _memoryMode ?? kDefaultRuntimeMode;
+  static RuntimeMode get currentMode {
+    final mode = _memoryMode;
+    if (mode == null) return kDefaultRuntimeMode;
+    return mode.isSelectable ? mode : kDefaultRuntimeMode;
+  }
 
   /// Persists [mode] and updates in-memory cache immediately.
   static Future<void> saveMode(RuntimeMode mode) async {

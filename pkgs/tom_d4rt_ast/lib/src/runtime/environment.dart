@@ -152,8 +152,13 @@ class LazyBridgeRegistry<K> extends MapBase<K, BridgedClass> {
 /// final value = functionEnv.get('globalVar');
 /// ```
 class Environment {
-  final Environment? _enclosing;
+  Environment? _enclosing;
   final Map<String, Object?> _values = {};
+
+  /// Cell-backed bindings (Phase 3). Deliberately disjoint from [_values]: a
+  /// name lives in exactly one of the two maps, so no reader can ever see a
+  /// stale mirror of a cell's storage.
+  final Map<String, VariableCell> _cells = {};
 
   // ── S3b additive slot runtime (perf plan_3 §4.6 / §9.3) ───────────────────
   // Per-frame slot array for resolver-eligible block locals (a local read only
@@ -283,17 +288,11 @@ class Environment {
   Map<String, Environment> get _prefixedImportsOrNew =>
       _prefixedImportsRaw ??= {};
 
-  /// OPEN B.9 — when this environment is the top execution scope of a static
-  /// member, it holds *snapshots* of the owner class's static fields so that
-  /// bare-identifier reads resolve without a class prefix. This marker records
-  /// the owning class so that a bare-identifier *write* to one of those
-  /// snapshotted fields can be propagated back to the class's authoritative
-  /// static slot (`InterpretedClass.setStaticField`). Without it, the write
-  /// would only mutate the discarded local snapshot and never survive the call.
-  ///
-  /// Only set on the static-member execution environment itself; a shadowing
-  /// local declared in a nested block lives in a different (unmarked)
-  /// environment, so the propagation stays shadow-safe.
+  /// Retired with the Phase 3 cell-backed statics: a static member's execution
+  /// scope now shares the class's storage cells, so bare reads *and* writes hit
+  /// the authoritative slot and no write-back propagation is required.
+  /// Kept as a deprecated no-op field so out-of-tree embedders still compile.
+  @Deprecated('static storage is shared through VariableCell now')
   InterpretedClass? staticFieldSnapshotOwner;
 
   /// Creates a new environment, optionally with an enclosing (parent) environment.
@@ -306,8 +305,51 @@ class Environment {
   /// Gets the enclosing (parent) environment, if any.
   Environment? get enclosing => _enclosing;
 
+  /// Re-points this frame at a new parent (Phase 5 module reuse).
+  ///
+  /// Used when a cached module is adopted by a later generation: the module's
+  /// own frame and its export frame keep their bindings (which are registry
+  /// cells) while name lookups chain into the CURRENT generation's global
+  /// environment instead of the one that was live when they were built.
+  void reparentTo(Environment? parent) {
+    _enclosing = parent;
+  }
+
   /// Gets the map of variable bindings in this environment.
   Map<String, Object?> get values => _values;
+
+  /// Cell-backed bindings (Phase 3). A name in this map is NOT in [_values]:
+  /// its storage lives in the [VariableCell], so raw readers of [values] can
+  /// never observe a stale mirror. Use [readBinding] / [bindingNames] to see
+  /// both kinds.
+  Map<String, VariableCell> get cells => _cells;
+
+  /// Reads [name] from this frame only, transparently unwrapping a
+  /// [VariableCell]. Returns [kNotFound] when this frame has no such binding.
+  Object? readBinding(String name) {
+    if (_cells.containsKey(name)) return _cells[name]!.read();
+    if (_values.containsKey(name)) return _values[name];
+    return kNotFound;
+  }
+
+  /// Every binding name in this frame, raw and cell-backed.
+  Iterable<String> get bindingNames => {..._values.keys, ..._cells.keys};
+
+  /// Number of bindings in this frame, raw and cell-backed.
+  int get bindingCount => _values.length + _cells.length;
+
+  /// Installs [cell] as this frame's storage for [name].
+  ///
+  /// Any raw entry for the same name is dropped so the two storage kinds can
+  /// never shadow each other.
+  void defineCell(String name, VariableCell cell) {
+    _values.remove(name);
+    _cells[name] = cell;
+  }
+
+  /// Cell for [name] in this frame, or null.
+  VariableCell? cellFor(String name) =>
+      _cells.containsKey(name) ? _cells[name] : null;
 
   /// Gets the names of all bridged classes registered in this environment.
   List<String> get bridgedClassNames => _bridgedClasses.keys.toList();
@@ -372,7 +414,8 @@ class Environment {
   /// and [_bridgedClassesLookupByType] are left intact — bridge
   /// registrations survive a reset by design.
   bool removeLocalValue(String name) {
-    if (!_values.containsKey(name)) return false;
+    final hadCell = _cells.remove(name) != null;
+    if (!_values.containsKey(name)) return hadCell;
     _values.remove(name);
     return true;
   }
@@ -560,9 +603,24 @@ class Environment {
     Set<String>? show,
     Set<String>? hide,
   }) {
-    (_unprefixedImportsRaw ??= []).add(
-      _UnprefixedImport(libraryUri, surface, show, hide),
+    final records = (_unprefixedImportsRaw ??= []);
+    // A reused module re-runs its import merges every reload: replace the
+    // previous record for the same import instead of accumulating a duplicate
+    // per generation. The fresh surface is strictly better — the old one is a
+    // previous generation's environment object.
+    records.removeWhere(
+      (record) =>
+          record.libraryUri == libraryUri &&
+          _sameCombinators(record.show, show) &&
+          _sameCombinators(record.hide, hide),
     );
+    records.add(_UnprefixedImport(libraryUri, surface, show, hide));
+  }
+
+  static bool _sameCombinators(Set<String>? a, Set<String>? b) {
+    if (identical(a, b)) return true;
+    if (a == null || b == null) return false;
+    return a.length == b.length && a.containsAll(b);
   }
 
   /// Resolves [name], which [owner] holds as ambiguous over [candidates]
@@ -1492,6 +1550,18 @@ class Environment {
         }
       }
 
+      // Cell-backed binding wins over a raw entry (the two maps are disjoint,
+      // so this is a single map probe on the hot path).
+      final cell = env._cells[name];
+      if (cell != null) {
+        if (Logger.isDebug) {
+          Logger.debug(
+            '[Env.get] Found cell-backed \'$name\' locally in env: ${env.hashCode}',
+          );
+        }
+        return cell.read();
+      }
+
       // Normal search. Single probe: read once, only re-check `containsKey`
       // when the read returned null (key-mapped-to-null vs absent).
       final localValue = env._values[name];
@@ -1579,6 +1649,17 @@ class Environment {
         "[Env.assign] Attempting to assign '$name' = $value in env: $hashCode",
       );
     }
+    final cell = _cells[name];
+    if (cell != null) {
+      cell.write(value);
+      // S3b additive: a slotted local's slot mirror stays in sync when the
+      // write arrives through a path other than the original `define`.
+      if (_slotIndex != null) {
+        final slot = _slotIndex![name];
+        if (slot != null) _slots![slot] = value;
+      }
+      return value;
+    }
     if (_values.containsKey(name)) {
       final existing = _values[name];
 
@@ -1634,16 +1715,14 @@ class Environment {
       );
     }
 
-    if (_enclosing != null) {
+    final parent = _enclosing;
+    if (parent != null) {
       if (Logger.isDebug) {
         Logger.debug(
-          " [Env.assign] '$name' not found locally, assigning in parent env: ${_enclosing.hashCode}",
+          " [Env.assign] '$name' not found locally, assigning in parent env: ${parent.hashCode}",
         );
       }
-      return _enclosing.assign(
-        name,
-        value,
-      ); // Delegate to the parent environment
+      return parent.assign(name, value); // Delegate to the parent environment
     }
 
     Logger.debug(
@@ -1654,14 +1733,16 @@ class Environment {
 
   // Check if a variable is defined in *this* specific scope
   bool isDefinedLocally(String name) {
-    return _values.containsKey(name);
+    return _cells.containsKey(name) || _values.containsKey(name);
   }
 
-  /// Gets the raw value for a variable if defined locally, without GlobalGetter unwrapping.
+  /// Gets the raw value for a variable if defined locally, without GlobalGetter
+  /// unwrapping and without cell initialization.
   ///
   /// This is useful when you need to access the GlobalGetter wrapper itself
   /// rather than the value it returns. Returns null if not defined locally.
   Object? getRawValueIfDefined(String name) {
+    if (_cells.containsKey(name)) return _cells[name]!.rawValue;
     if (_values.containsKey(name)) {
       return _values[name];
     }
@@ -1670,11 +1751,12 @@ class Environment {
 
   // Find the environment where a variable is defined
   Environment? findDefiningEnvironment(String name) {
-    if (_values.containsKey(name)) {
+    if (_cells.containsKey(name) || _values.containsKey(name)) {
       return this;
     }
-    if (_enclosing != null) {
-      return _enclosing.findDefiningEnvironment(name);
+    final parent = _enclosing;
+    if (parent != null) {
+      return parent.findDefiningEnvironment(name);
     }
     return null; // Not found in this scope or any enclosing scope
   }
@@ -1988,6 +2070,21 @@ class Environment {
       }
     });
 
+    // Share cell-backed bindings by reference (Phase 3): an importer must
+    // observe the same storage as the exporting module, otherwise a reload or a
+    // write in one frame would be invisible in the other.
+    _cells.forEach((name, cell) {
+      bool include = true;
+      if (showNames != null) {
+        include = showNames.contains(name);
+      } else if (hideNames != null) {
+        include = !hideNames.contains(name);
+      }
+      if (include) {
+        newEnv._cells[name] = cell;
+      }
+    });
+
     // Filter _bridgedClasses and rebuild _bridgedClassesLookupByType
     _bridgedClasses.forEach((name, bridgedClass) {
       bool include = true;
@@ -2093,11 +2190,37 @@ class Environment {
       );
     }
 
+    // Two values that denote the same declaration are not a conflict, even
+    // when they are different objects: a hot reload builds a fresh class object
+    // per generation, and function shells are stable across generations.
+    bool sameDeclaration(Object? a, Object? b) {
+      if (identical(a, b)) return true;
+      if (a is InterpretedClass && b is InterpretedClass) {
+        return a.isSameClassAs(b);
+      }
+      if (a is InterpretedFunction && b is InterpretedFunction) {
+        return a.signatureKey == b.signatureKey && a.ownerType == b.ownerType;
+      }
+      return false;
+    }
+
     // Perform the merge from sourceEnvToImportFrom
     sourceEnvToImportFrom._values.forEach((name, value) {
+      if (_cells.containsKey(name)) {
+        // A cell-backed binding of the same name wins over an imported raw
+        // value only if it is literally the same storage; otherwise the import
+        // replaces it (GEN-100 import-wins semantics).
+        if (errorOnConflict) {
+          throw RuntimeD4rtException(
+            "Name conflict in environment: Symbol '$name' is already defined.",
+          );
+        }
+        _cells.remove(name);
+      }
       if (_values.containsKey(name)) {
-        // Allow if it's the same value (e.g., same class/function imported via different paths)
-        if (!identical(_values[name], value)) {
+        // Allow if it's the same declaration (e.g. same class/function imported
+        // via different paths, possibly from another hot-reload generation).
+        if (!sameDeclaration(_values[name], value)) {
           if (errorOnConflict) {
             // Cluster EXPORT (I-MISC-40/41): export-merge cannot silently
             // overwrite — a library that re-publishes two different
@@ -2134,6 +2257,27 @@ class Environment {
         );
       }
       _values[name] = value;
+    });
+
+    // Share cell-backed bindings by reference: an imported top-level variable
+    // must be the SAME storage the exporting module reads and writes, so a
+    // reload (or a write through either frame) is visible on both sides.
+    sourceEnvToImportFrom._cells.forEach((name, cell) {
+      final existingCell = _cells[name];
+      if (existingCell != null) {
+        if (identical(existingCell, cell)) return;
+        if (errorOnConflict) {
+          throw RuntimeD4rtException(
+            "Name conflict in environment: Symbol '$name' is already defined.",
+          );
+        }
+        Logger.debug(
+          "[Environment.importEnvironment] Overriding cell-backed value '$name' "
+          "with the imported declaration",
+        );
+      }
+      _values.remove(name);
+      _cells[name] = cell;
     });
 
     sourceEnvToImportFrom._bridgedClasses.forEach((name, bridgedClass) {

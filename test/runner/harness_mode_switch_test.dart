@@ -26,31 +26,46 @@ int main() => add(20, 22);
 
 void main() {
   group('runtime mode defaults', () {
-    test('AST is the default, with Bytecode and Source engines available', () {
+    test('AST is the default; Bytecode availability follows the flag', () {
       expect(kUseAst, isTrue);
+      expect(kUseBytecode, isFalse);
       expect(kDefaultRuntimeMode, equals(RuntimeMode.ast));
       expect(runtimeModeFromBool(false), equals(RuntimeMode.source));
       expect(runtimeModeFromBool(true), equals(RuntimeMode.ast));
-      expect(runtimeModeFromBool(false, true), equals(RuntimeMode.bytecode));
       expect(RuntimeMode.ast.label, contains('AST'));
       expect(RuntimeMode.source.label, contains('Source'));
       expect(RuntimeMode.bytecode.label, contains('Bytecode'));
 
-      // Cycle order: AST -> Bytecode -> Source -> AST
-      expect(RuntimeMode.ast.next, equals(RuntimeMode.bytecode));
-      expect(RuntimeMode.bytecode.next, equals(RuntimeMode.source));
-      expect(RuntimeMode.source.next, equals(RuntimeMode.ast));
-
-      // Flags
+      // Flags are independent of the kill switch.
       expect(flagsFromRuntimeMode(RuntimeMode.ast), equals((true, false)));
-      expect(flagsFromRuntimeMode(RuntimeMode.bytecode), equals((false, true)));
       expect(flagsFromRuntimeMode(RuntimeMode.source), equals((false, false)));
 
       // Name resolution
       expect(runtimeModeFromName('ast'), equals(RuntimeMode.ast));
-      expect(runtimeModeFromName('bytecode'), equals(RuntimeMode.bytecode));
       expect(runtimeModeFromName('source'), equals(RuntimeMode.source));
       expect(runtimeModeFromName('unknown'), equals(RuntimeMode.ast));
+
+      if (kBytecodeEnabled) {
+        expect(runtimeModeFromBool(false, true), equals(RuntimeMode.bytecode));
+        expect(RuntimeMode.bytecode.isSelectable, isTrue);
+        // Cycle order: AST -> Bytecode -> Source -> AST
+        expect(RuntimeMode.ast.next, equals(RuntimeMode.bytecode));
+        expect(RuntimeMode.bytecode.next, equals(RuntimeMode.source));
+        expect(flagsFromRuntimeMode(RuntimeMode.bytecode), equals((false, true)));
+        expect(runtimeModeFromName('bytecode'), equals(RuntimeMode.bytecode));
+        expect(selectableRuntimeModes, hasLength(3));
+      } else {
+        // Disabled (default): Bytecode cannot be selected, cycled to, restored
+        // from storage, or resolved from a saved name.
+        expect(RuntimeMode.bytecode.isSelectable, isFalse);
+        expect(runtimeModeFromBool(false, true), equals(RuntimeMode.ast));
+        expect(RuntimeMode.ast.next, equals(RuntimeMode.source));
+        expect(RuntimeMode.source.next, equals(RuntimeMode.ast));
+        expect(flagsFromRuntimeMode(RuntimeMode.bytecode), equals((true, false)));
+        expect(runtimeModeFromName('bytecode'), equals(RuntimeMode.ast));
+        expect(selectableRuntimeModes, hasLength(2));
+      }
+      expect(RuntimeMode.source.next.isSelectable, isTrue);
     });
 
     test('harness starts in source mode and can switch', () {

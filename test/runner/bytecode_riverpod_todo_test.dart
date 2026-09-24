@@ -11,6 +11,13 @@ import 'package:test/test.dart';
 
 import '../test_lab/fixtures/riverpod_fixture.dart';
 
+/// The Bytecode engine is disabled by default (`kBytecodeEnabled`). Re-enable it
+/// for a run with `--dart-define=DN_ENABLE_BYTECODE=true`.
+const _bytecodeEnabled = bool.fromEnvironment('DN_ENABLE_BYTECODE');
+String get _bytecodeSkipReason =>
+    'Bytecode engine disabled — re-run with '
+    '--dart-define=DN_ENABLE_BYTECODE=true';
+
 void main() {
   group('Bytecode Riverpod Notifier & Global Provider Test', () {
     test('Top-level provider initialization and Notifier state updates', () async {
@@ -73,5 +80,7 @@ void main() {
       expect(firstTodo.fields['title'], 'Test Todo');
       expect(firstTodo.fields['description'], 'Testing bytecode riverpod');
     });
-  });
+  },
+  skip: _bytecodeEnabled ? false : _bytecodeSkipReason,
+);
 }

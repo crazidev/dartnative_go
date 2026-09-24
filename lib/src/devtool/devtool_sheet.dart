@@ -54,22 +54,18 @@ class _DevToolSheetState extends State<DevToolSheet> {
   late bool _verbose;
   late int _selectedModeIndex;
 
+  /// Segments follow [selectableRuntimeModes], so the disabled Bytecode engine
+  /// is not offered (kBytecodeEnabled).
   static int _modeToIndex(bool useAst, bool useBytecode) {
-    if (useBytecode) return 2; // Bytecode
-    if (useAst) return 1; // AST
-    return 0; // Source
+    final mode = runtimeModeFromBool(useAst, useBytecode);
+    final index = selectableRuntimeModes.indexOf(mode);
+    return index < 0 ? 0 : index;
   }
 
   static RuntimeMode _indexToMode(int index) {
-    switch (index) {
-      case 1:
-        return RuntimeMode.ast;
-      case 2:
-        return RuntimeMode.bytecode;
-      case 0:
-      default:
-        return RuntimeMode.source;
-    }
+    final modes = selectableRuntimeModes;
+    if (index < 0 || index >= modes.length) return kDefaultRuntimeMode;
+    return modes[index];
   }
 
   @override
@@ -282,11 +278,13 @@ class _DevToolSheetState extends State<DevToolSheet> {
                         SizedBox(width: 10),
                         Expanded(
                           child: SegmentedControl(
-                            segments: const [
-                              'Source',
-                              'AST',
-                              'Bytecode',
-                            ],
+                            segments: selectableRuntimeModes
+                                .map((m) => m == RuntimeMode.source
+                                    ? 'Source'
+                                    : m == RuntimeMode.ast
+                                    ? 'AST'
+                                    : 'Bytecode')
+                                .toList(),
                             selectedIndex: _selectedModeIndex,
                             onValueChanged: (index) {
                               if (index == _selectedModeIndex) return;

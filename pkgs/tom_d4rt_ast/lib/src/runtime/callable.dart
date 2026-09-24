@@ -48,37 +48,138 @@ class _ChildCollectorVisitor extends SAstVisitor<void> {
   }
 }
 
-// Represents a function or method defined by the user
+// Represents a function or method defined by the user.
+//
+// Hot-reload architecture: the function OBJECT is a stable shell. All
+// executable state (body, parameters, flags, owner type, constructor
+// initializers) lives in a [FunctionCode] payload held by a [FunctionCell].
+// The declaration registry publishes a new payload into the same cell on
+// reload, so every live reference to this function — class member tables,
+// bound tear-offs, timer/stream/future callbacks captured by native adapters —
+// observes the new body without being recreated. Shell identity also keeps the
+// runtime's identity-keyed caches valid: `InterpretedInstance._boundMethodCache`
+// and `InterpretedClass`'s member lookup caches are keyed by function object.
+//
+// A shell that the registry never adopts (closures, function expressions,
+// registry-less embedders) carries its payload inline via [_detachedCode] and
+// behaves exactly as before.
 class InterpretedFunction implements Callable {
-  final SFormalParameterList? _parameters;
-  final SAstNode _body;
-  final Environment _closure;
-  final String? _name;
-  // Add isInitializer flag for constructors
-  final bool isInitializer;
-  // Store constructor initializers
-  final List<SAstNode>? _constructorInitializers;
-  // Flags for getters and setters
-  final bool isGetter;
-  final bool isSetter;
+  /// Registry cell backing this shell. Null while the shell is unregistered.
+  FunctionCell? _cell;
+
+  /// Inline payload for shells that are not (and will not be) registered.
+  FunctionCode? _detachedCode;
+
+  /// Environment that defines `this` for bound copies; null for the canonical
+  /// unbound shell, which resolves names through the cell's current home.
+  final Environment? _boundClosure;
+
+  /// Home environment for shells that were never adopted by a registry cell.
+  Environment? _detachedHome;
+
+  InterpretedFunction._detached(
+    SFormalParameterList? parameters,
+    SAstNode body,
+    Environment home,
+    String? name, {
+    List<SAstNode>? constructorInitializers,
+    bool isInitializer = false,
+    bool isGetter = false,
+    bool isSetter = false,
+    RuntimeType? ownerType,
+    bool isAbstract = false,
+    bool isAsync = false,
+    bool isGenerator = false,
+    bool isAsyncGenerator = false,
+    bool isFactory = false,
+    SConstructorName? redirectedFactoryTarget,
+    RuntimeType? declaredReturnType,
+    AppliedRuntimeType? declaredReturnTypeApplied,
+    bool isNullable = false,
+    List<String> typeParameterNames = const [],
+    Map<String, RuntimeType?> typeParameterBounds = const {},
+  }) : _boundClosure = null,
+       _detachedHome = home,
+       _detachedCode = FunctionCode(
+         parameters: parameters,
+         body: body,
+         name: name,
+         constructorInitializers: constructorInitializers,
+         isInitializer: isInitializer,
+         isGetter: isGetter,
+         isSetter: isSetter,
+         isAbstract: isAbstract,
+         isAsync: isAsync,
+         isGenerator: isGenerator,
+         isAsyncGenerator: isAsyncGenerator,
+         isFactory: isFactory,
+         isNullable: isNullable,
+         redirectedFactoryTarget: redirectedFactoryTarget,
+         ownerType: ownerType,
+         declaredReturnType: declaredReturnType,
+         declaredReturnTypeApplied: declaredReturnTypeApplied,
+         typeParameterNames: typeParameterNames,
+         typeParameterBounds: typeParameterBounds,
+       ) {
+    D4rtDiag.closureAllocs++;
+  }
+
+  /// Bound copy: shares [cell] with the unbound shell so body swaps are seen
+  /// through tear-offs, and pins the receiver in [boundClosure].
+  InterpretedFunction._bound(FunctionCell cell, Environment boundClosure)
+    : _cell = cell,
+      _detachedCode = null,
+      _boundClosure = boundClosure {
+    D4rtDiag.closureAllocs++;
+  }
+
+  /// The executable payload currently backing this shell.
+  FunctionCode get currentCode {
+    final cell = _cell;
+    if (cell != null) return cell.current;
+    return _detachedCode!;
+  }
+
+  /// Registry cell for this shell, or null when unregistered. Diagnostics.
+  FunctionCell? get codeCell => _cell;
+
+  /// Call-shape identity of the current payload. Two declarations with equal
+  /// shapes may share a cell across generations.
+  String get signatureKey => currentCode.signatureKey;
+
+  /// Points this shell at [cell] and makes it the cell's canonical shell.
+  /// Called by [DeclarationRegistry.stabilizeFunction].
+  void adoptCell(FunctionCell cell) {
+    _cell = cell;
+    _detachedCode = null;
+    cell.attach(this);
+  }
+
+  SFormalParameterList? get _parameters => currentCode.parameters;
+  SAstNode get _body => currentCode.body;
+  String? get _name => currentCode.name;
+  List<SAstNode>? get _constructorInitializers =>
+      currentCode.constructorInitializers;
+  bool get isInitializer => currentCode.isInitializer;
+  bool get isGetter => currentCode.isGetter;
+  bool get isSetter => currentCode.isSetter;
+  bool get isAbstract => currentCode.isAbstract;
+  bool get isAsync => currentCode.isAsync;
+  bool get isGenerator => currentCode.isGenerator;
+  bool get isAsyncGenerator => currentCode.isAsyncGenerator;
+  bool get isFactory => currentCode.isFactory;
+  bool get isNullable => currentCode.isNullable;
+
   // Store the class/enum where this function/method was defined
-  final RuntimeType? ownerType; // Nullable for non-class/enum functions
-  // Abstract flag for methods
-  final bool isAbstract;
-  // Async flag for methods/functions
-  final bool isAsync;
-  // Generator flags
-  final bool isGenerator;
-  final bool isAsyncGenerator;
-  // Factory flag for constructors
-  final bool isFactory;
+  RuntimeType? get ownerType => currentCode.ownerType; // Nullable for non-class/enum functions
 
   // OPEN B.1 — for a redirecting factory (`factory X() = Y`), this holds the
   // redirect target (`Y` / `Y.named`). When set, calling the factory resolves
   // and instantiates the target instead of executing the (empty) body.
-  final SConstructorName? redirectedFactoryTarget;
+  SConstructorName? get redirectedFactoryTarget =>
+      currentCode.redirectedFactoryTarget;
 
-  final RuntimeType? declaredReturnType; // Store the declared type
+  RuntimeType? get declaredReturnType => currentCode.declaredReturnType;
 
   /// DFUB6: the declared return type with its applied type arguments preserved
   /// (e.g. `Box<int>` / `List<String>`), when the return type is a generic
@@ -87,16 +188,25 @@ class InterpretedFunction implements Callable {
   /// captured here at declaration time — the return statement cannot walk up
   /// the AST to re-read the annotation. Used by
   /// `visitReturnStatement._checkAppliedGenericReturn`.
-  final AppliedRuntimeType? declaredReturnTypeApplied;
-
-  final bool isNullable; // Store if the return type is nullable
+  AppliedRuntimeType? get declaredReturnTypeApplied =>
+      currentCode.declaredReturnTypeApplied;
 
   // Store type parameter names from the original declaration
-  final List<String> typeParameterNames; // e.g., ['T', 'U', 'V']
+  List<String> get typeParameterNames => currentCode.typeParameterNames;
 
   // Store type parameter bounds (constraints) from the original declaration
-  final Map<String, RuntimeType?>
-  typeParameterBounds; // e.g., {'T': num, 'U': Object}
+  Map<String, RuntimeType?> get typeParameterBounds =>
+      currentCode.typeParameterBounds;
+
+  /// Lexical environment this function resolves names in: the receiver scope
+  /// for bound copies, otherwise the current generation's module/class home.
+  Environment get _closure {
+    final bound = _boundClosure;
+    if (bound != null) return bound;
+    final cell = _cell;
+    if (cell != null) return cell.home;
+    return _detachedHome!;
+  }
 
   // Public getter for the closure environment
   Environment get closure => _closure;
@@ -127,9 +237,52 @@ class InterpretedFunction implements Callable {
   // Built lazily from the function body.
   static final Map<SAstNode, SAstNode?> _parentMap = Map.identity();
 
-  /// Clear the parent map. Should be called at the start of each top-level
-  /// execution to prevent unbounded growth across multiple executions.
+  /// Number of async activations that are still suspended (Phase 5).
+  ///
+  /// A suspended activation holds AST nodes from the generation that created it
+  /// and navigates them through [_parentMap]. Clearing that map under a live
+  /// activation would break the resumption, so [clearParentMap] defers the
+  /// clear until the last one finishes.
+  static int _liveActivations = 0;
+
+  /// Upper bound on deferred clears: if activations are abandoned without ever
+  /// completing, the map is cleared anyway rather than growing forever.
+  static const int _maxDeferredParentMapEntries = 200000;
+
+  /// Live (suspended) async activation count. Diagnostics / tests only.
+  static int get liveAsyncActivations => _liveActivations;
+
+  /// True when a parent-map clear was deferred because activations are live.
+  static bool get parentMapClearDeferred => _deferredParentMapClear;
+
+  static bool _deferredParentMapClear = false;
+
+  /// Registers a newly created async activation. Call right after the state is
+  /// created; the returned callback must run when the activation completes.
+  static void Function() trackAsyncActivation() {
+    _liveActivations++;
+    var released = false;
+    return () {
+      if (released) return;
+      released = true;
+      _liveActivations--;
+      if (_liveActivations == 0 && _deferredParentMapClear) {
+        _deferredParentMapClear = false;
+        _parentMap.clear();
+      }
+    };
+  }
+
+  /// Clear the parent map. Called at the start of each top-level execution to
+  /// prevent unbounded growth across multiple executions — but deferred while
+  /// async activations from an earlier generation are still suspended (they
+  /// need the map to resume), and hard-cleared if the map outgrows its bound.
   static void clearParentMap() {
+    if (_liveActivations > 0) {
+      _deferredParentMapClear = true;
+      if (_parentMap.length < _maxDeferredParentMapEntries) return;
+    }
+    _deferredParentMapClear = false;
     _parentMap.clear();
   }
 
@@ -426,6 +579,25 @@ class InterpretedFunction implements Callable {
     // path applies the identical conversion at the other end of the call.
     if (declaredName == 'double' && value is int) return value.toDouble();
 
+    // A host object that wraps an interpreted value (a Flutter widget proxy,
+    // say) is passed back into guest code as the native object, while the
+    // annotation names the interpreted class it stands for — the
+    // `didUpdateWidget(covariant StickyNote oldWidget)` case. Check the class
+    // behind the wrapper, which reads through the registry cell, so a live
+    // object still checks against what the current generation published.
+    if (value is D4InterpretedProxy) {
+      Object? wrapped;
+      try {
+        wrapped = value.d4rtInstance;
+      } catch (_) {
+        wrapped = null;
+      }
+      if (wrapped is InterpretedInstance &&
+          wrapped.klass.isSubtypeOf(declaredType, value: value)) {
+        return value;
+      }
+    }
+
     final RuntimeType? valueType;
     try {
       valueType = env.getRuntimeType(value);
@@ -449,22 +621,27 @@ class InterpretedFunction implements Callable {
   static bool _isUncheckableTypeName(String name) =>
       name == 'dynamic' || name == 'void';
 
-  // DFUB5: cached structural function type for this function.
-  FunctionRuntimeType? _cachedCallableRuntimeType;
+  /// DFUB5: cached structural function type for this function.
+  ///
+  /// Cached per [FunctionCode] payload (not per shell) so publishing a new
+  /// body can never leave a stale `T Function(...)` type behind.
+  FunctionRuntimeType? _legacyCallableRuntimeType;
 
   /// DFUB5: the structural function type of this callable, used by `is`/`as`
   /// and return-type checks against `T Function(...)` annotations.
   RuntimeType get callableRuntimeType {
-    final cached = _cachedCallableRuntimeType;
+    final code = currentCode;
+    final cached = code.cachedCallableRuntimeType ?? _legacyCallableRuntimeType;
     if (cached != null) return cached;
+    final closure = _closure;
     final returnType = declaredReturnType ?? const NamedRuntimeType('dynamic');
     final positional = <RuntimeType>[];
     final optionalPositional = <RuntimeType>[];
     final named = <String, RuntimeType>{};
-    final params = _parameters?.parameters;
+    final params = code.parameters?.parameters;
     if (params != null) {
       for (final param in params) {
-        final paramType = _paramRuntimeType(param, _closure);
+        final paramType = _paramRuntimeType(param, closure);
         if (param.isNamed) {
           named[_paramName(param) ?? ''] = paramType;
         } else if (param.isOptional) {
@@ -474,38 +651,15 @@ class InterpretedFunction implements Callable {
         }
       }
     }
-    return _cachedCallableRuntimeType = FunctionRuntimeType(
+    final built = FunctionRuntimeType(
       returnType: returnType,
       positionalParameterTypes: positional,
       optionalPositionalParameterTypes: optionalPositional,
       namedParameterTypes: named,
     );
-  }
-
-  // Private constructor for bind
-  InterpretedFunction._internal(
-    this._parameters,
-    this._body,
-    this._closure,
-    this._name, {
-    this.isInitializer = false,
-    List<SAstNode>? constructorInitializers,
-    this.isGetter = false,
-    this.isSetter = false,
-    this.ownerType,
-    this.isAbstract = false,
-    this.isAsync = false,
-    this.isGenerator = false,
-    this.isAsyncGenerator = false,
-    this.isFactory = false,
-    this.redirectedFactoryTarget,
-    this.declaredReturnType,
-    this.declaredReturnTypeApplied,
-    this.isNullable = false,
-    this.typeParameterNames = const [],
-    this.typeParameterBounds = const {},
-  }) : _constructorInitializers = constructorInitializers {
-    D4rtDiag.closureAllocs++;
+    code.cachedCallableRuntimeType = built;
+    _legacyCallableRuntimeType = built;
+    return built;
   }
 
   // Constructor for declared functions (top-level or nested, not methods)
@@ -515,7 +669,7 @@ class InterpretedFunction implements Callable {
     RuntimeType? declaredReturnType,
     bool isNullable, {
     AppliedRuntimeType? declaredReturnTypeApplied,
-  }) : this._internal(
+  }) : this._detached(
          declaration.functionExpression?.parameters,
          declaration.functionExpression!.body!,
          closure,
@@ -551,7 +705,7 @@ class InterpretedFunction implements Callable {
   InterpretedFunction.expression(
     SFunctionExpression expression,
     Environment closure,
-  ) : this._internal(
+  ) : this._detached(
         expression.parameters,
         expression.body!,
         closure,
@@ -577,7 +731,7 @@ class InterpretedFunction implements Callable {
     SMethodDeclaration declaration,
     Environment closure,
     RuntimeType? owner,
-  ) : this._internal(
+  ) : this._detached(
         declaration.parameters,
         declaration.body!,
         closure,
@@ -607,7 +761,7 @@ class InterpretedFunction implements Callable {
     SConstructorDeclaration declaration,
     Environment closure,
     RuntimeType? owner,
-  ) : this._internal(
+  ) : this._detached(
         declaration.parameters,
         declaration.body ?? SEmptyFunctionBody(offset: 0, length: 0),
         closure,
@@ -777,6 +931,10 @@ class InterpretedFunction implements Callable {
 
   /// Binds 'this' to a specific instance, returning a new callable
   /// where the closure has 'this' defined.
+  ///
+  /// The bound copy SHARES this function's [FunctionCell] (when the shell is
+  /// registry-backed), so a body published by a hot reload is observed through
+  /// tear-offs and cached bound methods instead of being frozen at bind time.
   Callable bind(RuntimeValue instance) {
     if (ownerType == null) {
       // Check ownerType instead of definingClass
@@ -814,30 +972,13 @@ class InterpretedFunction implements Callable {
       );
     }
 
-    // Create a new function *instance* that uses the bound environment
-    // Need to ensure all relevant properties (isGetter, isSetter, etc.) are copied.
-    final boundFunction = InterpretedFunction._internal(
-      _parameters,
-      _body,
-      boundEnvironment,
-      _name,
-      isInitializer: isInitializer,
-      constructorInitializers: _constructorInitializers,
-      isGetter: isGetter,
-      isSetter: isSetter,
-      ownerType: ownerType, // Pass ownerType
-      isAbstract: isAbstract,
-      isAsync: isAsync,
-      isGenerator: isGenerator,
-      isAsyncGenerator: isAsyncGenerator,
-      isFactory: isFactory, // Copy the factory flag
-      redirectedFactoryTarget: redirectedFactoryTarget, // Copy redirect target
-      declaredReturnType: declaredReturnType,
-      declaredReturnTypeApplied: declaredReturnTypeApplied,
-      typeParameterNames: typeParameterNames, // Copy type parameter names
-      typeParameterBounds: typeParameterBounds, // Copy type parameter bounds
-    );
-    return boundFunction;
+    // Reuse the tracked cell so this tear-off follows code swaps; an
+    // unregistered shell (no registry configured) gets a private detached cell
+    // carrying the same payload, preserving the old copy semantics.
+    final cell =
+        _cell ??
+        (FunctionCell(DeclarationKey.detached, currentCode)..attach(this));
+    return InterpretedFunction._bound(cell, boundEnvironment);
   }
 
   /// Helper to setup environment, bind args, and run initializers.
@@ -860,7 +1001,33 @@ class InterpretedFunction implements Callable {
       hasThis = false;
     }
 
-    if (ownerType is InterpretedClass && !isInitializer && !hasThis) {
+    if (ownerType is InterpretedEnum && !isInitializer && !hasThis) {
+      // Enums get the same bare-name static scope as classes (Phase 3c): a
+      // static method on an enum refers to its own statics without the
+      // `Enum.` prefix, and cell-backed storage keeps the values authoritative.
+      final ownerEnum = ownerType as InterpretedEnum;
+      if (Logger.isDebug) {
+        Logger.debug(
+          "[InterpretedFunction._prepareExecutionEnvironment] Adding static members of enum '${ownerEnum.name}' to execution environment.",
+        );
+      }
+      ownerEnum.staticMethods.forEach((name, method) {
+        executionEnvironment.define(name, method);
+      });
+      ownerEnum.staticGetters.forEach((name, getter) {
+        executionEnvironment.define(name, getter);
+      });
+      ownerEnum.staticSetters.forEach((name, setter) {
+        executionEnvironment.define(name, setter);
+      });
+      ownerEnum.staticCells.forEach((name, cell) {
+        executionEnvironment.defineCell(name, cell);
+      });
+      ownerEnum.staticFields.forEach((name, value) {
+        if (ownerEnum.staticCells.containsKey(name)) return;
+        executionEnvironment.define(name, value);
+      });
+    } else if (ownerType is InterpretedClass && !isInitializer && !hasThis) {
       final ownerClass = ownerType as InterpretedClass;
       if (Logger.isDebug) {
         Logger.debug(
@@ -904,9 +1071,21 @@ class InterpretedFunction implements Callable {
         }
       }
 
-      // Add all static fields
+      // Add all static fields. Cell-backed statics are installed as their CELL,
+      // not as a copied value, so a bare-identifier read sees the authoritative
+      // storage and a bare write mutates it directly — no snapshot write-back
+      // needed (that machinery is gone as of Phase 3).
+      ownerClass.staticCells.forEach((fieldName, cell) {
+        executionEnvironment.defineCell(fieldName, cell);
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[InterpretedFunction._prepareExecutionEnvironment] Added static cell '$fieldName' to execution environment.",
+          );
+        }
+      });
       for (final entry in ownerClass.staticFields.entries) {
         final fieldName = entry.key;
+        if (ownerClass.staticCells.containsKey(fieldName)) continue;
         final fieldValue = entry.value;
         executionEnvironment.define(fieldName, fieldValue);
         if (Logger.isDebug) {
@@ -915,12 +1094,6 @@ class InterpretedFunction implements Callable {
           );
         }
       }
-
-      // OPEN B.9 — mark this scope as the static-field snapshot owner so that a
-      // bare-identifier write to a snapshotted field (`value = value + 1`) is
-      // propagated back to the class's authoritative static slot, not just the
-      // discarded local snapshot. See [Environment.staticFieldSnapshotOwner].
-      executionEnvironment.staticFieldSnapshotOwner = ownerClass;
     }
 
     // Handle type parameters (generics) if provided
@@ -1189,15 +1362,15 @@ class InterpretedFunction implements Callable {
       // Get 'this' which could be InterpretedInstance OR InterpretedEnumValue
       final RuntimeValue thisValue = _closure.get('this') as RuntimeValue;
 
-      if (_constructorInitializers != null &&
-          _constructorInitializers.isNotEmpty) {
+      final constructorInitializers = _constructorInitializers;
+      if (constructorInitializers != null && constructorInitializers.isNotEmpty) {
         final originalVisitorEnv = visitor.environment;
         try {
           // Initializers run in the environment of the constructor *body*,
           // which encloses the closure (with 'this') and params.
           visitor.environment = executionEnvironment;
 
-          for (final initializer in _constructorInitializers) {
+          for (final initializer in constructorInitializers) {
             if (initializer is SConstructorFieldInitializer) {
               // Handles: this.fieldName = expression
               final fieldName = initializer.fieldName!.name;
@@ -1937,6 +2110,12 @@ class InterpretedFunction implements Callable {
             nextStateIdentifier: initialStateIdentifier,
             function: this,
           );
+
+          // Phase 5: keep the AST parent map alive for as long as this
+          // activation can still resume, so a hot reload in between does not
+          // strand it.
+          final releaseActivation = trackAsyncActivation();
+          unawaited(completer.future.whenComplete(releaseActivation));
 
           // Handle cases where the function completes immediately
           if (initialStateIdentifier == null) {

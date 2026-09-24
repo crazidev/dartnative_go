@@ -10,6 +10,7 @@ import 'package:tom_d4rt_ast/src/runtime/bridge/bridged_enum.dart';
 import 'package:tom_d4rt_ast/src/runtime/bridge/bridged_types.dart';
 import 'package:tom_d4rt_ast/src/runtime/bridge/registration.dart';
 import 'package:tom_d4rt_ast/src/runtime/callable.dart';
+import 'package:tom_d4rt_ast/src/runtime/declaration_registry.dart';
 import 'package:tom_d4rt_ast/src/runtime/declaration_visitor.dart';
 import 'package:tom_d4rt_ast/src/runtime/environment.dart';
 import 'package:tom_d4rt_ast/src/runtime/exceptions.dart';
@@ -379,12 +380,22 @@ class D4rtRunner {
   /// using [providePackage]) still never share state *across instances*
   /// regardless of this flag — it governs reuse *within* a runner and, for
   /// migrated runners, participation in the process-global caches.
-  D4rtRunner({this.reuseAcrossRuns = true});
+  D4rtRunner({this.reuseAcrossRuns = true, this.declarationRegistry});
 
   /// Whether the cross-run bridge caches are reused between `executeBundle*`
   /// calls. See the constructor. `false` forces a fresh warm parent and fresh
   /// bridged module environments on every run for full inter-run isolation.
   final bool reuseAcrossRuns;
+
+  /// Hot-reload declaration registry, when enabled.
+  ///
+  /// When supplied, function declarations (top-level functions, methods,
+  /// getters, setters, constructors) resolve to stable shells across
+  /// `executeBundle` calls and their bodies are swapped in place, so live
+  /// instances and captured callbacks observe reloaded code. The embedder owns
+  /// the registry and must call [DeclarationRegistry.clear] on restart /
+  /// unmount — never on hot reload. Leave it null for one-shot executions.
+  final DeclarationRegistry? declarationRegistry;
 
   /// Gets the current interpreter visitor instance.
   InterpreterVisitor? get visitor => _visitor;
@@ -1584,6 +1595,34 @@ class D4rtRunner {
     String name = 'main',
     List<Object?>? positionalArgs,
     Map<String, Object?>? namedArgs,
+    Map<String, String>? moduleFingerprints,
+  }) {
+    // Phase 5: every cell publication made while this bundle is wired is
+    // journalled, so a failure restores the previous generation exactly instead
+    // of leaving live objects running a half-applied reload.
+    declarationRegistry?.beginGeneration();
+    try {
+      return _executeBundleInGeneration(
+        bundle,
+        entryPoint: entryPoint,
+        name: name,
+        positionalArgs: positionalArgs,
+        namedArgs: namedArgs,
+        moduleFingerprints: moduleFingerprints,
+      );
+    } catch (_) {
+      declarationRegistry?.rollbackGeneration();
+      rethrow;
+    }
+  }
+
+  dynamic _executeBundleInGeneration(
+    AstBundle bundle, {
+    String? entryPoint,
+    String name = 'main',
+    List<Object?>? positionalArgs,
+    Map<String, Object?>? namedArgs,
+    Map<String, String>? moduleFingerprints,
   }) {
     // Determine entry point URI
     final entryUri = entryPoint ?? bundle.entryPointUri;
@@ -1634,6 +1673,7 @@ class D4rtRunner {
     }
     final moduleLoader = AstModuleLoader(
       modules: bundle.modules,
+      moduleFingerprints: moduleFingerprints ?? const {},
       globalEnvironment: executionEnvironment,
       runner: this,
       sharedBridgedModuleEnvironments: sharedBridgedModuleEnvs,
@@ -1656,8 +1696,10 @@ class D4rtRunner {
       '(${bundle.modules.length} modules in bundle)',
     );
 
-    // Execute with full module context
-    return _executeInEnvironment(
+    // Execute with full module context. A successful run commits the
+    // generation (its cell publications become the new baseline); anything that
+    // throws is rolled back by the caller.
+    final result = _executeInEnvironment(
       compilationUnit: entryAst,
       executionEnvironment: executionEnvironment,
       moduleContext: moduleLoader,
@@ -1665,6 +1707,8 @@ class D4rtRunner {
       positionalArgs: positionalArgs,
       namedArgs: namedArgs,
     );
+    declarationRegistry?.commitGeneration();
+    return result;
   }
 
   /// Execute [bundle] and unwrap the result to type [T] via [D4.unwrapAs].
@@ -1875,7 +1919,11 @@ class D4rtRunner {
     }
     Logger.debug("[_executeInEnvironment] Starting Pass 1: Declaration");
     final swPass1 = D4rtProfiler.enabled ? (Stopwatch()..start()) : null;
-    final declarationVisitor = DeclarationVisitor(executionEnvironment);
+    final declarationVisitor = DeclarationVisitor(
+      executionEnvironment,
+      declarationRegistry: declarationRegistry,
+      moduleUri: moduleContext.currentLibrary?.toString() ?? '',
+    );
     for (final declaration in compilationUnit.declarations) {
       declaration.accept<void>(declarationVisitor);
     }
@@ -1891,6 +1939,7 @@ class D4rtRunner {
     _visitor = InterpreterVisitor(
       globalEnvironment: executionEnvironment,
       moduleContext: moduleContext,
+      declarationRegistry: declarationRegistry,
     );
 
     // S1 (perf plan_3 §9.1): populate the static-resolution side-table before

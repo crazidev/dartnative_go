@@ -62,6 +62,13 @@ class _DartNativeGoState extends State<DartNativeGo> {
   bool _useBytecode = kUseBytecode;
   bool _verboseLogs = DartGoLogger.verbose;
 
+  /// Monotonic tokens for lifecycle operations. The dev server pushes
+  /// `reload`/`restart` over a WebSocket without awaiting the handler, so two
+  /// evaluations can overlap; only the newest token is allowed to commit its
+  /// result (bundle swap, widget remount, error state).
+  int _reloadSeq = 0;
+  int _restartSeq = 0;
+
   double? _downloadProgress;
   int? _downloadedCount;
   int? _downloadTotal;
@@ -139,6 +146,9 @@ class _DartNativeGoState extends State<DartNativeGo> {
   /// Launches a project given its server URL.
   Future<void> _launchProject(String rawUrl, {String? fallbackAppName}) async {
     final serverUrl = BundleLoader.normalizeUrl(rawUrl);
+    // A fresh launch supersedes any in-flight reload/restart.
+    _reloadSeq++;
+    _restartSeq++;
     setState(() {
       _isLoadingBundle = true;
       _errorMessage = null;
@@ -389,6 +399,11 @@ class _DartNativeGoState extends State<DartNativeGo> {
         bundle,
         isHotReload: false,
       );
+      if (_useAst) {
+        WidgetGenerationTracker.registerClassFiles(
+          _interpreterRunner.astRunner?.classFileMap ?? const {},
+        );
+      }
 
       if (!mounted) return;
       setState(() {
@@ -411,6 +426,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
   /// Re-evaluates updated code upon Hot Reload.
   Future<void> _reloadApp({String? changedFile}) async {
     if (_activeBundle == null) return;
+    final seq = ++_reloadSeq;
     final reloadSw = Stopwatch()..start();
     try {
       final fetchSw = Stopwatch()..start();
@@ -420,11 +436,16 @@ class _DartNativeGoState extends State<DartNativeGo> {
         onlyBytecode: _useBytecode,
       );
       final fetchMs = fetchSw.elapsedMilliseconds;
-      if (!mounted) return;
+      if (!mounted || seq != _reloadSeq) return;
       _activeBundle = updatedBundle;
 
       final trackSw = Stopwatch()..start();
       WidgetGenerationTracker.registerSources(updatedBundle.sources);
+      if (_useAst) {
+        WidgetGenerationTracker.registerClassFiles(
+          _interpreterRunner.astRunner?.classFileMap ?? const {},
+        );
+      }
       if (changedFile != null && changedFile.isNotEmpty) {
         WidgetGenerationTracker.notifyFilesChanged({changedFile});
       } else {
@@ -440,8 +461,13 @@ class _DartNativeGoState extends State<DartNativeGo> {
         isHotReload: true,
       );
       final evalMs = evalSw.elapsedMilliseconds;
+      if (_useAst) {
+        WidgetGenerationTracker.registerClassFiles(
+          _interpreterRunner.astRunner?.classFileMap ?? const {},
+        );
+      }
 
-      if (!mounted) return;
+      if (!mounted || seq != _reloadSeq) return;
       final remountSw = Stopwatch()..start();
       setState(() {
         _interpretedWidget = widget;
@@ -467,7 +493,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
     } catch (e, stack) {
       final err = 'Hot Reload Error: $e';
       DartGoLogger.error(err, null, stack);
-      if (!mounted) return;
+      if (!mounted || seq != _reloadSeq) return;
       setState(() {
         _errorMessage = err;
       });
@@ -478,6 +504,9 @@ class _DartNativeGoState extends State<DartNativeGo> {
   /// Hot Restart (test scripts: `restart` broadcast, usually `origin: test`).
   Future<void> _restartApp() async {
     if (_activeBundle == null) return;
+    // A restart supersedes in-flight reloads and earlier restarts.
+    _reloadSeq++;
+    final seq = ++_restartSeq;
     final restartSw = Stopwatch()..start();
     try {
       if (mounted) {
@@ -496,7 +525,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
         onlyAst: _useAst,
         onlyBytecode: _useBytecode,
       );
-      if (!mounted) return;
+      if (!mounted || seq != _restartSeq) return;
       _activeBundle = updatedBundle;
 
       WidgetGenerationTracker.resetAll();
@@ -512,7 +541,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
         isHotReload: false,
       );
 
-      if (!mounted) return;
+      if (!mounted || seq != _restartSeq) return;
       setState(() {
         _interpretedWidget = widget;
         _isAppMounted = true;
@@ -527,7 +556,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
     } catch (e, stack) {
       final err = 'Hot Restart Error: $e';
       DartGoLogger.error(err, null, stack);
-      if (!mounted) return;
+      if (!mounted || seq != _restartSeq) return;
       setState(() {
         _isLoadingBundle = false;
         _isAppMounted = true;
