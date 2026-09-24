@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:dartnative/dartnative.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
@@ -130,6 +132,7 @@ enum TodoLayout { sticky, cards }
 // ---------------------------------------------------------------------------
 
 var example = "Hello world";
+var person = {"name": "John", "age": 30, "gender": "Male"};
 
 class TodoScreen extends ConsumerStatefulWidget {
   const TodoScreen({super.key});
@@ -142,7 +145,6 @@ class _TodoScreenState extends ConsumerState<TodoScreen> {
   bool isCreating = false;
   DNSheetController? sheet;
   var title = "My Notes";
-  Color titleColor = Colors.white;
 
   @override
   Widget build(BuildContext context) {
@@ -155,9 +157,18 @@ class _TodoScreenState extends ConsumerState<TodoScreen> {
     ];
 
     showCreateNote(BuildContext context) {
-      print("showCreateNote");
-      print(example);
-      example = "Hello world1!!!!";
+      print("Creating note... ${person['name']} ${person['age']}");
+      person['name'] = "Crazibeat";
+      person['age'] = 120;
+      var future = Future.delayed(Duration(milliseconds: 500)).then(
+        (value) => print("=== Future was completed === "),
+      );
+
+      // try {
+      //   throw Exception("An error just happened!");
+      // } catch (e) {
+      //   print(e);
+      // }
 
       sheet = showBottomSheet(
         context,
@@ -198,9 +209,9 @@ class _TodoScreenState extends ConsumerState<TodoScreen> {
         title: Text(
           title,
           style: TextStyle(
-            color: titleColor,
+            color: Colors.white,
             fontWeight: FontWeight.w500,
-            fontSize: 25,
+            // fontSize: 20,
           ),
         ),
         actions: [
@@ -580,7 +591,7 @@ class _CreateNotePanelState extends State<CreateNotePanel> {
   final titleController = TextEditingController();
   final descriptionController = TextEditingController();
 
-  Color selectedColor = NoteColors.blue;
+  Color selectedColor = NoteColors.all[Random().nextInt(NoteColors.all.length)];
 
   @override
   Widget build(BuildContext context) {
