@@ -80,12 +80,71 @@
   5. **DevTool Cache Control**: Developers can inspect cache size and clear cached packages from the mobile in-app DevTool overlay.
 
 ### 4.2 Sub-100ms Hot Reload & State Preservation
-* **Challenge**: Full interpreter state snapshots previously iterated through thousands of library symbols across all 93+ dependencies, taking upwards of 6,700ms per hot reload. Additionally, unmounting root widgets caused `ProviderContainer` disposals, resetting Riverpod state.
-* **Solution**:
-  1. **Targeted User-Module Snapshotting**: `_snapshotState` and `_restoreState` in `InterpreterRunner` restrict top-level variable retention exclusively to user project modules (`entrypointLibrary` and non-`package:` files). Snapshot time reduced from **6,729ms → < 2ms**.
-  2. **Root Container Stabilization**: The root `ProviderScope` is mounted with a stable element key (`const ValueKey('guest_root')`), guaranteeing the container remains live and state is preserved across reloads.
-  3. **Granular Generational Remounting**: `InterpretedConsumerWidget` and `InterpretedStatefulWidget` use generational keys (`Consumer_<ClassName>_gen_$gen`). Only the specific widget modified in source code remounts with fresh methods, while preserved state is seamlessly bound.
-  4. **Reload Speed**: Total hot reload latency dropped from **~8,200ms → 45ms** (Source) and **< 15ms** (AST).
+* **Challenge**: full state snapshots walked thousands of symbols across 93+ dependencies (~6,700ms per reload), root unmounts killed Riverpod containers, and the AST engine rebuilt the whole runtime then guessed what to keep by type-name heuristic — so ordinary state reset and live objects ran stale code.
+* **Big picture** — one reload is a pipeline; every stage below plugs into it:
+
+```text
+save in IDE ──▶ dev server rebuilds guest.ast ──▶ device fetches bundle
+        ──▶ evaluate as a new GENERATION (cells swapped, modules reused)
+        ──▶ remount changed widgets ──▶ report timing / errors to CLI
+```
+
+* **Declaration cells** (`tom_d4rt_ast/declaration_registry.dart`): the runtime keeps a process-lifetime registry. Every declaration resolves to a **stable object** whose *contents* a reload replaces — live references never dangle:
+
+```text
+gen 1                          gen 2 (body edit)
+┌──────────────┐                ┌──────────────┐
+│ shell (fn)   │                │ NEW shell    │
+│      │       │                │      │       │
+│      ▼       │                │      ▼       │
+│ ┌──────────┐ │  publish       │ ┌──────────┐ │
+│ │ Cell     │ │ ─────────────▶ │ │ Cell     │ │  same object,
+│ │ code: v1 │ │                │ │ code: v2 │ │  new contents
+│ └──────────┘ │                │ └──────────┘ │
+└──────────────┘                └──────────────┘
+  ▲ class tables, tear-offs,         ▲ every live reference
+    timers/callbacks all               now runs v2 — nothing
+    point at the cell                  re-wires
+```
+
+  1. **`FunctionCell`** — `InterpretedFunction` is a thin shell; `bind()` shares the cell, so bound-method and lookup caches stay valid by identity.
+  2. **`VariableCell`** — top-levels, class statics, enum statics. Dart VM rule: keep the value when the initializer is unchanged, re-evaluate when it changed — compared by an **offset-free canonical key** (an edit earlier in the file must not reset unrelated state). `late` stays lazy, `final` enforced, imports share the cell.
+  3. **`ClassCell`** — each generation builds a fresh class object (tables freeze after wiring) and publishes it; `InterpretedInstance.klass` reads through the cell, so pre-reload objects dispatch to the reloaded class and `is`/`as` keep working.
+  4. **Additive vs breaking** — body edits and added members keep the cell; a changed signature or removed member retires it, so old instances keep the old call shapes.
+* **Generation transactions** — every publication is journalled; a failed reload replays the journal in reverse, so the mounted widget never runs a half-applied generation.
+* **Async policy** — the parent map that resumes suspended `await`s is kept alive while older-generation activations are still running; they finish on the code they started in.
+* **One persistent core runner** — the `tom_d4rt_ast` runner, bridges and warm stdlib parent are built once and reused; only hot restart / mode switch / unmount tears down.
+* **Module reuse** — the server ships per-module fingerprints in `/manifest.json`; a module unchanged **since the previous generation** is not re-declared (its `LoadedModule` is reused and re-parented). Only the *latest* fingerprint is cached: a reverted file must be re-declared, or the cells (holding the newer code) and the module (claiming the old shape) disagree:
+
+```text
+gen N (todo.dart unchanged → REUSED)     gen N+1 (sticky.dart edited → re-declared)
+┌────────────────────────┐               ┌────────────────────────┐
+│ cached env: {...}      │  re-run       │ fresh env: {Note}      │
+│   │ import merge       │  merges  ───▶ │                        │
+│   ▼                    │               │  added names appear;   │
+│ {.., Note}  ◀──────────┘               │  same-declaration      │
+└────────────────────────┘               │  bindings are skipped  │
+  reused object, healed bindings         └────────────────────────┘
+```
+
+  Three rules keep reuse sound: (1) a reused module re-runs its import/export merges, so names a dependency *adds* later become visible; (2) Pass 1 runs before the import merge, so a cyclic import can't plant the previous generation's frozen class as this generation's placeholder; (3) unprefixed-import records are replaced, not accumulated.
+* **Widget side** — the framework only rebuilds what changed:
+  1. **Generational keys** (`Stateful_<Class>_gen_$gen`): the tracker maps changed files to widget classes. AST bundles carry no source text, so the class→file map is derived from the decoded compilation units (`AstInterpreterRunner.classFileMap`) on every load/reload/restart.
+  2. **Stable root** (`guest_root` key) keeps providers and state alive; overlapping reloads/ restarts are ordered by monotonic sequence tokens.
+  3. **Bottom sheets** live in their own reconciler outside the app root, so `NativeBottomSheetManager.notifyHotReload` rebinds them explicitly: visitor advances, state fields carry over on retired classes, never gated on `mounted`; the unchanged child widget is marked dirty via `lastStateProxy` (stateless content gets a per-reload subtree key instead).
+  4. **Proxies unwrap** — a host widget object handed back to guest code (`didUpdateWidget(covariant StickyNote oldWidget)`) implements `D4InterpretedProxy`, so argument checks and field reads resolve through the interpreted class behind it.
+* **Failures reach the terminal**:
+
+```text
+guest build / lifecycle / button handler throws
+        ──▶ host hook (onGuestError / onCallbackError) ──▶ DartGoLogger.error
+        ──▶ logSink ──▶ WebSocket ──▶ CLI prints red [Device Error] + short stack
+        (reporting never swallows: the error still propagates on-device)
+```
+
+* **Source engine** (legacy): user-module-only snapshots (`< 2ms`), stable root key, generational remount.
+* **Bytecode engine status**: disabled by default behind `kBytecodeEnabled` (`--dart-define=DN_ENABLE_BYTECODE=true`); while off it is not selectable, `guest.bc` is not emitted, and its suites skip. AST owns hot reload.
+
 
 ### 4.3 Unified Auto-Checking Logger (`DartGoLogger`) & Verbose Sync
 * **Challenge**: Scattered inline `if (verbose) / else` checks created boilerplate and inconsistency between CLI and device logging.
@@ -112,6 +171,9 @@ dart_go start --port=8090
 
 # Pre-compile AST bundle for test execution
 dart run tool/build_ast_bundle.dart
+
+# Re-enable the (disabled-by-default) Bytecode engine for one build
+dart run ... --dart-define=DN_ENABLE_BYTECODE=true
 ```
 
 ### Dev Server Interactive Stdin Commands:
@@ -152,6 +214,35 @@ test/
   channels (`onLog` prints = device logs on-device, fake-host objects,
   provider containers). Interpreted statics/top-levels are per-`execute`
   isolated and MUST NOT be the assertion channel.
+- **Bytecode suites** (`test/unit/bytecode*`, `test/runner/bytecode*`) skip
+  themselves while the engine is disabled. Run them with
+  `dn test --dart-define=DN_ENABLE_BYTECODE=true test/`.
+- **Reload-state suites** worth knowing:
+  `runner/ast_runner_persistence_test.dart` (one core runner across reloads),
+  `runner/ast_reload_function_swap_test.dart` (bodies swapped on live
+  instances, signature/additive rules),
+  `runner/ast_reload_variable_state_test.dart` + `ast_reload_static_state_test.dart`
+  + `ast_reload_enum_state_test.dart` (cell-backed storage),
+  `runner/ast_reload_module_reuse_test.dart` (fingerprinted module reuse,
+  reverted module re-declaration, decode cache, async activation surviving a
+  reload),
+  `runner/ast_reload_bottom_sheet_test.dart` (sheet proxy rebind, state fields
+  preserved, stateless sheet content),
+  `runner/ast_widget_proxy_argument_test.dart` (a widget proxy satisfies a
+  covariant interpreted parameter, wrong arguments still rejected),
+  `runner/ast_guest_error_reporting_test.dart` (a throwing callback and a
+  throwing build reach the host error channel),
+  `runner/ast_widget_generation_tracking_test.dart` (a widget outside the entry
+  module bumps its generation),
+  `runner/ast_circular_module_test.dart` (edits on either side of a cyclic
+  user import take effect),
+  `runner/ast_class_moves_modules_test.dart` + `ast_stateful_move_modules_test.dart`
+  (a class moving between modules, through a broken intermediate),
+  `runner/ast_committed_broken_heals_test.dart` (a broken generation that
+  commits because the bad reference sits in a build body heals when the export
+  appears),
+  `runner/ast_reload_atomic_generation_test.dart` (failed generation rolls
+  back).
 - **Skills:** `.agents/skills/dartnative-test-{lab,writing}` (runbook +
   authoring recipe) and `dartnative-plugin-matrix` (per-plugin checklist).
 
