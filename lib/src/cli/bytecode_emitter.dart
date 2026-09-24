@@ -42,7 +42,6 @@ class _LocalScope {
   final String? uri;
   final String? enclosingFunction;
   int _nextSlot;
-  int _nextClosureIndex = 0;
 
   _LocalScope({
     this.parent,
@@ -57,16 +56,17 @@ class _LocalScope {
   String? get currentEnclosingFunction =>
       enclosingFunction ?? parent?.currentEnclosingFunction;
 
-  int nextClosureIndex() {
-    if (parent != null) {
-      return parent!.nextClosureIndex();
-    }
-    return _nextClosureIndex++;
-  }
-
   bool isThisField(String name) {
     if (thisFieldNames.contains(name)) return true;
     return parent?.isThisField(name) ?? false;
+  }
+
+  Set<String> get allThisFieldNames {
+    final set = <String>{...thisFieldNames};
+    if (parent != null) {
+      set.addAll(parent!.allThisFieldNames);
+    }
+    return set;
   }
 
   String? get currentEnclosingClass =>
@@ -154,8 +154,7 @@ class BytecodeEmitter {
   final Map<String, int> _globalFuncIdMap = {};
   final Set<String> _knownClassNames = {};
   final Set<int> _allocatedIds = {};
-  int _nextFuncId = 1;
-  int _nextClosureIndex = 1;
+  int _nextClosureIndex = 0;
 
   bool _isPascalCase(String name) {
     if (name.isEmpty) return false;
@@ -190,8 +189,7 @@ class BytecodeEmitter {
     _globalFuncIdMap.clear();
     _knownClassNames.clear();
     _allocatedIds.clear();
-    _nextFuncId = 1;
-    _nextClosureIndex = 1;
+    _nextClosureIndex = 0;
 
     final sortedEntries = astBundle.modules.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
@@ -468,13 +466,17 @@ class BytecodeEmitter {
                 _compileExpression(v.initializer!, buffer, scope);
                 buffer.emitOp(OpCode.retValue);
 
+                final codeBytes = buffer.toBytes();
+                final hashStr =
+                    sha256.convert(codeBytes).toString().substring(0, 16);
                 _functions.add(
                   BytecodeFunction(
                     id: initFuncId,
                     name: '#init_$vName',
                     uri: uri,
                     enclosingClass: className,
-                    code: buffer.toBytes(),
+                    contentHash: hashStr,
+                    code: codeBytes,
                     localSlotsCount: scope.maxSlots,
                     sourceMap: buffer.toSourceMap(),
                   ),
@@ -559,6 +561,7 @@ class BytecodeEmitter {
     List<String>? fieldNames,
     List<SVariableDeclaration>? fieldInitializers,
     List<SConstructorInitializer>? ctorInitializers,
+    List<String>? capturedParamNames,
     bool isMethod = false,
     bool isConstructor = false,
   }) {
@@ -576,6 +579,14 @@ class BytecodeEmitter {
     // Slot 0 is reserved for `this` in methods/constructors
     if (isMethod || isConstructor) {
       scope.define('this');
+    }
+
+    // Pre-define captured outer variables (e.g. locals from enclosing scope)
+    if (capturedParamNames != null) {
+      for (final capName in capturedParamNames) {
+        if (capName == 'this' && (isMethod || isConstructor)) continue;
+        scope.define(capName);
+      }
     }
 
     // Allocate parameter slots
@@ -715,6 +726,15 @@ class BytecodeEmitter {
     }
     if (p is SFieldFormalParameter) return p.name?.name;
     return null;
+  }
+
+  /// Recursively collect all [SSimpleIdentifier] names referenced inside
+  /// [node]. Used during closure capture analysis to determine which outer
+  /// local variables the closure body references.
+  Set<String> _collectIdentifiers(SAstNode node) {
+    final visitor = _IdentifierCollectorVisitor();
+    node.accept(visitor);
+    return visitor.identifiers;
   }
 
   void _compileBlock(
@@ -876,6 +896,17 @@ class BytecodeEmitter {
         }
       }
       buffer.patchJump(jumpOverCatchPos);
+    } else if (stmt is SFunctionDeclarationStatement) {
+      // Local function declaration: compile it as a closure and store into a local slot.
+      final funcDecl = stmt.functionDeclaration;
+      final funcName = funcDecl.name?.name;
+      final funcExpr = funcDecl.functionExpression;
+      if (funcName != null && funcExpr != null) {
+        final slot = scope.define(funcName);
+        _compileExpression(funcExpr, buffer, scope);
+        buffer.emitOp(OpCode.storeLocal);
+        buffer.emitU16(slot);
+      }
     }
   }
 
@@ -1137,13 +1168,23 @@ class BytecodeEmitter {
         buffer.emitU8(namedArgs.length);
       } else {
         if (expr.target == null) {
-          // Check if target is a known local / this
-          final thisSlot = scope.lookup('this');
-          if (thisSlot != null) {
+          // Check if methodName is a local variable / closure first.
+          // This handles local functions (e.g. showCreateNote) declared in the
+          // enclosing scope before falling back to `this.methodName`.
+          final localSlot = scope.lookup(methodName);
+          if (localSlot != null && !scope.isThisField(methodName)) {
+            // The method name resolves to a local slot (e.g. a local function
+            // or captured closure). Push the slot value as the call target.
             buffer.emitOp(OpCode.loadLocal);
-            buffer.emitU16(thisSlot);
+            buffer.emitU16(localSlot);
           } else {
-            buffer.emitOp(OpCode.pushNull);
+            final thisSlot = scope.lookup('this');
+            if (thisSlot != null) {
+              buffer.emitOp(OpCode.loadLocal);
+              buffer.emitU16(thisSlot);
+            } else {
+              buffer.emitOp(OpCode.pushNull);
+            }
           }
         } else {
           _compileExpression(expr.target!, buffer, scope);
@@ -1174,8 +1215,17 @@ class BytecodeEmitter {
         buffer.emitU8(namedArgs.length);
       }
     } else if (expr is SInstanceCreationExpression) {
-      final className = expr.constructorName?.type?.name?.name ?? 'Object';
-      final ctorSuffix = expr.constructorName?.name?.name ?? 'new';
+      String className = expr.constructorName?.type?.name?.name ?? 'Object';
+      String ctorSuffix = expr.constructorName?.name?.name ?? 'new';
+      final typePrefix = expr.constructorName?.type?.importPrefix?.name;
+      if (expr.constructorName?.name != null) {
+        // Resolved form: className is type.name, ctorSuffix is constructorName.name
+      } else if (typePrefix != null &&
+          (_isPascalCase(typePrefix) || _knownClassNames.contains(typePrefix))) {
+        // Unresolved form (e.g. const EdgeInsets.fromLTRB): analyzer parsed EdgeInsets as importPrefix
+        className = typePrefix;
+        ctorSuffix = expr.constructorName?.type?.name?.name ?? 'new';
+      }
       final argList = expr.argumentList?.arguments ?? const [];
       final (posArgs, namedArgs) = _splitArgs(argList);
 
@@ -1301,33 +1351,56 @@ class BytecodeEmitter {
       }
       buffer.emitOp(OpCode.loadIndex);
     } else if (expr is SFunctionExpression) {
-      final closureIndex = scope.nextClosureIndex();
+      final closureIndex = _nextClosureIndex++;
       final closureName =
           '${scope.currentUri ?? ""}#${scope.currentEnclosingFunction ?? "global"}#closure_$closureIndex';
       final closureId = _allocateFuncId(closureName);
       final hasThis = scope.lookup('this') != null;
+
+      // Collect identifiers referenced inside the closure body that resolve
+      // to outer local slots (captured variables).
+      final capturedNames = <String>[];
+      if (hasThis) {
+        capturedNames.add('this');
+      }
+      if (expr.body != null) {
+        final referenced = _collectIdentifiers(expr.body!);
+        for (final refName in referenced) {
+          if (refName == 'this') continue;
+          final refSlot = scope.lookup(refName);
+          if (refSlot != null && !capturedNames.contains(refName)) {
+            capturedNames.add(refName);
+          }
+        }
+      }
+
       final fn = _compileFunction(
         id: closureId,
         name: 'closure_$closureIndex',
         uri: scope.currentUri ?? '',
         enclosingClass: scope.currentEnclosingClass,
+        fieldNames: scope.allThisFieldNames.toList(),
         params: expr.parameters,
         body: expr.body,
         isMethod: hasThis,
+        capturedParamNames:
+            capturedNames.isEmpty ? null : capturedNames,
       );
       _functions.add(fn);
-      if (hasThis) {
-        final thisSlot = scope.lookup('this')!;
-        buffer.emitOp(OpCode.loadLocal);
-        buffer.emitU16(thisSlot);
-        buffer.emitOp(OpCode.makeClosure);
-        buffer.emitU32(closureId);
-        buffer.emitU16(1);
-      } else {
-        buffer.emitOp(OpCode.makeClosure);
-        buffer.emitU32(closureId);
-        buffer.emitU16(0);
+
+      // Push captured values onto the stack before makeClosure.
+      for (final capName in capturedNames) {
+        final capSlot = scope.lookup(capName);
+        if (capSlot != null) {
+          buffer.emitOp(OpCode.loadLocal);
+          buffer.emitU16(capSlot);
+        } else {
+          buffer.emitOp(OpCode.pushNull);
+        }
       }
+      buffer.emitOp(OpCode.makeClosure);
+      buffer.emitU32(closureId);
+      buffer.emitU16(capturedNames.length);
     } else if (expr is SAsExpression) {
       if (expr.expression != null) {
         _compileExpression(expr.expression!, buffer, scope);
@@ -1572,4 +1645,18 @@ class _StaticVarEntry {
     required this.name,
     required this.initializer,
   });
+}
+
+/// Visitor that collects all [SSimpleIdentifier] names in an AST subtree.
+/// Used for closure variable-capture analysis in [BytecodeEmitter].
+class _IdentifierCollectorVisitor extends SAstVisitor<void> {
+  final Set<String> identifiers = {};
+
+  @override
+  void visitNode(SAstNode node) {
+    if (node is SSimpleIdentifier) {
+      identifiers.add(node.name);
+    }
+    node.visitChildren(this);
+  }
 }

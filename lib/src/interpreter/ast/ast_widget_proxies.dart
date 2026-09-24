@@ -243,12 +243,26 @@ class InterpretedStreamNotifierProxy extends StreamNotifier<dynamic> {
 
 /// Native proxy for AST-interpreted classes that extend [StatefulWidget].
 class InterpretedStatefulWidget extends StatefulWidget {
-  final InterpreterVisitor visitor;
-  final InterpretedInstance instance;
+  InterpreterVisitor visitor;
+  InterpretedInstance instance;
 
   InterpretedStatefulWidget(this.visitor, this.instance, {Key? key})
       : super(key: key ?? _resolveKey(instance)) {
     instance.nativeProxy = this;
+  }
+
+  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
+    visitor = newVisitor as InterpreterVisitor;
+    if (newClass is InterpretedClass) {
+      final newInstance = InterpretedInstance(newClass);
+      for (final f in instance.klass.getInstanceFieldNames()) {
+        try {
+          newInstance.set(f, instance.getField(f));
+        } catch (_) {}
+      }
+      newInstance.nativeProxy = this;
+      instance = newInstance;
+    }
   }
 
   static Key _resolveKey(InterpretedInstance instance) {

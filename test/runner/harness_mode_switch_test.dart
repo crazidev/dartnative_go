@@ -26,13 +26,31 @@ int main() => add(20, 22);
 
 void main() {
   group('runtime mode defaults', () {
-    test('source is the default, AST is opt-in', () {
-      expect(kUseAst, isFalse);
-      expect(kDefaultRuntimeMode, equals(RuntimeMode.source));
+    test('AST is the default, with Bytecode and Source engines available', () {
+      expect(kUseAst, isTrue);
+      expect(kDefaultRuntimeMode, equals(RuntimeMode.ast));
       expect(runtimeModeFromBool(false), equals(RuntimeMode.source));
       expect(runtimeModeFromBool(true), equals(RuntimeMode.ast));
-      expect(RuntimeMode.source.label, contains('Source'));
+      expect(runtimeModeFromBool(false, true), equals(RuntimeMode.bytecode));
       expect(RuntimeMode.ast.label, contains('AST'));
+      expect(RuntimeMode.source.label, contains('Source'));
+      expect(RuntimeMode.bytecode.label, contains('Bytecode'));
+
+      // Cycle order: AST -> Bytecode -> Source -> AST
+      expect(RuntimeMode.ast.next, equals(RuntimeMode.bytecode));
+      expect(RuntimeMode.bytecode.next, equals(RuntimeMode.source));
+      expect(RuntimeMode.source.next, equals(RuntimeMode.ast));
+
+      // Flags
+      expect(flagsFromRuntimeMode(RuntimeMode.ast), equals((true, false)));
+      expect(flagsFromRuntimeMode(RuntimeMode.bytecode), equals((false, true)));
+      expect(flagsFromRuntimeMode(RuntimeMode.source), equals((false, false)));
+
+      // Name resolution
+      expect(runtimeModeFromName('ast'), equals(RuntimeMode.ast));
+      expect(runtimeModeFromName('bytecode'), equals(RuntimeMode.bytecode));
+      expect(runtimeModeFromName('source'), equals(RuntimeMode.source));
+      expect(runtimeModeFromName('unknown'), equals(RuntimeMode.ast));
     });
 
     test('harness starts in source mode and can switch', () {

@@ -2168,7 +2168,18 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           return left.nativeType == right;
         }
 
-        return left == right;
+        try {
+          return left == right;
+        } on UnimplementedError {
+          try {
+            final dynamic dl = left;
+            final dynamic dr = right;
+            if (dl.value != null && dr.value != null) {
+              return dl.value == dr.value;
+            }
+          } catch (_) {}
+          return identical(left, right);
+        }
       case '!=':
         // Special handling for BridgedEnumValue comparison
         if (leftOperandValue is BridgedEnumValue &&
@@ -2199,7 +2210,18 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           return left.nativeType != right;
         }
 
-        return left != right;
+        try {
+          return left != right;
+        } on UnimplementedError {
+          try {
+            final dynamic dl = left;
+            final dynamic dr = right;
+            if (dl.value != null && dr.value != null) {
+              return dl.value != dr.value;
+            }
+          } catch (_) {}
+          return !identical(left, right);
+        }
       case '<':
         return left as dynamic < right;
       case '<=':

@@ -129,6 +129,8 @@ enum TodoLayout { sticky, cards }
 // Home Screen
 // ---------------------------------------------------------------------------
 
+var example = "Hello world";
+
 class TodoScreen extends ConsumerStatefulWidget {
   const TodoScreen({super.key});
 
@@ -139,6 +141,8 @@ class TodoScreen extends ConsumerStatefulWidget {
 class _TodoScreenState extends ConsumerState<TodoScreen> {
   bool isCreating = false;
   DNSheetController? sheet;
+  var title = "My Notes";
+  Color titleColor = Colors.white;
 
   @override
   Widget build(BuildContext context) {
@@ -150,13 +154,17 @@ class _TodoScreenState extends ConsumerState<TodoScreen> {
       ...todos.where((todo) => !todo.pinned),
     ];
 
-    void showCreateNote(BuildContext context) {
+    showCreateNote(BuildContext context) {
+      print("showCreateNote");
+      print(example);
+      example = "Hello world1!!!!";
+
       sheet = showBottomSheet(
         context,
         detents: const [DNSheetDetent.medium, DNSheetDetent.large],
         initialDetent: DNSheetDetent.medium,
         showGrabber: true,
-        builder: (ctx, controller) => _CreateNotePanel(
+        builder: (ctx, controller) => CreateNotePanel(
           onClose: () {
             controller.dismiss();
           },
@@ -187,10 +195,10 @@ class _TodoScreenState extends ConsumerState<TodoScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF292524),
         titleGlassBackground: true,
-        title: const Text(
-          'My Notess',
+        title: Text(
+          title,
           style: TextStyle(
-            color: Color(0xFFFFFFFF),
+            color: titleColor,
             fontWeight: FontWeight.w500,
             fontSize: 25,
           ),
@@ -201,7 +209,6 @@ class _TodoScreenState extends ConsumerState<TodoScreen> {
             titleStyle: TextStyle(color: Colors.white, fontSize: 16),
             onPressed: () {
               showCreateNote(context);
-              setState(() {});
             },
           ),
         ],
@@ -550,7 +557,7 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _CreateNotePanel extends StatefulWidget {
+class CreateNotePanel extends StatefulWidget {
   final VoidCallback onClose;
 
   final void Function({
@@ -560,20 +567,20 @@ class _CreateNotePanel extends StatefulWidget {
   })
   onCreate;
 
-  const _CreateNotePanel({
+  const CreateNotePanel({
     required this.onClose,
     required this.onCreate,
   });
 
   @override
-  State<_CreateNotePanel> createState() => _CreateNotePanelState();
+  State<CreateNotePanel> createState() => _CreateNotePanelState();
 }
 
-class _CreateNotePanelState extends State<_CreateNotePanel> {
+class _CreateNotePanelState extends State<CreateNotePanel> {
   final titleController = TextEditingController();
   final descriptionController = TextEditingController();
 
-  Color selectedColor = NoteColors.yellow;
+  Color selectedColor = NoteColors.blue;
 
   @override
   Widget build(BuildContext context) {
@@ -630,7 +637,7 @@ class _CreateNotePanelState extends State<_CreateNotePanel> {
           // ---------------------------------------------------------------
           TextField(
             controller: titleController,
-            autofocus: true,
+            autofocus: false,
             key: Key('title_input'),
             textInputAction: TextInputAction.next,
             style: const TextStyle(
@@ -638,7 +645,7 @@ class _CreateNotePanelState extends State<_CreateNotePanel> {
               fontSize: 17,
               fontWeight: FontWeight.w600,
             ),
-            onChanged: (value) => print('title: $value'),
+            // onChanged: (value) => print('title: $value'),
             decoration: InputDecoration(
               hintText: 'Note title',
               hintStyle: const TextStyle(color: Color(0xFFA8A29E)),
@@ -663,6 +670,7 @@ class _CreateNotePanelState extends State<_CreateNotePanel> {
           TextField(
             controller: descriptionController,
             maxLines: 3,
+            // onChanged: (value) => print('descriptio: $value'),
             style: const TextStyle(color: Color(0xFF44403C), fontSize: 14),
             decoration: InputDecoration(
               hintText: 'Add a description...',
@@ -690,38 +698,40 @@ class _CreateNotePanelState extends State<_CreateNotePanel> {
               Expanded(
                 child: Row(
                   children: [
-                    for (final color in NoteColors.all)
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
+                    ...NoteColors.all.map(
+                      (color) {
+                        return GestureDetector(
+                          onTap: () {
                             selectedColor = color;
-                          });
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 7),
-                          width: 35,
-                          height: 35,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: selectedColor == color
-                                  ? const Color(0xFF292524)
-                                  : const Color(0x22000000),
-                              width: selectedColor == color ? 2 : 1,
+                            setState(() {});
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 7),
+                            width: 35,
+                            height: 35,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: selectedColor == color
+                                    ? const Color(0xFF292524)
+                                    : const Color(0x22000000),
+                                width: selectedColor == color ? 2 : 1,
+                              ),
                             ),
+                            child: selectedColor == color
+                                ? Center(
+                                    child: const Icon(
+                                      CupertinoIcons.checkmark,
+                                      size: 16,
+                                      color: Color(0xFF292524),
+                                    ),
+                                  )
+                                : const SizedBox.shrink(),
                           ),
-                          child: selectedColor == color
-                              ? Center(
-                                  child: const Icon(
-                                    CupertinoIcons.checkmark,
-                                    size: 16,
-                                    color: Color(0xFF292524),
-                                  ),
-                                )
-                              : null,
-                        ),
-                      ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),

@@ -61,6 +61,9 @@ class AstModuleLoader implements ModuleContext {
   /// Cache of already-loaded modules to avoid reprocessing.
   final Map<Uri, LoadedModule> _moduleCache = {};
 
+  /// Read-only access to cached loaded modules.
+  Map<Uri, LoadedModule> get moduleCache => _moduleCache;
+
   /// DFUB10 — modules currently being loaded, keyed like [_moduleCache]. A URI
   /// is present here only between the start of its directive processing and its
   /// completion.

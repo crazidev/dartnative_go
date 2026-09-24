@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:dartnative/dartnative.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
+import 'package:tom_d4rt_ast/runtime.dart' show Callable;
 import '../logger.dart';
 import 'bridge_adapter.dart';
 import 'bytecode_models.dart';
@@ -27,6 +28,7 @@ class BytecodeVM {
     void Function(String)? onLog,
     String? Function()? serverUrlProvider,
   }) {
+    current = this;
     bridgeAdapter = BytecodeBridgeAdapter(
       onLog: onLog,
       serverUrlProvider: serverUrlProvider,
@@ -79,7 +81,22 @@ class BytecodeVM {
     }
 
     if (bundle.initGlobalsFuncId != null) {
-      executeFunction(funcId: bundle.initGlobalsFuncId!);
+      if (isHotReload) {
+        // Hot reload: only initialize globals that don't already have a value.
+        // This preserves user-modified top-level variables (e.g. `var example`)
+        // while still initializing any newly-added globals from the new bundle.
+        final snapshot = Map<String, Object?>.from(globals);
+        executeFunction(funcId: bundle.initGlobalsFuncId!);
+        // Restore any globals that existed before the reload, so that
+        // runtime mutations (e.g. `example = "new value"`) are not reset.
+        for (final entry in snapshot.entries) {
+          if (!entry.key.contains('.')) {
+            globals[entry.key] = entry.value;
+          }
+        }
+      } else {
+        executeFunction(funcId: bundle.initGlobalsFuncId!);
+      }
     }
 
     return executeFunction(funcId: bundle.entryPointFuncId);
@@ -155,9 +172,17 @@ class BytecodeVM {
     BytecodeInstance? thisTarget,
     List<Object?>? capturedEnv,
   }) {
-    final fn = functionTable.get(funcId);
+    var fn = functionTable.get(funcId);
+    if (fn == null && thisTarget != null) {
+      for (final entry in thisTarget.bytecodeClass.methodFuncIds.entries) {
+        if (entry.value == funcId) {
+          fn = functionTable.getByName('${thisTarget.bytecodeClass.name}.${entry.key}');
+          break;
+        }
+      }
+    }
     if (fn == null) {
-      throw StateError('Function ID $funcId not found in FunctionTable');
+      throw StateError('Function ID $funcId not found in FunctionTable (count: ${functionTable.count})');
     }
 
     final frame = CallFrame(
@@ -169,9 +194,11 @@ class BytecodeVM {
     var slot = 0;
     if (thisTarget != null) {
       frame.setLocal(slot++, thisTarget);
-    } else if (capturedEnv != null && capturedEnv.isNotEmpty) {
-      if (capturedEnv[0] is BytecodeInstance) {
-        frame.setLocal(slot++, capturedEnv[0]);
+    }
+    if (capturedEnv != null && capturedEnv.isNotEmpty) {
+      final start = (thisTarget != null && capturedEnv[0] == thisTarget) ? 1 : 0;
+      for (var i = start; i < capturedEnv.length; i++) {
+        frame.setLocal(slot++, capturedEnv[i]);
       }
     }
     for (var i = 0; i < positionalArgs.length && slot < frame.slots.length; i++) {
@@ -266,6 +293,14 @@ class BytecodeVM {
           var val = globals[name];
           if (val == null && frame.function.enclosingClass != null) {
             val = globals['${frame.function.enclosingClass}.$name'];
+          }
+          if (val == null) {
+            for (final entry in globals.entries) {
+              if (entry.key.endsWith('.$name')) {
+                val = entry.value;
+                break;
+              }
+            }
           }
           val ??= bridgeAdapter.resolveGlobalOrStatic(name);
           _operandStack.add(val);
@@ -418,7 +453,7 @@ class BytecodeVM {
           frame.pc += 2;
           final captured = <Object?>[];
           for (var i = 0; i < captureCount; i++) {
-            captured.add(_operandStack.removeLast());
+            captured.insert(0, _operandStack.removeLast());
           }
           _operandStack.add(BytecodeClosure(
             funcId: funcId,
@@ -485,6 +520,22 @@ class BytecodeVM {
                 positionalArgs: posArgs,
                 namedArgs: namedArgs,
                 thisTarget: target,
+              );
+              _operandStack.add(res);
+            } else if (target.fields[methodName] is BytecodeClosure) {
+              final closure = target.fields[methodName] as BytecodeClosure;
+              final res = executeFunction(
+                funcId: closure.funcId,
+                positionalArgs: posArgs,
+                namedArgs: namedArgs,
+                capturedEnv: closure.capturedSlots,
+              );
+              _operandStack.add(res);
+            } else if (target.fields[methodName] is Function) {
+              final res = Function.apply(
+                target.fields[methodName] as Function,
+                posArgs,
+                namedArgs.map((k, v) => MapEntry(Symbol(k), v)),
               );
               _operandStack.add(res);
             } else if (target.nativeProxy != null) {
@@ -554,6 +605,13 @@ class BytecodeVM {
               positionalArgs: posArgs,
               namedArgs: namedArgs,
               capturedEnv: target.capturedSlots,
+            );
+            _operandStack.add(res);
+          } else if (target is Callable) {
+            final res = target.call(
+              bridgeAdapter.sharedVisitor,
+              posArgs,
+              namedArgs,
             );
             _operandStack.add(res);
           } else if (target is Function) {
@@ -1084,8 +1142,34 @@ class BytecodeVM {
           return l >= r;
       }
     }
-    if (opId == BinaryOpId.eq) return l == r;
-    if (opId == BinaryOpId.neq) return l != r;
+    if (opId == BinaryOpId.eq) {
+      try {
+        return l == r;
+      } on UnimplementedError {
+        try {
+          final dynamic dl = l;
+          final dynamic dr = r;
+          if (dl.value != null && dr.value != null) {
+            return dl.value == dr.value;
+          }
+        } catch (_) {}
+        return identical(l, r);
+      }
+    }
+    if (opId == BinaryOpId.neq) {
+      try {
+        return l != r;
+      } on UnimplementedError {
+        try {
+          final dynamic dl = l;
+          final dynamic dr = r;
+          if (dl.value != null && dr.value != null) {
+            return dl.value != dr.value;
+          }
+        } catch (_) {}
+        return !identical(l, r);
+      }
+    }
     if (opId == BinaryOpId.lt ||
         opId == BinaryOpId.lte ||
         opId == BinaryOpId.gt ||

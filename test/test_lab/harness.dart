@@ -69,7 +69,11 @@ class DnHarness {
   /// Fresh source runner with [bridgeOverrides] applied. Every evaluate /
   /// restart path must go through here so fakes survive runner recreation.
   InterpreterRunner _newSourceRunner() {
-    final runner = InterpreterRunner(onLog: onLog);
+    final runner = InterpreterRunner(
+      onLog: onLog,
+      useAst: false,
+      useBytecode: false,
+    );
     for (final override in bridgeOverrides) {
       override(runner.interpreter);
     }

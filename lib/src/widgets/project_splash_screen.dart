@@ -67,7 +67,7 @@ class ProjectSplashScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _buildLogo(),
-                const SizedBox(height: 24),
+                const SizedBox(height: 10),
                 Text(
                   appName,
                   style: const TextStyle(
@@ -76,49 +76,60 @@ class ProjectSplashScreen extends StatelessWidget {
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  statusMessage,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.white70,
-                  ),
-                ),
-                const SizedBox(height: 28),
-                const CircularProgressIndicator(
-                  color: Colors.white,
-                ),
               ],
             ),
           ),
-          if (downloadProgress != null)
-            Positioned(
-              left: 32,
-              right: 32,
-              bottom: 48,
+          Positioned(
+            left: 32,
+            right: 32,
+            bottom: 0,
+            child: SafeArea(
+              top: false,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (downloadedCount != null && downloadTotal != null)
-                    Text(
-                      'Downloading packages ($downloadedCount / $downloadTotal)',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.white70,
+                  if (downloadProgress != null) ...[
+                    if (downloadedCount != null && downloadTotal != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          'Downloading packages ($downloadedCount / $downloadTotal)',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: downloadProgress,
+                        backgroundColor: Colors.white24,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Colors.blue,
+                        ),
+                        minHeight: 6,
                       ),
                     ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: downloadProgress,
-                      backgroundColor: Colors.white24,
-                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
-                      minHeight: 6,
+                    const SizedBox(height: 16),
+                  ] else ...[
+                    const CircularProgressIndicator(
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  Text(
+                    statusMessage,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.white70,
                     ),
                   ),
                 ],
               ),
             ),
+          ),
         ],
       ),
     );

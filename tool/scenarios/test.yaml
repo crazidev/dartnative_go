@@ -14,13 +14,12 @@ steps:
   - expect_icon: CupertinoIcons.plus
   - tap: CupertinoIcons.plus
 
-  # Wait for bottom sheet to present
+  # # Wait for bottom sheet to present
   - probe_until: { text: "New note", timeout_s: 3 }
 
-  # Type note title & description
+  # # Type note title & description
   - type: { into: "Note title", text: "Buy groceries" }
   - type: { into: "Add a description", text: "Organic milk and apples" }
-  # - tap: CupertinoIcons.xmark
   # Tap Create button to save note and dismiss bottom sheet
   - tap: { title: "Create" }
 

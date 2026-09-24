@@ -14,10 +14,14 @@ import 'src/runner/live_connection.dart';
 import 'src/runner/logger.dart';
 import 'src/runner/native_bottomsheet_manager.dart';
 import 'src/runner/runtime_mode.dart';
+import 'src/client/runtime_mode_storage.dart';
 import 'src/runner/ui_probe.dart';
 import 'src/interpreter/widget_generation_tracker.dart';
 import 'src/widgets/interpreter_error_view.dart';
 import 'src/widgets/project_splash_screen.dart';
+import 'src/launcher/launcher_screen.dart';
+
+var example = "Hello world";
 
 void main(List<String> args) {
   DartNativePluginRegistrant.registerAll();
@@ -39,7 +43,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
   final TextEditingController _urlController = TextEditingController();
   StreamSubscription<List<DartGoProject>>? _scannerSub;
   List<DartGoProject> _projects = [];
-  bool _isLoading = true;
+  bool _isLoading = false;
 
   // Active Runner & Guest App State
   bool _isAppMounted = false;
@@ -53,7 +57,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
   late InterpreterRunner _interpreterRunner;
   LiveConnection? _liveConnection;
 
-  /// Engine mode. Source default; AST opt-in; Bytecode stack VM.
+  /// Engine mode. AST default; Bytecode stack VM; Source fallback.
   bool _useAst = kUseAst;
   bool _useBytecode = kUseBytecode;
   bool _verboseLogs = DartGoLogger.verbose;
@@ -80,7 +84,26 @@ class _DartNativeGoState extends State<DartNativeGo> {
       useAst: _useAst,
       useBytecode: _useBytecode,
     );
+    _restoreSavedRuntimeMode();
     _initScanner();
+  }
+
+  Future<void> _restoreSavedRuntimeMode() async {
+    final mode = await RuntimeModeStorage.loadMode();
+    final (useAst, useBytecode) = flagsFromRuntimeMode(mode);
+    if (!mounted) {
+      _useAst = useAst;
+      _useBytecode = useBytecode;
+      _interpreterRunner.useAst = _useAst;
+      _interpreterRunner.useBytecode = _useBytecode;
+      return;
+    }
+    setState(() {
+      _useAst = useAst;
+      _useBytecode = useBytecode;
+      _interpreterRunner.useAst = _useAst;
+      _interpreterRunner.useBytecode = _useBytecode;
+    });
   }
 
   Future<void> _initScanner() async {
@@ -137,6 +160,14 @@ class _DartNativeGoState extends State<DartNativeGo> {
         _statusMessage = 'Loading project manifest & bundle...';
       });
 
+      // Load saved runtime mode to guarantee reopening in the configured engine
+      final mode = await RuntimeModeStorage.loadMode();
+      final (useAst, useBytecode) = flagsFromRuntimeMode(mode);
+      _useAst = useAst;
+      _useBytecode = useBytecode;
+      _interpreterRunner.useAst = _useAst;
+      _interpreterRunner.useBytecode = _useBytecode;
+
       // 1. Fetch manifest & multi-file bundle
       final bundle = await _bundleLoader.fetchBundle(
         serverUrl,
@@ -148,8 +179,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
               _downloadedCount = downloaded;
               _downloadTotal = total;
               _downloadProgress = total > 0 ? downloaded / total : null;
-              _statusMessage =
-                  'Downloading packages ($downloaded / $total)...';
+              _statusMessage = 'Downloading packages ($downloaded / $total)...';
             });
           }
         },
@@ -228,7 +258,11 @@ class _DartNativeGoState extends State<DartNativeGo> {
             // next probe (guest setState/Provider notification still applies).
             setState(() {});
           }
-          _liveConnection?.sendUiTapResult(requestId, outcome.ok, outcome.error);
+          _liveConnection?.sendUiTapResult(
+            requestId,
+            outcome.ok,
+            outcome.error,
+          );
         },
         onUiScroll: (requestId, target, deltaX, deltaY) {
           final outcome = scrollTarget(
@@ -452,6 +486,11 @@ class _DartNativeGoState extends State<DartNativeGo> {
           _errorMessage = null;
         });
       }
+      final mode = await RuntimeModeStorage.loadMode();
+      final (useAst, useBytecode) = flagsFromRuntimeMode(mode);
+      _useAst = useAst;
+      _useBytecode = useBytecode;
+
       final updatedBundle = await _bundleLoader.fetchBundle(
         _activeBundle!.serverUrl,
         onlyAst: _useAst,
@@ -497,7 +536,26 @@ class _DartNativeGoState extends State<DartNativeGo> {
     }
   }
 
-  /// Unmounts the guest app and returns to the Go launcher screen.
+  void _cycleMode() {
+    final current = runtimeModeFromBool(_useAst, _useBytecode);
+    _setMode(current.next);
+  }
+
+  /// Sets the active runtime mode directly and persists choice.
+  void _setMode(RuntimeMode mode) {
+    final (nextAst, nextBytecode) = flagsFromRuntimeMode(mode);
+    setState(() {
+      _useAst = nextAst;
+      _useBytecode = nextBytecode;
+      _interpreterRunner.useAst = _useAst;
+      _interpreterRunner.useBytecode = _useBytecode;
+    });
+    RuntimeModeStorage.saveMode(mode);
+    if (_isAppMounted) {
+      _restartApp();
+    }
+  }
+
   void _unmountApp() {
     _liveConnection?.disconnect();
     _liveConnection = null;
@@ -516,8 +574,6 @@ class _DartNativeGoState extends State<DartNativeGo> {
   Widget build(BuildContext context) {
     // 1. Loading state: Project Splash Screen while fetching bundle
     if (_isLoadingBundle) {
-      print("===== 0");
-
       return ProjectSplashScreen(
         appName: _activeBundle?.appName ?? 'DartNative App',
         splashUrl: _activeBundle?.splashUrl,
@@ -538,7 +594,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
         return InterpreterErrorView(
           errorMessage: _errorMessage!,
           onGoHome: _unmountApp,
-          onRetry: () => _reloadApp(),
+          onRetry: () => _restartApp(),
           onLogToTerminal: (error) {
             print('🔴 [Interpreter Error] $error');
             _liveConnection?.sendDeviceLog(
@@ -555,28 +611,13 @@ class _DartNativeGoState extends State<DartNativeGo> {
         serverUrl: _activeBundle?.serverUrl ?? '',
         isConnected: _liveConnection?.isConnected ?? false,
         onGoHome: _unmountApp,
-        onReload: () => _reloadApp(),
+        onReload: () => _restartApp(),
         depCache: _bundleLoader.depCache,
         runtimeModeLabel: runtimeModeFromBool(_useAst, _useBytecode).label,
         useAst: _useAst,
         useBytecode: _useBytecode,
-        onCycleMode: () {
-          setState(() {
-            if (!_useAst && !_useBytecode) {
-              _useAst = true;
-              _useBytecode = false;
-            } else if (_useAst && !_useBytecode) {
-              _useAst = false;
-              _useBytecode = true;
-            } else {
-              _useAst = false;
-              _useBytecode = false;
-            }
-            _interpreterRunner.useAst = _useAst;
-            _interpreterRunner.useBytecode = _useBytecode;
-          });
-          _reloadApp();
-        },
+        onSelectMode: _setMode,
+        onCycleMode: _cycleMode,
         verboseLogs: _verboseLogs,
         onToggleVerbose: (enabled) {
           setState(() {
@@ -600,224 +641,33 @@ class _DartNativeGoState extends State<DartNativeGo> {
     }
 
     // 3. Default state: Launcher Screen
-    return App(
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.dark(),
-      ),
-      home: Scaffold(
-        backgroundColor: Colors.black,
-        appBar: AppBar(
-          centerTitle: false,
-          actions: [
-            BarButtonItem(
-              fontIcon: CupertinoIcons.ellipsis,
-              titleStyle: const TextStyle(color: Colors.white),
-              menu: [
-                MenuAction(
-                  onTap: () {},
-                  icon: CupertinoIcons.sun_max,
-                  title: 'Change Theme',
-                ),
-                MenuAction(
-                  onTap: () => _scanner.scanNow(),
-                  icon: CupertinoIcons.arrow_clockwise,
-                  title: 'Rescan Network',
-                ),
-              ],
-            ),
-          ],
-          leading: Image.asset(
-            'assets/dn-logo.png',
-            width: 40,
-            height: 40,
-          ),
-          title: Row(
-            children: [
-              const Text(
-                'DartNative Go',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Development Servers",
-                style: TextStyle(
-                  fontWeight: FontWeight.w400,
-                  color: Colors.white70,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _urlController,
-                      decoration: const InputDecoration(
-                        hintText: 'Enter URL (e.g. 192.168.3.159:8088)',
-                        filled: true,
-                        fillColor: Color(0xFF0e1012),
-                      ),
-                      prefixIconPadding: const EdgeInsets.only(left: 10),
-                      prefixIcon: CupertinoIcons.link,
-                      prefixIconColor: Colors.white,
-                      clearButtonMode: ClearButtonMode.whileEditing,
-                      keyboardType: TextInputType.url,
-                      textInputAction: TextInputAction.go,
-                      onSubmitted: (value) async {
-                        if (value.trim().isNotEmpty) {
-                          final project = await _scanner.addManualProject(
-                            value,
-                          );
-                          _urlController.clear();
-                          _launchProject(
-                            project.url,
-                            fallbackAppName: project.appName,
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Icon(
-                    CupertinoIcons.qrcode_viewfinder,
-                    size: 30,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 50),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Recent Projects",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white70,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  if (_projects.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: Text(
-                        _isLoading
-                            ? "Scanning connected networks (8088..8098)..."
-                            : "No active or recent projects found.",
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.white38,
-                        ),
-                      ),
-                    )
-                  else
-                    ..._projects.map(
-                      (project) => Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () {
-                            print(
-                              '[DartNativeGo] Selected project from list: ${project.appName} (${project.url})',
-                            );
-                            _urlController.text = project.url;
-                            _launchProject(
-                              project.url,
-                              fallbackAppName: project.appName,
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0e1012),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              children: [
-                                Image.asset(
-                                  'assets/dn-logo.png',
-                                  width: 40,
-                                  height: 40,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Text(
-                                            project.appName,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 15,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        project.url,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.white60,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (project.isActive)
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        width: 8,
-                                        height: 8,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFF34C759),
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        bottomNavigationBar: const BottomNavigationBar(
-          items: [
-            BottomNavigationBarItem(
-              icon: Icon(CupertinoIcons.house),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(CupertinoIcons.book_fill),
-              label: 'Learn',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(CupertinoIcons.gear_alt_fill),
-              label: 'Settings',
-            ),
-          ],
-        ),
-      ),
+    return LauncherScreen(
+      projects: _projects,
+      isLoading: _isLoading,
+      urlController: _urlController,
+      onUrlSubmitted: (value) async {
+        if (value.trim().isNotEmpty) {
+          final project = await _scanner.addManualProject(value);
+          _urlController.clear();
+          _launchProject(
+            project.url,
+            fallbackAppName: project.appName,
+          );
+        }
+      },
+      onSelectProject: (project) {
+        print(
+          '[DartNativeGo] Selected project from list: ${project.appName} (${project.url})',
+        );
+        _urlController.text = project.url;
+        _launchProject(
+          project.url,
+          fallbackAppName: project.appName,
+        );
+      },
+      onRescan: () => _scanner.scanNow(),
+      onCycleMode: _cycleMode,
+      runtimeModeLabel: runtimeModeFromBool(_useAst, _useBytecode).label,
     );
   }
 }

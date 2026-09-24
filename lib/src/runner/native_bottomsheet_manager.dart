@@ -183,28 +183,40 @@ class NativeBottomSheetScopeState extends State<NativeBottomSheetScope> {
   /// class definitions in [newVisitor] and re-measures native layout.
   void rebindAndRebuild(dynamic newVisitor, {String? changedFile}) {
     if (_isDisposed) return;
-    try {
-      if (!mounted) return;
-    } catch (_) {}
 
     // 1. Rebind descendant state proxies (e.g. _CreateNotePanelState)
     for (final proxy in List.of(_proxies)) {
       try {
-        bool isMounted = true;
+        bool isDisposed = false;
         try {
-          isMounted = (proxy.mounted == true);
+          if (proxy._mounted == false) isDisposed = true;
         } catch (_) {}
-        if (isMounted) {
-          final className = proxy.stateInstance?.klass?.name?.toString();
+        if (!isDisposed) {
+          String? className;
+          try {
+            className = proxy.stateInstance?.bytecodeClass?.name?.toString();
+          } catch (_) {}
+          if (className == null) {
+            try {
+              className = proxy.stateInstance?.klass?.name?.toString();
+            } catch (_) {}
+          }
           if (className != null) {
             final newClass = findUserClassInVisitor(newVisitor, className);
             if (newClass != null) {
-              proxy.rebindForHotReload(newVisitor, newClass);
-              continue;
+              try {
+                proxy.rebindForHotReload(newVisitor, newClass);
+                continue;
+              } catch (_) {}
             }
           }
           // Fallback if class didn't change name or wasn't found: refresh visitor & rebuild
-          proxy.visitor = newVisitor;
+          try {
+            proxy.visitor = newVisitor;
+          } catch (_) {}
+          try {
+            proxy.vm = newVisitor;
+          } catch (_) {}
           try {
             proxy.setState(() {});
           } catch (_) {}
@@ -215,13 +227,28 @@ class NativeBottomSheetScopeState extends State<NativeBottomSheetScope> {
     // 2. If the root child itself is a stateless or consumer widget, rebind it
     try {
       final c = widget.child as dynamic;
-      final childClassName = c.instance?.klass?.name?.toString();
+      String? childClassName;
+      try {
+        childClassName = c.instance?.bytecodeClass?.name?.toString();
+      } catch (_) {}
+      if (childClassName == null) {
+        try {
+          childClassName = c.instance?.klass?.name?.toString();
+        } catch (_) {}
+      }
       if (childClassName != null) {
         final newClass = findUserClassInVisitor(newVisitor, childClassName);
         if (newClass != null) {
-          c.rebindForHotReload(newVisitor, newClass);
+          try {
+            c.rebindForHotReload(newVisitor, newClass);
+          } catch (_) {}
         } else {
-          c.visitor = newVisitor;
+          try {
+            c.visitor = newVisitor;
+          } catch (_) {}
+          try {
+            c.vm = newVisitor;
+          } catch (_) {}
         }
       }
     } catch (_) {}
@@ -258,6 +285,13 @@ class NativeBottomSheetScopeState extends State<NativeBottomSheetScope> {
 /// in [visitor], supporting both Source mode and AST mode.
 dynamic findUserClassInVisitor(dynamic visitor, String className) {
   if (visitor == null) return null;
+
+  // 0. Try BytecodeVM classes
+  try {
+    if (visitor.classes is Map && visitor.classes.containsKey(className)) {
+      return visitor.classes[className];
+    }
+  } catch (_) {}
 
   // 1. Try visitor's current environment chain
   try {

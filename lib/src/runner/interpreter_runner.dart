@@ -39,12 +39,13 @@ class InterpreterRunner {
 
   AstInterpreterRunner? _astRunner;
   BytecodeInterpreterRunner? _bytecodeRunner;
-
   DebugController get debugController => _debugController;
   D4rt get interpreter => _interpreter;
   RuntimeMode get runtimeMode => runtimeModeFromBool(useAst, useBytecode);
   BytecodeInterpreterRunner? get bytecodeRunner => _bytecodeRunner;
-  Object? get activeVisitor => useAst ? _astRunner?.visitor : _interpreter.visitor;
+  Object? get activeVisitor => useAst
+      ? _astRunner?.visitor
+      : (useBytecode ? _bytecodeRunner?.vm : _interpreter.visitor);
 
   InterpreterRunner({
     this.onLog,

@@ -6,6 +6,7 @@ import 'package:tom_d4rt_ast/runtime.dart';
 
 import '../../interpreter/ast/dartscript.b.dart' as ast_bridges;
 import '../logger.dart';
+import '../native_bottomsheet_manager.dart';
 import 'bytecode_widget_proxies.dart';
 import 'call_frame.dart';
 import 'vm.dart';
@@ -30,6 +31,10 @@ class BytecodeBridgeAdapter {
         if (value.nativeProxy != null) {
           return value.nativeProxy;
         }
+        final w = BytecodeVM.current?.unwrapWidget(value);
+        if (w != null) {
+          return w;
+        }
         final sc = value.bytecodeClass.superclass ?? '';
         if (sc == 'Notifier' || sc.startsWith('Notifier<')) {
           final vm = BytecodeVM.current;
@@ -40,6 +45,13 @@ class BytecodeBridgeAdapter {
       }
       return null;
     };
+
+    D4.registerInterfaceProxy('Widget', (visitor, instance) {
+      if (instance is BytecodeInstance) {
+        return BytecodeVM.current?.unwrapWidget(instance);
+      }
+      return null;
+    });
 
     final runner = D4rtRunner();
     ast_bridges.DartnativeGoAstBridges.register(runner);
@@ -94,6 +106,8 @@ class BytecodeBridgeAdapter {
     if (arg == null) return null;
     if (arg is BytecodeInstance) {
       if (arg.nativeProxy != null) return arg.nativeProxy;
+      final w = BytecodeVM.current?.unwrapWidget(arg);
+      if (w != null) return w;
       return arg;
     }
     if (arg is List) {
@@ -122,6 +136,9 @@ class BytecodeBridgeAdapter {
   }) {
     ensureInitialized();
   }
+
+  /// Exposes the shared [InterpreterVisitor] instance for AST-mode callables.
+  InterpreterVisitor get sharedVisitor => _sharedVisitor;
 
   /// Resolves an instantiated class, constructor, or bridged function call.
   Object? invokeConstructor(
@@ -1227,18 +1244,22 @@ class BytecodeBridgeAdapter {
           initialDetent: initialDetent,
           showGrabber: showGrabber,
           builder: (bCtx, controller) {
+            Widget child = const SizedBox.shrink();
             if (builderFn is BytecodeClosure && vm != null) {
               final res = vm!.executeFunction(
                 funcId: builderFn.funcId,
                 positionalArgs: [bCtx, controller],
                 capturedEnv: builderFn.capturedSlots,
               );
-              return _unwrapWidget(res) ?? const SizedBox.shrink();
+              child = _unwrapWidget(res) ?? const SizedBox.shrink();
             } else if (builderFn is Function) {
               final res = builderFn(bCtx, controller);
-              return _unwrapWidget(res) ?? const SizedBox.shrink();
+              child = _unwrapWidget(res) ?? const SizedBox.shrink();
             }
-            return const SizedBox.shrink();
+            return NativeBottomSheetScope(
+              controller: controller,
+              child: child,
+            );
           },
         );
       }

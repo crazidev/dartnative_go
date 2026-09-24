@@ -1,16 +1,28 @@
 import 'dart:async';
 import 'package:dartnative/dartnative.dart';
+import 'package:native_bottomsheet/native_bottomsheet.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
+import '../native_bottomsheet_manager.dart';
+import 'bytecode_models.dart';
 import 'call_frame.dart';
 import 'vm.dart';
 
 /// Native proxy for Bytecode interpreted classes extending [StatelessWidget].
 class BytecodeStatelessWidget extends StatelessWidget {
-  final BytecodeVM vm;
-  final BytecodeInstance instance;
+  BytecodeVM vm;
+  BytecodeInstance instance;
 
   BytecodeStatelessWidget(this.vm, this.instance, {super.key}) {
     instance.nativeProxy = this;
+  }
+
+  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
+    if (newVisitor is BytecodeVM) {
+      vm = newVisitor;
+    }
+    if (newClass is BytecodeClass) {
+      instance.syncClass(newClass, vm);
+    }
   }
 
   @override
@@ -20,9 +32,11 @@ class BytecodeStatelessWidget extends StatelessWidget {
       instance.syncClass(latestClass, vm);
     }
     final buildFuncId = instance.bytecodeClass.methodFuncIds['build'];
-    if (buildFuncId != null) {
+    var fn = buildFuncId != null ? vm.functionTable.get(buildFuncId) : null;
+    fn ??= vm.functionTable.getByName('${instance.bytecodeClass.name}.build');
+    if (fn != null) {
       final res = vm.executeFunction(
-        funcId: buildFuncId,
+        funcId: fn.id,
         positionalArgs: [context],
         thisTarget: instance,
       );
@@ -35,11 +49,20 @@ class BytecodeStatelessWidget extends StatelessWidget {
 
 /// Native proxy for Bytecode interpreted classes extending [StatefulWidget].
 class BytecodeStatefulWidget extends StatefulWidget {
-  final BytecodeVM vm;
-  final BytecodeInstance instance;
+  BytecodeVM vm;
+  BytecodeInstance instance;
 
   BytecodeStatefulWidget(this.vm, this.instance, {super.key}) {
     instance.nativeProxy = this;
+  }
+
+  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
+    if (newVisitor is BytecodeVM) {
+      vm = newVisitor;
+    }
+    if (newClass is BytecodeClass) {
+      instance.syncClass(newClass, vm);
+    }
   }
 
   @override
@@ -68,7 +91,7 @@ class BytecodeStatefulWidget extends StatefulWidget {
 
 /// Native proxy for Bytecode interpreted classes extending [State].
 class BytecodeStateProxy extends State<StatefulWidget> {
-  final BytecodeVM vm;
+  BytecodeVM vm;
   BytecodeInstance stateInstance;
   BytecodeStatefulWidget ownerWidget;
 
@@ -78,9 +101,24 @@ class BytecodeStateProxy extends State<StatefulWidget> {
 
   BytecodeInstance get widgetInstance => ownerWidget.instance;
 
+  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
+    if (newVisitor is BytecodeVM) {
+      vm = newVisitor;
+    }
+    if (newClass is BytecodeClass) {
+      stateInstance.syncClass(newClass, vm);
+    }
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    try {
+      NativeBottomSheetScope.of(context)?.registerProxy(this);
+    } catch (_) {}
     final initFuncId = stateInstance.bytecodeClass.methodFuncIds['initState'];
     if (initFuncId != null) {
       vm.executeFunction(
@@ -93,6 +131,9 @@ class BytecodeStateProxy extends State<StatefulWidget> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    try {
+      NativeBottomSheetScope.of(context)?.registerProxy(this);
+    } catch (_) {}
     final depFuncId = stateInstance.bytecodeClass.methodFuncIds['didChangeDependencies'];
     if (depFuncId != null) {
       vm.executeFunction(
@@ -130,13 +171,17 @@ class BytecodeStateProxy extends State<StatefulWidget> {
     }
   }
 
-
   @override
   void didUpdateWidget(covariant StatefulWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget is BytecodeStatefulWidget) {
-      ownerWidget = widget as BytecodeStatefulWidget;
-    }
+    try {
+      super.didUpdateWidget(oldWidget);
+    } catch (_) {}
+    try {
+      if (widget is BytecodeStatefulWidget) {
+        ownerWidget = widget as BytecodeStatefulWidget;
+        vm = ownerWidget.vm;
+      }
+    } catch (_) {}
     final latestClass = vm.classes[stateInstance.bytecodeClass.name];
     if (latestClass != null) {
       stateInstance.syncClass(latestClass, vm);
@@ -154,15 +199,23 @@ class BytecodeStateProxy extends State<StatefulWidget> {
 
   @override
   Widget build(BuildContext context) {
+    try {
+      if (widget is BytecodeStatefulWidget) {
+        ownerWidget = widget as BytecodeStatefulWidget;
+        vm = ownerWidget.vm;
+      }
+    } catch (_) {}
     stateInstance.nativeProxy = this;
     final latestClass = vm.classes[stateInstance.bytecodeClass.name];
     if (latestClass != null) {
       stateInstance.syncClass(latestClass, vm);
     }
     final buildFuncId = stateInstance.bytecodeClass.methodFuncIds['build'];
-    if (buildFuncId != null) {
+    var fn = buildFuncId != null ? vm.functionTable.get(buildFuncId) : null;
+    fn ??= vm.functionTable.getByName('${stateInstance.bytecodeClass.name}.build');
+    if (fn != null) {
       final res = vm.executeFunction(
-        funcId: buildFuncId,
+        funcId: fn.id,
         positionalArgs: [context],
         thisTarget: stateInstance,
       );
@@ -175,6 +228,9 @@ class BytecodeStateProxy extends State<StatefulWidget> {
   @override
   void dispose() {
     _mounted = false;
+    try {
+      NativeBottomSheetScope.of(context)?.unregisterProxy(this);
+    } catch (_) {}
     final disposeFuncId = stateInstance.bytecodeClass.methodFuncIds['dispose'];
     if (disposeFuncId != null) {
       try {
@@ -190,11 +246,20 @@ class BytecodeStateProxy extends State<StatefulWidget> {
 
 /// Native proxy for Bytecode interpreted classes extending [ConsumerWidget].
 class BytecodeConsumerWidget extends ConsumerWidget {
-  final BytecodeVM vm;
-  final BytecodeInstance instance;
+  BytecodeVM vm;
+  BytecodeInstance instance;
 
   BytecodeConsumerWidget(this.vm, this.instance, {super.key}) {
     instance.nativeProxy = this;
+  }
+
+  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
+    if (newVisitor is BytecodeVM) {
+      vm = newVisitor;
+    }
+    if (newClass is BytecodeClass) {
+      instance.syncClass(newClass, vm);
+    }
   }
 
   @override
@@ -204,9 +269,11 @@ class BytecodeConsumerWidget extends ConsumerWidget {
       instance.syncClass(latestClass, vm);
     }
     final buildFuncId = instance.bytecodeClass.methodFuncIds['build'];
-    if (buildFuncId != null) {
+    var fn = buildFuncId != null ? vm.functionTable.get(buildFuncId) : null;
+    fn ??= vm.functionTable.getByName('${instance.bytecodeClass.name}.build');
+    if (fn != null) {
       final res = vm.executeFunction(
-        funcId: buildFuncId,
+        funcId: fn.id,
         positionalArgs: [context, ref],
         thisTarget: instance,
       );
@@ -219,11 +286,20 @@ class BytecodeConsumerWidget extends ConsumerWidget {
 
 /// Native proxy for Bytecode interpreted classes extending [ConsumerStatefulWidget].
 class BytecodeConsumerStatefulWidget extends ConsumerStatefulWidget {
-  final BytecodeVM vm;
-  final BytecodeInstance instance;
+  BytecodeVM vm;
+  BytecodeInstance instance;
 
   BytecodeConsumerStatefulWidget(this.vm, this.instance, {super.key}) {
     instance.nativeProxy = this;
+  }
+
+  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
+    if (newVisitor is BytecodeVM) {
+      vm = newVisitor;
+    }
+    if (newClass is BytecodeClass) {
+      instance.syncClass(newClass, vm);
+    }
   }
 
   @override
@@ -252,7 +328,7 @@ class BytecodeConsumerStatefulWidget extends ConsumerStatefulWidget {
 
 /// Native proxy for Bytecode interpreted classes extending [ConsumerState].
 class BytecodeConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget> {
-  final BytecodeVM vm;
+  BytecodeVM vm;
   BytecodeInstance stateInstance;
   BytecodeConsumerStatefulWidget ownerWidget;
 
@@ -262,9 +338,24 @@ class BytecodeConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget> {
 
   BytecodeInstance get widgetInstance => ownerWidget.instance;
 
+  void rebindForHotReload(dynamic newVisitor, dynamic newClass) {
+    if (newVisitor is BytecodeVM) {
+      vm = newVisitor;
+    }
+    if (newClass is BytecodeClass) {
+      stateInstance.syncClass(newClass, vm);
+    }
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    try {
+      NativeBottomSheetScope.of(context)?.registerProxy(this);
+    } catch (_) {}
     final initFuncId = stateInstance.bytecodeClass.methodFuncIds['initState'];
     if (initFuncId != null) {
       vm.executeFunction(
@@ -277,6 +368,9 @@ class BytecodeConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    try {
+      NativeBottomSheetScope.of(context)?.registerProxy(this);
+    } catch (_) {}
     final depFuncId = stateInstance.bytecodeClass.methodFuncIds['didChangeDependencies'];
     if (depFuncId != null) {
       vm.executeFunction(
@@ -314,13 +408,17 @@ class BytecodeConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget> {
     }
   }
 
-
   @override
   void didUpdateWidget(covariant ConsumerStatefulWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget is BytecodeConsumerStatefulWidget) {
-      ownerWidget = widget as BytecodeConsumerStatefulWidget;
-    }
+    try {
+      super.didUpdateWidget(oldWidget);
+    } catch (_) {}
+    try {
+      if (widget is BytecodeConsumerStatefulWidget) {
+        ownerWidget = widget as BytecodeConsumerStatefulWidget;
+        vm = ownerWidget.vm;
+      }
+    } catch (_) {}
     final latestClass = vm.classes[stateInstance.bytecodeClass.name];
     if (latestClass != null) {
       stateInstance.syncClass(latestClass, vm);
@@ -338,15 +436,23 @@ class BytecodeConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget> {
 
   @override
   Widget build(BuildContext context) {
+    try {
+      if (widget is BytecodeConsumerStatefulWidget) {
+        ownerWidget = widget as BytecodeConsumerStatefulWidget;
+        vm = ownerWidget.vm;
+      }
+    } catch (_) {}
     stateInstance.nativeProxy = this;
     final latestClass = vm.classes[stateInstance.bytecodeClass.name];
     if (latestClass != null) {
       stateInstance.syncClass(latestClass, vm);
     }
     final buildFuncId = stateInstance.bytecodeClass.methodFuncIds['build'];
-    if (buildFuncId != null) {
+    var fn = buildFuncId != null ? vm.functionTable.get(buildFuncId) : null;
+    fn ??= vm.functionTable.getByName('${stateInstance.bytecodeClass.name}.build');
+    if (fn != null) {
       final res = vm.executeFunction(
-        funcId: buildFuncId,
+        funcId: fn.id,
         positionalArgs: [context],
         thisTarget: stateInstance,
       );
@@ -359,6 +465,9 @@ class BytecodeConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget> {
   @override
   void dispose() {
     _mounted = false;
+    try {
+      NativeBottomSheetScope.of(context)?.unregisterProxy(this);
+    } catch (_) {}
     final disposeFuncId = stateInstance.bytecodeClass.methodFuncIds['dispose'];
     if (disposeFuncId != null) {
       try {

@@ -12,7 +12,6 @@ void main() {
   // as the FIRST line of main() — see lib/dartnative_plugin_registrant.dart.
   DartNativePluginRegistrant.registerAll();
 
-  print("Hello 2 =====");
   // App-wide system chrome default for the white template: dark status-bar
   // icons over the light background, transparent strips. Screens can override
   // in initState; the navigator restores this default on pop.
@@ -23,7 +22,7 @@ void main() {
     systemNavigationBarColor: Colors.transparent,
     systemNavigationBarIconBrightness: Brightness.dark,
   );
-  runApp(const MyApp());
+  runApp(ProviderScope(child: const TodoScreen()));
 }
 
 class MyApp extends StatefulWidget {
@@ -84,3 +83,5 @@ class _MyAppState extends State<MyApp> {
     );
   }
 }
+
+class Example {}
