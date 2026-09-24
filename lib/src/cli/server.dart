@@ -46,6 +46,9 @@ class DartGoServerOptions {
 class DartGoServer {
   final DartGoServerOptions options;
   HttpServer? _server;
+
+  /// The port the HTTP/WebSocket server actually bound (null before [start]).
+  int? get boundPort => _server?.port;
   DartGoBroadcaster? _broadcaster;
   StreamSubscription? _fileWatchSub;
   StreamSubscription? _assetsWatchSub;
@@ -244,10 +247,12 @@ class DartGoServer {
       return;
     }
     _astRebuildInFlight = true;
+    var buildOk = false;
     try {
       final astSw = Stopwatch()..start();
       final result = await buildGuestAstBundle(projectDir);
       astSw.stop();
+      buildOk = result.success;
       if (result.success) {
         final artifacts = result.bytecodeBuilt ? 'guest.ast & guest.bc' : 'guest.ast';
         if (result.cached) {
@@ -278,6 +283,11 @@ class DartGoServer {
     } finally {
       _astRebuildInFlight = false;
     }
+    // A failed build leaves the previous bundle in place, so there is nothing
+    // new to fetch: skip the broadcast and let every device keep running its
+    // current generation. The warning above (plus the next successful save)
+    // is the whole signal.
+    if (!buildOk) return;
     _broadcastReload(changedPath, codeDir.path);
     DartGoLogger.bench(
       'DevServer',

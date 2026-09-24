@@ -142,6 +142,10 @@ guest build / lifecycle / button handler throws
         (reporting never swallows: the error still propagates on-device)
 ```
 
+* **Bad saves never take down the working app** — three gates, inside out:
+  1. **Server**: a bundle build that fails leaves the previous `guest.ast` in place and broadcasts *nothing*; devices keep running untouched, the CLI warning is the whole signal.
+  2. **Host**: a reload whose evaluation throws keeps the mounted tree (the interpreter already rolled its generation back); only an initial load with nothing to show gets the error screen.
+  3. **Proxy**: a guest `build` that starts throwing renders its last good child (`_lastGoodChild`) instead of failing the tree; fixed code builds fresh on the next reload. First builds and `createState` still throw — there is nothing to keep.
 * **Source engine** (legacy): user-module-only snapshots (`< 2ms`), stable root key, generational remount.
 * **Bytecode engine status**: disabled by default behind `kBytecodeEnabled` (`--dart-define=DN_ENABLE_BYTECODE=true`); while off it is not selectable, `guest.bc` is not emitted, and its suites skip. AST owns hot reload.
 
@@ -241,6 +245,10 @@ test/
   `runner/ast_committed_broken_heals_test.dart` (a broken generation that
   commits because the bad reference sits in a build body heals when the export
   appears),
+  `runner/ast_proxy_error_boundary_test.dart` (a throwing build falls back to
+  the last good child, then builds fresh when fixed),
+  `server/build_failure_gate_test.dart` (a failed rebuild broadcasts nothing,
+  the fixed rebuild broadcasts),
   `runner/ast_reload_atomic_generation_test.dart` (failed generation rolls
   back).
 - **Skills:** `.agents/skills/dartnative-test-{lab,writing}` (runbook +

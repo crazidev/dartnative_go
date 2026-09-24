@@ -58,6 +58,11 @@ class InterpretedStatelessWidget extends StatelessWidget
   InterpreterVisitor visitor;
   InterpretedInstance instance;
 
+  /// The last child this proxy built successfully. When guest code throws
+  /// mid-reload, the proxy renders this instead of failing the whole tree:
+  /// the working UI stays up while the error goes to the CLI.
+  Widget? _lastGoodChild;
+
   /// A stateless widget has no state to mark; a parent rebuild (or the sheet's
   /// per-reload subtree key) is what re-runs its build.
   void markNeedsRebuild() {}
@@ -97,15 +102,23 @@ class InterpretedStatelessWidget extends StatelessWidget
 
   @override
   Widget build(BuildContext context) {
-    return _runWithLogCapture(() {
-      final method = instance.get('build', visitor: visitor);
-      if (method is Callable) {
-        final rawResult = method.call(visitor, [context], {});
-        final widget = D4.extractBridgedArg<Widget>(rawResult, 'buildResult', visitor);
-        return widget;
-      }
-      throw StateError('Interpreted StatelessWidget has no callable build(context) method');
-    });
+    try {
+      final built = _runWithLogCapture(() {
+        final method = instance.get('build', visitor: visitor);
+        if (method is Callable) {
+          final rawResult = method.call(visitor, [context], {});
+          final widget = D4.extractBridgedArg<Widget>(rawResult, 'buildResult', visitor);
+          return widget;
+        }
+        throw StateError('Interpreted StatelessWidget has no callable build(context) method');
+      });
+      _lastGoodChild = built;
+      return built;
+    } catch (_) {
+      final cached = _lastGoodChild;
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 }
 
@@ -148,17 +161,28 @@ class InterpretedConsumerWidget extends ConsumerWidget
     return ValueKey('Consumer_${instance.klass.name}_gen_$gen');
   }
 
+  /// See [InterpretedStatelessWidget._lastGoodChild].
+  Widget? _lastGoodChild;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return _runWithLogCapture(() {
-      final method = instance.get('build', visitor: visitor);
-      if (method is Callable) {
-        final rawResult = method.call(visitor, [context, ref], {});
-        final widget = D4.extractBridgedArg<Widget>(rawResult, 'buildResult', visitor);
-        return widget;
-      }
-      throw StateError('Interpreted ConsumerWidget has no callable build(context, ref) method');
-    });
+    try {
+      final built = _runWithLogCapture(() {
+        final method = instance.get('build', visitor: visitor);
+        if (method is Callable) {
+          final rawResult = method.call(visitor, [context, ref], {});
+          final widget = D4.extractBridgedArg<Widget>(rawResult, 'buildResult', visitor);
+          return widget;
+        }
+        throw StateError('Interpreted ConsumerWidget has no callable build(context, ref) method');
+      });
+      _lastGoodChild = built;
+      return built;
+    } catch (_) {
+      final cached = _lastGoodChild;
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 }
 
@@ -522,17 +546,28 @@ class InterpretedStateProxy extends State<StatefulWidget>
     } catch (_) {}
   }
 
+  /// See [InterpretedStatelessWidget._lastGoodChild].
+  Widget? _lastGoodChild;
+
   @override
   Widget build(BuildContext context) {
-    return _runWithLogCapture(() {
-      final method = stateInstance.get('build', visitor: visitor);
-      if (method is Callable) {
-        final rawResult = method.call(visitor, [context], {});
-        final widget = D4.extractBridgedArg<Widget>(rawResult, 'buildResult', visitor);
-        return widget;
-      }
-      throw StateError('Interpreted State has no callable build(context) method');
-    });
+    try {
+      final built = _runWithLogCapture(() {
+        final method = stateInstance.get('build', visitor: visitor);
+        if (method is Callable) {
+          final rawResult = method.call(visitor, [context], {});
+          final widget = D4.extractBridgedArg<Widget>(rawResult, 'buildResult', visitor);
+          return widget;
+        }
+        throw StateError('Interpreted State has no callable build(context) method');
+      });
+      _lastGoodChild = built;
+      return built;
+    } catch (_) {
+      final cached = _lastGoodChild;
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   void _rebuildIfMounted() {
@@ -848,16 +883,27 @@ class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget
     } catch (_) {}
   }
 
+  /// See [InterpretedStatelessWidget._lastGoodChild].
+  Widget? _lastGoodChild;
+
   @override
   Widget build(BuildContext context) {
-    return _runWithLogCapture(() {
-      final method = stateInstance.get('build', visitor: visitor);
-      if (method is Callable) {
-        final rawResult = method.call(visitor, [context], {});
-        return D4.extractBridgedArg<Widget>(rawResult, 'buildResult', visitor);
-      }
-      throw StateError('Interpreted ConsumerState has no callable build(context) method');
-    });
+    try {
+      final built = _runWithLogCapture(() {
+        final method = stateInstance.get('build', visitor: visitor);
+        if (method is Callable) {
+          final rawResult = method.call(visitor, [context], {});
+          return D4.extractBridgedArg<Widget>(rawResult, 'buildResult', visitor);
+        }
+        throw StateError('Interpreted ConsumerState has no callable build(context) method');
+      });
+      _lastGoodChild = built;
+      return built;
+    } catch (_) {
+      final cached = _lastGoodChild;
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   void _rebuildIfMounted() {

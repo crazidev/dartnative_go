@@ -494,9 +494,15 @@ class _DartNativeGoState extends State<DartNativeGo> {
       final err = 'Hot Reload Error: $e';
       DartGoLogger.error(err, null, stack);
       if (!mounted || seq != _reloadSeq) return;
-      setState(() {
-        _errorMessage = err;
-      });
+      // A failed RELOAD must not take down the working tree: the interpreter
+      // rolled its generation back, so keep showing it and leave the failure
+      // on the CLI. Only an initial load with nothing mounted gets the error
+      // screen.
+      if (_interpretedWidget == null) {
+        setState(() {
+          _errorMessage = err;
+        });
+      }
     }
   }
 
