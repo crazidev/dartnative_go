@@ -21,16 +21,6 @@ Directory _makeGuestProject(Directory parent, String name) {
   return dir;
 }
 
-/// Mirrors the builder's sibling-artifact convention (`x.ast` → `x.bc`).
-File _bytecodeFileFor(File astFile) {
-  final path = astFile.path;
-  return File(
-    path.endsWith('.ast')
-        ? '${path.substring(0, path.length - 4)}.bc'
-        : '$path.bc',
-  );
-}
-
 void main() {
   group('AstBuilder', () {
     late Directory tmp;
@@ -170,18 +160,16 @@ void main() {
       }
     });
 
-    test('missing guest.bc does not invalidate the AST cache', () async {
-      final guest = _makeGuestProject(tmp, 'bc_missing_guest');
-      final out = File('${tmp.path}/bc_missing.ast');
+    test('unchanged sources hit the incremental cache', () async {
+      final guest = _makeGuestProject(tmp, 'cache_hit_guest');
+      final out = File('${tmp.path}/cache_hit.ast');
       final first = await buildGuestAstBundle(
         guest,
         outputArg: out.path,
         force: true,
       );
       expect(first.success, isTrue, reason: first.error);
-
-      final bcFile = _bytecodeFileFor(out);
-      if (bcFile.existsSync()) bcFile.deleteSync();
+      expect(first.cached, isFalse);
 
       final cached = await buildGuestAstBundle(
         guest,
@@ -191,9 +179,8 @@ void main() {
       expect(
         cached.cached,
         isTrue,
-        reason: 'a missing bytecode artifact must not force a re-parse',
+        reason: 'unchanged sources must not force a re-parse',
       );
-      expect(cached.bytecodeBuilt, isFalse);
       expect(out.existsSync(), isTrue);
     });
   });

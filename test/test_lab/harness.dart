@@ -72,7 +72,6 @@ class DnHarness {
     final runner = InterpreterRunner(
       onLog: onLog,
       useAst: false,
-      useBytecode: false,
     );
     for (final override in bridgeOverrides) {
       override(runner.interpreter);

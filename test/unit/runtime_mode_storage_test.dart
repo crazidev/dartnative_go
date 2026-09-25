@@ -1,5 +1,5 @@
 import 'package:dartnative_go/src/client/runtime_mode_storage.dart';
-import 'package:dartnative_go/src/runner/runtime_mode.dart';
+import 'package:dartnative_go/src/runner/runtime_mode.dart' show RuntimeMode;
 import 'package:test/test.dart';
 
 void main() {
@@ -19,20 +19,6 @@ void main() {
     });
 
     test('persists mode change in memory and survives load', () async {
-      // A Bytecode preference is only honoured while the engine is enabled;
-      // otherwise loading falls back to the default engine.
-      await RuntimeModeStorage.saveMode(RuntimeMode.bytecode);
-      expect(
-        RuntimeModeStorage.currentMode,
-        equals(kBytecodeEnabled ? RuntimeMode.bytecode : RuntimeMode.ast),
-      );
-      expect(
-        await RuntimeModeStorage.loadMode(),
-        equals(
-          kBytecodeEnabled ? RuntimeMode.bytecode : RuntimeMode.ast,
-        ),
-      );
-
       await RuntimeModeStorage.saveMode(RuntimeMode.source);
       expect(RuntimeModeStorage.currentMode, equals(RuntimeMode.source));
       expect(await RuntimeModeStorage.loadMode(), equals(RuntimeMode.source));
@@ -43,17 +29,9 @@ void main() {
     });
 
     test('resetForTesting can seed initial mode', () async {
-      RuntimeModeStorage.resetForTesting(RuntimeMode.bytecode);
-      expect(
-        RuntimeModeStorage.currentMode,
-        equals(kBytecodeEnabled ? RuntimeMode.bytecode : RuntimeMode.ast),
-      );
-      expect(
-        await RuntimeModeStorage.loadMode(),
-        equals(
-          kBytecodeEnabled ? RuntimeMode.bytecode : RuntimeMode.ast,
-        ),
-      );
+      RuntimeModeStorage.resetForTesting(RuntimeMode.source);
+      expect(RuntimeModeStorage.currentMode, equals(RuntimeMode.source));
+      expect(await RuntimeModeStorage.loadMode(), equals(RuntimeMode.source));
     });
   });
 }

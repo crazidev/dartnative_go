@@ -6,7 +6,6 @@ import 'dart:io';
 class LiveConnection {
   final String serverUrl;
   final void Function(String? changedFile)? onReload;
-  final void Function(Map<String, dynamic> deltaJson)? onBytecodeDelta;
   final void Function(List<Map<String, dynamic>> breakpoints)? onBreakpoints;
   final void Function()? onResume;
   final void Function(bool enabled)? onSetVmDebugger;
@@ -41,7 +40,6 @@ class LiveConnection {
   LiveConnection({
     required this.serverUrl,
     this.onReload,
-    this.onBytecodeDelta,
     this.onBreakpoints,
     this.onResume,
     this.onSetVmDebugger,
@@ -90,10 +88,6 @@ class LiveConnection {
             if (type == 'reload') {
               final changedFile = data['changedFile'] as String?;
               onReload?.call(changedFile);
-            } else if (type == 'bytecode_delta') {
-              if (data['delta'] is Map<String, dynamic>) {
-                onBytecodeDelta?.call(data['delta'] as Map<String, dynamic>);
-              }
             } else if (type == 'restart') {
               onRestart?.call();
             } else if (type == 'breakpoints') {

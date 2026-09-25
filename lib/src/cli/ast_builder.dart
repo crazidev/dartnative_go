@@ -5,10 +5,7 @@ import 'package:analyzer/dart/ast/ast.dart' as analyzer;
 import 'package:path/path.dart' as p;
 import 'package:tom_ast_generator/tom_ast_generator.dart';
 
-import '../runner/bytecode/bundle_codec.dart';
 import '../runner/logger.dart';
-import '../runner/runtime_mode.dart';
-import 'bytecode_emitter.dart';
 
 /// Extended [AstConverter] that handles newer/unmapped analyzer nodes
 /// such as [analyzer.LibraryIdentifier] in `library foo;` directives.
@@ -81,11 +78,6 @@ class AstBuildResult {
   /// "no changes").
   final bool cached;
 
-  /// True when the sibling `guest.bc` was (re)generated successfully in this
-  /// build. False means no bytecode artifact exists for this fingerprint, so
-  /// callers must not serve a stale one.
-  final bool bytecodeBuilt;
-
   /// Per-module content fingerprints (module URI → FNV-1a hex of the module's
   /// serialized AST). Lets the device tell which modules actually changed
   /// between reloads instead of re-declaring the whole bundle.
@@ -99,7 +91,6 @@ class AstBuildResult {
     this.entryPointUri = '',
     this.error,
     this.cached = false,
-    this.bytecodeBuilt = false,
     this.moduleFingerprints = const {},
   });
 }
@@ -381,7 +372,6 @@ class _LastBuild {
   final int moduleCount;
   final int byteSize;
   final String entryPointUri;
-  final bool bytecodeBuilt;
   final Map<String, String> moduleFingerprints;
 
   const _LastBuild({
@@ -390,7 +380,6 @@ class _LastBuild {
     required this.moduleCount,
     required this.byteSize,
     required this.entryPointUri,
-    required this.bytecodeBuilt,
     required this.moduleFingerprints,
   });
 }
@@ -444,27 +433,12 @@ Future<AstBuildResult> buildGuestAstBundle(
 
   // Incremental fast path: unchanged sources since last success → skip parse.
   final codeRoot = _codeRootFor(projectDir, entryFile);
-  final bcPath = outPath.endsWith('.ast')
-      ? '${outPath.substring(0, outPath.length - 4)}.bc'
-      : '$outPath.bc';
-  final bcFile = File(bcPath);
 
   if (incremental && !force) {
     final last = _lastBuilds[projectDir.path];
     if (last != null && last.outputPath == outFile.path) {
       final fp = await fingerprintGuestSources(codeRoot, projectDir);
       if (fp == last.fingerprint && outFile.existsSync()) {
-        // The `.ast` artifact is the source of truth for the cache; a missing
-        // sibling `.bc` (deleted after a failed emit, or by hand) must not
-        // force a re-parse on every request.
-        final bcMissing = last.bytecodeBuilt && !bcFile.existsSync();
-        if (bcMissing) {
-          DartGoLogger.warn(
-            'guest.bc is missing for an unchanged source tree — force a '
-            'rebuild to regenerate the bytecode bundle.',
-            tag: 'AstBuilder',
-          );
-        }
         final size = await outFile.length();
         return AstBuildResult(
           success: true,
@@ -473,7 +447,6 @@ Future<AstBuildResult> buildGuestAstBundle(
           byteSize: size,
           entryPointUri: last.entryPointUri,
           cached: true,
-          bytecodeBuilt: last.bytecodeBuilt && !bcMissing,
           moduleFingerprints: last.moduleFingerprints,
         );
       }
@@ -504,50 +477,6 @@ Future<AstBuildResult> buildGuestAstBundle(
     bundle.saveToFile(outFile.path);
     final size = await outFile.length();
 
-    // Auto-build Bytecode bundle (.bc) alongside .ast so both runtimes stay in
-    // sync. Skipped entirely while the Bytecode engine is disabled
-    // (kBytecodeEnabled) — nothing can select it, so the artifact would only cost
-    // build time.
-    //
-    // A failed emit is fatal *for bytecode*: the stale artifact is deleted so the
-    // dev server stops advertising `hasBytecodeBundle` and the device falls back
-    // to AST instead of executing a bundle that no longer matches the sources.
-    var bytecodeBuilt = false;
-    if (!kBytecodeEnabled) {
-      if (bcFile.existsSync()) {
-        try {
-          await bcFile.delete();
-        } catch (_) {}
-      }
-    } else {
-      try {
-        final bcEmitter = BytecodeEmitter();
-        final bcBundle = bcEmitter.compileBundle(bundle);
-        final bcBytes = BytecodeBundleCodec.encodeBundle(bcBundle);
-        await bcFile.parent.create(recursive: true);
-        await bcFile.writeAsBytes(bcBytes, flush: true);
-        bytecodeBuilt = true;
-      } catch (bcError, bcSt) {
-        var deletedStale = false;
-        try {
-          if (bcFile.existsSync()) {
-            await bcFile.delete();
-            deletedStale = true;
-          }
-        } catch (_) {}
-        DartGoLogger.error(
-          'Bytecode auto-build failed — guest.bc is unavailable'
-          '${deletedStale ? ' (deleted stale artifact)' : ''}',
-          bcError,
-          bcSt,
-        );
-        DartGoLogger.warn(
-          'Bytecode mode unavailable for this build; AST mode unaffected.',
-          tag: 'AstBuilder',
-        );
-      }
-    }
-
     final moduleFingerprints = fingerprintBundleModules(bundle.modules);
     final fp = await fingerprintGuestSources(codeRoot, projectDir);
     _lastBuilds[projectDir.path] = _LastBuild(
@@ -556,19 +485,17 @@ Future<AstBuildResult> buildGuestAstBundle(
       moduleCount: bundle.modules.length,
       byteSize: size,
       entryPointUri: bundle.entryPointUri,
-      bytecodeBuilt: bytecodeBuilt,
       moduleFingerprints: moduleFingerprints,
     );
     final writeMs = t3.elapsedMilliseconds;
     DartGoLogger.bench(
       'AstBuilder',
-      'guest.ast & guest.bc generated',
+      'guest.ast generated',
       resolveMs + parseBundleMs + writeMs,
       {
         'resolve': resolveMs,
         'parse': parseBundleMs,
         'write': writeMs,
-        'bytecode': bytecodeBuilt ? 'ok' : 'failed',
         'module_fps': moduleFingerprints.length,
       },
     );
@@ -579,7 +506,6 @@ Future<AstBuildResult> buildGuestAstBundle(
       moduleCount: bundle.modules.length,
       byteSize: size,
       entryPointUri: bundle.entryPointUri,
-      bytecodeBuilt: bytecodeBuilt,
       moduleFingerprints: moduleFingerprints,
     );
   } catch (e, st) {

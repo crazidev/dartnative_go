@@ -202,15 +202,15 @@ class DartGoServer {
   /// (e.g. FFI registrants in full native shells) only log — source mode
   /// Initial background build at startup (fire-and-forget).
   ///
-  /// Ensures `/guest.ast` and `/guest.bc` are served from the first connection;
-  /// failures (e.g. FFI registrants in full native shells) only log — source mode
+  /// Ensures `/guest.ast` is served from the first connection; failures
+  /// (e.g. FFI registrants in full native shells) only log — source mode
   /// is unaffected.
   Future<void> _initialAstBuild(Directory projectDir) async {
     try {
       final result = await buildGuestAstBundle(projectDir);
       if (result.success) {
         print(
-          '[DevServer] 📦 guest.ast${result.bytecodeBuilt ? ' & guest.bc' : ''} ready '
+          '[DevServer] 📦 guest.ast ready '
           '(${result.moduleCount} modules, ${result.byteSize} bytes)',
         );
       } else {
@@ -224,7 +224,7 @@ class DartGoServer {
     }
   }
 
-  /// Handles a Dart file change: optionally rebuilds the AST & Bytecode bundle first
+  /// Handles a Dart file change: optionally rebuilds the AST bundle first
   /// (`--rebuild-ast`), then broadcasts a single reload so clients fetch
   /// fresh source AND fresh bytes together.
   Future<void> _onCodeChanged(
@@ -254,7 +254,7 @@ class DartGoServer {
       astSw.stop();
       buildOk = result.success;
       if (result.success) {
-        final artifacts = result.bytecodeBuilt ? 'guest.ast & guest.bc' : 'guest.ast';
+        const artifacts = 'guest.ast';
         if (result.cached) {
           DartGoLogger.bench(
             'DevServer',
@@ -270,13 +270,12 @@ class DartGoServer {
             {
               'modules': result.moduleCount,
               'bytes': result.byteSize,
-              'bytecode': result.bytecodeBuilt ? 'ok' : 'failed',
             },
           );
         }
       } else {
         DartGoLogger.warn(
-          'AST/Bytecode rebuild failed in ${astSw.elapsedMilliseconds}ms (${result.error})',
+          'AST rebuild failed in ${astSw.elapsedMilliseconds}ms (${result.error})',
           tag: 'DevServer',
         );
       }
@@ -535,7 +534,6 @@ class DartGoServer {
         packageName: validation.appName,
       );
       final astFile = _resolveAstBundleFile(projectDir);
-      final bcFile = _resolveBytecodeBundleFile(projectDir);
       final manifest = {
         'protocol': 'dart_go',
         'appName': validation.appName,
@@ -561,8 +559,6 @@ class DartGoServer {
         'astModuleFingerprints': astFile != null
             ? moduleFingerprintsForProject(projectDir)
             : const <String, String>{},
-        'hasBytecodeBundle': bcFile != null,
-        'bytecodeUrl': bcFile != null ? '$serverUrl/guest.bc' : null,
         'supportedPlugins': validation.validSupportedPlugins,
         'unsupportedPlugins': validation.unsupportedNativePlugins,
         'versionMismatches': validation.versionMismatches
@@ -767,20 +763,6 @@ class DartGoServer {
           )
           ..close();
       }
-    } else if (path == '/guest.bc') {
-      final bcFile = _resolveBytecodeBundleFile(projectDir);
-      if (bcFile != null) {
-        await _serveAssetFile(request, bcFile);
-        print(
-          '[DevServer] 📦 Served guest.bc (${await bcFile.length()} bytes)',
-        );
-      } else {
-        request.response
-          ..statusCode = HttpStatus.notFound
-          ..headers.add('Access-Control-Allow-Origin', '*')
-          ..write('No Bytecode bundle. Run `dart run tool/build_bytecode_bundle.dart`.')
-          ..close();
-      }
     } else if (path == '/app.dart') {
       try {
         final content = await mainFile.readAsString();
@@ -897,26 +879,6 @@ class DartGoServer {
     const candidates = [
       'assets/bundles/guest.ast',
       'build/guest.ast',
-    ];
-    try {
-      final canonicalProject = projectDir.resolveSymbolicLinksSync();
-      for (final rel in candidates) {
-        final file = File('${projectDir.path}/$rel');
-        if (file.existsSync()) {
-          final canonicalFile = file.resolveSymbolicLinksSync();
-          if (canonicalFile.startsWith(canonicalProject)) return file;
-        }
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  /// Locates a pre-compiled Bytecode bundle if `tool/build_bytecode_bundle.dart` ran.
-  static File? _resolveBytecodeBundleFile(Directory projectDir) {
-    const candidates = [
-      'assets/bundles/guest.bc',
-      'assets/guest.bc',
-      'build/guest.bc',
     ];
     try {
       final canonicalProject = projectDir.resolveSymbolicLinksSync();

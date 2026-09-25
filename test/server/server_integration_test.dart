@@ -65,6 +65,47 @@ void main() {
       expect(manifest['iconUrl'], isNotNull);
     });
 
+    test('/manifest.json serves AST bundle surface without bytecode', () async {
+      final manifest = await getJson('/manifest.json');
+      expect(
+        manifest['hasAstBundle'],
+        isA<bool>(),
+        reason: 'the device boots from the advertised AST bundle flag',
+      );
+      expect(
+        manifest['astUrl'] == null ||
+            (manifest['astUrl'] as String).endsWith('/guest.ast'),
+        isTrue,
+        reason: 'the device fetches AST bytes from the advertised URL',
+      );
+      expect(
+        manifest['astModuleFingerprints'],
+        isA<Map>(),
+        reason: 'per-module fingerprints drive module reuse on reload',
+      );
+      for (final key in [
+        'hasBytecodeBundle',
+        'bytecodeUrl',
+      ]) {
+        expect(
+          manifest.containsKey(key),
+          isFalse,
+          reason: 'the Bytecode engine was removed: no $key may leak',
+        );
+      }
+    });
+
+    test('/guest.bc is gone', () async {
+      final req = await client.getUrl(Uri.parse('http://127.0.0.1:9120/guest.bc'));
+      final res = await req.close();
+      await res.drain();
+      expect(
+        res.statusCode,
+        equals(HttpStatus.notFound),
+        reason: 'no route may serve a bundle format nothing executes',
+      );
+    });
+
     test('/assets/icon.png serves bytes', () async {
       expect(await getBytes('/assets/icon.png'), isNotEmpty);
     });

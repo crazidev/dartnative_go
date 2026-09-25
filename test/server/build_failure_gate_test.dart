@@ -100,5 +100,47 @@ void main() {
       File('${projectDir.path}/lib/main.dart').writeAsStringSync(_main);
       await waitForReloads(baseline + 1);
     });
+
+    test('manifest advertises the built AST bundle', () async {
+      final port = server.boundPort;
+      final client = HttpClient();
+      try {
+        final req = await client
+            .getUrl(Uri.parse('http://127.0.0.1:$port/manifest.json'));
+        final res = await req.close();
+        expect(res.statusCode, equals(HttpStatus.ok));
+        final manifest =
+            jsonDecode(await res.transform(utf8.decoder).join())
+                as Map<String, dynamic>;
+        expect(
+          manifest['hasAstBundle'],
+          isTrue,
+          reason: 'a successful build must advertise the bundle',
+        );
+        expect(
+          manifest['astUrl'],
+          endsWith('/guest.ast'),
+          reason: 'the device fetches AST bytes from the advertised URL',
+        );
+        final fingerprints = manifest['astModuleFingerprints'];
+        expect(
+          fingerprints,
+          isA<Map>(),
+          reason: 'per-module fingerprints drive module reuse on reload',
+        );
+        expect(
+          (fingerprints as Map).isNotEmpty,
+          isTrue,
+          reason: 'a real guest project has fingerprinted modules',
+        );
+        expect(
+          manifest.containsKey('hasBytecodeBundle'),
+          isFalse,
+          reason: 'the Bytecode engine was removed: no key may leak',
+        );
+      } finally {
+        client.close(force: true);
+      }
+    });
   });
 }

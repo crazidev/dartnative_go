@@ -2,7 +2,7 @@ import 'package:dartnative_shared_preferences/dartnative_shared_preferences.dart
 
 import '../runner/runtime_mode.dart';
 
-/// Manages persistence of the selected [RuntimeMode] (AST, Bytecode, Source).
+/// Manages persistence of the selected [RuntimeMode] (AST, Source).
 ///
 /// Ensures the mode selection survives Hot Restarts, project re-mounts,
 /// and app re-launches.
@@ -15,13 +15,10 @@ class RuntimeModeStorage {
   /// Loads the persisted [RuntimeMode].
   ///
   /// Falls back to in-memory mode or [kDefaultRuntimeMode] (AST)
-  /// if storage is unavailable (e.g. headless host tests). A persisted
-  /// Bytecode choice is ignored while the engine is disabled
-  /// ([kBytecodeEnabled]) so a stale preference cannot lock the app into a mode
-  /// it cannot run.
+  /// if storage is unavailable (e.g. headless host tests).
   static Future<RuntimeMode> loadMode() async {
     final cached = _memoryMode;
-    if (cached != null) return cached.isSelectable ? cached : kDefaultRuntimeMode;
+    if (cached != null) return cached;
     try {
       final prefs = _prefs ??= await SharedPreferences.getInstance();
       final saved = prefs.getString(kStorageKey);
@@ -29,17 +26,12 @@ class RuntimeModeStorage {
       _memoryMode = mode;
       return mode;
     } catch (_) {
-      final memory = _memoryMode;
-      return memory != null && memory.isSelectable ? memory : kDefaultRuntimeMode;
+      return _memoryMode ?? kDefaultRuntimeMode;
     }
   }
 
   /// Synchronous getter for the currently known mode, or [kDefaultRuntimeMode].
-  static RuntimeMode get currentMode {
-    final mode = _memoryMode;
-    if (mode == null) return kDefaultRuntimeMode;
-    return mode.isSelectable ? mode : kDefaultRuntimeMode;
-  }
+  static RuntimeMode get currentMode => _memoryMode ?? kDefaultRuntimeMode;
 
   /// Persists [mode] and updates in-memory cache immediately.
   static Future<void> saveMode(RuntimeMode mode) async {

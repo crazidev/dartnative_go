@@ -14,7 +14,6 @@ class DevToolSheet extends StatefulWidget {
   final bool isConnected;
   final String runtimeModeLabel;
   final bool useAst;
-  final bool useBytecode;
   final void Function(RuntimeMode mode)? onSelectMode;
   final VoidCallback? onCycleMode;
   final void Function(bool)? onToggleAst;
@@ -36,7 +35,6 @@ class DevToolSheet extends StatefulWidget {
     required this.isConnected,
     required this.runtimeModeLabel,
     this.useAst = false,
-    this.useBytecode = false,
     this.onSelectMode,
     this.onCycleMode,
     this.onToggleAst,
@@ -60,10 +58,8 @@ class _DevToolSheetState extends State<DevToolSheet> {
   late int _selectedModeIndex;
   late int _selectedErrorModeIndex;
 
-  /// Segments follow [selectableRuntimeModes], so the disabled Bytecode engine
-  /// is not offered (kBytecodeEnabled).
-  static int _modeToIndex(bool useAst, bool useBytecode) {
-    final mode = runtimeModeFromBool(useAst, useBytecode);
+  static int _modeToIndex(bool useAst) {
+    final mode = runtimeModeFromBool(useAst);
     final index = selectableRuntimeModes.indexOf(mode);
     return index < 0 ? 0 : index;
   }
@@ -84,16 +80,15 @@ class _DevToolSheetState extends State<DevToolSheet> {
   void initState() {
     super.initState();
     _verbose = widget.verboseLogs;
-    _selectedModeIndex = _modeToIndex(widget.useAst, widget.useBytecode);
+    _selectedModeIndex = _modeToIndex(widget.useAst);
     _selectedErrorModeIndex = _errorModeToIndex(widget.errorDisplayMode);
   }
 
   @override
   void didUpdateWidget(covariant DevToolSheet oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.useAst != widget.useAst ||
-        oldWidget.useBytecode != widget.useBytecode) {
-      _selectedModeIndex = _modeToIndex(widget.useAst, widget.useBytecode);
+    if (oldWidget.useAst != widget.useAst) {
+      _selectedModeIndex = _modeToIndex(widget.useAst);
     }
     if (oldWidget.verboseLogs != widget.verboseLogs) {
       _verbose = widget.verboseLogs;
@@ -268,7 +263,7 @@ class _DevToolSheetState extends State<DevToolSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Runtime mode (Source, AST, Bytecode)
+              // Runtime mode (Source, AST)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
@@ -297,9 +292,7 @@ class _DevToolSheetState extends State<DevToolSheet> {
                             segments: selectableRuntimeModes
                                 .map((m) => m == RuntimeMode.source
                                     ? 'Source'
-                                    : m == RuntimeMode.ast
-                                    ? 'AST'
-                                    : 'Bytecode')
+                                    : 'AST')
                                 .toList(),
                             selectedIndex: _selectedModeIndex,
                             onValueChanged: (index) {

@@ -195,13 +195,8 @@ class NativeBottomSheetScopeState extends State<NativeBottomSheetScope> {
         if (!isDisposed) {
           String? className;
           try {
-            className = proxy.stateInstance?.bytecodeClass?.name?.toString();
+            className = proxy.stateInstance?.klass?.name?.toString();
           } catch (_) {}
-          if (className == null) {
-            try {
-              className = proxy.stateInstance?.klass?.name?.toString();
-            } catch (_) {}
-          }
           try {
             proxy.visitor = newVisitor;
           } catch (_) {}
@@ -229,13 +224,8 @@ class NativeBottomSheetScopeState extends State<NativeBottomSheetScope> {
       final c = scopeWidget.child as dynamic;
       String? childClassName;
       try {
-        childClassName = c.instance?.bytecodeClass?.name?.toString();
+        childClassName = c.instance?.klass?.name?.toString();
       } catch (_) {}
-      if (childClassName == null) {
-        try {
-          childClassName = c.instance?.klass?.name?.toString();
-        } catch (_) {}
-      }
       try {
         c.visitor = newVisitor;
       } catch (_) {}
@@ -299,13 +289,6 @@ class NativeBottomSheetScopeState extends State<NativeBottomSheetScope> {
 /// in [visitor], supporting both Source mode and AST mode.
 dynamic findUserClassInVisitor(dynamic visitor, String className) {
   if (visitor == null) return null;
-
-  // 0. Try BytecodeVM classes
-  try {
-    if (visitor.classes is Map && visitor.classes.containsKey(className)) {
-      return visitor.classes[className];
-    }
-  } catch (_) {}
 
   // 1. Try visitor's current environment chain
   try {

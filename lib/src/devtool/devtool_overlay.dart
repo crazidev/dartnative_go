@@ -32,8 +32,6 @@ class DevToolOverlay extends StatefulWidget {
   final bool useAst;
   final void Function(bool enabled)? onToggleAst;
 
-  /// True when testing Bytecode stack VM.
-  final bool useBytecode;
   final void Function()? onCycleMode;
   final void Function(RuntimeMode mode)? onSelectMode;
 
@@ -59,7 +57,6 @@ class DevToolOverlay extends StatefulWidget {
     this.runtimeModeLabel = 'Source (tom_d4rt)',
     this.useAst = false,
     this.onToggleAst,
-    this.useBytecode = false,
     this.onCycleMode,
     this.onSelectMode,
     this.verboseLogs = false,
@@ -112,7 +109,6 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
         isConnected: widget.isConnected,
         runtimeModeLabel: widget.runtimeModeLabel,
         useAst: widget.useAst,
-        useBytecode: widget.useBytecode,
         onSelectMode: widget.onSelectMode,
         onCycleMode: widget.onCycleMode,
         onToggleAst: widget.onToggleAst,

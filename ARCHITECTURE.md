@@ -148,7 +148,7 @@ guest build / lifecycle / button handler throws
   3. **Proxy**: a guest `build` that starts throwing renders its last good child (`_lastGoodChild`) instead of failing the tree; fixed code builds fresh on the next reload. First builds and `createState` still throw — there is nothing to keep.
 * **Error display mode** (`ErrorDisplayStorage`, DevTools → ERROR DISPLAY): failures are always recorded with message and stack trace, but *where* they show is a persisted setting. **Overlay** (default) floats a dismissible `GuestErrorBanner` on top of the still-running app — tap expands to message plus full stack, ✕ dismisses, ↻ restarts, and the next successful reload clears it. **Full screen** keeps the historical `InterpreterErrorView` takeover, now with a STACK TRACE card (and Copy grabs message plus stack). Guest runtime errors (builds, callbacks) feed the same surface through `InterpreterRunner.onGuestError`. The CLI still gets the trimmed 8-line stack (full under `-v`).
 * **Source engine** (legacy): user-module-only snapshots (`< 2ms`), stable root key, generational remount.
-* **Bytecode engine status**: disabled by default behind `kBytecodeEnabled` (`--dart-define=DN_ENABLE_BYTECODE=true`); while off it is not selectable, `guest.bc` is not emitted, and its suites skip. AST owns hot reload.
+* **Engines**: AST (default, pre-compiled bundles) and Source (on-device analyzer parsing). The Bytecode stack VM was removed: two engines, no kill switches.
 
 
 ### 4.3 Unified Auto-Checking Logger (`DartGoLogger`) & Verbose Sync
@@ -176,9 +176,6 @@ dart_go start --port=8090
 
 # Pre-compile AST bundle for test execution
 dart run tool/build_ast_bundle.dart
-
-# Re-enable the (disabled-by-default) Bytecode engine for one build
-dart run ... --dart-define=DN_ENABLE_BYTECODE=true
 ```
 
 ### Dev Server Interactive Stdin Commands:
@@ -219,9 +216,6 @@ test/
   channels (`onLog` prints = device logs on-device, fake-host objects,
   provider containers). Interpreted statics/top-levels are per-`execute`
   isolated and MUST NOT be the assertion channel.
-- **Bytecode suites** (`test/unit/bytecode*`, `test/runner/bytecode*`) skip
-  themselves while the engine is disabled. Run them with
-  `dn test --dart-define=DN_ENABLE_BYTECODE=true test/`.
 - **Reload-state suites** worth knowing:
   `runner/ast_runner_persistence_test.dart` (one core runner across reloads),
   `runner/ast_reload_function_swap_test.dart` (bodies swapped on live
