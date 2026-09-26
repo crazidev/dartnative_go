@@ -1,0 +1,99 @@
+# Runtime Modes
+
+DartNative Go can execute your guest app with two different Dart interpreters.
+Both run your code without a compile step and both bridge into the same native
+widgets — they differ in *when and where* the Dart source is parsed.
+
+| | **AST mode** (default) | **Source mode** (legacy) |
+| :--- | :--- | :--- |
+| Engine | `tom_d4rt_ast` | `tom_d4rt` |
+| What ships to the device | Pre-parsed `guest.ast` bundle (binary) | Raw Dart source (`/user-code.zip`) |
+| Parsing | On the workstation, by `package:analyzer`, at bundle-build time | On the device, by `package:analyzer`, at load time |
+| Analyzer on device | **No** (analyzer-free) | Yes |
+| Hot reload | Declaration-cell registry — structural, exact | Snapshot/restore — type-name heuristic |
+| OTA / web-safe | Yes | No (needs the analyzer) |
+
+The mode is selected **on the device**, persisted across launches by
+`RuntimeModeStorage`, and can be switched from the in-app DevTool overlay or
+the launcher. The default is AST (`kDefaultRuntimeMode = RuntimeMode.ast` in
+[`lib/src/runner/runtime_mode.dart`](../lib/src/runner/runtime_mode.dart)).
+
+## AST mode
+
+The dev server (or `tool/build_ast_bundle.dart`) compiles your `lib/` tree —
+plus its pure-Dart dependencies — into a single `AstBundle`
+(`assets/bundles/guest.ast`) using the analyzer on your workstation. The
+device downloads those bytes and `tom_d4rt_ast` interprets the *already-parsed*
+AST directly, with no analyzer present.
+
+This is the mode hot reload is designed for: it uses the declaration-cell
+registry for exact, transactional state preservation and the decoded-bundle /
+module-reuse caches for speed. See [Hot Reload](hot_reload.md) for the full
+mechanism.
+
+**Trade-offs / constraints:**
+
+- The bundle only contains what the bundler can statically reach and what
+  isn't natively bridged. Libraries in `kAstBridgedLibraries` (the Flutter SDK
+  and the DartNative plugin set) are excluded and satisfied by bridges at
+  runtime.
+- The generated FFI plugin registrant is stubbed out, because native FFI
+  symbols can't be interpreted.
+- It needs the dev server (or a pre-built bundle) to produce `guest.ast` —
+  the device can't build one itself.
+
+## Source mode
+
+The device downloads your raw source and `tom_d4rt` parses and interprets it
+on-device using `package:analyzer`. `AutoImportParser` preprocesses the source
+first (auto-imports, a virtual multi-file source map, breakpoint
+instrumentation).
+
+This mode is the reference implementation: it's the most permissive about what
+it can run (anything the analyzer accepts), which makes it useful for parity
+checks and for debugging a guest that behaves differently under the AST engine.
+
+**Trade-offs / constraints:**
+
+- Shipping and parsing source on-device is heavier than shipping a bundle.
+- Hot reload uses the older snapshot/restore approach (see
+  [Hot Reload](hot_reload.md#source-mode-legacy)), which is heuristic and less
+  robust than the cell registry.
+- Because it needs the analyzer, it isn't suitable for OTA or web targets.
+
+## Choosing a mode
+
+- **Day-to-day development:** use AST. It's the default, it's faster, and hot
+  reload is exact.
+- **Debugging a discrepancy:** if something works in one mode but not the
+  other, that difference is itself the clue. Switch modes in the DevTool and
+  compare — then report it, because the two engines are meant to agree.
+- **Source-mode-only serving:** run the server with `--no-rebuild-ast` so it
+  stops rebuilding `guest.ast` on every save. (The device still prefers AST if
+  a bundle exists and AST mode is selected; `--no-rebuild-ast` is for when
+  you're deliberately exercising source mode.)
+
+Switching modes is a full restart, not a reload — the declaration registry and
+interpreter state are dropped and the app re-evaluates fresh on the newly
+selected engine.
+
+## How the device decides what to run
+
+`InterpreterRunner.evaluateBundle` dispatches on the persisted mode:
+
+- If AST mode is selected **and** the bundle has AST bytes (`hasAst`), it runs
+  `evaluateAstBundle` with the per-module fingerprints.
+- If AST mode is selected but the server returned 404 for `/guest.ast`, it
+  logs a line and **falls back to source** so you're never stuck.
+- Otherwise it runs the source path (`evaluate`).
+
+`BundleLoader.fetchBundle` mirrors this: in AST mode with a bundle available
+it can take a fast path that downloads only `/manifest.json` + `/guest.ast`
+(no source at all); in source mode it uses the dependency-mode path (cached
+dependency zips + the tiny user-code zip).
+
+## Related reading
+
+- How each engine preserves state across a save: [Hot Reload](hot_reload.md).
+- The endpoints that serve source vs. bundle:
+  [Dev Server & Protocol](dev_server.md#http-endpoints).
