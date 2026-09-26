@@ -18,8 +18,8 @@ extension RuntimeModeX on RuntimeMode {
   bool get isAst => this == RuntimeMode.ast;
 
   String get label => switch (this) {
-    RuntimeMode.source => 'Source (tom_d4rt)',
-    RuntimeMode.ast => 'AST (tom_d4rt_ast)',
+    RuntimeMode.source => 'Source',
+    RuntimeMode.ast => 'AST',
   };
 
   /// Cycle order: AST -> Source -> AST.

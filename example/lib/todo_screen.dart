@@ -1,6 +1,8 @@
 import 'dart:math';
 
 import 'package:dartnative/dartnative.dart';
+import 'package:example/sticky_note.dart';
+import 'package:example/create_note_panel.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
 
@@ -159,16 +161,10 @@ class _TodoScreenState extends ConsumerState<TodoScreen> {
     showCreateNote(BuildContext context) {
       print("Creating note... ${person['name']} ${person['age']}");
       person['name'] = "Crazibeat";
-      person['age'] = 120;
-      var future = Future.delayed(Duration(milliseconds: 500)).then(
-        (value) => print("=== Future was completed === "),
-      );
-
-      // try {
-      //   throw Exception("An error just happened!");
-      // } catch (e) {
-      //   print(e);
-      // }
+      person['age'] = 50;
+      // var future = Future.delayed(Duration(seconds: 3000)).then(
+      //   (value) => print("=== Future was completed === "),
+      // );
 
       sheet = showBottomSheet(
         context,
@@ -283,7 +279,7 @@ class _StickyGrid extends StatelessWidget {
 
         return Transform.rotate(
           angle: todo.rotation,
-          child: _StickyNote(
+          child: StickyNote(
             todo: todo,
             onToggle: () => onToggle(todo.id),
             onPin: () => onPin(todo.id),
@@ -295,17 +291,16 @@ class _StickyGrid extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Sticky Note
-// ---------------------------------------------------------------------------
-
-class _StickyNote extends StatelessWidget {
+class StickyNote extends StatefulWidget {
   final Todo todo;
+
   final VoidCallback onToggle;
+
   final VoidCallback onPin;
+
   final VoidCallback onDelete;
 
-  const _StickyNote({
+  const StickyNote({
     required this.todo,
     required this.onToggle,
     required this.onPin,
@@ -313,12 +308,23 @@ class _StickyNote extends StatelessWidget {
   });
 
   @override
+  State<StickyNote> createState() => _StickyNoteState();
+}
+
+class _StickyNoteState extends State<StickyNote> {
+  @override
+  void didUpdateWidget(covariant StickyNote oldWidget) {
+    print("didUpdateWidget");
+    super.didUpdateWidget(oldWidget);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: todo.color,
-        borderRadius: BorderRadius.circular(20),
+        color: widget.todo.color,
+        borderRadius: BorderRadius.circular(30),
         // Fake paper shadow.
         boxShadow: [
           BoxShadow(
@@ -335,7 +341,9 @@ class _StickyNote extends StatelessWidget {
           Row(
             children: [
               Icon(
-                todo.pinned ? CupertinoIcons.pin_fill : CupertinoIcons.pin,
+                widget.todo.pinned
+                    ? CupertinoIcons.pin_fill
+                    : CupertinoIcons.pin,
                 size: 18,
                 color: const Color(0xFF57534E),
               ),
@@ -344,7 +352,7 @@ class _StickyNote extends StatelessWidget {
 
               Button(
                 child: Icon(CupertinoIcons.xmark, size: 20),
-                onPressed: onDelete,
+                onPressed: widget.onDelete,
                 variant: ButtonVariant.plain,
                 foregroundColor: const Color(0xFF57534E),
               ),
@@ -355,16 +363,16 @@ class _StickyNote extends StatelessWidget {
 
           // Title
           Text(
-            todo.title,
+            widget.todo.title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: todo.completed
+              color: widget.todo.completed
                   ? const Color(0xFF78716C)
                   : const Color(0xFF292524),
               fontSize: 17,
               fontWeight: FontWeight.bold,
-              decoration: todo.completed
+              decoration: widget.todo.completed
                   ? TextDecoration.lineThrough
                   : TextDecoration.none,
             ),
@@ -375,7 +383,9 @@ class _StickyNote extends StatelessWidget {
           // Description
           Expanded(
             child: Text(
-              todo.description.isEmpty ? 'No description' : todo.description,
+              widget.todo.description.isEmpty
+                  ? 'No description'
+                  : widget.todo.description,
               maxLines: 5,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
@@ -393,8 +403,8 @@ class _StickyNote extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Button(
-                title: todo.completed ? '✓ Done' : 'Mark done',
-                onPressed: onToggle,
+                title: widget.todo.completed ? '✓ Done' : 'Mark done',
+                onPressed: widget.onToggle,
                 color: const Color(0x33000000),
                 foregroundColor: const Color(0xFF292524),
               ),
@@ -568,231 +578,231 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class CreateNotePanel extends StatefulWidget {
-  final VoidCallback onClose;
+// class CreateNotePanel extends StatefulWidget {
+//   final VoidCallback onClose;
 
-  final void Function({
-    required String title,
-    required String description,
-    required Color color,
-  })
-  onCreate;
+//   final void Function({
+//     required String title,
+//     required String description,
+//     required Color color,
+//   })
+//   onCreate;
 
-  const CreateNotePanel({
-    required this.onClose,
-    required this.onCreate,
-  });
+//   const CreateNotePanel({
+//     required this.onClose,
+//     required this.onCreate,
+//   });
 
-  @override
-  State<CreateNotePanel> createState() => _CreateNotePanelState();
-}
+//   @override
+//   State<CreateNotePanel> createState() => _CreateNotePanelState();
+// }
 
-class _CreateNotePanelState extends State<CreateNotePanel> {
-  final titleController = TextEditingController();
-  final descriptionController = TextEditingController();
+// class _CreateNotePanelState extends State<CreateNotePanel> {
+//   final titleController = TextEditingController();
+//   final descriptionController = TextEditingController();
 
-  Color selectedColor = NoteColors.all[Random().nextInt(NoteColors.all.length)];
+//   Color selectedColor = NoteColors.all[Random().nextInt(NoteColors.all.length)];
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE7E5E4)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 20,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ---------------------------------------------------------------
-          // Header
-          // ---------------------------------------------------------------
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: const Text(
-                  'New note',
-                  style: TextStyle(
-                    color: Color(0xFF292524),
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+//       decoration: BoxDecoration(
+//         color: const Color(0xFFFFFFFF),
+//         borderRadius: BorderRadius.circular(20),
+//         border: Border.all(color: const Color(0xFFE7E5E4)),
+//         boxShadow: const [
+//           BoxShadow(
+//             color: Color(0x33000000),
+//             blurRadius: 20,
+//             offset: Offset(0, 8),
+//           ),
+//         ],
+//       ),
+//       child: Column(
+//         mainAxisSize: MainAxisSize.min,
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           // ---------------------------------------------------------------
+//           // Header
+//           // ---------------------------------------------------------------
+//           Row(
+//             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//             children: [
+//               Expanded(
+//                 child: const Text(
+//                   'New note',
+//                   style: TextStyle(
+//                     color: Color(0xFF292524),
+//                     fontSize: 18,
+//                     fontWeight: FontWeight.bold,
+//                   ),
+//                 ),
+//               ),
 
-              IconButton(
-                onPressed: widget.onClose,
-                icon: const Icon(
-                  CupertinoIcons.xmark,
-                  size: 15,
-                  color: Color(0xFF57534E),
-                ),
-              ),
-            ],
-          ),
+//               IconButton(
+//                 onPressed: widget.onClose,
+//                 icon: const Icon(
+//                   CupertinoIcons.xmark,
+//                   size: 15,
+//                   color: Color(0xFF57534E),
+//                 ),
+//               ),
+//             ],
+//           ),
 
-          const SizedBox(height: 12),
+//           const SizedBox(height: 12),
 
-          // ---------------------------------------------------------------
-          // Title
-          // ---------------------------------------------------------------
-          TextField(
-            controller: titleController,
-            autofocus: false,
-            key: Key('title_input'),
-            textInputAction: TextInputAction.next,
-            style: const TextStyle(
-              color: Color(0xFF292524),
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-            ),
-            // onChanged: (value) => print('title: $value'),
-            decoration: InputDecoration(
-              hintText: 'Note title',
-              hintStyle: const TextStyle(color: Color(0xFFA8A29E)),
-              filled: true,
-              fillColor: const Color(0xFFF7F7F5),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 13,
-              ),
-            ),
-          ),
+//           // ---------------------------------------------------------------
+//           // Title
+//           // ---------------------------------------------------------------
+//           TextField(
+//             controller: titleController,
+//             autofocus: false,
+//             key: Key('title_input'),
+//             textInputAction: TextInputAction.next,
+//             style: const TextStyle(
+//               color: Color(0xFF292524),
+//               fontSize: 17,
+//               fontWeight: FontWeight.w600,
+//             ),
+//             // onChanged: (value) => print('title: $value'),
+//             decoration: InputDecoration(
+//               hintText: 'Note title',
+//               hintStyle: const TextStyle(color: Color(0xFFA8A29E)),
+//               filled: true,
+//               fillColor: const Color(0xFFF7F7F5),
+//               border: OutlineInputBorder(
+//                 borderRadius: BorderRadius.circular(12),
+//                 borderSide: BorderSide.none,
+//               ),
+//               contentPadding: const EdgeInsets.symmetric(
+//                 horizontal: 14,
+//                 vertical: 13,
+//               ),
+//             ),
+//           ),
 
-          const SizedBox(height: 10),
+//           const SizedBox(height: 10),
 
-          // ---------------------------------------------------------------
-          // Description
-          // ---------------------------------------------------------------
-          TextField(
-            controller: descriptionController,
-            maxLines: 3,
-            // onChanged: (value) => print('descriptio: $value'),
-            style: const TextStyle(color: Color(0xFF44403C), fontSize: 14),
-            decoration: InputDecoration(
-              hintText: 'Add a description...',
-              hintStyle: const TextStyle(color: Color(0xFFA8A29E)),
-              filled: true,
-              fillColor: const Color(0xFFF7F7F5),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
-            ),
-          ),
+//           // ---------------------------------------------------------------
+//           // Description
+//           // ---------------------------------------------------------------
+//           TextField(
+//             controller: descriptionController,
+//             maxLines: 3,
+//             // onChanged: (value) => print('descriptio: $value'),
+//             style: const TextStyle(color: Color(0xFF44403C), fontSize: 14),
+//             decoration: InputDecoration(
+//               hintText: 'Add a description...',
+//               hintStyle: const TextStyle(color: Color(0xFFA8A29E)),
+//               filled: true,
+//               fillColor: const Color(0xFFF7F7F5),
+//               border: OutlineInputBorder(
+//                 borderRadius: BorderRadius.circular(12),
+//                 borderSide: BorderSide.none,
+//               ),
+//               contentPadding: const EdgeInsets.symmetric(
+//                 horizontal: 14,
+//                 vertical: 12,
+//               ),
+//             ),
+//           ),
 
-          const SizedBox(height: 12),
+//           const SizedBox(height: 12),
 
-          // ---------------------------------------------------------------
-          // Bottom controls
-          // ---------------------------------------------------------------
-          Row(
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    ...NoteColors.all.map(
-                      (color) {
-                        return GestureDetector(
-                          onTap: () {
-                            selectedColor = color;
-                            setState(() {});
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 7),
-                            width: 35,
-                            height: 35,
-                            decoration: BoxDecoration(
-                              color: color,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: selectedColor == color
-                                    ? const Color(0xFF292524)
-                                    : const Color(0x22000000),
-                                width: selectedColor == color ? 2 : 1,
-                              ),
-                            ),
-                            child: selectedColor == color
-                                ? Center(
-                                    child: const Icon(
-                                      CupertinoIcons.checkmark,
-                                      size: 16,
-                                      color: Color(0xFF292524),
-                                    ),
-                                  )
-                                : const SizedBox.shrink(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
+//           // ---------------------------------------------------------------
+//           // Bottom controls
+//           // ---------------------------------------------------------------
+//           Row(
+//             children: [
+//               Expanded(
+//                 child: Row(
+//                   children: [
+//                     ...NoteColors.all.map(
+//                       (color) {
+//                         return GestureDetector(
+//                           onTap: () {
+//                             selectedColor = color;
+//                             setState(() {});
+//                           },
+//                           child: Container(
+//                             margin: const EdgeInsets.only(right: 7),
+//                             width: 35,
+//                             height: 35,
+//                             decoration: BoxDecoration(
+//                               color: color,
+//                               shape: BoxShape.circle,
+//                               border: Border.all(
+//                                 color: selectedColor == color
+//                                     ? const Color(0xFF292524)
+//                                     : const Color(0x22000000),
+//                                 width: selectedColor == color ? 2 : 1,
+//                               ),
+//                             ),
+//                             child: selectedColor == color
+//                                 ? Center(
+//                                     child: const Icon(
+//                                       CupertinoIcons.checkmark,
+//                                       size: 16,
+//                                       color: Color(0xFF292524),
+//                                     ),
+//                                   )
+//                                 : const SizedBox.shrink(),
+//                           ),
+//                         );
+//                       },
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//               const SizedBox(width: 8),
 
-              // Create
-              Button(
-                title: 'Create',
-                color: const Color(0xFF292524),
-                foregroundColor: const Color(0xFFFFFFFF),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 11,
-                ),
-                onPressed: () {
-                  if (titleController.text.trim().isEmpty) {
-                    return;
-                  }
+//               // Create
+//               Button(
+//                 title: 'Create',
+//                 color: const Color(0xFF292524),
+//                 foregroundColor: const Color(0xFFFFFFFF),
+//                 padding: const EdgeInsets.symmetric(
+//                   horizontal: 18,
+//                   vertical: 11,
+//                 ),
+//                 onPressed: () {
+//                   if (titleController.text.trim().isEmpty) {
+//                     return;
+//                   }
 
-                  widget.onCreate(
-                    title: titleController.text,
-                    description: descriptionController.text,
-                    color: selectedColor,
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+//                   widget.onCreate(
+//                     title: titleController.text,
+//                     description: descriptionController.text,
+//                     color: selectedColor,
+//                   );
+//                 },
+//               ),
+//             ],
+//           ),
+//         ],
+//       ),
+//     );
+//   }
 
-  @override
-  void dispose() {
-    titleController.dispose();
-    descriptionController.dispose();
-    super.dispose();
-  }
-}
+//   @override
+//   void dispose() {
+//     titleController.dispose();
+//     descriptionController.dispose();
+//     super.dispose();
+//   }
+// }
 
-class CreateNoteBottomsheet extends StatelessWidget {
-  const CreateNoteBottomsheet({super.key});
+// class CreateNoteBottomsheet extends StatelessWidget {
+//   const CreateNoteBottomsheet({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: const Center(
-        child: Text('Create Note 22334'),
-      ),
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       body: const Center(
+//         child: Text('Create Note 22334'),
+//       ),
+//     );
+//   }
+// }

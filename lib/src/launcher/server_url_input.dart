@@ -1,32 +1,60 @@
 import 'package:dartnative/dartnative.dart';
 
-/// Text field for manually typing or pasting a dev server URL.
+import '../theme/launcher_theme.dart';
+import '../theme/shadcn_theme.dart';
+
+/// Text field for manually typing or pasting a dev server URL styled per shadcn.
 class ServerUrlInput extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onSubmitted;
+  final LauncherColors? colors;
 
   const ServerUrlInput({
     super.key,
     required this.controller,
     required this.onSubmitted,
+    this.colors,
   });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      decoration: const InputDecoration(
-        hintText: 'Enter URL (e.g. 192.168.3.159:8088)',
-        filled: true,
-        fillColor: Color(0xFF0E1012),
+    final theme = context.theme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.input,
+        borderRadius: BorderRadius.zero,
       ),
-      prefixIconPadding: const EdgeInsets.only(left: 10),
-      prefixIcon: CupertinoIcons.link,
-      prefixIconColor: Colors.white,
-      clearButtonMode: ClearButtonMode.whileEditing,
-      keyboardType: TextInputType.url,
-      textInputAction: TextInputAction.go,
-      onSubmitted: onSubmitted,
+      child: TextField(
+        controller: controller,
+        style: TextStyle(
+          fontSize: 13,
+          color: theme.foreground,
+        ),
+        cursorColor: theme.primary,
+        decoration: InputDecoration(
+          hintText: 'Enter URL (e.g. 192.168.1.100:8088)',
+          hintStyle: TextStyle(
+            fontSize: 13,
+            color: theme.mutedForeground,
+          ),
+          filled: false,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
+          ),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+        ),
+        prefixIcon: CupertinoIcons.link,
+        prefixIconColor: theme.mutedForeground,
+        prefixIconPadding: const EdgeInsets.only(left: 12, right: 8),
+        clearButtonMode: ClearButtonMode.whileEditing,
+        keyboardType: TextInputType.url,
+        textInputAction: TextInputAction.go,
+        onSubmitted: onSubmitted,
+      ),
     );
   }
 }

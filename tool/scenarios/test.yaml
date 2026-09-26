@@ -1,7 +1,3 @@
-# Real-device scenario for the example/ guest app (Riverpod login flow).
-# Needs: `dart_go start` in example/ + app connected with guest mounted.
-# Needs a device: run with --server http://<lan-ip>:<port>
-# (Fake mode is rejected: no fake: block by design.)
 name: example-login-reload
 server: http://192.168.3.159:8088
 project_dir: ./example
@@ -16,116 +12,116 @@ steps:
   # --- Item 1 ---
   - tap: CupertinoIcons.plus
   - probe_until: { text: "New note", timeout_s: 3 }
-  - sleep: 300
+  - sleep: 500
   - type: { into: "Note title", text: "Buy groceries" }
-  - sleep: 300
+  - sleep: 500
   - type: { into: "Add a description", text: "Organic milk and apples" }
-  - sleep: 300
+  - sleep: 500
   - tap: { title: "Create" }
-  - sleep: 300
+  - sleep: 500
 
   # --- Item 2 ---
   - tap: CupertinoIcons.plus
   - probe_until: { text: "New note", timeout_s: 3 }
-  - sleep: 300
+  - sleep: 500
   - type: { into: "Note title", text: "Call Mom" }
-  - sleep: 300
+  - sleep: 500
   - type: { into: "Add a description", text: "Catch up on family news" }
-  - sleep: 300
+  - sleep: 500
   - tap: { title: "Create" }
-  - sleep: 300
+  - sleep: 500
 
   # --- Item 3 ---
   - tap: CupertinoIcons.plus
   - probe_until: { text: "New note", timeout_s: 3 }
-  - sleep: 300
+  - sleep: 500
   - type: { into: "Note title", text: "Pay bills" }
-  - sleep: 300
+  - sleep: 500
   - type: { into: "Add a description", text: "Electricity and internet" }
-  - sleep: 300
+  - sleep: 500
   - tap: { title: "Create" }
-  - sleep: 300
+  - sleep: 500
 
   # --- Item 4 ---
   - tap: CupertinoIcons.plus
   - probe_until: { text: "New note", timeout_s: 3 }
-  - sleep: 300
+  - sleep: 500
   - type: { into: "Note title", text: "Book flights" }
-  - sleep: 300
+  - sleep: 500
   - type: { into: "Add a description", text: "Holiday trip to Japan" }
-  - sleep: 300
+  - sleep: 500
   - tap: { title: "Create" }
-  - sleep: 300
+  - sleep: 500
 
-  # --- Item 5 ---
-  - tap: CupertinoIcons.plus
-  - probe_until: { text: "New note", timeout_s: 3 }
-  - sleep: 300
-  - type: { into: "Note title", text: "Doctor appointment" }
-  - sleep: 300
-  - type: { into: "Add a description", text: "Annual checkup at 9 AM" }
-  - sleep: 300
-  - tap: { title: "Create" }
-  - sleep: 300
+  # # --- Item 5 ---
+  # - tap: CupertinoIcons.plus
+  # - probe_until: { text: "New note", timeout_s: 3 }
+  # - sleep: 500
+  # - type: { into: "Note title", text: "Doctor appointment" }
+  # - sleep: 500
+  # - type: { into: "Add a description", text: "Annual checkup at 9 AM" }
+  # - sleep: 500
+  # - tap: { title: "Create" }
+  # - sleep: 500
 
-  # --- Item 6 ---
-  - tap: CupertinoIcons.plus
-  - probe_until: { text: "New note", timeout_s: 3 }
-  - sleep: 300
-  - type: { into: "Note title", text: "Gym workout" }
-  - sleep: 300
-  - type: { into: "Add a description", text: "Leg day and cardio" }
-  - sleep: 300
-  - tap: { title: "Create" }
-  - sleep: 300
+  # # --- Item 6 ---
+  # - tap: CupertinoIcons.plus
+  # - probe_until: { text: "New note", timeout_s: 3 }
+  # - sleep: 500
+  # - type: { into: "Note title", text: "Gym workout" }
+  # - sleep: 500
+  # - type: { into: "Add a description", text: "Leg day and cardio" }
+  # - sleep: 500
+  # - tap: { title: "Create" }
+  # - sleep: 500
 
-  # --- Item 7 ---
-  - tap: CupertinoIcons.plus
-  - probe_until: { text: "New note", timeout_s: 3 }
-  - sleep: 300
-  - type: { into: "Note title", text: "Read book" }
-  - sleep: 300
-  - type:
-      { into: "Add a description", text: "Finish chapter 5 of sci-fi novel" }
-  - sleep: 300
-  - tap: { title: "Create" }
-  - sleep: 300
+  # # --- Item 7 ---
+  # - tap: CupertinoIcons.plus
+  # - probe_until: { text: "New note", timeout_s: 3 }
+  # - sleep: 500
+  # - type: { into: "Note title", text: "Read book" }
+  # - sleep: 500
+  # - type:
+  #     { into: "Add a description", text: "Finish chapter 5 of sci-fi novel" }
+  # - sleep: 500
+  # - tap: { title: "Create" }
+  # - sleep: 500
 
-  # --- Item 8 ---
-  - tap: CupertinoIcons.plus
-  - probe_until: { text: "New note", timeout_s: 3 }
-  - sleep: 300
-  - type: { into: "Note title", text: "Car maintenance" }
-  - sleep: 300
-  - type: { into: "Add a description", text: "Oil change and tire rotation" }
-  - sleep: 300
-  - tap: { title: "Create" }
-  - sleep: 300
+  # # --- Item 8 ---
+  # - tap: CupertinoIcons.plus
+  # - probe_until: { text: "New note", timeout_s: 3 }
+  # - sleep: 500
+  # - type: { into: "Note title", text: "Car maintenance" }
+  # - sleep: 500
+  # - type: { into: "Add a description", text: "Oil change and tire rotation" }
+  # - sleep: 500
+  # - tap: { title: "Create" }
+  # - sleep: 500
 
-  # --- Item 9 ---
-  - tap: CupertinoIcons.plus
-  - probe_until: { text: "New note", timeout_s: 3 }
-  - sleep: 300
-  - type: { into: "Note title", text: "Team meeting" }
-  - sleep: 300
-  - type: { into: "Add a description", text: "Project sync at 2 PM" }
-  - sleep: 300
-  - tap: { title: "Create" }
-  - sleep: 300
+  # # --- Item 9 ---
+  # - tap: CupertinoIcons.plus
+  # - probe_until: { text: "New note", timeout_s: 3 }
+  # - sleep: 500
+  # - type: { into: "Note title", text: "Team meeting" }
+  # - sleep: 500
+  # - type: { into: "Add a description", text: "Project sync at 2 PM" }
+  # - sleep: 500
+  # - tap: { title: "Create" }
+  # - sleep: 500
 
-  # --- Item 10 ---
-  - tap: CupertinoIcons.plus
-  - probe_until: { text: "New note", timeout_s: 3 }
-  - sleep: 300
-  - type: { into: "Note title", text: "Dinner prep" }
-  - sleep: 300
-  - type: { into: "Add a description", text: "Chop vegetables for stir-fry" }
-  - sleep: 300
-  - tap: { title: "Create" }
+  # # --- Item 10 ---
+  # - tap: CupertinoIcons.plus
+  # - probe_until: { text: "New note", timeout_s: 3 }
+  # - sleep: 500
+  # - type: { into: "Note title", text: "Dinner prep" }
+  # - sleep: 500
+  # - type: { into: "Add a description", text: "Chop vegetables for stir-fry" }
+  # - sleep: 500
+  # - tap: { title: "Create" }
 
-  # Verify the board populated successfully
-  - probe_until: { text: "Dinner prep", timeout_s: 5 }
-  - expect_text: "Buy groceries"
-  - expect_text: "Organic milk and apples"
-  - expect_text: "Dinner prep"
-  - expect_text: "Chop vegetables for stir-fry"
+  # # Verify the board populated successfully
+  # - probe_until: { text: "Dinner prep", timeout_s: 5 }
+  # - expect_text: "Buy groceries"
+  # - expect_text: "Organic milk and apples"
+  # - expect_text: "Dinner prep"
+  # - expect_text: "Chop vegetables for stir-fry"

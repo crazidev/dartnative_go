@@ -1,4 +1,7 @@
 import 'package:dartnative/dartnative.dart';
+import 'package:dartnative_go/src/theme/shadcn_theme.dart';
+
+import '../theme/launcher_theme.dart';
 
 /// Top application bar for the DartNative Go launcher.
 class LauncherAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -6,10 +9,12 @@ class LauncherAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onChangeTheme;
   final VoidCallback? onCycleMode;
   final String? runtimeModeLabel;
+  final LauncherColors colors;
 
   const LauncherAppBar({
     super.key,
     required this.onRescan,
+    required this.colors,
     this.onChangeTheme,
     this.onCycleMode,
     this.runtimeModeLabel,
@@ -21,11 +26,13 @@ class LauncherAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      centerTitle: false,
+      brightness: context.theme.brightness,
+      backgroundColor: context.theme.accent,
+      toolbarHeight: 56,
       actions: [
         BarButtonItem(
           fontIcon: CupertinoIcons.ellipsis,
-          titleStyle: const TextStyle(color: Colors.white),
+          titleStyle: TextStyle(color: Colors.red),
           menu: [
             MenuAction(
               onTap: onChangeTheme ?? () {},
@@ -53,12 +60,13 @@ class LauncherAppBar extends StatelessWidget implements PreferredSizeWidget {
         width: 40,
         height: 40,
       ),
-      title: const Row(
+      title: Row(
         children: [
           Text(
             'DartNative Go',
             style: TextStyle(
               fontWeight: FontWeight.bold,
+              color: context.theme.accentForeground,
             ),
           ),
         ],

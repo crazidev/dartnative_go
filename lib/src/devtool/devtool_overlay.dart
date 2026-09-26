@@ -1,9 +1,11 @@
 import 'package:dartnative/dartnative.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
+import 'package:riverpod_kit/riverpod_kit.dart';
 
 import '../client/error_display_storage.dart';
 import '../runner/dep_cache.dart';
 import '../runner/runtime_mode.dart';
+import '../theme/theme_providers.dart';
 import 'devtool_sheet.dart';
 import 'floating_devtool_button.dart';
 import 'shake_detector.dart';
@@ -101,25 +103,31 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
       detents: const [DNSheetDetent.medium, DNSheetDetent.large],
       initialDetent: DNSheetDetent.medium,
       showGrabber: true,
-      builder: (ctx, controller) => DevToolSheet(
-        controller: controller,
-        appName: widget.appName,
-        appVersion: widget.appVersion,
-        serverUrl: widget.serverUrl,
-        isConnected: widget.isConnected,
-        runtimeModeLabel: widget.runtimeModeLabel,
-        useAst: widget.useAst,
-        onSelectMode: widget.onSelectMode,
-        onCycleMode: widget.onCycleMode,
-        onToggleAst: widget.onToggleAst,
-        depCache: widget.depCache,
-        onClearCache: widget.onClearCache,
-        verboseLogs: widget.verboseLogs,
-        onToggleVerbose: widget.onToggleVerbose,
-        errorDisplayMode: widget.errorDisplayMode,
-        onSelectErrorMode: widget.onSelectErrorMode,
-        onGoHome: widget.onGoHome,
-        onReload: widget.onReload,
+      builder: (ctx, controller) => Consumer(
+        builder: (ctx, ref, _) => DevToolSheet(
+          controller: controller,
+          appName: widget.appName,
+          appVersion: widget.appVersion,
+          serverUrl: widget.serverUrl,
+          isConnected: widget.isConnected,
+          runtimeModeLabel: widget.runtimeModeLabel,
+          useAst: widget.useAst,
+          onSelectMode: widget.onSelectMode,
+          onCycleMode: widget.onCycleMode,
+          onToggleAst: widget.onToggleAst,
+          depCache: widget.depCache,
+          onClearCache: widget.onClearCache,
+          verboseLogs: widget.verboseLogs,
+          onToggleVerbose: widget.onToggleVerbose,
+          errorDisplayMode: widget.errorDisplayMode,
+          onSelectErrorMode: widget.onSelectErrorMode,
+          themePreference: ref.watch(themePreferenceProvider),
+          onSelectTheme: (preference) => ref
+              .read(themePreferenceProvider.notifier)
+              .setPreference(preference),
+          onGoHome: widget.onGoHome,
+          onReload: widget.onReload,
+        ),
       ),
       onDetentChanged: (detent) => print('settled at ${detent.label}'),
       onDismissed: () {

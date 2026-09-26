@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dartnative/dartnative.dart';
 import 'package:dartnative_go/dartnative_plugin_registrant.dart';
+import 'package:riverpod_kit/riverpod_kit.dart';
 
 import 'src/client/network_scanner.dart';
 import 'src/client/project_model.dart';
@@ -15,7 +16,9 @@ import 'src/runner/native_bottomsheet_manager.dart';
 import 'src/runner/runtime_mode.dart';
 import 'src/client/error_display_storage.dart';
 import 'src/client/runtime_mode_storage.dart';
+import 'src/client/theme_storage.dart';
 import 'src/runner/ui_probe.dart';
+import 'src/theme/theme_providers.dart';
 import 'src/interpreter/widget_generation_tracker.dart';
 import 'src/widgets/guest_error_banner.dart';
 import 'src/widgets/interpreter_error_view.dart';
@@ -24,10 +27,16 @@ import 'src/launcher/launcher_screen.dart';
 
 var example = "Hello world";
 
-void main(List<String> args) {
+Future<void> main(List<String> args) async {
   DartNativePluginRegistrant.registerAll();
 
-  runApp(const DartNativeGo());
+  // Preload the persisted theme before the first frame so the launcher
+  // paints with the right tokens immediately. The ThemeController reads the
+  // same in-memory value when the provider initializes.
+  final theme = await ThemeStorage.loadPreference();
+  ThemeController.applyNativeAppearance(theme);
+
+  runApp(const ProviderScope(child: DartNativeGo()));
 }
 
 class DartNativeGo extends StatefulWidget {

@@ -2,6 +2,7 @@ import 'package:dartnative/dartnative.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
 
 import '../client/error_display_storage.dart';
+import '../client/theme_storage.dart';
 import '../runner/dep_cache.dart';
 import '../runner/runtime_mode.dart';
 
@@ -23,6 +24,8 @@ class DevToolSheet extends StatefulWidget {
   final void Function(bool)? onToggleVerbose;
   final ErrorDisplayMode errorDisplayMode;
   final void Function(ErrorDisplayMode mode)? onSelectErrorMode;
+  final ThemePreference themePreference;
+  final void Function(ThemePreference preference)? onSelectTheme;
   final VoidCallback onGoHome;
   final VoidCallback onReload;
 
@@ -44,6 +47,8 @@ class DevToolSheet extends StatefulWidget {
     this.onToggleVerbose,
     this.errorDisplayMode = ErrorDisplayMode.overlay,
     this.onSelectErrorMode,
+    this.themePreference = ThemePreference.system,
+    this.onSelectTheme,
     required this.onGoHome,
     required this.onReload,
   });
@@ -57,6 +62,7 @@ class _DevToolSheetState extends State<DevToolSheet> {
   late bool _verbose;
   late int _selectedModeIndex;
   late int _selectedErrorModeIndex;
+  late int _selectedThemeIndex;
 
   static int _modeToIndex(bool useAst) {
     final mode = runtimeModeFromBool(useAst);
@@ -76,12 +82,22 @@ class _DevToolSheetState extends State<DevToolSheet> {
   static ErrorDisplayMode _indexToErrorMode(int index) =>
       index == 1 ? ErrorDisplayMode.fullscreen : ErrorDisplayMode.overlay;
 
+  static int _themeToIndex(ThemePreference preference) =>
+      ThemePreference.values.indexOf(preference);
+
+  static ThemePreference _indexToTheme(int index) {
+    final values = ThemePreference.values;
+    if (index < 0 || index >= values.length) return ThemePreference.system;
+    return values[index];
+  }
+
   @override
   void initState() {
     super.initState();
     _verbose = widget.verboseLogs;
     _selectedModeIndex = _modeToIndex(widget.useAst);
     _selectedErrorModeIndex = _errorModeToIndex(widget.errorDisplayMode);
+    _selectedThemeIndex = _themeToIndex(widget.themePreference);
   }
 
   @override
@@ -95,6 +111,9 @@ class _DevToolSheetState extends State<DevToolSheet> {
     }
     if (oldWidget.errorDisplayMode != widget.errorDisplayMode) {
       _selectedErrorModeIndex = _errorModeToIndex(widget.errorDisplayMode);
+    }
+    if (oldWidget.themePreference != widget.themePreference) {
+      _selectedThemeIndex = _themeToIndex(widget.themePreference);
     }
   }
 
@@ -290,9 +309,11 @@ class _DevToolSheetState extends State<DevToolSheet> {
                         Expanded(
                           child: SegmentedControl(
                             segments: selectableRuntimeModes
-                                .map((m) => m == RuntimeMode.source
-                                    ? 'Source'
-                                    : 'AST')
+                                .map(
+                                  (m) => m == RuntimeMode.source
+                                      ? 'Source'
+                                      : 'AST',
+                                )
                                 .toList(),
                             selectedIndex: _selectedModeIndex,
                             onValueChanged: (index) {
@@ -319,6 +340,52 @@ class _DevToolSheetState extends State<DevToolSheet> {
               const SizedBox(height: 16),
 
               // Error Display
+              // Container(
+              //   width: double.infinity,
+              //   padding: const EdgeInsets.all(12),
+              //   decoration: BoxDecoration(
+              //     color: const Color(0xFF2C2C2E),
+              //     borderRadius: BorderRadius.circular(12),
+              //   ),
+              //   child: Column(
+              //     crossAxisAlignment: CrossAxisAlignment.start,
+              //     children: [
+              //       Row(
+              //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              //         children: [
+              //           const Text(
+              //             'ERROR DISPLAY',
+              //             style: TextStyle(
+              //               color: Colors.white38,
+              //               fontSize: 10,
+              //               fontWeight: FontWeight.bold,
+              //               letterSpacing: 0.5,
+              //             ),
+              //           ),
+              //           SizedBox(width: 10),
+              //           Expanded(
+              //             child: SegmentedControl(
+              //               segments: const ['Overlay', 'Full screen'],
+              //               selectedIndex: _selectedErrorModeIndex,
+              //               onValueChanged: (index) {
+              //                 if (index == _selectedErrorModeIndex) return;
+              //                 setState(() {
+              //                   _selectedErrorModeIndex = index;
+              //                 });
+              //                 widget.onSelectErrorMode?.call(
+              //                   _indexToErrorMode(index),
+              //                 );
+              //               },
+              //             ),
+              //           ),
+              //         ],
+              //       ),
+              //     ],
+              //   ),
+              // ),
+              // const SizedBox(height: 16),
+
+              // Theme
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
@@ -333,7 +400,7 @@ class _DevToolSheetState extends State<DevToolSheet> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'ERROR DISPLAY',
+                          'THEME',
                           style: TextStyle(
                             color: Colors.white38,
                             fontSize: 10,
@@ -344,30 +411,24 @@ class _DevToolSheetState extends State<DevToolSheet> {
                         SizedBox(width: 10),
                         Expanded(
                           child: SegmentedControl(
-                            segments: const ['Overlay', 'Full screen'],
-                            selectedIndex: _selectedErrorModeIndex,
+                            segments: const [
+                              'System',
+                              'Light',
+                              'Dark',
+                            ],
+                            selectedIndex: _selectedThemeIndex,
                             onValueChanged: (index) {
-                              if (index == _selectedErrorModeIndex) return;
+                              if (index == _selectedThemeIndex) return;
                               setState(() {
-                                _selectedErrorModeIndex = index;
+                                _selectedThemeIndex = index;
                               });
-                              widget.onSelectErrorMode?.call(
-                                _indexToErrorMode(index),
+                              widget.onSelectTheme?.call(
+                                _indexToTheme(index),
                               );
                             },
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _selectedErrorModeIndex == 1
-                          ? 'Failures replace the app with the error screen'
-                          : 'Failures float on top, app keeps running',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                      ),
                     ),
                   ],
                 ),
@@ -465,16 +526,6 @@ class _DevToolSheetState extends State<DevToolSheet> {
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.5,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _verbose
-                                  ? 'Enabled (Full telemetry & benchmarks)'
-                                  : 'Disabled (Clean output)',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
                               ),
                             ),
                           ],
