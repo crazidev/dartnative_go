@@ -71,3 +71,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Generated AST bundles
+*.ast
+*.ast.patch
+assets/bundles/
+

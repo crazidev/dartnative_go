@@ -113,16 +113,16 @@ class _LauncherScreenState extends State<LauncherScreen> {
                           colors: colors,
                         ),
                         const SizedBox(height: 32),
-                        Button.root(
-                          onPressed: () => {},
-                          child: const Text('Submit'),
-                        ),
-                        // RecentProjectsList(
-                        //   projects: widget.projects,
-                        //   isLoading: widget.isLoading,
-                        //   onSelectProject: widget.onSelectProject,
-                        //   colors: colors,
+                        // Button.root(
+                        //   onPressed: () => {},
+                        //   child: const Text('Submit'),
                         // ),
+                        RecentProjectsList(
+                          projects: widget.projects,
+                          isLoading: widget.isLoading,
+                          onSelectProject: widget.onSelectProject,
+                          colors: colors,
+                        ),
                       ],
                     ),
                   ),

@@ -115,6 +115,16 @@ class FakeDevServer {
         await request.response.close();
       case '/guest.ast':
         if (astBytes != null) {
+          final etag = '"${astBytes.hashCode}"';
+          request.response.headers.set(HttpHeaders.etagHeader, etag);
+          request.response.headers.set('Access-Control-Allow-Origin', '*');
+          request.response.headers.set('Access-Control-Expose-Headers', 'ETag');
+          final ifNoneMatch = request.headers.value(HttpHeaders.ifNoneMatchHeader)?.trim();
+          if (ifNoneMatch != null && (ifNoneMatch == etag || ifNoneMatch == '${astBytes.hashCode}')) {
+            request.response.statusCode = HttpStatus.notModified;
+            await request.response.close();
+            return;
+          }
           request.response.headers.contentType =
               ContentType('application', 'octet-stream');
           request.response.add(astBytes!);

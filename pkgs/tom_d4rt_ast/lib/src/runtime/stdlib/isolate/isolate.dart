@@ -60,24 +60,21 @@ class IsolateIsolate {
             'Isolate.run requires a Function for computation.',
           );
         }
-        // LIMITED SUPPORT: Isolate.run in D4rt (Lim-3)
-        //
-        // Interpreted functions cannot be sent to real isolates because
-        // they capture interpreter state (Environment, AST nodes, etc.)
-        // which contains non-sendable objects.
-        //
-        // Instead, we execute the computation asynchronously in the SAME
-        // isolate using Future.microtask(). This provides:
-        //   ✓ Correct results
-        //   ✓ Async semantics (await works)
-        //   ✗ NO true parallelism (runs in same isolate)
-        //   ✗ NO CPU isolation (heavy work blocks main isolate)
-        //
-        // For true parallel execution, users should:
-        // 1. Use D4rt's native bridge to call real Dart code in isolates
-        // 2. Or compile their D4rt script to native Dart first
-        //
-        // See: doc/d4rt_limitations.md Lim-3
+        final fnName = computation.codeCell?.key.qualifiedName ??
+            computation.currentCode.name;
+        final moduleUri = computation.codeCell?.key.moduleUri;
+        final bytes = D4rtIsolateWorker.activeBundleBytes ??
+            D4rtIsolateWorker.bundleBytesProvider?.call();
+        final isTopLevel = computation.codeCell != null &&
+            !computation.codeCell!.key.qualifiedName.contains('#');
+
+        if (fnName != null && isTopLevel && bytes != null && bytes.isNotEmpty) {
+          return D4rtIsolateWorker.run(
+            entryFunction: fnName,
+            entryPoint: moduleUri,
+            bundleBytes: bytes,
+          );
+        }
         return Future.microtask(() => computation.call(visitor, []));
       },
       'spawn': (visitor, positionalArgs, namedArgs, _) {

@@ -40,8 +40,18 @@ class ProjectBundle {
   /// without re-hashing the whole bundle on device.
   final Map<String, String> astModuleFingerprints;
 
-  /// Whether an AST bundle is available for opt-in testing.
-  bool get hasAst => astBytes != null && astBytes!.isNotEmpty;
+  /// Incremental delta patch bytes (from `GET /guest.ast.patch`).
+  /// When present, this bundle represents a lightweight delta containing
+  /// only the modified modules.
+  final List<int>? astPatchBytes;
+
+  /// Whether this bundle is an incremental patch.
+  final bool isPatch;
+
+  /// Whether an AST bundle or patch is available for opt-in testing.
+  bool get hasAst =>
+      (astBytes != null && astBytes!.isNotEmpty) ||
+      (astPatchBytes != null && astPatchBytes!.isNotEmpty);
 
   const ProjectBundle({
     required this.appName,
@@ -56,6 +66,8 @@ class ProjectBundle {
     this.breakpoints = const [],
     this.assets = const [],
     this.astBytes,
+    this.astPatchBytes,
+    this.isPatch = false,
     this.astEntryPoint,
     this.astModuleFingerprints = const {},
   });
@@ -117,21 +129,60 @@ class BundleLoader {
     return null;
   }
 
+  final Map<String, ({String etag, List<int> bytes})> _astCache = {};
+
+  /// Clears in-memory AST bundle cache (e.g. for testing or fresh cold start).
+  void clearAstCache() {
+    _astCache.clear();
+  }
+
   /// Best-effort fetch of pre-compiled `AstBundle` bytes from `/guest.ast`.
   ///
+  /// Supports HTTP ETag / 304 Not Modified to avoid re-downloading unchanged
+  /// bundles over the network.
   /// Returns null (not an error) when the server has no bundle yet — source
   /// mode keeps working. Never throws.
   Future<List<int>?> fetchAstBytes(String serverUrl) async {
     final baseUrl = normalizeUrl(serverUrl);
     try {
       final req = await _client.getUrl(Uri.parse('$baseUrl/guest.ast'));
+      final cached = _astCache[baseUrl];
+      if (cached != null) {
+        req.headers.set(HttpHeaders.ifNoneMatchHeader, cached.etag);
+      }
+      final res = await req.close();
+      if (res.statusCode == HttpStatus.notModified && cached != null) {
+        return cached.bytes;
+      }
+      if (res.statusCode != HttpStatus.ok) return null;
+      final etag = res.headers.value(HttpHeaders.etagHeader);
+      final bytes = await res.fold<List<int>>(
+        <int>[],
+        (prev, el) => prev..addAll(el),
+      );
+      if (bytes.isEmpty) return null;
+      if (etag != null && etag.isNotEmpty) {
+        _astCache[baseUrl] = (etag: etag, bytes: bytes);
+      }
+      return bytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Best-effort fetch of incremental `AstBundle` delta patch bytes from `/guest.ast.patch`.
+  /// Returns null when no patch is active (e.g. 404), falling back to full bundle fetch.
+  Future<List<int>?> fetchAstPatchBytes(String serverUrl) async {
+    final baseUrl = normalizeUrl(serverUrl);
+    try {
+      final req = await _client.getUrl(Uri.parse('$baseUrl/guest.ast.patch'));
       final res = await req.close();
       if (res.statusCode != HttpStatus.ok) return null;
       final bytes = await res.fold<List<int>>(
         <int>[],
         (prev, el) => prev..addAll(el),
       );
-      return bytes.isEmpty ? null : bytes;
+      return bytes.isNotEmpty ? bytes : null;
     } catch (_) {
       return null;
     }
@@ -216,10 +267,52 @@ class BundleLoader {
     Map<String, Set<int>>? breakpointsByFile,
     bool fetchAst = true,
     bool onlyAst = false,
+    bool isHotReload = false,
+    bool hasAssetChanges = false,
     void Function(int downloaded, int total)? onProgress,
   }) async {
     final totalSw = Stopwatch()..start();
     final baseUrl = normalizeUrl(serverUrl);
+
+    // Fast AST Hot-Reload Path:
+    // When performing an AST hot reload with NO asset changes, skip fetching
+    // /manifest.json entirely and download /guest.ast.patch directly (< 5 KB, ~15ms).
+    // If the patch succeeds, return immediately without touching /manifest.json.
+    // If the patch returns null (404/not available), gracefully fall back to full
+    // manifest + bundle download.
+    if (onlyAst && isHotReload && !hasAssetChanges) {
+      final patchSw = Stopwatch()..start();
+      final patchBytes = await fetchAstPatchBytes(baseUrl);
+      final patchMs = patchSw.elapsedMilliseconds;
+      if (patchBytes != null && patchBytes.isNotEmpty) {
+        DartGoLogger.bench(
+          'BundleLoader',
+          'AST fetchPatch',
+          totalSw.elapsedMilliseconds,
+          {
+            'manifest': 0,
+            'download': patchMs,
+            'size': '${patchBytes.length}B',
+            'is_patch': true,
+          },
+        );
+        return ProjectBundle(
+          appName: 'DartNative App',
+          serverUrl: baseUrl,
+          sources: const {},
+          entrypointCode: '',
+          entrypointLibrary: '',
+          breakpoints: const [],
+          assets: const [],
+          astBytes: null,
+          astPatchBytes: patchBytes,
+          isPatch: true,
+          astEntryPoint: null,
+          astModuleFingerprints: const {},
+        );
+      }
+    }
+
     final manifestSw = Stopwatch()..start();
     final manifest = preloadedManifest ?? await fetchManifest(baseUrl) ?? {};
     final manifestMs = manifestSw.elapsedMilliseconds;
@@ -254,8 +347,9 @@ class BundleLoader {
           totalSw.elapsedMilliseconds,
           {
             'manifest': manifestMs,
-            'ast_download': astMs,
+            'download': astMs,
             'size': '${astBytes.length}B',
+            'is_patch': false,
             'module_fps': moduleFingerprints.length,
           },
         );
@@ -272,6 +366,7 @@ class BundleLoader {
           breakpoints: const [],
           assets: rawAssets,
           astBytes: astBytes,
+          isPatch: false,
           astEntryPoint: manifest['astEntryPoint']?.toString(),
           astModuleFingerprints: moduleFingerprints,
         );

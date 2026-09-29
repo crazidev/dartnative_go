@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:tom_d4rt_ast/runtime.dart';
 
 /// Stable identity of a swappable declaration.
@@ -29,10 +27,11 @@ class DeclarationKey {
 
   @override
   bool operator ==(Object other) =>
-      other is DeclarationKey &&
-      other.moduleUri == moduleUri &&
-      other.qualifiedName == qualifiedName &&
-      other.kind == kind;
+      identical(this, other) ||
+      (other is DeclarationKey &&
+          other.moduleUri == moduleUri &&
+          other.qualifiedName == qualifiedName &&
+          other.kind == kind);
 
   @override
   int get hashCode => Object.hash(moduleUri, qualifiedName, kind);
@@ -147,7 +146,8 @@ class FunctionCode {
 
   /// Identity of the *callable shape*. Equal shapes may share a cell across
   /// generations; unequal shapes must get a fresh one.
-  String get signatureKey => parameterShapeKey(parameters);
+  String? _cachedSignatureKey;
+  String get signatureKey => _cachedSignatureKey ??= parameterShapeKey(parameters);
 }
 
 /// Stable, swappable holder for one function declaration.
@@ -401,36 +401,76 @@ class VariableCell {
 /// Offset-free canonical form of an initializer expression, used to decide
 /// whether a reload changed it.
 ///
-/// `SAstNode.equals` compares `offset` / `length`, which shift whenever anything
-/// earlier in the file is edited — comparing those would reset the state of
-/// every declaration after the edit. This encodes the node's JSON with the
-/// position fields stripped, so only the expression's *shape* matters.
-///
-/// Returns null when [node] is null or cannot be serialized (the caller then
-/// treats the initializer as changed, which is the safe direction).
+/// Fast structural hasher: walks the node's JSON map directly without allocating
+/// intermediate stripped Maps/Lists or running `jsonEncode`. Returns an FNV-1a
+/// 64-bit hex string.
 String? canonicalInitializerKey(SAstNode? node) {
   if (node == null) return null;
   try {
-    return jsonEncode(_stripPositions(node.toJson()));
+    return _computeNodeStructuralHash(node.toJson()).toRadixString(16);
   } catch (_) {
     return null;
   }
 }
 
-Object? _stripPositions(Object? value) {
-  if (value is Map) {
-    final out = <String, Object?>{};
-    value.forEach((key, val) {
-      final name = key.toString();
-      if (name == 'offset' || name == 'length') return;
-      out[name] = _stripPositions(val);
-    });
-    return out;
+int _computeNodeStructuralHash(Object? value) {
+  var hash = 0xcbf29ce484222325;
+  const prime = 0x100000001b3;
+
+  void addByte(int b) {
+    hash ^= b;
+    hash = (hash * prime) & 0xFFFFFFFFFFFFFFFF;
   }
-  if (value is List) {
-    return value.map(_stripPositions).toList();
+
+  void addString(String s) {
+    for (final c in s.codeUnits) {
+      addByte(c & 0xFF);
+      addByte((c >> 8) & 0xFF);
+    }
   }
-  return value;
+
+  void walk(Object? v) {
+    if (v == null) {
+      addByte(0);
+      return;
+    }
+    if (v is Map) {
+      addByte(1);
+      final keys = v.keys.map((k) => k.toString()).toList()..sort();
+      for (final key in keys) {
+        if (key == 'offset' || key == 'length') continue;
+        addString(key);
+        walk(v[key]);
+      }
+    } else if (v is List) {
+      addByte(2);
+      addByte(v.length & 0xFF);
+      for (final item in v) {
+        walk(item);
+      }
+    } else if (v is String) {
+      addByte(3);
+      addString(v);
+    } else if (v is int) {
+      addByte(4);
+      addByte(v & 0xFF);
+      addByte((v >> 8) & 0xFF);
+      addByte((v >> 16) & 0xFF);
+      addByte((v >> 24) & 0xFF);
+    } else if (v is double) {
+      addByte(5);
+      addString(v.toString());
+    } else if (v is bool) {
+      addByte(6);
+      addByte(v ? 1 : 0);
+    } else {
+      addByte(7);
+      addString(v.toString());
+    }
+  }
+
+  walk(value);
+  return hash;
 }
 
 /// Stable holder for one class declaration across hot-reload generations
@@ -511,6 +551,8 @@ class _CachedModule {
 class DeclarationRegistry {
   final Map<DeclarationKey, FunctionCell> _cells = {};
   final Map<String, Set<String>> _classMemberShapes = {};
+  final Map<String, Set<DeclarationKey>> _classFunctionKeys = {};
+  final Map<String, Set<DeclarationKey>> _classVariableKeys = {};
 
   /// Incremented once per evaluated generation; stamped onto published code.
   int generation = 0;
@@ -606,16 +648,25 @@ class DeclarationRegistry {
     _classCells.remove(
       DeclarationKey(moduleUri, className, 'class'),
     );
-    final prefix = '$className#';
-    final stale = _cells.keys
-        .where(
-          (k) => k.moduleUri == moduleUri && k.qualifiedName.startsWith(prefix),
-        )
-        .toList();
-    for (final key in stale) {
-      _cells.remove(key);
+    final classKey = '$moduleUri#$className';
+    final memberKeys = _classFunctionKeys.remove(classKey);
+    if (memberKeys != null && memberKeys.isNotEmpty) {
+      for (final key in memberKeys) {
+        _cells.remove(key);
+      }
+      retirements += memberKeys.length;
+    } else {
+      final prefix = '$className#';
+      final stale = _cells.keys
+          .where(
+            (k) => k.moduleUri == moduleUri && k.qualifiedName.startsWith(prefix),
+          )
+          .toList();
+      for (final key in stale) {
+        _cells.remove(key);
+      }
+      if (stale.isNotEmpty) retirements += stale.length;
     }
-    if (stale.isNotEmpty) retirements += stale.length;
   }
 
   /// Drops the variable cells of [className] in [moduleUri] whose member name
@@ -628,23 +679,29 @@ class DeclarationRegistry {
     String kind,
     Map<String, String> declaredNames,
   ) {
+    final classKey = '$moduleUri#$className';
+    final memberKeys = _classVariableKeys[classKey];
     final prefix = '$className#';
     final stale = <DeclarationKey>[];
-    _variableCells.forEach((key, cell) {
+    final candidates = memberKeys != null ? List<DeclarationKey>.of(memberKeys) : _variableCells.keys.toList();
+    for (final key in candidates) {
       if (key.moduleUri != moduleUri ||
           key.kind != kind ||
           !key.qualifiedName.startsWith(prefix)) {
-        return;
+        continue;
       }
+      final cell = _variableCells[key];
+      if (cell == null) continue;
       final member = key.qualifiedName.substring(prefix.length);
       final fingerprint = declaredNames[member];
       final current = '${cell.isFinal}|${cell.isConst}|${cell.isLate}';
       if (fingerprint == null || fingerprint != current) {
         stale.add(key);
       }
-    });
+    }
     for (final key in stale) {
       _variableCells.remove(key);
+      memberKeys?.remove(key);
     }
     if (stale.isNotEmpty) retirements += stale.length;
   }
@@ -660,11 +717,15 @@ class DeclarationRegistry {
     Environment? home,
   }) {
     final existing = _cells[key];
+    final owner = key.ownerClassName;
     if (existing == null) {
       final cell = FunctionCell(key, fresh.currentCode);
       fresh.adoptCell(cell);
       cell.publish(fresh.currentCode, home: home, generation: generation);
       _cells[key] = cell;
+      if (owner != null) {
+        _classFunctionKeys.putIfAbsent('${key.moduleUri}#$owner', () => {}).add(key);
+      }
       misses++;
       return fresh;
     }
@@ -675,6 +736,9 @@ class DeclarationRegistry {
       fresh.adoptCell(cell);
       cell.publish(fresh.currentCode, home: home, generation: generation);
       _cells[key] = cell;
+      if (owner != null) {
+        _classFunctionKeys.putIfAbsent('${key.moduleUri}#$owner', () => {}).add(key);
+      }
       retirements++;
       return fresh;
     }
@@ -775,7 +839,16 @@ class DeclarationRegistry {
   /// Registers [cell] as the stable storage for [key] (first generation).
   void registerVariable(DeclarationKey key, VariableCell cell) {
     _variableCells[key] = cell;
-    journalUndo(() => _variableCells.remove(key));
+    final owner = key.ownerClassName;
+    if (owner != null) {
+      _classVariableKeys.putIfAbsent('${key.moduleUri}#$owner', () => {}).add(key);
+    }
+    journalUndo(() {
+      _variableCells.remove(key);
+      if (owner != null) {
+        _classVariableKeys['${key.moduleUri}#$owner']?.remove(key);
+      }
+    });
     misses++;
   }
 
@@ -857,20 +930,33 @@ class DeclarationRegistry {
   /// Drops the variable cell registered for [key].
   void retireVariable(DeclarationKey key) {
     _variableCells.remove(key);
+    final owner = key.ownerClassName;
+    if (owner != null) {
+      _classVariableKeys['${key.moduleUri}#$owner']?.remove(key);
+    }
   }
 
   /// Drops every variable cell whose key is owned by [className] in [moduleUri].
   void retireClassVariables(String moduleUri, String className) {
-    final prefix = '$className#';
-    final stale = _variableCells.keys
-        .where(
-          (k) => k.moduleUri == moduleUri && k.qualifiedName.startsWith(prefix),
-        )
-        .toList();
-    for (final key in stale) {
-      _variableCells.remove(key);
+    final classKey = '$moduleUri#$className';
+    final memberKeys = _classVariableKeys.remove(classKey);
+    if (memberKeys != null && memberKeys.isNotEmpty) {
+      for (final key in memberKeys) {
+        _variableCells.remove(key);
+      }
+      retirements += memberKeys.length;
+    } else {
+      final prefix = '$className#';
+      final stale = _variableCells.keys
+          .where(
+            (k) => k.moduleUri == moduleUri && k.qualifiedName.startsWith(prefix),
+          )
+          .toList();
+      for (final key in stale) {
+        _variableCells.remove(key);
+      }
+      if (stale.isNotEmpty) retirements += stale.length;
     }
-    if (stale.isNotEmpty) retirements += stale.length;
   }
 
   /// Registered keys. Diagnostics / tests only.
@@ -887,6 +973,8 @@ class DeclarationRegistry {
     _classCells.clear();
     _moduleCache.clear();
     _classMemberShapes.clear();
+    _classFunctionKeys.clear();
+    _classVariableKeys.clear();
   }
 
   /// Counters for host-visible diagnostics.

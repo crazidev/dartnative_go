@@ -156,5 +156,20 @@ dependencies:
       final bundle = await loader.fetchBundle(server.baseUrl);
       expect(bundle.hasAst, isTrue);
     });
+
+    test('fetchAstBytes utilizes ETag to return cached bytes on 304', () async {
+      await server.stop();
+      server = FakeDevServer(appName: 'AST ETag App', astBytes: [10, 20, 30]);
+      await server.start();
+      loader.clearAstCache();
+
+      // First fetch caches ETag & bytes
+      final first = await loader.fetchAstBytes(server.baseUrl);
+      expect(first, equals([10, 20, 30]));
+
+      // Second fetch should use cached bytes via 304 Not Modified
+      final second = await loader.fetchAstBytes(server.baseUrl);
+      expect(second, equals([10, 20, 30]));
+    });
   });
 }

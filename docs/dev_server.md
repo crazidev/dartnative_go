@@ -78,7 +78,8 @@ All responses set `Access-Control-Allow-Origin: *`. Mutable routes use
 | `/pkg/<name>@<version>.zip` | GET | One pure-Dart dependency as a ZIP. Immutable (`max-age=31536000`) since it's content-addressed by version. |
 | `/user-code.zip` | GET | Your project's `lib/` (or `guest_app/`) Dart files as a single ZIP. Always fresh. |
 | `/user-code-hash` | GET | `{ "hash": … }` for the user-code ZIP — a cheap way to poll for changes. |
-| `/guest.ast` | GET | The precompiled AST bundle. 404 when it hasn't been built — the device then stays on source mode. |
+| `/guest.ast` | GET | The precompiled full AST bundle. 404 when it hasn't been built — the device then stays on source mode. |
+| `/guest.ast.patch` | GET | Delta AST patch containing only modified compilation units for incremental reloads (~20 KB). 404 when no patch is available. |
 | `/bundle.json` | GET | Monolithic fallback: manifest + deps + all source files + breakpoints in one JSON. |
 | `/app.dart` | GET | Just the entrypoint source (`lib/main.dart`). The last-resort fallback. |
 | `/assets.json` | GET | `{ "assets": [relative paths…] }` for everything under `assets/`. |

@@ -9,6 +9,7 @@ import 'logger.dart';
 import '../interpreter/ast/ast_asset_bridge.dart';
 import '../interpreter/ast/ast_widget_proxies.dart';
 import '../interpreter/ast/dartscript.b.dart' as ast_bridges;
+import '../interpreter/ast/isolate_compute_bridge.dart';
 
 /// Executes pre-compiled `AstBundle` bytes on the analyzer-free engine.
 ///
@@ -73,6 +74,11 @@ class AstInterpreterRunner {
   /// function-body swaps (hit/miss/swap/retirement counters + cell count).
   ast.DeclarationRegistry get declarationRegistry => _declarationRegistry;
 
+  List<int>? _cachedBundleBytes;
+
+  /// The active bundle bytes for this runner, accessible to worker isolates.
+  List<int>? get cachedBundleBytes => _cachedBundleBytes;
+
   /// Creates the core runner + registers the full bridge surface exactly once.
   ///
   /// Idempotent: repeated calls (one per evaluation) keep the existing runner,
@@ -92,6 +98,7 @@ class AstInterpreterRunner {
 
     // Full generated bridge surface (AST-typed via buildkit_ast.yaml).
     ast_bridges.DartnativeGoAstBridges.register(runner);
+    registerAstComputeBridge(runner);
     registerAstWidgetInterfaceProxies(
       runner,
       onLog: onLog,
@@ -148,6 +155,8 @@ class AstInterpreterRunner {
   /// gone, and every top-level and static value survives a reload.
   Future<T> evaluateAstBundleAs<T>(
     List<int> astBytes, {
+    List<int>? astPatchBytes,
+    bool isPatch = false,
     String? entryPoint,
     String name = 'main',
     List<Object?>? positionalArgs,
@@ -165,7 +174,23 @@ class AstInterpreterRunner {
 
     final runner = _runner!;
     final decodeSw = Stopwatch()..start();
-    final bundle = _decodeBundle(astBytes);
+    final ast.AstBundle bundle;
+    if (isPatch &&
+        astPatchBytes != null &&
+        astPatchBytes.isNotEmpty &&
+        _cachedBundle != null) {
+      final patch = decodeAstBundleBytes(astPatchBytes);
+      bundle = _cachedBundle!.applyPatch(patch);
+      _cachedBundle = bundle;
+      _classFileMap = {..._classFileMap, ..._classFilesOf(patch)};
+      _lastDecodeWasCacheHit = false;
+    } else {
+      if (astBytes.isNotEmpty) {
+        _cachedBundleBytes = astBytes;
+        ast.D4rtIsolateWorker.activeBundleBytes = astBytes;
+      }
+      bundle = _decodeBundle(astBytes);
+    }
     final decodeMs = decodeSw.elapsedMilliseconds;
 
     final effectiveEntry = resolveBundleEntry(bundle, entryPoint);

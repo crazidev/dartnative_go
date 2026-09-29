@@ -2,6 +2,7 @@ import 'package:tom_d4rt_ast/src/runtime/environment.dart';
 import 'isolate/capability.dart';
 import 'isolate/isolate.dart';
 import 'isolate/isolate_hierarchy.dart';
+import 'isolate/isolate_worker.dart';
 
 export 'package:tom_d4rt_ast/src/runtime/environment.dart';
 
@@ -13,6 +14,7 @@ class IsolateStdlib {
     // Register all Isolate-related bridges
     environment.defineBridge(IsolateSpawnExceptionIsolate.definition);
     environment.defineBridge(IsolateIsolate.definition);
+    environment.defineBridge(D4rtIsolateWorkerBridge.definition);
     environment.defineBridge(SendPortIsolate.definition);
     environment.defineBridge(ReceivePortIsolate.definition);
     environment.defineBridge(RawReceivePortIsolate.definition);

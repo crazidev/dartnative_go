@@ -100,8 +100,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       onLog: (msg) => _liveConnection?.sendDeviceLog(msg),
       onExit: _unmountApp,
       useAst: _useAst,
-      onGuestError: (error, stack) =>
-          _showGuestErrorBanner(error, stack),
+      onGuestError: (error, stack) => _showGuestErrorBanner(error, stack),
     );
     _restoreSavedRuntimeMode();
     _initScanner();
@@ -254,6 +253,8 @@ class _DartNativeGoState extends State<DartNativeGo> {
       _liveConnection = LiveConnection(
         serverUrl: bundle.serverUrl,
         onReload: (changed) => _reloadApp(changedFile: changed),
+        onReloadBatch: (changedList, {bool isAssetChange = false}) =>
+            _reloadApp(changedFiles: changedList, isAssetChange: isAssetChange),
         onRestart: () => _restartApp(),
         onBreakpoints: (bps) {
           _interpreterRunner.debugController.setBreakpoints(bps);
@@ -455,7 +456,11 @@ class _DartNativeGoState extends State<DartNativeGo> {
   }
 
   /// Re-evaluates updated code upon Hot Reload.
-  Future<void> _reloadApp({String? changedFile}) async {
+  Future<void> _reloadApp({
+    String? changedFile,
+    List<String>? changedFiles,
+    bool isAssetChange = false,
+  }) async {
     if (_activeBundle == null) return;
     final seq = ++_reloadSeq;
     final reloadSw = Stopwatch()..start();
@@ -464,6 +469,8 @@ class _DartNativeGoState extends State<DartNativeGo> {
       final updatedBundle = await _bundleLoader.fetchBundle(
         _activeBundle!.serverUrl,
         onlyAst: _useAst,
+        isHotReload: true,
+        hasAssetChanges: isAssetChange,
       );
       final fetchMs = fetchSw.elapsedMilliseconds;
       if (!mounted || seq != _reloadSeq) return;
@@ -476,11 +483,19 @@ class _DartNativeGoState extends State<DartNativeGo> {
           _interpreterRunner.astRunner?.classFileMap ?? const {},
         );
       }
-      if (changedFile != null && changedFile.isNotEmpty) {
-        WidgetGenerationTracker.notifyFilesChanged({changedFile});
-      } else {
-        WidgetGenerationTracker.notifyFilesChanged(const {});
+      final filesToNotify = <String>{};
+      if (changedFiles != null && changedFiles.isNotEmpty) {
+        filesToNotify.addAll(changedFiles);
+      } else if (changedFile != null && changedFile.isNotEmpty) {
+        filesToNotify.add(changedFile);
       }
+      final isManualReload =
+          (changedFiles == null || changedFiles.isEmpty) &&
+          (changedFile == null || changedFile.isEmpty);
+      WidgetGenerationTracker.notifyFilesChanged(
+        filesToNotify,
+        bumpAllIfEmpty: isManualReload,
+      );
       final trackMs = trackSw.elapsedMilliseconds;
 
       final evalSw = Stopwatch()..start();
@@ -505,7 +520,11 @@ class _DartNativeGoState extends State<DartNativeGo> {
       });
       NativeBottomSheetManager.notifyHotReload(
         _interpreterRunner.activeVisitor,
-        changedFile: changedFile,
+        changedFile:
+            changedFile ??
+            (changedFiles != null && changedFiles.isNotEmpty
+                ? changedFiles.first
+                : null),
       );
       final remountMs = remountSw.elapsedMilliseconds;
       final totalMs = reloadSw.elapsedMilliseconds;

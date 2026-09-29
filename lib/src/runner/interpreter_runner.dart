@@ -474,7 +474,9 @@ class InterpreterRunner {
     if (useAst) {
       if (bundle.hasAst) {
         return evaluateAstBundle(
-          bundle.astBytes!,
+          bundle.astBytes ?? const [],
+          astPatchBytes: bundle.astPatchBytes,
+          isPatch: bundle.isPatch,
           entryPoint: bundle.astEntryPoint,
           isHotReload: isHotReload,
           // Phase 5: unchanged modules are not re-declared on reload.
@@ -500,6 +502,8 @@ class InterpreterRunner {
   /// and register on phase 2 — see [AstInterpreterRunner] docs.
   Future<Widget> evaluateAstBundle(
     List<int> astBytes, {
+    List<int>? astPatchBytes,
+    bool isPatch = false,
     String? entryPoint,
     bool isHotReload = false,
     Map<String, String> moduleFingerprints = const {},
@@ -523,6 +527,8 @@ class InterpreterRunner {
 
     return await _astRunner!.evaluateAstBundleAs<Widget>(
       astBytes,
+      astPatchBytes: astPatchBytes,
+      isPatch: isPatch,
       entryPoint: entryPoint,
       isHotReload: isHotReload,
       moduleFingerprints: moduleFingerprints,

@@ -254,6 +254,24 @@ class AstBundle {
   /// Whether this bundle contains only the entry point module.
   bool get isSingleModule => modules.length == 1;
 
+  /// Creates a new [AstBundle] by applying the modules from [patch] over this bundle.
+  AstBundle applyPatch(AstBundle patch) {
+    final merged = Map<String, SCompilationUnit>.of(modules);
+    merged.addAll(patch.modules);
+    Map<String, String>? mergedSources;
+    if (sources != null || patch.sources != null) {
+      mergedSources = Map<String, String>.of(sources ?? const {});
+      if (patch.sources != null) {
+        mergedSources.addAll(patch.sources!);
+      }
+    }
+    return AstBundle(
+      entryPointUri: entryPointUri,
+      modules: merged,
+      sources: mergedSources,
+    );
+  }
+
   // ===========================================================================
   // JSON Serialization
   // ===========================================================================
@@ -371,7 +389,21 @@ class AstBundle {
   /// Module entries are pre-compressed with gzip and stored without
   /// additional ZIP-level compression, allowing individual modules
   /// to be extracted and used standalone.
-  List<int> toZip() {
+  ///
+  /// ### Incremental fast-path
+  ///
+  /// Pass [precompressedModules] (a map from module URI to already-compressed
+  /// gzip bytes) to skip re-serialization and re-compression for unchanged
+  /// modules. Only modules whose URI is *not* present in the map are
+  /// re-encoded. This is the primary hot-reload optimization: a 2 000-module
+  /// project where 10 files changed should spend ~0 ms on the other 1 990.
+  ///
+  /// The method also **populates** [precompressedModules] with the newly
+  /// compressed bytes for any module it had to encode, so the caller can
+  /// cache and reuse them on the next rebuild.
+  List<int> toZip({
+    Map<String, List<int>>? precompressedModules,
+  }) {
     final archive = Archive();
 
     // Assign sequential file names to each module
@@ -411,17 +443,32 @@ class AstBundle {
       ArchiveFile.string(AstBundleFormat.manifestFileName, manifestJson),
     );
 
-    // Write each module as gzip-compressed JSON
+    // Write each module as gzip-compressed JSON.
+    // Hot-reload fast-path: if the caller supplied pre-compressed bytes for
+    // this URI (unchanged module), stitch them in directly — zero JSON encode
+    // + zero gzip work.
     for (final entry in modules.entries) {
-      final fileName = uriToFileName[entry.key]!;
-      final moduleJson = jsonEncode(entry.value.toJson());
-      // See [toBytes]: `encode` + [_requireBytes] compiles against archive
-      // 3.x (DartNative AOT platform) and 4.x (host) alike.
-      final compressed = _requireBytes(
-        _gzipEncoder.encode(utf8.encode(moduleJson)),
-        'gzip-encode module "${entry.key}"',
-      );
-      // Use noCompress: content is already gzip-compressed
+      final uri = entry.key;
+      final fileName = uriToFileName[uri]!;
+
+      final List<int> compressed;
+      final cached = precompressedModules?[uri];
+      if (cached != null) {
+        // Unchanged module — reuse cached compressed bytes.
+        compressed = cached;
+      } else {
+        // New or changed module — encode + compress, then populate cache.
+        final moduleJson = jsonEncode(entry.value.toJson());
+        // See [toBytes]: `encode` + [_requireBytes] compiles against archive
+        // 3.x (DartNative AOT platform) and 4.x (host) alike.
+        compressed = _requireBytes(
+          _gzipEncoder.encode(utf8.encode(moduleJson)),
+          'gzip-encode module "$uri"',
+        );
+        precompressedModules?[uri] = compressed;
+      }
+
+      // Use noCompress: content is already gzip-compressed.
       archive.addFile(
         ArchiveFile.noCompress(fileName, compressed.length, compressed),
       );
@@ -526,8 +573,11 @@ class AstBundle {
   /// Saves this bundle to a file in ZIP archive format.
   ///
   /// Creates parent directories if they don't exist.
-  void saveToFile(String path) {
-    writeFileAsBytesSync(path, toZip());
+  ///
+  /// Pass [precompressedModules] to enable the incremental hot-reload
+  /// fast-path — see [toZip] for details.
+  void saveToFile(String path, {Map<String, List<int>>? precompressedModules}) {
+    writeFileAsBytesSync(path, toZip(precompressedModules: precompressedModules));
   }
 
   /// Loads a bundle from a file.

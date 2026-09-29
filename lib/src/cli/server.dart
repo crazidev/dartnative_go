@@ -57,6 +57,8 @@ class DartGoServer {
   final List<Map<String, dynamic>> _activeBreakpoints = [];
   bool _astRebuildInFlight = false;
   bool _astRebuildQueued = false;
+  final Set<String> _pendingDartChanges = {};
+  Timer? _codeDebounceTimer;
 
   DartGoServer(this.options) {
     DartGoLogger.verbose = options.verbose;
@@ -154,15 +156,11 @@ class DartGoServer {
     _setupStdinListener(serverUrl);
 
     // 8. Setup File Watchers for Dart code and Assets
-    Timer? codeDebounceTimer;
     Timer? assetsDebounceTimer;
     if (codeDir.existsSync()) {
       _fileWatchSub = codeDir.watch(recursive: true).listen((event) {
         if (event.path.endsWith('.dart')) {
-          codeDebounceTimer?.cancel();
-          codeDebounceTimer = Timer(const Duration(milliseconds: 150), () {
-            _onCodeChanged(event.path, codeDir, projectDir);
-          });
+          _scheduleRebuild(event.path, codeDir, projectDir);
         }
       });
     }
@@ -177,7 +175,7 @@ class DartGoServer {
         assetsDebounceTimer?.cancel();
         assetsDebounceTimer = Timer(const Duration(milliseconds: 150), () {
           print('[DevServer] 🔄 Asset change detected: ${event.path}. Broadcasting reload...');
-          _broadcastReload(event.path, projectDir.path);
+          _broadcastReload(event.path, projectDir.path, true);
         });
       });
     }
@@ -207,7 +205,7 @@ class DartGoServer {
   /// is unaffected.
   Future<void> _initialAstBuild(Directory projectDir) async {
     try {
-      final result = await buildGuestAstBundle(projectDir);
+      final result = await AstBuildWorker.instance.build(projectDir);
       if (result.success) {
         print(
           '[DevServer] 📦 guest.ast ready '
@@ -224,25 +222,45 @@ class DartGoServer {
     }
   }
 
-  /// Handles a Dart file change: optionally rebuilds the AST bundle first
-  /// (`--rebuild-ast`), then broadcasts a single reload so clients fetch
-  /// fresh source AND fresh bytes together.
-  Future<void> _onCodeChanged(
+  void _scheduleRebuild(
     String changedPath,
     Directory codeDir,
     Directory projectDir,
+  ) {
+    _pendingDartChanges.add(changedPath);
+    _codeDebounceTimer?.cancel();
+    _codeDebounceTimer = Timer(const Duration(milliseconds: 120), () {
+      if (_astRebuildInFlight) {
+        _astRebuildQueued = true;
+        return;
+      }
+      final batch = Set<String>.of(_pendingDartChanges);
+      _pendingDartChanges.clear();
+      _onCodeChangedBatch(batch, codeDir, projectDir);
+    });
+  }
+
+  /// Handles a batch of Dart file changes: optionally rebuilds the AST bundle
+  /// first (`--rebuild-ast`), then broadcasts a single reload with all changed
+  /// files so clients fetch fresh source AND fresh bytes together.
+  Future<void> _onCodeChangedBatch(
+    Set<String> changedPaths,
+    Directory codeDir,
+    Directory projectDir,
   ) async {
+    if (changedPaths.isEmpty) return;
     final sw = Stopwatch()..start();
-    final fileName = p.basename(changedPath);
-    DartGoLogger.info('[DevServer] 🔄 File change: $fileName');
-    DartGoLogger.debug('Full path: $changedPath', tag: 'DevServer');
+    final fileNames = changedPaths.map(p.basename).join(', ');
+    DartGoLogger.info('[DevServer] 🔄 File changes (${changedPaths.length}): $fileNames');
+    DartGoLogger.debug('Full paths: ${changedPaths.join(', ')}', tag: 'DevServer');
 
     if (!options.rebuildAst) {
-      _broadcastReload(changedPath, codeDir.path);
+      _broadcastReload(changedPaths, codeDir.path);
       DartGoLogger.bench('DevServer', 'Reload broadcast sent', sw.elapsedMilliseconds);
       return;
     }
     if (_astRebuildInFlight) {
+      _pendingDartChanges.addAll(changedPaths);
       _astRebuildQueued = true;
       return;
     }
@@ -250,7 +268,10 @@ class DartGoServer {
     var buildOk = false;
     try {
       final astSw = Stopwatch()..start();
-      final result = await buildGuestAstBundle(projectDir);
+      final result = await AstBuildWorker.instance.build(
+        projectDir,
+        changedFiles: changedPaths,
+      );
       astSw.stop();
       buildOk = result.success;
       if (result.success) {
@@ -287,15 +308,19 @@ class DartGoServer {
     // current generation. The warning above (plus the next successful save)
     // is the whole signal.
     if (!buildOk) return;
-    _broadcastReload(changedPath, codeDir.path);
+    _broadcastReload(changedPaths, codeDir.path);
     DartGoLogger.bench(
       'DevServer',
       'Total server reload prep',
       sw.elapsedMilliseconds,
     );
-    if (_astRebuildQueued) {
+    if (_astRebuildQueued || _pendingDartChanges.isNotEmpty) {
       _astRebuildQueued = false;
-      _onCodeChanged(changedPath, codeDir, projectDir);
+      final nextBatch = Set<String>.of(_pendingDartChanges);
+      _pendingDartChanges.clear();
+      if (nextBatch.isNotEmpty) {
+        _onCodeChangedBatch(nextBatch, codeDir, projectDir);
+      }
     }
   }
 
@@ -315,16 +340,43 @@ class DartGoServer {
     });
   }
 
-  void _broadcastReload([String? changedFilePath, String? baseDir]) {
-    String? relPath = changedFilePath;
-    if (changedFilePath != null && baseDir != null) {
-      relPath = changedFilePath
-          .replaceFirst('$baseDir/', '')
-          .replaceAll(r'\', '/');
+  void _broadcastReload([
+    Object? changedFilesInput,
+    String? baseDir,
+    bool isAssetChange = false,
+  ]) {
+    final relPaths = <String>[];
+    if (changedFilesInput is String && changedFilesInput.isNotEmpty) {
+      var rel = changedFilesInput;
+      if (baseDir != null) {
+        rel = rel.replaceFirst('$baseDir/', '').replaceAll(r'\', '/');
+      } else {
+        rel = rel.replaceAll(r'\', '/');
+      }
+      relPaths.add(rel);
+    } else if (changedFilesInput is Iterable) {
+      for (final item in changedFilesInput) {
+        if (item is String && item.isNotEmpty) {
+          var rel = item;
+          if (baseDir != null) {
+            rel = rel.replaceFirst('$baseDir/', '').replaceAll(r'\', '/');
+          } else {
+            rel = rel.replaceAll(r'\', '/');
+          }
+          relPaths.add(rel);
+        }
+      }
     }
+    final patchBytes = patchBytesForProject(options.projectDir);
+    final hasPatch = patchBytes != null && patchBytes.isNotEmpty;
     _broadcast({
       'type': 'reload',
-      'changedFile': relPath,
+      'changedFile': relPaths.firstOrNull,
+      'changedFiles': relPaths,
+      'isPatch': hasPatch && !isAssetChange,
+      'isAssetChange': isAssetChange,
+      'patchUrl': (hasPatch && !isAssetChange) ? '/guest.ast.patch' : null,
+      'patchSize': (hasPatch && !isAssetChange) ? patchBytes.length : null,
       'timestamp': DateTime.now().millisecondsSinceEpoch,
     });
   }
@@ -749,9 +801,25 @@ class DartGoServer {
       // 404 when absent — client stays on source mode.
       final astFile = _resolveAstBundleFile(projectDir);
       if (astFile != null) {
-        await _serveAssetFile(request, astFile);
+        final fp = astBundleFingerprintForProject(projectDir, astFile);
+        final etag = '"$fp"';
+        final clientEtag =
+            request.headers.value(HttpHeaders.ifNoneMatchHeader)?.trim();
+        if (clientEtag != null &&
+            (clientEtag == etag ||
+                clientEtag == fp ||
+                clientEtag == 'W/$etag' ||
+                clientEtag == 'W/"$fp"')) {
+          request.response.statusCode = HttpStatus.notModified;
+          request.response.headers.set(HttpHeaders.etagHeader, etag);
+          request.response.headers.set('Access-Control-Allow-Origin', '*');
+          request.response.headers.set('Access-Control-Expose-Headers', 'ETag');
+          await request.response.close();
+          return;
+        }
+        await _serveAssetFile(request, astFile, etag: etag);
         print(
-          '[DevServer] 📦 Served guest.ast (${await astFile.length()} bytes)',
+          '[DevServer] 📦 Served guest.ast (${await astFile.length()} bytes, etag=$etag)',
         );
       } else {
         request.response
@@ -761,6 +829,47 @@ class DartGoServer {
             'No AST bundle. Run `dart run tool/build_ast_bundle.dart` '
             'once tom_ast_generator is available.',
           )
+          ..close();
+      }
+    } else if (path == '/guest.ast.patch') {
+      final patchBytes = patchBytesForProject(projectDir);
+      if (patchBytes != null && patchBytes.isNotEmpty) {
+        final astFile = _resolveAstBundleFile(projectDir);
+        final fp = astFile != null
+            ? astBundleFingerprintForProject(projectDir, astFile)
+            : '${DateTime.now().millisecondsSinceEpoch}';
+        final etag = '"$fp-patch"';
+        final clientEtag =
+            request.headers.value(HttpHeaders.ifNoneMatchHeader)?.trim();
+        if (clientEtag != null &&
+            (clientEtag == etag ||
+                clientEtag == '$fp-patch' ||
+                clientEtag == 'W/$etag' ||
+                clientEtag == 'W/"$fp-patch"')) {
+          request.response.statusCode = HttpStatus.notModified;
+          request.response.headers.set(HttpHeaders.etagHeader, etag);
+          request.response.headers.set('Access-Control-Allow-Origin', '*');
+          request.response.headers.set('Access-Control-Expose-Headers', 'ETag');
+          await request.response.close();
+          return;
+        }
+        request.response
+          ..statusCode = HttpStatus.ok
+          ..headers.contentType = ContentType('application', 'octet-stream')
+          ..headers.set(HttpHeaders.contentLengthHeader, patchBytes.length)
+          ..headers.set(HttpHeaders.etagHeader, etag)
+          ..headers.add('Access-Control-Allow-Origin', '*')
+          ..headers.add('Access-Control-Expose-Headers', 'ETag')
+          ..add(patchBytes);
+        await request.response.close();
+        print(
+          '[DevServer] ⚡️ Served guest.ast.patch (${patchBytes.length} bytes, etag=$etag)',
+        );
+      } else {
+        request.response
+          ..statusCode = HttpStatus.notFound
+          ..headers.add('Access-Control-Allow-Origin', '*')
+          ..write('No active AST patch available; fetch full /guest.ast.')
           ..close();
       }
     } else if (path == '/app.dart') {
@@ -998,7 +1107,11 @@ class DartGoServer {
   }
 
   /// Streams the asset file to the HTTP response with CORS and cache headers.
-  static Future<void> _serveAssetFile(HttpRequest request, File file) async {
+  static Future<void> _serveAssetFile(
+    HttpRequest request,
+    File file, {
+    String? etag,
+  }) async {
     try {
       final bytes = await file.readAsBytes();
       final contentType = _getContentTypeForFile(file.path);
@@ -1006,7 +1119,12 @@ class DartGoServer {
         ..statusCode = HttpStatus.ok
         ..headers.contentType = contentType
         ..headers.add('Access-Control-Allow-Origin', '*')
-        ..headers.add('Cache-Control', 'no-cache')
+        ..headers.add('Cache-Control', 'no-cache');
+      if (etag != null) {
+        request.response.headers.set(HttpHeaders.etagHeader, etag);
+        request.response.headers.set('Access-Control-Expose-Headers', 'ETag');
+      }
+      request.response
         ..headers.contentLength = bytes.length
         ..add(bytes)
         ..close();
@@ -1027,6 +1145,9 @@ class DartGoServer {
       }
     } catch (_) {}
     _broadcaster?.stop();
+    _codeDebounceTimer?.cancel();
+    _codeDebounceTimer = null;
+    _pendingDartChanges.clear();
     _fileWatchSub?.cancel();
     _assetsWatchSub?.cancel();
     _stdinSub?.cancel();
@@ -1035,6 +1156,7 @@ class DartGoServer {
         ws.close();
       } catch (_) {}
     }
+    AstBuildWorker.instance.stop();
     _server?.close(force: true);
   }
 }

@@ -1,7 +1,4 @@
-import 'dart:math';
-
 import 'package:dartnative/dartnative.dart';
-import 'package:example/sticky_note.dart';
 import 'package:example/create_note_panel.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
@@ -313,12 +310,6 @@ class StickyNote extends StatefulWidget {
 
 class _StickyNoteState extends State<StickyNote> {
   @override
-  void didUpdateWidget(covariant StickyNote oldWidget) {
-    print("didUpdateWidget");
-    super.didUpdateWidget(oldWidget);
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(14),
@@ -347,7 +338,6 @@ class _StickyNoteState extends State<StickyNote> {
                 size: 18,
                 color: const Color(0xFF57534E),
               ),
-
               const Spacer(),
 
               Button(
@@ -362,22 +352,21 @@ class _StickyNoteState extends State<StickyNote> {
           const SizedBox(height: 12),
 
           // Title
-          Text(
-            widget.todo.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: widget.todo.completed
-                  ? const Color(0xFF78716C)
-                  : const Color(0xFF292524),
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-              decoration: widget.todo.completed
-                  ? TextDecoration.lineThrough
-                  : TextDecoration.none,
-            ),
-          ),
-
+          // Text(
+          //   widget.todo.title,
+          //   maxLines: 2,
+          //   overflow: TextOverflow.ellipsis,
+          //   style: TextStyle(
+          //     color: widget.todo.completed
+          //         ? const Color(0xFF78716C)
+          //         : const Color(0xFF292524),
+          //     fontSize: 17,
+          //     fontWeight: FontWeight.bold,
+          //     decoration: widget.todo.completed
+          //         ? TextDecoration.lineThrough
+          //         : TextDecoration.none,
+          //   ),
+          // ),
           const SizedBox(height: 8),
 
           // Description

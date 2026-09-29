@@ -26,13 +26,16 @@ For the server side of the pipeline, see
 save in IDE
    │
    ▼
-dev server rebuilds guest.ast          (skipped if sources unchanged — cache hit)
+dev server rebuilds guest.ast & guest.ast.patch  (incremental DFS ~15ms)
    │
    ▼
-broadcast {type: reload} over WS
+broadcast {type: reload, only_ast: true} over WS
    │
    ▼
-device re-fetches bundle + module fingerprints
+device fast-paths /guest.ast.patch (skips /manifest.json, ~20KB payload)
+   │
+   ▼
+in-memory AstBundle.applyPatch() (merges compilation units in ~5ms)
    │
    ▼
 evaluate as a new GENERATION
@@ -50,10 +53,10 @@ remount only the widgets whose class changed (generational keys)
 report timing + any errors to the CLI
 ```
 
-The sub-50 ms number comes from doing as little as possible at each stage:
-unchanged sources skip the analyzer, unchanged modules skip re-declaration,
-unchanged initializers skip re-evaluation, and unchanged widgets skip the
-rebuild.
+The sub-100 ms full roundtrip comes from doing as little as possible at each stage:
+unchanged sources skip the analyzer, full manifests are bypassed for code-only edits,
+network transfer is reduced by 99% using delta patches, unchanged modules skip re-declaration,
+unchanged initializers skip re-evaluation, and unchanged widgets skip the rebuild.
 
 ## The declaration-cell registry
 

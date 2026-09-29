@@ -79,7 +79,17 @@
   4. **In-Memory Cache**: `BundleLoader` retains `_cachedDepSources` across hot reloads. During incremental reloads, fetching dependencies takes **0ms**.
   5. **DevTool Cache Control**: Developers can inspect cache size and clear cached packages from the mobile in-app DevTool overlay.
 
-### 4.2 Sub-100ms Hot Reload & State Preservation
+### 4.2 Scale-Proof Incremental AST & Delta Patch Protocol (`guest.ast.patch`)
+* **Challenge**: In applications containing hundreds or thousands of modules (e.g. 500–2,000+ files), monolithic AST bundles grow to 2–5+ MB. Downloading and JSON-deserializing the full bundle on every 1-line edit creates a 3–5 second bottleneck (network transfer + ~2.5s client CPU decoding).
+* **Solution**:
+  1. **In-Memory DFS Seeding**: On save, `AstBuilder` seeds the dependency graph with unchanged module compilation units, reducing full DFS traversal across thousands of files down to **~1ms**.
+  2. **Cold-Build Cache Warming**: Re-reads for hashing are eliminated by warming `_fileHashCache` during initial start.
+  3. **Delta Patch Bundles (`/guest.ast.patch`)**: The server isolates only the modified compilation units and pre-compresses them into an in-memory gzip delta patch (**~20 KB** vs 1.89 MB, a **99% reduction** in network payload).
+  4. **Zero-Manifest Fast-Path**: Code-only reloads bypass `/manifest.json` completely, saving 300–500ms of roundtrip latency. The full manifest is automatically fetched only when asset additions in `assets/` are detected.
+  5. **In-Memory `AstBundle.applyPatch()`**: The device runtime merges the delta compilation units into the live AST tree in **~5ms**, skipping the deserialization of hundreds of unchanged modules and swapping declaration cells in **~45ms**.
+  6. **Scale Benchmarks**: 10 changed files out of 2,000 modules rebuild in **19ms** and hot-reload on device in **~100–150ms**.
+
+### 4.3 Sub-100ms Hot Reload & State Preservation
 * **Challenge**: full state snapshots walked thousands of symbols across 93+ dependencies (~6,700ms per reload), root unmounts killed Riverpod containers, and the AST engine rebuilt the whole runtime then guessed what to keep by type-name heuristic — so ordinary state reset and live objects ran stale code.
 * **Big picture** — one reload is a pipeline; every stage below plugs into it:
 
@@ -151,7 +161,7 @@ guest build / lifecycle / button handler throws
 * **Engines**: AST (default, pre-compiled bundles) and Source (on-device analyzer parsing). The Bytecode stack VM was removed: two engines, no kill switches.
 
 
-### 4.3 Unified Auto-Checking Logger (`DartGoLogger`) & Verbose Sync
+### 4.4 Unified Auto-Checking Logger (`DartGoLogger`) & Verbose Sync
 * **Challenge**: Scattered inline `if (verbose) / else` checks created boilerplate and inconsistency between CLI and device logging.
 * **Solution**:
   1. **`DartGoLogger`**: Centralized utility providing `info()`, `debug()`, `bench()`, `reload()`, `warn()`, and `error()`. Internal checks automatically suppress debug and benchmark telemetry when `DartGoLogger.verbose` is `false`.
@@ -159,6 +169,23 @@ guest build / lifecycle / button handler throws
      - Pressing `v` in the dev server terminal toggles verbose mode and broadcasts `{'type': 'set_verbose', 'enabled': bool}` to connected mobile apps.
      - Toggling `VERBOSE LOGS` in the mobile app DevTool sends `set_verbose` to the dev server, syncing terminal telemetry instantly.
   3. **Startup Flag**: CLI supports `-v` and `--verbose` flags on `dart_go start`.
+
+### 4.5 Host Theme (shadcn tokens + Riverpod)
+* **Tokens**: `tool/shadcn_tokens.css` holds the `:root`/`.dark` shadcn
+  custom properties. `dart run tool/shadcn_to_dart.dart` converts every
+  `oklch(...)` token to sRGB and emits `lib/src/theme/shadcn_theme.dart`
+  (`ShadcnLight`/`ShadcnDark` bags + `ThemeData` with a shadcn→ColorScheme
+  mapping; `destructive` has no `-foreground` token, so `onError` is derived
+  as the highest-contrast theme neutral).
+* **State**: `ThemePreference {system, light, dark}` persists via
+  `ThemeStorage` (same pattern as `ErrorDisplayStorage`) and is owned at
+  runtime by `themePreferenceProvider` (`NotifierProvider<ThemeController, …>`
+  from `riverpod_kit`, whose `ProviderScope.rootContainer` fallback keeps
+  native sheets on the same container). Mutations persist and pin the native
+  appearance via `setAppBrightness` (null = follow system).
+* **Surfaces**: launcher `App(theme/darkTheme/themeMode)` + hand-painted
+  `LauncherColors`; launcher app-bar "Change Theme" cycles; DevTools sheet
+  has a THEME section mirroring ERROR DISPLAY.
 
 ---
 

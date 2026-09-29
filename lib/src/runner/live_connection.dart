@@ -6,6 +6,7 @@ import 'dart:io';
 class LiveConnection {
   final String serverUrl;
   final void Function(String? changedFile)? onReload;
+  final void Function(List<String> changedFiles, {bool isAssetChange})? onReloadBatch;
   final void Function(List<Map<String, dynamic>> breakpoints)? onBreakpoints;
   final void Function()? onResume;
   final void Function(bool enabled)? onSetVmDebugger;
@@ -40,6 +41,7 @@ class LiveConnection {
   LiveConnection({
     required this.serverUrl,
     this.onReload,
+    this.onReloadBatch,
     this.onBreakpoints,
     this.onResume,
     this.onSetVmDebugger,
@@ -87,7 +89,21 @@ class LiveConnection {
 
             if (type == 'reload') {
               final changedFile = data['changedFile'] as String?;
-              onReload?.call(changedFile);
+              final rawFiles = data['changedFiles'];
+              final isAssetChange = data['isAssetChange'] == true;
+              final changedFiles = <String>[];
+              if (rawFiles is List) {
+                for (final f in rawFiles) {
+                  if (f != null) changedFiles.add(f.toString());
+                }
+              } else if (changedFile != null && changedFile.isNotEmpty) {
+                changedFiles.add(changedFile);
+              }
+              if (onReloadBatch != null) {
+                onReloadBatch?.call(changedFiles, isAssetChange: isAssetChange);
+              } else {
+                onReload?.call(changedFile);
+              }
             } else if (type == 'restart') {
               onRestart?.call();
             } else if (type == 'breakpoints') {

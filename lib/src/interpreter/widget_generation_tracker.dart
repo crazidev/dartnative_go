@@ -36,7 +36,13 @@ class WidgetGenerationTracker {
 
   /// Increments the generation for classes defined in the changed files.
   /// Returns the set of widget class names whose generations were bumped.
-  static Set<String> notifyFilesChanged(Set<String> changedFiles) {
+  static Set<String> notifyFilesChanged(
+    Set<String> changedFiles, {
+    bool bumpAllIfEmpty = false,
+  }) {
+    if (changedFiles.isEmpty && !bumpAllIfEmpty) {
+      return const {};
+    }
     final normalizedChanged = changedFiles.map(_normalizePath).toSet();
     final bumpedClasses = <String>{};
 

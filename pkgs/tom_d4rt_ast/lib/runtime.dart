@@ -82,3 +82,4 @@ export 'src/runtime/utils/logger/logger.dart';
 
 // Standard library
 export 'src/runtime/stdlib/stdlib.dart';
+export 'src/runtime/stdlib/isolate/isolate_worker.dart';
