@@ -1673,6 +1673,7 @@ class D4rtRunner {
     }
     final moduleLoader = AstModuleLoader(
       modules: bundle.modules,
+      sources: bundle.sources,
       moduleFingerprints: moduleFingerprints ?? const {},
       globalEnvironment: executionEnvironment,
       runner: this,

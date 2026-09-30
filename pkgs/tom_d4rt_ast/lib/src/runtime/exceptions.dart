@@ -1,3 +1,5 @@
+import 'generator/d4.dart';
+
 /// Lightweight, always-on interpreter instrumentation counters.
 ///
 /// These are plain integer increments on the hottest interpreter paths — no
@@ -191,8 +193,13 @@ abstract class D4rtException implements Exception {
   /// raises [RuntimeD4rtException] — and both need the same once-only rule.
   bool hasDirectiveContext = false;
 
+  /// Formatted guest (interpreted) stack trace showing exact project files,
+  /// member names, line numbers, and column offsets where the error occurred.
+  String? guestStackTrace;
+
   /// Creates a [D4rtException] and registers it with the [ErrorReporter].
-  D4rtException(this.message) {
+  D4rtException(this.message, {this.guestStackTrace}) {
+    guestStackTrace ??= D4.activeVisitor?.formatGuestStackTrace();
     ErrorReporter.reportError(this);
   }
 
@@ -259,10 +266,16 @@ class RuntimeD4rtException extends D4rtException {
     super.message, {
     this.originalException,
     this.originalStackTrace,
+    super.guestStackTrace,
   });
 
   @override
-  String toString() => 'Runtime Error: $message';
+  String toString() {
+    if (guestStackTrace != null && guestStackTrace!.isNotEmpty) {
+      return 'Runtime Error: $message\n$guestStackTrace';
+    }
+    return 'Runtime Error: $message';
+  }
 }
 
 /// Thrown when a member lookup finds no member of that name on the receiver.

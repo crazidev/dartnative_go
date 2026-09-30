@@ -1,7 +1,5 @@
 import 'package:tom_d4rt_ast/runtime.dart';
 
-import 'frozen_name_map.dart';
-
 /// Visitor for the first pass: Declares class and mixin placeholders.
 ///
 /// This visitor traverses top-level declarations and creates empty

@@ -2026,6 +2026,7 @@ class InterpretedFunction implements Callable {
     final previousAsyncState = visitor.currentAsyncState;
 
     D4rtDiag.enterCall();
+    visitor.pushCallFrame(this, initialNode: _body);
     try {
       visitor.currentFunction = this;
 
@@ -2218,6 +2219,7 @@ class InterpretedFunction implements Callable {
       // Catch return from asynchronous functions
       return e.value;
     } finally {
+      visitor.popCallFrame();
       visitor.currentFunction = previousFunction;
       visitor.currentAsyncState = previousAsyncState;
       D4rtDiag.exitCall();

@@ -98,6 +98,43 @@ class AstModuleLoader implements ModuleContext {
     _inFlightModules.clear();
   }
 
+  /// Optional source text for modules, used for source mapping and error reporting.
+  final Map<String, String>? sources;
+
+  /// Cached line starts per module URI for fast binary-search line/column lookup.
+  final Map<String, List<int>> _lineStartsCache = {};
+
+  /// Resolves the 1-based line and column for [offset] within [moduleUri].
+  @override
+  (int line, int column) getLineAndColumn(String moduleUri, int offset) {
+    if (offset <= 0) return (0, 0);
+    var starts = _lineStartsCache[moduleUri];
+    if (starts == null) {
+      final src = sources?[moduleUri];
+      if (src != null) {
+        starts = <int>[0];
+        for (var i = 0; i < src.length; i++) {
+          if (src.codeUnitAt(i) == 10) starts.add(i + 1);
+        }
+        _lineStartsCache[moduleUri] = starts;
+      }
+    }
+    if (starts == null || starts.isEmpty) return (0, 0);
+    var low = 0;
+    var high = starts.length - 1;
+    while (low <= high) {
+      final mid = (low + high) ~/ 2;
+      if (starts[mid] <= offset) {
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    final line = high + 1;
+    final col = offset - starts[high] + 1;
+    return (line, col);
+  }
+
   /// Creates an [AstModuleLoader] for resolving imports from a bundle.
   ///
   /// - [modules] — the module map from [AstBundle.modules]
@@ -107,6 +144,7 @@ class AstModuleLoader implements ModuleContext {
     required this.modules,
     required this.globalEnvironment,
     required this.runner,
+    this.sources,
     this.moduleFingerprints = const {},
     this.sharedBridgedModuleEnvironments,
     this.sharedModuleEnclosing,

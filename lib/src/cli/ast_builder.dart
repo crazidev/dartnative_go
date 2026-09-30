@@ -706,6 +706,9 @@ class IncrementalAstBundler {
     _filePathToUri[canonicalEntryPath] = entryUri;
     _uriToFilePath[entryUri] = canonicalEntryPath;
 
+    final bundleSources = <String, String>{};
+    bundleSources[entryUri] = source;
+
     // Start with the seed (previous build's modules minus evicted URIs).
     // The DFS will only recurse into URIs absent from this map.
     final modules = seedModules != null
@@ -719,11 +722,16 @@ class IncrementalAstBundler {
       entryAst,
       Uri.parse(entryUri),
       modules,
+      bundleSources: bundleSources,
       depth: 0,
       fileSystemRoot: root,
     );
 
-    return AstBundle(entryPointUri: entryUri, modules: modules);
+    return AstBundle(
+      entryPointUri: entryUri,
+      modules: modules,
+      sources: bundleSources,
+    );
   }
 
   SCompilationUnit _getOrParse(String source, String uri, {String? path}) {
@@ -776,6 +784,7 @@ class IncrementalAstBundler {
     SCompilationUnit ast,
     Uri moduleUri,
     Map<String, SCompilationUnit> modules, {
+    Map<String, String>? bundleSources,
     required int depth,
     String? fileSystemRoot,
   }) async {
@@ -815,6 +824,9 @@ class IncrementalAstBundler {
           break;
         case ImportAction.include:
           if (modules.containsKey(resolution.canonicalUri)) break;
+          if (bundleSources != null && resolution.value != null) {
+            bundleSources[resolution.canonicalUri] = resolution.value!;
+          }
           final importedAst = _getOrParse(
             resolution.value!,
             resolution.canonicalUri,
@@ -825,6 +837,7 @@ class IncrementalAstBundler {
             importedAst,
             Uri.parse(resolution.canonicalUri),
             modules,
+            bundleSources: bundleSources,
             depth: depth + 1,
             fileSystemRoot: fileSystemRoot,
           );

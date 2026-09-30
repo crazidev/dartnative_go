@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Interpreted Guest Stack Traces**:
+  - Implemented interpreted call frame tracking (`InterpretedCallFrame`) in `tom_d4rt_ast`.
+  - Added line and column number resolution mapping from AST byte offsets to source code locations.
+  - Formatted guest runtime errors to output standard Dart stack traces (`#0 Class.method (package:uri:line:col)`) pointing directly to interpreted guest application code rather than host interpreter internals.
 - **Flutter Compatibility Bridge (`package:dartnative/flutter_compat.dart`)**:
   - Generated native and AST bridges (`DartnativeFlutterCompatBridge`) for `package:dartnative/flutter_compat.dart`.
   - Registered bridge in `buildkit.yaml`, `buildkit_ast.yaml`, `tool/d4rtgen.dart`, and `tool/d4rtgen_ast.dart`.

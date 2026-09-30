@@ -45,7 +45,12 @@ R _runWithLogCapture<R>(R Function() action) {
     final report = onAstGuestError;
     if (report != null) {
       try {
-        report(error, stack);
+        final guestStack = (error is D4rtException &&
+                error.guestStackTrace != null &&
+                error.guestStackTrace!.isNotEmpty)
+            ? StackTrace.fromString(error.guestStackTrace!)
+            : stack;
+        report(error, guestStack);
       } catch (_) {}
     }
     rethrow;

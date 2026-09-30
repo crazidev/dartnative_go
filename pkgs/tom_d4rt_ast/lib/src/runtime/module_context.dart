@@ -77,6 +77,10 @@ abstract class ModuleContext {
     Set<String>? showNames,
     Set<String>? hideNames,
   });
+
+  /// Resolves the 1-based line and column for [offset] within [moduleUri].
+  /// Returns `(0, 0)` if line information is not available.
+  (int line, int column) getLineAndColumn(String moduleUri, int offset);
 }
 
 /// A no-op module context for executing pre-parsed AST without import support.
@@ -113,6 +117,9 @@ class NoOpModuleContext implements ModuleContext {
     // Otherwise, be permissive (allow all)
     return true;
   }
+
+  @override
+  (int line, int column) getLineAndColumn(String moduleUri, int offset) => (0, 0);
 
   @override
   LoadedModule loadModule(

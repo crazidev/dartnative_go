@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:dartnative/dartnative.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
+import 'package:tom_d4rt_ast/runtime.dart' as ast_runtime;
 
 import '../interpreter/asset_bridge.dart';
 import '../interpreter/auto_import_parser.dart';
@@ -513,8 +514,13 @@ class InterpreterRunner {
     _astRunner ??= AstInterpreterRunner(
       onLog: onLog,
       onGuestError: (error, stack) {
-        DartGoLogger.error('Guest runtime error', error, stack);
-        onGuestError?.call(error, stack);
+        final effectiveStack = (error is ast_runtime.D4rtException &&
+                error.guestStackTrace != null &&
+                error.guestStackTrace!.isNotEmpty)
+            ? StackTrace.fromString(error.guestStackTrace!)
+            : stack;
+        DartGoLogger.error('Guest runtime error', error, effectiveStack);
+        onGuestError?.call(error, effectiveStack);
       },
       onExit: onExit,
       currentServerUrl: currentServerUrl,
@@ -522,8 +528,13 @@ class InterpreterRunner {
     _astRunner!.currentServerUrl = currentServerUrl;
     _astRunner!.onLog = onLog;
     _astRunner!.onGuestError ??= (error, stack) {
-      DartGoLogger.error('Guest runtime error', error, stack);
-      onGuestError?.call(error, stack);
+      final effectiveStack = (error is ast_runtime.D4rtException &&
+              error.guestStackTrace != null &&
+              error.guestStackTrace!.isNotEmpty)
+          ? StackTrace.fromString(error.guestStackTrace!)
+          : stack;
+      DartGoLogger.error('Guest runtime error', error, effectiveStack);
+      onGuestError?.call(error, effectiveStack);
     };
     _astRunner!.onExit = onExit;
 

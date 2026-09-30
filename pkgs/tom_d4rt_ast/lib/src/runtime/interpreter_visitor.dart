@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:tom_d4rt_ast/runtime.dart';
-import 'package:tom_d4rt_ast/src/runtime/frozen_name_map.dart';
 import 'package:tom_d4rt_ast/src/runtime/unbridged_reasons.dart';
 
 /// Detects whether any `SFunctionExpression` (closure) appears in a subtree.
@@ -20,6 +19,21 @@ class _SClosurePresenceVisitor extends SAstVisitor<void> {
     }
     node.visitChildren(this);
   }
+}
+
+/// Represents an active interpreted call frame in the guest call stack.
+class InterpretedCallFrame {
+  final InterpretedFunction function;
+  final String memberName;
+  final String moduleUri;
+  SAstNode? currentNode;
+
+  InterpretedCallFrame({
+    required this.function,
+    required this.memberName,
+    required this.moduleUri,
+    this.currentNode,
+  });
 }
 
 /// Main visitor that walks the AST and interprets the code.
@@ -92,6 +106,78 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
   final DeclarationRegistry? declarationRegistry;
   InterpretedFunction? currentFunction; // Track the function being executed
   AsyncExecutionState? currentAsyncState;
+
+  /// Active interpreted call stack for tracking execution frames and formatting guest stack traces.
+  final List<InterpretedCallFrame> callStack = [];
+
+  /// Current AST node being evaluated by this visitor.
+  SAstNode? currentNode;
+
+  /// Pushes a new call frame onto the guest call stack.
+  void pushCallFrame(InterpretedFunction function, {SAstNode? initialNode}) {
+    final memberName = function.ownerType is InterpretedClass
+        ? '${(function.ownerType as InterpretedClass).name}.${function.currentCode.name ?? 'anonymous'}'
+        : (function.currentCode.name ?? 'anonymous');
+    final String moduleUri;
+    if (function.ownerType is InterpretedClass &&
+        (function.ownerType as InterpretedClass).moduleUri != null) {
+      moduleUri = (function.ownerType as InterpretedClass).moduleUri!;
+    } else {
+      moduleUri = moduleContext.currentLibrary?.toString() ?? '';
+    }
+    callStack.add(InterpretedCallFrame(
+      function: function,
+      memberName: memberName,
+      moduleUri: moduleUri,
+      currentNode: initialNode ?? function.currentCode.body,
+    ));
+  }
+
+  /// Pops the topmost call frame from the guest call stack.
+  void popCallFrame() {
+    if (callStack.isNotEmpty) {
+      callStack.removeLast();
+    }
+  }
+
+  /// Sets the currently executing AST node for the active call frame.
+  void setCurrentNode(SAstNode node) {
+    currentNode = node;
+    if (callStack.isNotEmpty) {
+      callStack.last.currentNode = node;
+    }
+  }
+
+  /// Formats the current guest stack trace into a standard Dart stack trace string.
+  String formatGuestStackTrace([SAstNode? errorNode]) {
+    final nodeForTop = errorNode ?? currentNode;
+    if (callStack.isEmpty) {
+      if (nodeForTop != null) {
+        final uri = moduleContext.currentLibrary?.toString() ?? '<unknown>';
+        final (line, col) = moduleContext.getLineAndColumn(uri, nodeForTop.offset);
+        final loc = line > 0 ? '$uri:$line:$col' : '$uri:offset ${nodeForTop.offset}';
+        return '#0      <top-level> ($loc)';
+      }
+      return '';
+    }
+
+    final lines = <String>[];
+    for (var i = 0; i < callStack.length; i++) {
+      final frame = callStack[callStack.length - 1 - i]; // Top of stack first
+      final frameNode = (i == 0 && errorNode != null)
+          ? errorNode
+          : (frame.currentNode ?? currentNode);
+      final offset = frameNode?.offset ?? 0;
+      final (line, col) = offset > 0
+          ? moduleContext.getLineAndColumn(frame.moduleUri, offset)
+          : (0, 0);
+      final loc = line > 0
+          ? '${frame.moduleUri}:$line:$col'
+          : (offset > 0 ? '${frame.moduleUri}:offset $offset' : frame.moduleUri);
+      lines.add('#$i      ${frame.memberName} ($loc)');
+    }
+    return lines.join('\n');
+  }
 
   /// The statement [visitLabeledStatement] is about to run, and the labels
   /// written on it. A loop or switch reads its labels from here once, on

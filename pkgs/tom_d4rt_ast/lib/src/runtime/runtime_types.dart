@@ -1,6 +1,5 @@
 import 'package:tom_d4rt_ast/runtime.dart';
 import 'bridge/bridged_types.dart' as bridge;
-import 'frozen_name_map.dart';
 
 /// Compacts [table] into its read-only form when it is a [FrozenNameMap].
 /// Member/declaration tables are populated once during declaration wiring and
