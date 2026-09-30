@@ -4,6 +4,7 @@ import 'package:dartnative_go/src/cli/asset_detector.dart';
 import 'package:dartnative_go/src/cli/dart_go_version.dart';
 import 'package:dartnative_go/src/cli/pubspec_validator.dart';
 import 'package:dartnative_go/src/cli/server.dart';
+import 'package:dartnative_go/src/dap/dap_server.dart';
 
 Future<void> main(List<String> args) async {
   if (args.isEmpty || args.contains('-h') || args.contains('--help') || args.first == 'help') {
@@ -30,6 +31,12 @@ Future<void> main(List<String> args) async {
   if (command == 'doctor') {
     final projectDir = _parseProjectDir(args.skip(1).toList());
     _runDoctor(projectDir);
+    return;
+  }
+
+  if (command == 'dap' || command == 'debug_adapter') {
+    final dapArgs = args.skip(1).toList();
+    await runDartNativeDap(dapArgs);
     return;
   }
 
@@ -174,10 +181,12 @@ USAGE:
   dart_go <command> [arguments]
 
 AVAILABLE COMMANDS:
-  start       Start live dev server with QR code, asset serving & hot reload (default)
-  doctor      Inspect project dependencies and assets for compatibility
-  version     Display CLI version and bundled native plugin compatibility matrix
-  help        Show this help message
+  start          Start live dev server with QR code, asset serving & hot reload (default)
+  dap            Start DAP (Debug Adapter Protocol) server for VS Code debugging
+  debug_adapter  Alias for 'dap'
+  doctor         Inspect project dependencies and assets for compatibility
+  version        Display CLI version and bundled native plugin compatibility matrix
+  help           Show this help message
 
 OPTIONS FOR 'start':
   -p, --port=<int>            Base port to start listening on (default: 8088)

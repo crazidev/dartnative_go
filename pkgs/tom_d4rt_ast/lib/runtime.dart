@@ -33,6 +33,7 @@ export 'src/runtime/callable.dart';
 
 // Hot-reload declaration registry (stable function/class cells)
 export 'src/runtime/declaration_registry.dart';
+export 'src/runtime/frozen_name_map.dart';
 
 // Interpreter visitors
 export 'src/runtime/declaration_visitor.dart';

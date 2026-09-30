@@ -352,21 +352,21 @@ class _StickyNoteState extends State<StickyNote> {
           const SizedBox(height: 12),
 
           // Title
-          // Text(
-          //   widget.todo.title,
-          //   maxLines: 2,
-          //   overflow: TextOverflow.ellipsis,
-          //   style: TextStyle(
-          //     color: widget.todo.completed
-          //         ? const Color(0xFF78716C)
-          //         : const Color(0xFF292524),
-          //     fontSize: 17,
-          //     fontWeight: FontWeight.bold,
-          //     decoration: widget.todo.completed
-          //         ? TextDecoration.lineThrough
-          //         : TextDecoration.none,
-          //   ),
-          // ),
+          Text(
+            widget.todo.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: widget.todo.completed
+                  ? const Color(0xFF78716C)
+                  : const Color(0xFF292524),
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              decoration: widget.todo.completed
+                  ? TextDecoration.lineThrough
+                  : TextDecoration.none,
+            ),
+          ),
           const SizedBox(height: 8),
 
           // Description

@@ -28,9 +28,6 @@ class DeclarationVisitor extends GeneralizingSAstVisitor<void> {
   @override
   void visitClassDeclaration(SClassDeclaration node) {
     final className = node.name?.name ?? '';
-    if (environment.isDefinedLocally(className)) {
-      return;
-    }
 
     // Extract type parameter information
     final typeParameters = node.typeParameters;
@@ -131,9 +128,6 @@ class DeclarationVisitor extends GeneralizingSAstVisitor<void> {
   @override
   void visitMixinDeclaration(SMixinDeclaration node) {
     final mixinName = node.name?.name ?? '';
-    if (environment.isDefinedLocally(mixinName)) {
-      return;
-    }
     // Create a placeholder for the mixin with the required positional arguments
     final placeholder = InterpretedClass(
       mixinName, // name
@@ -180,9 +174,6 @@ class DeclarationVisitor extends GeneralizingSAstVisitor<void> {
   @override
   void visitEnumDeclaration(SEnumDeclaration node) {
     final enumName = node.name?.name ?? '';
-    if (environment.isDefinedLocally(enumName)) {
-      return;
-    }
 
     // Extract constant names - needed for ordering later
     final valueNames = node.constants.map((c) => c.name?.name ?? '').toList();

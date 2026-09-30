@@ -128,6 +128,7 @@ class AstInterpreterRunner {
 
     for (final lib in [
       'package:dartnative/dartnative.dart',
+      'package:dartnative/flutter_compat.dart',
       'package:dartnative/src/framework.dart',
       'package:flutter/widgets.dart',
       'package:flutter/material.dart',

@@ -5,6 +5,19 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "DartNative: Attach to Dev Server",
+      "type": "dartnative",
+      "request": "attach",
+      "port": 8088
+    },
+    {
+      "name": "DartNative: Example App",
+      "type": "dartnative",
+      "request": "launch",
+      "cwd": "example",
+      "program": "lib/main.dart"
+    },
+    {
       "name": "dartnative_go",
       "request": "launch",
       "type": "dart",

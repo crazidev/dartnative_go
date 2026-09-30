@@ -224,6 +224,7 @@ class AutoImportParser {
     final hasDartNativeImport = existingUris.any(
       (uri) =>
           uri == 'package:dartnative/dartnative.dart' ||
+          uri == 'package:dartnative/flutter_compat.dart' ||
           uri == 'package:flutter/material.dart' ||
           uri.endsWith('dartnative.dart'),
     );

@@ -81,6 +81,30 @@ void _applyBridgePostFixes() {
   _patchNativeBottomsheetBridges(
     File('lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart'),
   );
+
+  _patchFlutterCompatBridges(
+    File('lib/src/interpreter/dartnative_flutter_compat_bridges.b.dart'),
+  );
+  _patchFlutterCompatBridges(
+    File('lib/src/interpreter/ast/dartnative_flutter_compat_bridges.b.dart'),
+  );
+}
+
+void _patchFlutterCompatBridges(File file) {
+  if (!file.existsSync()) return;
+  var content = file.readAsStringSync();
+  content = content.replaceAllMapped(
+    RegExp(r':\s*const\s*\[\];\s*return\s+(\$dartnative_\d+\.showActionSheet)'),
+    (m) => ': const <int>[];\n        return ${m[1]}',
+  );
+  content = content.replaceAllMapped(
+    RegExp(r'required\s+(\$dartnative_\d+\.Curve)\s+curve,\s*int\s+durationMs\s*=\s*0'),
+    (m) {
+      final prefix = m[1]!.split('.')[0];
+      return '${m[1]} curve = $prefix.Curves.linear, int durationMs = 0';
+    },
+  );
+  file.writeAsStringSync(content);
 }
 
 void _patchNativeBottomsheetBridges(File file) {

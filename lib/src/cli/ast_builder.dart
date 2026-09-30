@@ -35,7 +35,40 @@ class SafeAstConverter extends AstConverter {
         inDeclarationContext: false,
       );
     }
-    return super.convert(node);
+    final nodeType = node.runtimeType.toString();
+    if (nodeType.contains('DotShorthandPropertyAccess')) {
+      final propName = (node as dynamic).propertyName?.name?.toString() ??
+          (node as dynamic).identifier?.name?.toString() ??
+          node.toString().replaceAll(RegExp(r'^\.'), '');
+      return SSimpleIdentifier(
+        offset: node.offset,
+        length: node.length,
+        name: propName,
+        inDeclarationContext: false,
+      );
+    }
+    if (nodeType.contains('DotShorthandInvocation')) {
+      final methodName = (node as dynamic).methodName?.name?.toString() ??
+          (node as dynamic).identifier?.name?.toString() ??
+          '';
+      final args = (node as dynamic).argumentList as analyzer.AstNode?;
+      return SMethodInvocation(
+        offset: node.offset,
+        length: node.length,
+        methodName: SSimpleIdentifier(
+          offset: node.offset,
+          length: methodName.length,
+          name: methodName,
+          inDeclarationContext: false,
+        ),
+        argumentList: convert(args) as SArgumentList?,
+      );
+    }
+    final res = super.convert(node);
+    if (res != null && res.runtimeType.toString().contains('Unknown')) {
+      print('[AST] Unhandled node: ${node.runtimeType} -> "$node"');
+    }
+    return res;
   }
 }
 
@@ -45,6 +78,7 @@ class SafeAstConverter extends AstConverter {
 /// `tool/build_ast_bundle.dart` so both produce identical bundles.
 const kAstBridgedLibraries = {
   'package:dartnative/dartnative.dart',
+  'package:dartnative/flutter_compat.dart',
   'package:dartnative/plugin.dart',
   'package:dartnative/src/framework.dart',
   'package:dartnative_share/dartnative_share.dart',
@@ -652,9 +686,25 @@ class IncrementalAstBundler {
     final source = await file.readAsString();
 
     final root = projectRoot ?? _detectProjectRoot(entryPointPath);
-    final entryUri = root != null
-        ? p.relative(entryPointPath, from: root).replaceAll(r'\', '/')
-        : entryPointPath.replaceAll(r'\', '/');
+    final canonicalEntryPath =
+        Uri.file(File(entryPointPath).absolute.path).normalizePath().toFilePath();
+    final String entryUri;
+    if (root != null &&
+        packageName != null &&
+        p.isWithin(p.join(root, 'lib'), canonicalEntryPath)) {
+      final rel = p
+          .relative(canonicalEntryPath, from: p.join(root, 'lib'))
+          .replaceAll(r'\', '/');
+      entryUri = 'package:$packageName/$rel';
+    } else if (root != null) {
+      entryUri =
+          p.relative(canonicalEntryPath, from: root).replaceAll(r'\', '/');
+    } else {
+      entryUri = entryPointPath.replaceAll(r'\', '/');
+    }
+
+    _filePathToUri[canonicalEntryPath] = entryUri;
+    _uriToFilePath[entryUri] = canonicalEntryPath;
 
     // Start with the seed (previous build's modules minus evicted URIs).
     // The DFS will only recurse into URIs absent from this map.
@@ -764,6 +814,7 @@ class IncrementalAstBundler {
         case ImportAction.skip:
           break;
         case ImportAction.include:
+          if (modules.containsKey(resolution.canonicalUri)) break;
           final importedAst = _getOrParse(
             resolution.value!,
             resolution.canonicalUri,
@@ -772,7 +823,7 @@ class IncrementalAstBundler {
           modules[resolution.canonicalUri] = importedAst;
           await _resolveImports(
             importedAst,
-            resolvedUri,
+            Uri.parse(resolution.canonicalUri),
             modules,
             depth: depth + 1,
             fileSystemRoot: fileSystemRoot,
@@ -878,10 +929,28 @@ class IncrementalAstBundler {
       );
     }
 
+    final root = fileSystemRoot ?? projectRoot;
+    final String canonicalUri;
+    if (root != null &&
+        packageName != null &&
+        p.isWithin(p.join(root, 'lib'), canonicalPath)) {
+      final rel = p
+          .relative(canonicalPath, from: p.join(root, 'lib'))
+          .replaceAll(r'\', '/');
+      canonicalUri = 'package:$packageName/$rel';
+    } else if (uri.isScheme('package')) {
+      canonicalUri = uriString;
+    } else if (root != null && p.isWithin(root, canonicalPath)) {
+      canonicalUri =
+          p.relative(canonicalPath, from: root).replaceAll(r'\', '/');
+    } else {
+      canonicalUri = uriString;
+    }
+
     // Record path ↔ URI so buildGuestAstBundle can evict changed URIs from
     // the module seed without having to re-walk the entire import graph.
-    _filePathToUri[canonicalPath] = uriString;
-    _uriToFilePath[uriString] = canonicalPath;
+    _filePathToUri[canonicalPath] = canonicalUri;
+    _uriToFilePath[canonicalUri] = canonicalPath;
 
     // mtime-based source cache: skip the disk read entirely when the file
     // hasn't been modified since the last build. For a 2 000-module project
@@ -896,7 +965,7 @@ class IncrementalAstBundler {
       source = await file.readAsString();
       _fileSourceCache[canonicalPath] = (mtime: mtime, source: source);
     }
-    return ImportResolution.include(source, canonicalUri: uriString);
+    return ImportResolution.include(source, canonicalUri: canonicalUri);
   }
 
   String? _extractUriString(SStringLiteral? uriNode) {
@@ -992,6 +1061,12 @@ Future<AstBuildResult> buildGuestAstBundle(
         );
       }
     }
+  }
+
+  if (force) {
+    _fileSourceCache.clear();
+    _moduleAstCache.clear();
+    _compressedBytesCache.clear();
   }
 
   try {

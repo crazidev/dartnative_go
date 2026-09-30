@@ -16,6 +16,7 @@ import 'dartnative_splash_bridges.b.dart' as dartnative_splash_bridges;
 import 'crypto_bridges.b.dart' as crypto_bridges;
 import 'native_bottomsheet_bridges.b.dart' as native_bottomsheet_bridges;
 import 'riverpod_kit_bridges.b.dart' as riverpod_kit_bridges;
+import 'dartnative_flutter_compat_bridges.b.dart' as dartnative_flutter_compat_bridges;
 import 'relaxers.b.dart' as relaxer_factories;
 
 /// Combined bridge registration for dartnative_go.
@@ -31,6 +32,13 @@ class DartnativeGoBridges {
     // Register under sub-package barrels for direct imports
     for (final barrel in dartnative_ui_bridges.DartnativeUiBridge.subPackageBarrels()) {
       dartnative_ui_bridges.DartnativeUiBridge.registerBridges(d4rt, barrel);
+    }
+    dartnative_flutter_compat_bridges.DartnativeFlutterCompatBridge.registerBridges(
+      d4rt,
+      'package:dartnative/flutter_compat.dart',
+    );
+    for (final barrel in dartnative_flutter_compat_bridges.DartnativeFlutterCompatBridge.subPackageBarrels()) {
+      dartnative_flutter_compat_bridges.DartnativeFlutterCompatBridge.registerBridges(d4rt, barrel);
     }
     dartnative_webview_bridges.DartnativeWebviewBridge.registerBridges(
       d4rt,
@@ -115,6 +123,7 @@ class DartnativeGoBridges {
   static String getImportBlock() {
     final buffer = StringBuffer();
     buffer.writeln(dartnative_ui_bridges.DartnativeUiBridge.getImportBlock());
+    buffer.writeln(dartnative_flutter_compat_bridges.DartnativeFlutterCompatBridge.getImportBlock());
     buffer.writeln(dartnative_webview_bridges.DartnativeWebviewBridge.getImportBlock());
     buffer.writeln(dartnative_share_bridges.DartnativeShareBridge.getImportBlock());
     buffer.writeln(dartnative_shared_preferences_bridges.DartnativeSharedPreferencesBridge.getImportBlock());

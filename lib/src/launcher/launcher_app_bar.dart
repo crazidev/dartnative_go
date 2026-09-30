@@ -27,7 +27,7 @@ class LauncherAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       brightness: context.theme.brightness,
-      backgroundColor: context.theme.accent,
+      backgroundColor: context.theme.background,
       toolbarHeight: 56,
       actions: [
         BarButtonItem(

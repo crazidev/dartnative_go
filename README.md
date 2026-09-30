@@ -29,6 +29,8 @@ dart_go version
 
 ### Key Features
 - **Plugin Version Validation**: Validates that all native plugins in `pubspec.yaml` match the versions compiled into DartNative Go runtime (e.g. `dartnative`, `dartnative_share`, `dartnative_webview` at `^1.0.0`).
+- **Flutter Compatibility Layer**: Built-in bridge support for `package:dartnative/flutter_compat.dart` enabling drop-in compatibility for common Flutter widgets and paradigms.
+- **VS Code Debug Adapter (DAP)**: Start with `dart_go start --dap` to enable IDE breakpoints, stepping, variable inspection, and stack trace navigation directly in VS Code.
 - **Asset Detection & Serving**: Auto-discovers app icons and splash screen configurations (`dartnative_splash`), serving them via `/assets/icon.png`, `/assets/splash.png`, and `/manifest.json`.
 - **Port Range & Multi-Port UDP Broadcast**: Automatically finds an available port across a range (`8088..8098`) and broadcasts discovery beacons across the local network so mobile clients can auto-connect.
 - **Terminal QR Code**: Prints an ANSI half-block QR code directly in the terminal for instant mobile camera connection.

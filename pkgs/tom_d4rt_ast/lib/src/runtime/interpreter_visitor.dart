@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:tom_d4rt_ast/runtime.dart';
+import 'package:tom_d4rt_ast/src/runtime/frozen_name_map.dart';
 import 'package:tom_d4rt_ast/src/runtime/unbridged_reasons.dart';
 
 /// Detects whether any `SFunctionExpression` (closure) appears in a subtree.
@@ -9862,7 +9863,37 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
         "Placeholder for class '$className' not found or invalid during Pass 2.",
       );
     }
-    final klass = placeholder;
+    InterpretedClass klass = placeholder;
+    if (klass.constructors is FrozenNameMap &&
+        (klass.constructors as FrozenNameMap).isFrozen) {
+      final moduleUri = moduleContext.currentLibrary?.toString() ?? '';
+      klass = InterpretedClass(
+        className,
+        null,
+        environment,
+        <SFieldDeclaration>[],
+        FrozenNameMap<InterpretedFunction>(),
+        FrozenNameMap<InterpretedFunction>(),
+        FrozenNameMap<InterpretedFunction>(),
+        FrozenNameMap<InterpretedFunction>(),
+        FrozenNameMap<InterpretedFunction>(),
+        FrozenNameMap<InterpretedFunction>(),
+        <String, Object?>{},
+        FrozenNameMap<InterpretedFunction>(),
+        FrozenNameMap<InterpretedFunction>(),
+        isAbstract: node.isAbstract,
+        isMixin: node.isMixin,
+        interfaces: [],
+        onClauseTypes: [],
+        mixins: [],
+        isFinal: node.isFinal,
+        isInterface: node.isInterface,
+        isBase: node.isBase,
+        isSealed: node.isSealed,
+      );
+      klass.moduleUri = moduleUri;
+      environment.define(className, klass);
+    }
     Logger.debug(
       "[Visitor.visitClassDeclaration] Retrieved placeholder for '$className' (hash: ${klass.hashCode})",
     );

@@ -60,4 +60,10 @@ d4rtgen:
         - package:riverpod_kit/riverpod_kit.dart
       barrelImport: package:riverpod_kit/riverpod_kit.dart
       outputPath: lib/src/interpreter/riverpod_kit_bridges.b.dart
+    - name: dartnative_flutter_compat
+      barrelFiles:
+        - package:dartnative/flutter_compat.dart
+      barrelImport: package:dartnative/flutter_compat.dart
+      outputPath: lib/src/interpreter/dartnative_flutter_compat_bridges.b.dart
+
 

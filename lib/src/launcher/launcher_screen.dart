@@ -62,9 +62,6 @@ class _LauncherScreenState extends State<LauncherScreen> {
         };
 
         return App(
-          // theme: ShadcnLight.theme,
-          // darkTheme: ShadcnDark.theme,
-          // themeMode: themeModeOf(preference),
           home: ShadcnTheme(
             mode: appearanceMode,
             child: Builder(
