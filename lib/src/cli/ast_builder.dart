@@ -15,6 +15,7 @@ import 'package:tom_ast_generator/tom_ast_generator.dart';
 import 'package:tom_d4rt_ast/runtime.dart' show AstBundle;
 
 import '../runner/logger.dart';
+import 'client_module_index.dart';
 
 // GZip encoder used to pre-compress module bytes during parse.
 // Declared final (not const) for archive 3.x / 4.x compat — see AstBundle.
@@ -134,6 +135,9 @@ class AstBuildResult {
   /// Compressed delta patch bytes for hot reload.
   final List<int>? patchBytes;
 
+  /// Client module index emitted alongside the bundle, if available.
+  final ClientModuleIndex? clientModuleIndex;
+
   const AstBuildResult({
     required this.success,
     required this.outputPath,
@@ -145,6 +149,7 @@ class AstBuildResult {
     this.moduleFingerprints = const {},
     this.fingerprint = '',
     this.patchBytes,
+    this.clientModuleIndex,
   });
 }
 
@@ -625,6 +630,8 @@ class _LastBuild {
   final AstBundle? patchBundle;
   /// Compressed bytes of [patchBundle] (gzip JSON), ready for sub-10ms network transfer.
   final List<int>? patchBytes;
+  /// Client module index from the last successful build.
+  final ClientModuleIndex? clientModuleIndex;
 
   const _LastBuild({
     required this.fingerprint,
@@ -636,6 +643,7 @@ class _LastBuild {
     this.cachedBundle,
     this.patchBundle,
     this.patchBytes,
+    this.clientModuleIndex,
   });
 }
 
@@ -1071,6 +1079,7 @@ Future<AstBuildResult> buildGuestAstBundle(
           cached: true,
           moduleFingerprints: last.moduleFingerprints,
           fingerprint: fp,
+          clientModuleIndex: last.clientModuleIndex,
         );
       }
     }
@@ -1233,6 +1242,17 @@ Future<AstBuildResult> buildGuestAstBundle(
       size = outFile.lengthSync();
     }
 
+    // Build and save the client module index alongside guest.ast.
+    final clientIndex = ClientModuleIndex.fromBundle(
+      bundle,
+      bridgedUris: kAstBridgedLibraries,
+      fingerprint: fp,
+    );
+    final indexFile = File(
+      '${outFile.parent.path}/$kClientModuleIndexFile',
+    );
+    clientIndex.saveToFile(indexFile);
+
     _lastBuilds[projectDir.path] = _LastBuild(
       fingerprint: fp,
       outputPath: outFile.path,
@@ -1243,6 +1263,7 @@ Future<AstBuildResult> buildGuestAstBundle(
       cachedBundle: bundle,
       patchBundle: patchBundle,
       patchBytes: patchBytes,
+      clientModuleIndex: clientIndex,
     );
     final writeMs = t3.elapsedMilliseconds;
     DartGoLogger.bench(
@@ -1267,6 +1288,7 @@ Future<AstBuildResult> buildGuestAstBundle(
       moduleFingerprints: moduleFingerprints,
       fingerprint: fp,
       patchBytes: patchBytes,
+      clientModuleIndex: clientIndex,
     );
   } catch (e, st) {
     return AstBuildResult(
@@ -1403,6 +1425,7 @@ class AstBuildWorker {
           entryPointUri: result.entryPointUri,
           moduleFingerprints: result.moduleFingerprints,
           patchBytes: result.patchBytes,
+          clientModuleIndex: result.clientModuleIndex,
         );
       }
       return result;
