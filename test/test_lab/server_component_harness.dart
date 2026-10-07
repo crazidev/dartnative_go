@@ -1,7 +1,7 @@
 import 'package:dartnative/dartnative.dart' show Widget;
 import 'package:dartnative_go/src/cli/server_annotation_scanner.dart';
 import 'package:dartnative_go/src/runner/ast_interpreter_runner.dart';
-import 'package:dartnative_go/src/widgets/server_component.dart'
+import 'package:dartnative_go/src/widgets/server_component_view.dart'
     show mountServerComponent;
 import 'package:tom_d4rt_ast/runtime.dart' as ast;
 

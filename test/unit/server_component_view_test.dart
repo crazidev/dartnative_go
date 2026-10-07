@@ -1,14 +1,14 @@
 import 'package:dartnative/dartnative.dart' show Text;
 import 'package:dartnative_go/src/runner/ast_interpreter_runner.dart';
-import 'package:dartnative_go/src/widgets/server_component.dart';
+import 'package:dartnative_go/src/widgets/server_component_view.dart';
 import 'package:test/test.dart';
 import 'package:tom_d4rt_ast/runtime.dart' as ast;
 
 void main() {
-  group('ServerComponent widget', () {
+  group('ServerComponentView', () {
     test('stores componentId, props, fallback and loader', () async {
       Future<ast.InterpretedClass?> loader(String id) async => null;
-      final widget = ServerComponent(
+      final widget = ServerComponentView(
         componentId: 'profile_card',
         props: const {'userId': 7},
         fallback: const Text('loading'),
@@ -24,7 +24,7 @@ void main() {
     });
 
     test('loadingBuilder is stored when provided', () {
-      final widget = ServerComponent(
+      final widget = ServerComponentView(
         componentId: 'profile_card',
         loadingBuilder: (context) => const Text('busy'),
       );

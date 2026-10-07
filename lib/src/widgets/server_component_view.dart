@@ -12,7 +12,7 @@ import '../runner/ast_interpreter_runner.dart';
 /// Returns null when the runner has no live visitor yet or the instance
 /// cannot be wrapped as a widget.
 ///
-/// This is the shared mount path used by [ServerComponent] and the headless
+/// This is the shared mount path used by [ServerComponentView] and the headless
 /// `ServerComponentHarness` — keep it behavior-compatible for both.
 Widget? mountServerComponent({
   required AstInterpreterRunner runner,
@@ -36,6 +36,15 @@ Widget? mountServerComponent({
 
 /// Host mount point for a `@ServerComponent` / `@Server` widget.
 ///
+/// NOTE ON NAMING: this view is deliberately NOT called `ServerComponent`.
+/// That name belongs to the guest-side *annotation*
+/// (`package:dartnative_go/server.dart`) — const build-time metadata the
+/// bundler scans for. An annotation can only ever carry data (`id`,
+/// `version`): closures aren't const and a flutter dependency would poison
+/// guest bundles. Everything behavioral — fetching, fallbacks, loading and
+/// error UI, runner wiring — therefore lives here, on the host view, which
+/// addresses the annotation by its [componentId].
+///
 /// The component's AST bundle is fetched and loaded on demand; while loading
 /// [loadingBuilder]'s widget (or [fallback]) is shown, and load failures
 /// render [errorBuilder]'s widget.
@@ -48,10 +57,10 @@ Widget? mountServerComponent({
 /// When [fallbackComponentId] is set and the primary component cannot be
 /// loaded, the loader is asked for the fallback id instead (same [props]) —
 /// useful for a degraded/static variant while the primary is unpublished.
-/// Only when every id fails does the widget render its error UI.
+/// Only when every id fails does the view render its error UI.
 ///
 /// ```dart
-/// ServerComponent(
+/// ServerComponentView(
 ///   componentId: 'profile_card',
 ///   props: const {'userId': 42},
 ///   runner: sharedRunner,
@@ -60,7 +69,7 @@ Widget? mountServerComponent({
 ///   loadingBuilder: (context) => const Center(child: Text('Loading…')),
 /// )
 /// ```
-class ServerComponent extends StatefulWidget {
+class ServerComponentView extends StatefulWidget {
   /// Component id from the `@ServerComponent(id: ...)` annotation.
   final String componentId;
 
@@ -91,7 +100,7 @@ class ServerComponent extends StatefulWidget {
   /// components resolve against the live client modules.
   final AstInterpreterRunner? runner;
 
-  const ServerComponent({
+  const ServerComponentView({
     super.key,
     required this.componentId,
     this.props,
@@ -104,10 +113,10 @@ class ServerComponent extends StatefulWidget {
   });
 
   @override
-  State<ServerComponent> createState() => _ServerComponentState();
+  State<ServerComponentView> createState() => _ServerComponentViewState();
 }
 
-class _ServerComponentState extends State<ServerComponent> {
+class _ServerComponentViewState extends State<ServerComponentView> {
   AstInterpreterRunner? _ownedRunner;
   AstInterpreterRunner get _effectiveRunner =>
       widget.runner ?? (_ownedRunner ??= AstInterpreterRunner());
@@ -124,7 +133,7 @@ class _ServerComponentState extends State<ServerComponent> {
   }
 
   @override
-  void didUpdateWidget(ServerComponent oldWidget) {
+  void didUpdateWidget(ServerComponentView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.componentId != widget.componentId) {
       _cls = null;
@@ -179,7 +188,7 @@ class _ServerComponentState extends State<ServerComponent> {
           cls ??= await widget.loadComponent?.call(id);
           if (cls == null) {
             throw StateError(
-              "ServerComponent '$id' is not registered in the interpreter "
+              "ServerComponentView '$id' is not registered in the interpreter "
               'and no loadComponent callback was provided (or it returned '
               'null). Supply loadComponent to fetch + load the bundle.',
             );
@@ -191,7 +200,7 @@ class _ServerComponentState extends State<ServerComponent> {
           );
           if (mounted == null) {
             throw StateError(
-              "ServerComponent '$id' loaded but could not be mounted as a "
+              "ServerComponentView '$id' loaded but could not be mounted as a "
               'Widget (constructor threw or the class is not a Widget '
               'subtype).',
             );
@@ -207,7 +216,7 @@ class _ServerComponentState extends State<ServerComponent> {
       if (_mounted == null) {
         throw lastError ??
             StateError(
-              "ServerComponent '${widget.componentId}' could not be loaded.",
+              "ServerComponentView '${widget.componentId}' could not be loaded.",
             );
       }
     } catch (e) {
@@ -235,7 +244,7 @@ class _ServerComponentState extends State<ServerComponent> {
       _loading = false;
       if (mounted == null) {
         _error = StateError(
-          "ServerComponent '${widget.componentId}' failed to remount with "
+          "ServerComponentView '${widget.componentId}' failed to remount with "
           'updated props.',
         );
       }

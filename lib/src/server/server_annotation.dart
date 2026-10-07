@@ -17,11 +17,11 @@
 /// }
 /// ```
 ///
-/// The [id] must match the component identifier used by the `ServerComponent`
-/// host widget at the mount point.
+/// The [id] must match the component identifier used by the
+/// `ServerComponentView` host widget at the mount point.
 class ServerComponent {
   /// Unique identifier for this component. Must match the `componentId`
-  /// parameter of the `ServerComponent` host widget.
+  /// parameter of the `ServerComponentView` host widget.
   final String id;
 
   /// Version hint for cache invalidation. Increment when the component's

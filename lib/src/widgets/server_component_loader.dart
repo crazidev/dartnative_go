@@ -4,16 +4,16 @@ import 'package:tom_d4rt_ast/runtime.dart' as ast;
 import '../cli/server_annotation_scanner.dart';
 import '../runner/ast_interpreter_runner.dart';
 import '../runner/bundle_loader.dart';
-import 'server_component.dart' show mountServerComponent;
+import 'server_component_view.dart' show mountServerComponent;
 
 /// Manual (imperative) loading API for `@ServerComponent`s.
 ///
-/// Use this when the [ServerComponent] widget's automatic loading is not
+/// Use this when the [ServerComponentView] widget's automatic loading is not
 /// what you want: preloading components at app start, refreshing one on
 /// demand, or mounting the same loaded class in several places.
 ///
-/// The loader plugs straight into the widget when you do want it — its
-/// [loadComponent] signature matches the widget's `loadComponent` callback:
+/// The loader plugs straight into the view when you do want it — its
+/// [loadComponent] signature matches the view's `loadComponent` callback:
 ///
 /// ```dart
 /// final loader = ServerComponentLoader(
@@ -22,7 +22,7 @@ import 'server_component.dart' show mountServerComponent;
 /// );
 /// await loader.preloadAll(['profile_card', 'badge']);
 ///
-/// ServerComponent(
+/// ServerComponentView(
 ///   componentId: 'profile_card',
 ///   props: const {'userId': 7},
 ///   runner: interpreterRunner.astRunner,
