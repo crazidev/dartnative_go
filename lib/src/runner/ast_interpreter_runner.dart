@@ -6,6 +6,7 @@ import 'package:tom_d4rt_ast/runtime.dart' as ast;
 
 import 'ast_bundle_codec.dart';
 import 'logger.dart';
+import '../cli/server_annotation_scanner.dart';
 import '../interpreter/ast/ast_asset_bridge.dart';
 import '../interpreter/ast/ast_widget_proxies.dart';
 import '../interpreter/ast/dartscript.b.dart' as ast_bridges;
@@ -75,6 +76,11 @@ class AstInterpreterRunner {
   ast.DeclarationRegistry get declarationRegistry => _declarationRegistry;
 
   List<int>? _cachedBundleBytes;
+
+  /// Module fingerprints from the last full-bundle evaluation, forwarded to
+  /// component loads so registry cache matches succeed for unchanged client
+  /// modules (see `D4rtRunner.executeComponentBundle`).
+  Map<String, String> _lastModuleFingerprints = const {};
 
   /// The active bundle bytes for this runner, accessible to worker isolates.
   List<int>? get cachedBundleBytes => _cachedBundleBytes;
@@ -163,10 +169,11 @@ class AstInterpreterRunner {
     List<Object?>? positionalArgs,
     Map<String, Object?>? namedArgs,
     bool isHotReload = false,
-    Map<String, String> moduleFingerprints = const {},
+    Map<String, String>     moduleFingerprints = const {},
   }) async {
     final totalSw = Stopwatch()..start();
     _capturedApp = null;
+    _lastModuleFingerprints = Map<String, String>.of(moduleFingerprints);
     final initSw = Stopwatch()..start();
     final hadCoreRunner = _runner != null;
     initRunner();
@@ -258,6 +265,115 @@ class AstInterpreterRunner {
       'AST evaluation succeeded but could not resolve $T from entry `$name` '
       '($raw). Ensure main() calls runApp(Widget) or returns a Widget.',
     );
+  }
+
+  /// Loads a library [AstBundle] without running any entry point.
+  ///
+  /// Component-only evaluation mode: declaration + interpretation passes run
+  /// for every module in the bundle, but no `main()` (or any function) is
+  /// invoked. Used by the server-component harness to pre-load the client
+  /// bundle headlessly — tests then load deltas via [loadServerComponent]
+  /// and resolve classes via [resolveTopLevel].
+  ///
+  /// The decoded bundle occupies the client decode slot (same as a full
+  /// evaluation), so [moduleFingerprints] are remembered for later
+  /// component loads.
+  Future<void> preloadBundle(
+    List<int> astBytes, {
+    String? entryPoint,
+    Map<String, String> moduleFingerprints = const {},
+  }) async {
+    initRunner();
+    if (astBytes.isNotEmpty) {
+      _cachedBundleBytes = astBytes;
+      ast.D4rtIsolateWorker.activeBundleBytes = astBytes;
+    }
+    final bundle = _decodeBundle(astBytes);
+    _lastModuleFingerprints = Map<String, String>.of(moduleFingerprints);
+    await runZoned(
+      () async {
+        _runner!.executeComponentBundle(
+          bundle,
+          entryPoint: entryPoint,
+          moduleFingerprints: moduleFingerprints,
+        );
+      },
+      zoneSpecification: ZoneSpecification(
+        print: (self, parent, zone, line) {
+          onLog?.call(line);
+        },
+      ),
+    );
+    _evaluationCount++;
+  }
+
+  /// Loads one server-component delta bundle and resolves its class.
+  ///
+  /// The [astBytes] chunk (as emitted under `server_components/`) is merged
+  /// into the live execution: client-shared imports resolve from the
+  /// already-loaded modules by reference. Returns the component's class, or
+  /// null when no loaded module declares it.
+  ///
+  /// The component id and the class name usually differ (`profile_card` vs
+  /// `ProfileCard`), so the bundle is scanned for the annotation carrying
+  /// [componentId] and the annotated class name is resolved. When the bundle
+  /// carries no matching annotation, [componentId] itself is used as the
+  /// class name (id-doubles-as-name convention).
+  ///
+  /// Component bytes deliberately bypass the client decode cache
+  /// ([decodeAstBundleBytes] instead of [_decodeBundle]) so a component
+  /// load can never evict the client bundle a pending hot-reload patch
+  /// applies against.
+  Future<ast.InterpretedClass?> loadServerComponent({
+    required String componentId,
+    required List<int> astBytes,
+    Map<String, String>? expectedFingerprints,
+  }) async {
+    initRunner();
+    final bundle = decodeAstBundleBytes(astBytes);
+    _classFileMap = {..._classFileMap, ..._classFilesOf(bundle)};
+    final fps = expectedFingerprints ?? _lastModuleFingerprints;
+    await runZoned(
+      () async {
+        _runner!.executeComponentBundle(
+          bundle,
+          moduleFingerprints: fps,
+        );
+      },
+      zoneSpecification: ZoneSpecification(
+        print: (self, parent, zone, line) {
+          onLog?.call(line);
+        },
+      ),
+    );
+    _evaluationCount++;
+    return _runner!.resolveTopLevel(
+      _componentClassName(bundle, componentId),
+    );
+  }
+
+  /// Maps a component id to its annotated class name by scanning [bundle].
+  ///
+  /// Falls back to [componentId] when no annotation matches (covers bundles
+  /// whose class is literally named after the component id).
+  static String _componentClassName(
+    ast.AstBundle bundle,
+    String componentId,
+  ) {
+    for (final component in ServerAnnotationScanner.scanBundle(bundle)) {
+      if (component.componentId == componentId) return component.className;
+    }
+    return componentId;
+  }
+
+  /// Resolves a top-level class by [name] across every loaded module
+  /// (client bundle first, then server components newest-first).
+  ///
+  /// Returns null when nothing is loaded yet or no module declares [name].
+  ast.InterpretedClass? resolveTopLevel(String name) {
+    final runner = _runner;
+    if (runner == null) return null;
+    return runner.resolveTopLevel(name);
   }
 
   /// Decodes [bytes], reusing the last decoded bundle when the content hash

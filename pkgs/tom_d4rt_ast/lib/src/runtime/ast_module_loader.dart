@@ -140,6 +140,10 @@ class AstModuleLoader implements ModuleContext {
   /// - [modules] — the module map from [AstBundle.modules]
   /// - [globalEnvironment] — shared environment for all modules
   /// - [runner] — the [D4rtRunner] instance for bridge and permission lookups
+  /// - [fallbackLoader] — optional previously-completed loader consulted when
+  ///   a module is absent from [modules]. Server-component delta bundles
+  ///   exclude client-shared modules; the fallback (typically the client
+  ///   run's loader) supplies them so the delta resolves without re-bundling.
   AstModuleLoader({
     required this.modules,
     required this.globalEnvironment,
@@ -149,6 +153,7 @@ class AstModuleLoader implements ModuleContext {
     this.sharedBridgedModuleEnvironments,
     this.sharedModuleEnclosing,
     this.onBridgedModuleEnvBuilt,
+    this.fallbackLoader,
   });
 
   /// Optional process-global cache of bridged-module environments keyed by
@@ -168,6 +173,13 @@ class AstModuleLoader implements ModuleContext {
   /// Invoked once each time a bridged-module env is actually built (cache miss).
   /// Lets the runner expose a debug build counter for the reuse unit test.
   final void Function()? onBridgedModuleEnvBuilt;
+
+  /// Previously-completed loader consulted when a module is absent from
+  /// [modules] (server-component delta support — see constructor docs).
+  ///
+  /// The fallback is always idle (its run completed), so delegating to it
+  /// only ever hits its populated module cache and never re-enters loading.
+  final AstModuleLoader? fallbackLoader;
 
   @override
   bool checkPermission(dynamic operation) {
@@ -244,6 +256,19 @@ class AstModuleLoader implements ModuleContext {
     final ast = modules[uriString];
     if (ast != null) {
       return _loadBundleModule(uri, ast, fingerprint: moduleFingerprints[uriString]);
+    }
+
+    // 4b. Delegate to the fallback loader (server-component delta support).
+    // Delta bundles exclude client-shared modules; the client run's loader
+    // already holds them fully loaded. Only the not-found error is swallowed
+    // here — any other failure inside the fallback is genuine and propagates.
+    final fallback = fallbackLoader;
+    if (fallback != null && !identical(fallback, this)) {
+      try {
+        return fallback.loadModule(uri, showNames: showNames, hideNames: hideNames);
+      } on RuntimeD4rtException {
+        // Fall through to the not-found error below.
+      }
     }
 
     // 5. Not found

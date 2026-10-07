@@ -1349,6 +1349,10 @@ class D4rtRunner {
     resetScriptDeclarations();
     _lastModuleLoader?.releaseLoadedModules();
     _lastModuleLoader = null;
+    for (final loader in _componentLoaders) {
+      loader.releaseLoadedModules();
+    }
+    _componentLoaders.clear();
     _visitor = null;
   }
 
@@ -1763,6 +1767,172 @@ class D4rtRunner {
     );
     final resolved = raw is Future ? await raw : raw;
     return D4.unwrapAs<T>(resolved, visitor: _visitor);
+  }
+
+  /// Loaders built by [executeComponentBundle], oldest first.
+  ///
+  /// The client run's loader stays in [_lastModuleLoader]; component loaders
+  /// are tracked here so [resolveTopLevel] can scan them and [dispose] can
+  /// release them. Never reassigned by `executeBundle`.
+  final List<AstModuleLoader> _componentLoaders = [];
+
+  /// Loads a server-component delta [bundle] into the live execution without
+  /// running any entry point.
+  ///
+  /// This is the component-only evaluation mode used by DartNative Go
+  /// `@ServerComponent`s: only the declaration + interpretation passes run
+  /// (via [AstModuleLoader.loadModule], which never invokes `main()`), so
+  /// the component's classes and top-level functions become resolvable via
+  /// [resolveTopLevel] while the already-running client app is untouched.
+  ///
+  /// Semantics mirror `executeBundle`, adjusted for additive loading:
+  ///
+  /// * The live [_globalEnvironment] is reused when a client bundle was
+  ///   already executed; otherwise one is initialized (component-only
+  ///   first-load edge — a component that imports client modules then fails
+  ///   with "module not found", since there is no client to resolve from).
+  /// * The component loader falls back to the client run's loader (or the
+  ///   most recently loaded bundle) for modules excluded from the delta —
+  ///   the interpreter already holds them, so they are shared by reference,
+  ///   not re-bundled.
+  /// * Like `executeBundle`, publications are journalled
+  ///   (begin/commit/rollback) so a failed component load restores the
+  ///   previous generation instead of leaving half-applied declarations.
+  /// * Reloading the same component is idempotent at the registry level:
+  ///   re-declared names stabilize into their existing cells
+  ///   ([DeclarationRegistry]), so no duplicate declarations accumulate.
+  ///   (Top-level initializers in the reloaded modules do re-run.)
+  ///
+  /// A full `executeBundle` afterwards discards the shared environment; the
+  /// component loaders keep working (their module envs are self-contained)
+  /// but re-resolving is only guaranteed after re-loading the components.
+  void executeComponentBundle(
+    AstBundle bundle, {
+    String? entryPoint,
+    Map<String, String>? moduleFingerprints,
+  }) {
+    final entryUri = entryPoint ?? bundle.entryPointUri;
+    if (!bundle.modules.containsKey(entryUri)) {
+      throw ArgumentD4rtException(
+        'Component entry point "$entryUri" not found in bundle. '
+        'Available: ${bundle.modules.keys.join(", ")}',
+      );
+    }
+    // Bridges must be finalized before any module interpretation, exactly as
+    // in [_executeInEnvironmentInZone]. No-op when the client run did it.
+    finalizeBridges();
+    declarationRegistry?.beginGeneration();
+    try {
+      InterpretedFunction.clearParentMap();
+      final executionEnvironment = _globalEnvironment ?? _initEnvironment();
+
+      // Fallback for modules excluded from the delta: the client run's
+      // loader when the client was fully executed, otherwise the most
+      // recently loaded bundle (a pre-loaded client counts — see
+      // [AstInterpreterRunner.preloadBundle]). Each loader's own fallback
+      // chains back the same way, so a later component resolves through
+      // earlier components to the client loader, which terminates the chain
+      // with a null fallback.
+      final fallback = _lastModuleLoader ??
+          (_componentLoaders.isNotEmpty ? _componentLoaders.last : null);
+
+      // Same shared-bridge-env wiring as [_executeBundleInGeneration] so a
+      // component-only load reuses the warm bridge surface instead of
+      // rebuilding ~982 bridged classes per component.
+      Map<String, Environment>? sharedBridgedModuleEnvs;
+      Environment? sharedModuleEnclosing;
+      if (reuseAcrossRuns) {
+        if (_allowedPackages.isNotEmpty) {
+          final key = (_allowedPackages.toList()..sort()).join('|');
+          sharedBridgedModuleEnvs = _bridgedModuleEnvCache.putIfAbsent(
+            key,
+            () => {},
+          );
+        } else {
+          sharedBridgedModuleEnvs = _instanceBridgedModuleEnvCache ??= {};
+        }
+        sharedModuleEnclosing = executionEnvironment.enclosing;
+      }
+      final moduleLoader = AstModuleLoader(
+        modules: bundle.modules,
+        sources: bundle.sources,
+        moduleFingerprints: moduleFingerprints ?? const {},
+        globalEnvironment: executionEnvironment,
+        runner: this,
+        sharedBridgedModuleEnvironments: sharedBridgedModuleEnvs,
+        sharedModuleEnclosing: sharedModuleEnclosing,
+        onBridgedModuleEnvBuilt: () => _debugBridgedModuleEnvBuilds++,
+        fallbackLoader: fallback,
+      );
+      moduleLoader.currentLibrary = Uri.parse(entryUri);
+      // Declaration + interpretation passes only — never invokes `main()`.
+      moduleLoader.loadModule(Uri.parse(entryUri));
+      _componentLoaders.add(moduleLoader);
+      _hasExecutedOnce = true;
+      // Component-only loads never pass through [_executeInEnvironment],
+      // which is where [_visitor] is normally built — but mounting a
+      // component (constructor/method calls, widget wrapping) needs a live
+      // visitor. Build one bound to the shared execution environment, unless
+      // a client run already established one (equivalent scope; keep it).
+      _visitor ??= InterpreterVisitor(
+        globalEnvironment: executionEnvironment,
+        moduleContext: moduleLoader,
+        declarationRegistry: declarationRegistry,
+      );
+      declarationRegistry?.commitGeneration();
+      Logger.debug(
+        '[D4rtRunner.executeComponentBundle] Loaded component entry: '
+        '$entryUri (${bundle.modules.length} delta modules)',
+      );
+    } catch (_) {
+      declarationRegistry?.rollbackGeneration();
+      rethrow;
+    }
+  }
+
+  /// Resolves a top-level class by [name] across every loaded module.
+  ///
+  /// Search order: the live global environment (the client entry's own
+  /// declarations), then component loaders newest-first, then the client
+  /// run's loader. The first [InterpretedClass] hit wins; when its registry
+  /// cell holds a newer publication (hot reload / component reload), the
+  /// current class is returned.
+  ///
+  /// Returns null when no loaded module declares a class named [name].
+  /// Non-class top-levels (functions, variables) are ignored.
+  InterpretedClass? resolveTopLevel(String name) {
+    final env = _globalEnvironment;
+    if (env != null) {
+      final cls = _unwrapInterpretedClass(env.lookup(name));
+      if (cls != null) return cls;
+    }
+    final loaders = <AstModuleLoader>[
+      ..._componentLoaders.reversed,
+      // ignore: use_null_aware_elements (SDK floor ^3.10.4 predates `?e`)
+      if (_lastModuleLoader != null) _lastModuleLoader!,
+    ];
+    for (final loader in loaders) {
+      for (final module in loader.moduleCache.values) {
+        var cls = _unwrapInterpretedClass(
+          module.exportedEnvironment.lookup(name),
+        );
+        if (cls != null) return cls;
+        cls = _unwrapInterpretedClass(module.environment.lookup(name));
+        if (cls != null) return cls;
+      }
+    }
+    return null;
+  }
+
+  /// Unwraps a looked-up [value] to its live [InterpretedClass], or null.
+  static InterpretedClass? _unwrapInterpretedClass(Object? value) {
+    if (value is! InterpretedClass) return null;
+    final cell = value.classCell;
+    if (cell != null && cell.hasCurrent) {
+      final current = cell.current;
+      return current;
+    }
+    return value;
   }
 
   /// Evaluate an expression in the current context.
