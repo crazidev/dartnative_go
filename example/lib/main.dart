@@ -1,22 +1,15 @@
 import 'package:dartnative/dartnative.dart';
+import 'package:dartnative_go/server_component.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
-// Discovery imports for the @ServerComponent live-device demo: makes the
-// bundler emit server_components/demo_card.ast + demo_text.ast. The demo
-// modules import the real `package:dartnative_go/server.dart` annotation,
-// which the dev server serves to the bundler implicitly.
+
 import 'server_demo_card.dart';
 import 'server_demo_text.dart';
 
 import 'dartnative_plugin_registrant.dart';
 
 void main() {
-  // Platform bindings + (once you add plugins) their FFI symbols. Keep this
-  // as the FIRST line of main() — see lib/dartnative_plugin_registrant.dart.
   DartNativePluginRegistrant.registerAll();
 
-  // App-wide system chrome default for the white template: dark status-bar
-  // icons over the light background, transparent strips. Screens can override
-  // in initState; the navigator restores this default on pop.
   SystemChrome.defaultStyle = const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarBrightness: Brightness.light,
@@ -77,6 +70,15 @@ class _MyAppState extends State<MyApp> {
           ServerDemoCard(userId: currentIndex),
           const SizedBox(height: 8),
           const ServerDemoText(userId: 7),
+          const SizedBox(height: 8),
+          // Same component as above, but mounted through the server path:
+          // the host ServerComponentView bridge fetches demo_text.ast and
+          // resolves it against the live client modules. Compare the two
+          // texts — identical output proves the delta merge works.
+          ServerComponentView(
+            componentId: 'demo_text',
+            props: const {'userId': 7},
+          ),
           const SizedBox(height: 10),
 
           Button(

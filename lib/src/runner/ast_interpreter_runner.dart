@@ -11,6 +11,8 @@ import '../interpreter/ast/ast_asset_bridge.dart';
 import '../interpreter/ast/ast_widget_proxies.dart';
 import '../interpreter/ast/dartscript.b.dart' as ast_bridges;
 import '../interpreter/ast/isolate_compute_bridge.dart';
+import '../interpreter/ast/server_component_bridge.dart';
+import '../widgets/server_component_loader.dart';
 
 /// Executes pre-compiled `AstBundle` bytes on the analyzer-free engine.
 ///
@@ -82,6 +84,17 @@ class AstInterpreterRunner {
   /// modules (see `D4rtRunner.executeComponentBundle`).
   Map<String, String> _lastModuleFingerprints = const {};
 
+  /// Loader backing the `ServerComponentView` guest bridge. Created lazily
+  /// so runners that never serve components pay nothing; the loader reads
+  /// the live [currentServerUrl] per fetch. Closed by [dispose].
+  ServerComponentLoader? _componentLoader;
+  ServerComponentLoader get componentLoader =>
+      _componentLoader ??= ServerComponentLoader(
+        serverUrl: currentServerUrl ?? '',
+        serverUrlProvider: () => currentServerUrl ?? '',
+        runner: this,
+      );
+
   /// The active bundle bytes for this runner, accessible to worker isolates.
   List<int>? get cachedBundleBytes => _cachedBundleBytes;
 
@@ -116,6 +129,10 @@ class AstInterpreterRunner {
       runner,
       serverUrlProvider: () => currentServerUrl,
     );
+    // Host ServerComponentView for guest code
+    // (`package:dartnative_go/server_component.dart`). The loader reads the
+    // live server URL per fetch, so URL changes after init are picked up.
+    registerServerComponentBridge(runner, loader: componentLoader);
 
     Object? captureRunApp(
       ast.InterpreterVisitor visitor,
@@ -439,6 +456,10 @@ class AstInterpreterRunner {
     _cachedBundle = null;
     _cachedBundleHash = null;
     _cachedBundleLength = null;
+    try {
+      _componentLoader?.bundleLoader.close();
+    } catch (_) {}
+    _componentLoader = null;
     try {
       _runner?.dispose();
     } catch (_) {}

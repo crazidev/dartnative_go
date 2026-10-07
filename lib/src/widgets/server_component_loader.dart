@@ -37,6 +37,13 @@ class ServerComponentLoader {
   final AstInterpreterRunner runner;
   final String serverUrl;
 
+  /// Live server-URL override, consulted on every fetch. When provided (the
+  /// interpreter-runner bridge passes one reading `currentServerUrl`), URL
+  /// changes after construction — relaunch, server restart on a new port —
+  /// are picked up without rebuilding the loader. Ignored when it returns
+  /// null or empty.
+  final String Function()? serverUrlProvider;
+
   /// Overrides the network fetch (tests serve in-memory bytes through this).
   final Future<List<int>?> Function(String componentId)? fetchBytes;
 
@@ -50,8 +57,16 @@ class ServerComponentLoader {
     required this.serverUrl,
     required this.runner,
     BundleLoader? bundleLoader,
+    this.serverUrlProvider,
     this.fetchBytes,
   }) : bundleLoader = bundleLoader ?? BundleLoader();
+
+  /// Base URL for manifest + bundle fetches.
+  String get _baseUrl {
+    final live = serverUrlProvider?.call();
+    if (live != null && live.isNotEmpty) return live;
+    return serverUrl;
+  }
 
   /// Fetches (unless fingerprint-identical bytes are already loaded) and
   /// loads [componentId], returning its class or null when unavailable.
@@ -63,7 +78,7 @@ class ServerComponentLoader {
     bool forceReload = false,
   }) async {
     final manifest =
-        await bundleLoader.fetchServerComponentsManifest(serverUrl);
+        await bundleLoader.fetchServerComponentsManifest(_baseUrl);
     final fingerprint = manifest[componentId]?['fingerprint'];
     if (!forceReload &&
         fingerprint != null &&
@@ -144,7 +159,7 @@ class ServerComponentLoader {
   Future<List<int>?> _fetch(String componentId) {
     final fetch = fetchBytes;
     if (fetch != null) return fetch(componentId);
-    return bundleLoader.fetchServerComponentBytes(serverUrl, componentId);
+    return bundleLoader.fetchServerComponentBytes(_baseUrl, componentId);
   }
 
   void _rememberClass(String componentId, List<int> bytes) {

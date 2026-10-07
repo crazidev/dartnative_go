@@ -85,6 +85,12 @@ const kAstBridgedLibraries = {
   'package:flutter/painting.dart',
   'package:flutter/rendering.dart',
   'package:flutter/services.dart',
+  // Host `ServerComponentView` for guest code. The URI resolves at runtime
+  // to the bridge registered by AstInterpreterRunner — never bundled (the
+  // real file pulls in the host runner + flutter, which must not leak into
+  // guest bundles). Contrast package:dartnative_go/server.dart (the
+  // dependency-free annotation), which IS bundled via explicitSources.
+  'package:dartnative_go/server_component.dart',
 };
 
 /// Result of [buildGuestAstBundle].
