@@ -1,19 +1,13 @@
 import 'package:dartnative/dartnative.dart';
-import 'package:example/todo_screen.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
-// ignore: unused_import
-// Discovery import for the @ServerComponent live-device demo: makes the
-// bundler emit server_components/demo_card.ast. Never instantiated here —
-// the class mounts exclusively through the ServerComponent host widget.
+// Discovery imports for the @ServerComponent live-device demo: makes the
+// bundler emit server_components/demo_card.ast + demo_text.ast. The demo
+// modules import the real `package:dartnative_go/server.dart` annotation,
+// which the dev server serves to the bundler implicitly.
 import 'server_demo_card.dart';
-// import 'package:example/home_screen.dart';
-// import 'package:example/todo_screen.dart';
-// import 'package:riverpod_kit/riverpod_kit.dart';
+import 'server_demo_text.dart';
 
 import 'dartnative_plugin_registrant.dart';
-// ignore: unused_import
-// ignore: unused_import
-// ignore: unused_import
 
 void main() {
   // Platform bindings + (once you add plugins) their FFI symbols. Keep this
@@ -30,7 +24,7 @@ void main() {
     systemNavigationBarColor: Colors.transparent,
     systemNavigationBarIconBrightness: Brightness.dark,
   );
-  runApp(ProviderScope(child: const TodoScreen()));
+  runApp(ProviderScope(child: const MyApp()));
 }
 
 class MyApp extends StatefulWidget {
@@ -80,6 +74,11 @@ class _MyAppState extends State<MyApp> {
             ),
           ),
           SizedBox(height: 10),
+          ServerDemoCard(userId: currentIndex),
+          const SizedBox(height: 8),
+          const ServerDemoText(userId: 7),
+          const SizedBox(height: 10),
+
           Button(
             child: Text("Change State"),
             onPressed: () {

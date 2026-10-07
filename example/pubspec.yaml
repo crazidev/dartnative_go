@@ -19,6 +19,13 @@ dependencies:
     version: ^0.1.0
   native_bottomsheet:
     path: ../../dartnative_bottomsheet
+  # Server-component annotation (`package:dartnative_go/server.dart`).
+  # Guest code imports the REAL host annotation; the dev server injects its
+  # sources into the AST bundler implicitly, so this dependency exists only
+  # to keep the analyzer/IDE happy. It is excluded from guest bundles
+  # (see resolvePackageSources) and never compiled into the native app.
+  dartnative_go:
+    path: ../
   # Skia GPU canvas: SkSL runtime shaders and rich shaped text. Adds about
   # 9 MB to an iPhone app; on Android the library is already in the platform
   # binding. For shapes, paths and charts use CustomPaint, which is native
