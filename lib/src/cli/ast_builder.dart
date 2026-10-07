@@ -17,6 +17,7 @@ import '../runner/logger.dart';
 import 'client_module_index.dart';
 import 'safe_ast_converter.dart';
 import 'server_annotation_scanner.dart';
+import 'server_annotation_source.dart';
 import 'server_component_bundler.dart';
 
 // GZip encoder used to pre-compress module bytes during parse.
@@ -380,6 +381,13 @@ Map<String, String> resolvePackageSources(
       if (name == 'dartnative' ||
           name == 'dartnative_ios' ||
           name == 'dartnative_android') {
+        continue;
+      }
+      // Skip the server-component host package itself: guest code imports
+      // `package:dartnative_go/server.dart` for the annotation, which is
+      // provided implicitly (and minimally) via [serverAnnotationSources].
+      // Reading its whole lib/ here would slow every build for no benefit.
+      if (name == 'dartnative_go') {
         continue;
       }
       // Skip dev and analyzer tool packages
@@ -1079,6 +1087,9 @@ Future<AstBuildResult> buildGuestAstBundle(
     final explicitSources = <String, String>{
       ...resolvePackageSources(projectDir, packageName: packageName),
       ...registrantStubs(projectDir, packageName),
+      // Server-side @ServerComponent annotation, last so the canonical
+      // sources win even if the guest declares a host path dependency.
+      ...serverAnnotationSources(),
     };
     final resolveMs = t1.elapsedMilliseconds;
 

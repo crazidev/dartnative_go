@@ -4,7 +4,7 @@
 /// as a server-rendered component. The bundler splits these into separate
 /// AST bundles fetched on demand at runtime.
 ///
-/// ## Quick start
+/// ## Quick start (guest code)
 /// ```dart
 /// import 'package:dartnative_go/server.dart';
 ///
@@ -15,6 +15,12 @@
 ///   // ...
 /// }
 /// ```
+///
+/// No guest dependency is needed for this import: the dev server and
+/// `tool/` builds inject these exact sources into the bundler implicitly
+/// (see `lib/src/cli/server_annotation_source.dart`). The annotated
+/// module must still be reachable from the guest entrypoint for the
+/// bundler to discover it (v1).
 library;
 
 export 'src/server/server_annotation.dart';
