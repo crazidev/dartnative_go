@@ -188,6 +188,74 @@ class BundleLoader {
     }
   }
 
+  /// Best-effort fetch of one server-component delta bundle from
+  /// `/server-components/<componentId>.ast`.
+  ///
+  /// The id is strictly validated (`[A-Za-z0-9_-]+`, mirroring the server)
+  /// so a bad id returns null instead of throwing. Returns null when the
+  /// server has no such component (404) or the fetch fails. Never throws.
+  /// Pair with `AstInterpreterRunner.loadServerComponent`, which must run on
+  /// the SAME runner instance that evaluated the client bundle:
+  ///
+  /// ```dart
+  /// final bytes = await bundleLoader.fetchServerComponentBytes(
+  ///   serverUrl, 'profile_card');
+  /// final cls = bytes == null ? null : await runner.loadServerComponent(
+  ///   componentId: 'profile_card', astBytes: bytes);
+  /// ```
+  Future<List<int>?> fetchServerComponentBytes(
+    String serverUrl,
+    String componentId,
+  ) async {
+    if (!RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(componentId)) return null;
+    final baseUrl = normalizeUrl(serverUrl);
+    try {
+      final req = await _client
+          .getUrl(Uri.parse('$baseUrl/server-components/$componentId.ast'));
+      final res = await req.close();
+      if (res.statusCode != HttpStatus.ok) return null;
+      final bytes = await res.fold<List<int>>(
+        <int>[],
+        (prev, el) => prev..addAll(el),
+      );
+      return bytes.isNotEmpty ? bytes : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Best-effort fetch of the component manifest from
+  /// `/server-components/manifest.json` (id → url + fingerprint).
+  /// Returns an empty map when the app has no server components. Never throws.
+  Future<Map<String, Map<String, String>>> fetchServerComponentsManifest(
+    String serverUrl,
+  ) async {
+    final baseUrl = normalizeUrl(serverUrl);
+    try {
+      final req = await _client
+          .getUrl(Uri.parse('$baseUrl/server-components/manifest.json'));
+      final res = await req.close();
+      if (res.statusCode != HttpStatus.ok) return const {};
+      final body = await res.transform(utf8.decoder).join();
+      final decoded = jsonDecode(body);
+      if (decoded is! Map) return const {};
+      final components = decoded['components'];
+      if (components is! Map) return const {};
+      final out = <String, Map<String, String>>{};
+      components.forEach((k, v) {
+        if (v is Map) {
+          out[k.toString()] = {
+            'url': '${v['url']}',
+            'fingerprint': '${v['fingerprint']}',
+          };
+        }
+      });
+      return out;
+    } catch (_) {
+      return const {};
+    }
+  }
+
   /// Fetches package metadata from `/deps.json`.
   Future<List<DepEntry>> fetchDepsList(String serverUrl) async {
     final baseUrl = normalizeUrl(serverUrl);

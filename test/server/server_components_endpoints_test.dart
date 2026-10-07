@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:dartnative_go/src/cli/ast_builder.dart';
 import 'package:dartnative_go/src/cli/server.dart';
+import 'package:dartnative_go/src/runner/bundle_loader.dart';
 import 'package:test/test.dart';
 
 /// Serves a pre-built annotated app from a real `DartGoServer` (ephemeral
@@ -126,6 +127,38 @@ void main() {
       expect(components.keys, contains('profile_card'));
       final entry = components['profile_card'] as Map;
       expect((entry['url'] as String).startsWith('http'), isTrue);
+    });
+
+    test('BundleLoader fetches manifest + component bytes (device path)',
+        () async {
+      // This is exactly what the host app runs on a live device.
+      final loader = BundleLoader();
+      try {
+        final baseUrl = 'http://127.0.0.1:$port';
+        final manifest =
+            await loader.fetchServerComponentsManifest(baseUrl);
+        expect(manifest.keys, contains('profile_card'));
+        expect(manifest['profile_card']!['fingerprint'], isNotEmpty);
+
+        final bytes = await loader.fetchServerComponentBytes(
+          baseUrl,
+          'profile_card',
+        );
+        expect(bytes, isNotNull);
+        expect(bytes, isNotEmpty);
+
+        expect(
+          await loader.fetchServerComponentBytes(baseUrl, 'nope'),
+          isNull,
+        );
+        expect(
+          await loader.fetchServerComponentBytes(baseUrl, '../guest'),
+          isNull,
+          reason: 'bad ids never reach the network',
+        );
+      } finally {
+        loader.close();
+      }
     });
   });
 }

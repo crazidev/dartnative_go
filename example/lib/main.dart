@@ -1,6 +1,11 @@
 import 'package:dartnative/dartnative.dart';
 import 'package:example/todo_screen.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
+// ignore: unused_import
+// Discovery import for the @ServerComponent live-device demo: makes the
+// bundler emit server_components/demo_card.ast. Never instantiated here —
+// the class mounts exclusively through the ServerComponent host widget.
+import 'server_demo_card.dart';
 // import 'package:example/home_screen.dart';
 // import 'package:example/todo_screen.dart';
 // import 'package:riverpod_kit/riverpod_kit.dart';
