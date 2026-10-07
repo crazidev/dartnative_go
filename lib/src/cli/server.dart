@@ -284,13 +284,17 @@ class DartGoServer {
             {'bytes': result.byteSize, 'cache': 'hit'},
           );
         } else {
+          final compCount = result.serverComponents?.components.length ?? 0;
           DartGoLogger.bench(
             'DevServer',
-            '$artifacts rebuilt',
+            compCount > 0
+                ? '$artifacts rebuilt (+$compCount server components)'
+                : '$artifacts rebuilt',
             astSw.elapsedMilliseconds,
             {
               'modules': result.moduleCount,
               'bytes': result.byteSize,
+              'server_components': compCount,
             },
           );
         }
@@ -611,6 +615,9 @@ class DartGoServer {
         'astModuleFingerprints': astFile != null
             ? moduleFingerprintsForProject(projectDir)
             : const <String, String>{},
+        // Server components (Phase 5): advertised when the last AST build
+        // emitted server_components/manifest.json.
+        ..._serverComponentsManifest(projectDir, serverUrl),
         'supportedPlugins': validation.validSupportedPlugins,
         'unsupportedPlugins': validation.unsupportedNativePlugins,
         'versionMismatches': validation.versionMismatches
@@ -872,6 +879,64 @@ class DartGoServer {
           ..write('No active AST patch available; fetch full /guest.ast.')
           ..close();
       }
+    } else if (path == '/client-module-index.json') {
+      // Module URIs shipped in the client bundle (Phase 1). Component
+      // builders subtract these from each delta. 404 until the first
+      // successful AST build writes it alongside guest.ast.
+      final astFile = _resolveAstBundleFile(projectDir);
+      final indexFile =
+          astFile != null ? File('${astFile.parent.path}/client-module-index.json') : null;
+      if (indexFile != null && indexFile.existsSync()) {
+        await _serveAssetFile(request, indexFile);
+      } else {
+        request.response
+          ..statusCode = HttpStatus.notFound
+          ..headers.add('Access-Control-Allow-Origin', '*')
+          ..write('No client module index. Build the AST bundle first.')
+          ..close();
+      }
+    } else if (path == '/server-components/manifest.json') {
+      // Component ID → bundle URL + fingerprint (Phase 5). 404 when the
+      // app has no @ServerComponent annotations (nothing to serve).
+      final astFile = _resolveAstBundleFile(projectDir);
+      final manifestFile = astFile != null
+          ? File('${astFile.parent.path}/server_components/manifest.json')
+          : null;
+      if (manifestFile != null && manifestFile.existsSync()) {
+        await _serveAssetFile(request, manifestFile);
+      } else {
+        request.response
+          ..statusCode = HttpStatus.notFound
+          ..headers.contentType = ContentType.json
+          ..headers.add('Access-Control-Allow-Origin', '*')
+          ..write(jsonEncode({'version': 1, 'components': {}}))
+          ..close();
+      }
+    } else if (path.startsWith('/server-components/') && path.endsWith('.ast')) {
+      // One pre-built delta bundle per @ServerComponent (Phase 5).
+      // The id is strictly validated — no traversal, no sub-paths.
+      final astFile = _resolveAstBundleFile(projectDir);
+      final id = path.substring(
+        '/server-components/'.length,
+        path.length - '.ast'.length,
+      );
+      final validId = RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(id);
+      final compFile = (astFile != null && validId)
+          ? File('${astFile.parent.path}/server_components/$id.ast')
+          : null;
+      if (compFile != null && compFile.existsSync()) {
+        await _serveAssetFile(request, compFile);
+        print(
+          '[DevServer] 🧩 Served server component $id '
+          '(${await compFile.length()} bytes)',
+        );
+      } else {
+        request.response
+          ..statusCode = HttpStatus.notFound
+          ..headers.add('Access-Control-Allow-Origin', '*')
+          ..write('Server component not found: $id')
+          ..close();
+      }
     } else if (path == '/app.dart') {
       try {
         final content = await mainFile.readAsString();
@@ -981,11 +1046,58 @@ class DartGoServer {
     return results;
   }
 
+  /// Server-component advertisement for `/manifest.json` (Phase 5).
+  ///
+  /// Reads the `server_components/manifest.json` emitted by the last AST
+  /// build (next to `guest.ast`) and re-bases its relative bundle URLs to
+  /// absolute dev-server URLs. Returns `hasServerComponents: false` plus an
+  /// empty component map when the app has no annotated components — never
+  /// throws, so manifest serving stays up even with a half-written build.
+  static Map<String, Object?> _serverComponentsManifest(
+    Directory projectDir,
+    String serverUrl,
+  ) {
+    try {
+      final astFile = _resolveAstBundleFile(projectDir);
+      final manifestFile = astFile != null
+          ? File('${astFile.parent.path}/server_components/manifest.json')
+          : null;
+      if (manifestFile == null || !manifestFile.existsSync()) {
+        return {
+          'hasServerComponents': false,
+          'serverComponentsUrl': null,
+          'serverComponents': const <String, Object?>{},
+        };
+      }
+      final raw =
+          jsonDecode(manifestFile.readAsStringSync()) as Map<String, dynamic>;
+      final entries =
+          (raw['components'] as Map<String, dynamic>?) ?? const {};
+      return {
+        'hasServerComponents': true,
+        'serverComponentsUrl':
+            '$serverUrl/server-components/manifest.json',
+        'serverComponents': {
+          for (final e in entries.entries)
+            e.key: {
+              'url': '$serverUrl/${(e.value as Map)['url']}',
+              'fingerprint': (e.value as Map)['fingerprint'],
+            },
+        },
+      };
+    } catch (_) {
+      return {
+        'hasServerComponents': false,
+        'serverComponentsUrl': null,
+        'serverComponents': const <String, Object?>{},
+      };
+    }
+  }
+
   /// Locates a pre-compiled AST bundle if `tool/build_ast_bundle.dart` ran.
   ///
   /// Checks `assets/bundles/guest.ast` then `build/guest.ast` (traversal-safe).
-  static File? _resolveAstBundleFile(Directory projectDir) {
-    const candidates = [
+  static File? _resolveAstBundleFile(Directory projectDir) {    const candidates = [
       'assets/bundles/guest.ast',
       'build/guest.ast',
     ];
