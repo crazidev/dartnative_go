@@ -93,7 +93,7 @@ class ServerComponentView extends StatefulWidget {
   /// Skipped when the component already resolves in the interpreter.
   /// Also used for [fallbackComponentId] when set.
   final Future<ast.InterpretedClass?> Function(String componentId)?
-      loadComponent;
+  loadComponent;
 
   /// Shared interpreter. When null, the widget owns a private runner
   /// (disposed with the state) — prefer passing the app's runner so
@@ -138,8 +138,7 @@ class _ServerComponentViewState extends State<ServerComponentView> {
     if (oldWidget.componentId != widget.componentId) {
       _cls = null;
       _load();
-    } else if (!_propsEqual(oldWidget.props, widget.props) &&
-        _cls != null) {
+    } else if (!_propsEqual(oldWidget.props, widget.props) && _cls != null) {
       _remount();
     }
   }
@@ -257,8 +256,10 @@ class _ServerComponentViewState extends State<ServerComponentView> {
     if (error != null) {
       final builder = widget.errorBuilder;
       if (builder != null) return builder(error);
-      return Text('Server component '
-          "'${widget.componentId}' failed to load: $error");
+      return Text(
+        'Server component '
+        "'${widget.componentId}' failed to load: $error",
+      );
     }
     final mounted = _mounted;
     if (!_loading && mounted != null) return mounted;
