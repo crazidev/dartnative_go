@@ -12,12 +12,24 @@ void main() {
         componentId: 'profile_card',
         props: const {'userId': 7},
         fallback: const Text('loading'),
+        fallbackComponentId: 'profile_card_static',
         loadComponent: loader,
       );
       expect(widget.componentId, equals('profile_card'));
       expect(widget.props, equals({'userId': 7}));
       expect(widget.fallback, isA<Text>());
+      expect(widget.fallbackComponentId, equals('profile_card_static'));
       expect(widget.loadComponent, isNotNull);
+      expect(widget.loadingBuilder, isNull);
+    });
+
+    test('loadingBuilder is stored when provided', () {
+      final widget = ServerComponent(
+        componentId: 'profile_card',
+        loadingBuilder: (context) => const Text('busy'),
+      );
+      expect(widget.loadingBuilder, isNotNull);
+      expect(widget.fallback, isNull);
     });
 
     test('mountServerComponent returns null without a live visitor', () {

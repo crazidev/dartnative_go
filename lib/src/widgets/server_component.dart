@@ -37,22 +37,27 @@ Widget? mountServerComponent({
 /// Host mount point for a `@ServerComponent` / `@Server` widget.
 ///
 /// The component's AST bundle is fetched and loaded on demand; while loading
-/// [fallback] is shown, and load failures render [errorBuilder]'s widget.
+/// [loadingBuilder]'s widget (or [fallback]) is shown, and load failures
+/// render [errorBuilder]'s widget.
 ///
 /// The actual fetch + interpreter load is supplied by the host app via
-/// [loadComponent] (e.g. an HTTP fetch from the dev server's
-/// `/server-components/` endpoints followed by
-/// `AstInterpreterRunner.loadServerComponent`). When the component is
-/// already registered in [runner] (pre-loaded by the harness or a previous
-/// mount), [loadComponent] is not called.
+/// [loadComponent] (e.g. [ServerComponentLoader.loadComponent], which plugs
+/// in directly). When the component is already registered in [runner]
+/// (pre-loaded or previously mounted), [loadComponent] is not called.
+///
+/// When [fallbackComponentId] is set and the primary component cannot be
+/// loaded, the loader is asked for the fallback id instead (same [props]) —
+/// useful for a degraded/static variant while the primary is unpublished.
+/// Only when every id fails does the widget render its error UI.
 ///
 /// ```dart
 /// ServerComponent(
 ///   componentId: 'profile_card',
-///   props: {'userId': 42},
+///   props: const {'userId': 42},
 ///   runner: sharedRunner,
-///   loadComponent: (id) => fetchAndLoad(id, sharedRunner),
-///   fallback: const Text('Loading…'),
+///   loadComponent: loader.loadComponent,
+///   fallbackComponentId: 'profile_card_static',
+///   loadingBuilder: (context) => const Center(child: Text('Loading…')),
 /// )
 /// ```
 class ServerComponent extends StatefulWidget {
@@ -63,13 +68,21 @@ class ServerComponent extends StatefulWidget {
   final Map<String, dynamic>? props;
 
   /// Shown while the component bundle loads. Defaults to an empty box.
+  /// Ignored when [loadingBuilder] is provided.
   final Widget? fallback;
+
+  /// Builds the loading UI. Takes precedence over [fallback].
+  final Widget Function(BuildContext context)? loadingBuilder;
+
+  /// Optional fallback component id, tried when [componentId] fails to load.
+  final String? fallbackComponentId;
 
   /// Builds the error UI for load/mount failures. Defaults to a [Text].
   final Widget Function(Object error)? errorBuilder;
 
   /// Fetches the component bundle and loads it into [runner].
   /// Skipped when the component already resolves in the interpreter.
+  /// Also used for [fallbackComponentId] when set.
   final Future<ast.InterpretedClass?> Function(String componentId)?
       loadComponent;
 
@@ -83,6 +96,8 @@ class ServerComponent extends StatefulWidget {
     required this.componentId,
     this.props,
     this.fallback,
+    this.loadingBuilder,
+    this.fallbackComponentId,
     this.errorBuilder,
     this.loadComponent,
     this.runner,
@@ -148,29 +163,53 @@ class _ServerComponentState extends State<ServerComponent> {
     });
     try {
       final runner = _effectiveRunner;
-      var cls = runner.resolveTopLevel(widget.componentId);
-      cls ??= await widget.loadComponent?.call(widget.componentId);
-      if (cls == null) {
-        throw StateError(
-          "ServerComponent '${widget.componentId}' is not registered in the "
-          'interpreter and no loadComponent callback was provided (or it '
-          'returned null). Supply loadComponent to fetch + load the bundle.',
-        );
+      final ids = [
+        widget.componentId,
+        if (widget.fallbackComponentId != null) widget.fallbackComponentId!,
+      ];
+      Object? lastError;
+      for (final id in ids) {
+        try {
+          // NOTE: ids and class names usually differ (`profile_card` vs
+          // `ProfileCard`), so a bare resolveTopLevel(id) only hits when
+          // the host pre-registers the mapping (e.g. ServerComponentLoader)
+          // or id doubles as the class name. The load callback (which
+          // scans the bundle's annotation) is the reliable path.
+          var cls = runner.resolveTopLevel(id);
+          cls ??= await widget.loadComponent?.call(id);
+          if (cls == null) {
+            throw StateError(
+              "ServerComponent '$id' is not registered in the interpreter "
+              'and no loadComponent callback was provided (or it returned '
+              'null). Supply loadComponent to fetch + load the bundle.',
+            );
+          }
+          final mounted = mountServerComponent(
+            runner: runner,
+            cls: cls,
+            props: widget.props,
+          );
+          if (mounted == null) {
+            throw StateError(
+              "ServerComponent '$id' loaded but could not be mounted as a "
+              'Widget (constructor threw or the class is not a Widget '
+              'subtype).',
+            );
+          }
+          _cls = cls;
+          _mounted = mounted;
+          lastError = null;
+          break;
+        } catch (e) {
+          lastError = e;
+        }
       }
-      _cls = cls;
-      final mounted = mountServerComponent(
-        runner: runner,
-        cls: cls,
-        props: widget.props,
-      );
-      if (mounted == null) {
-        throw StateError(
-          "ServerComponent '${widget.componentId}' loaded but could not be "
-          'mounted as a Widget (constructor threw or the class is not a '
-          'Widget subtype).',
-        );
+      if (_mounted == null) {
+        throw lastError ??
+            StateError(
+              "ServerComponent '${widget.componentId}' could not be loaded.",
+            );
       }
-      _mounted = mounted;
     } catch (e) {
       _error = e;
     }
@@ -214,6 +253,8 @@ class _ServerComponentState extends State<ServerComponent> {
     }
     final mounted = _mounted;
     if (!_loading && mounted != null) return mounted;
-    return widget.fallback ?? const SizedBox.shrink();
+    return widget.loadingBuilder?.call(context) ??
+        widget.fallback ??
+        const SizedBox.shrink();
   }
 }
