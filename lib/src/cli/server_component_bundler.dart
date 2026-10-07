@@ -6,12 +6,15 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
-import 'package:path/path.dart' as p;
+import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:tom_ast_generator/tom_ast_generator.dart';
 import 'package:tom_d4rt_ast/runtime.dart' show AstBundle;
 
 import 'client_module_index.dart';
+import 'safe_ast_converter.dart';
 import 'server_annotation_scanner.dart';
 
 /// Result of building a single server component bundle.
@@ -84,12 +87,20 @@ class ServerComponentBundler {
   /// client module index. Modules already in the client bundle are
   /// excluded — they will be resolved from the interpreter's existing
   /// module pool at runtime.
+  ///
+  /// The component's entry module is ALWAYS included, even when it is
+  /// also in the client index (shared component). The declaration
+  /// registry treats re-declaration idempotently, so the duplication
+  /// is harmless and keeps [AstBundle.entryPointUri] valid.
   Future<AstBundle?> buildComponentBundle(
     AnnotatedComponent component, {
     required Map<String, String> allSources,
   }) async {
     final moduleUri = component.moduleUri;
-    final source = allSources[moduleUri];
+    var source = allSources[moduleUri];
+    // Fallback: server-only modules are never reachable from main() so
+    // they are absent from bundle.sources — resolve from disk instead.
+    source ??= _readSourceFromDisk(moduleUri);
     if (source == null) return null;
 
     // Parse the component's entry module.
@@ -162,8 +173,10 @@ class ServerComponentBundler {
       // Skip if already resolved in this delta closure.
       if (modules.containsKey(canonicalUri)) continue;
 
-      // Attempt to resolve from available sources.
-      final source = bundleSources?[canonicalUri];
+      // Attempt to resolve from available sources, falling back to disk
+      // for server-only transitive deps never reachable from main().
+      var source = bundleSources?[canonicalUri];
+      source ??= _readSourceFromDisk(canonicalUri);
       if (source == null) continue;
 
       // Parse and recurse.
@@ -181,8 +194,6 @@ class ServerComponentBundler {
   }
 
   SCompilationUnit _getOrParse(String source, String uri) {
-    // Use the shared process-lifetime AST cache from ast_builder.dart
-    // via the same FNV-1a hashing pattern. For now, parse fresh.
     final parseResult = parseString(
       content: source,
       path: uri,
@@ -202,52 +213,121 @@ class ServerComponentBundler {
     if (uriNode is SSimpleStringLiteral) return uriNode.value;
     return null;
   }
+
+  /// Reads [moduleUri] from disk under [projectRoot].
+  ///
+  /// Handles `package:<name>/path` (→ `<root>/lib/path`) and
+  /// root-relative paths (→ `<root>/path`). Returns null when the
+  /// file cannot be resolved — the caller skips the module.
+  String? _readSourceFromDisk(String moduleUri) {
+    final root = projectRoot;
+    if (root == null) return null;
+    try {
+      final uri = Uri.parse(moduleUri);
+      String? filePath;
+      if (uri.isScheme('package')) {
+        final segments = uri.pathSegments;
+        if (segments.isEmpty) return null;
+        // package:<self>/... → <root>/lib/...
+        // package:<other>/... → not resolvable from this project.
+        if (packageName != null && segments.first == packageName) {
+          filePath =
+              '$root/lib/${segments.skip(1).join('/')}';
+        } else {
+          return null;
+        }
+      } else if (!uri.hasScheme) {
+        filePath = '$root/$moduleUri';
+      } else {
+        return null;
+      }
+      final file = File(filePath);
+      if (!file.existsSync()) return null;
+      return file.readAsStringSync();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Builds delta bundles for every component in [annotated].
+  ///
+  /// Returns a [ServerComponentsBuildResult] with per-component bytes
+  /// plus the serving manifest (component ID → relative URL + fingerprint).
+  /// Components whose entry source cannot be resolved are skipped.
+  Future<ServerComponentsBuildResult> buildAll(
+    Set<AnnotatedComponent> annotated, {
+    required Map<String, String> allSources,
+    String bundleUrlPrefix = 'server_components',
+  }) async {
+    final built = <String, ServerComponentBuildResult>{};
+    final manifest = <String, ({String url, String fingerprint})>{};
+    for (final component in annotated) {
+      final bundle = await buildComponentBundle(
+        component,
+        allSources: allSources,
+      );
+      if (bundle == null) continue;
+      final bytes = bundle.toBytes();
+      final fp = _fingerprintBytes(bytes);
+      built[component.componentId] = ServerComponentBuildResult(
+        componentId: component.componentId,
+        astBytes: bytes,
+        moduleCount: bundle.modules.length,
+        byteSize: bytes.length,
+        fingerprint: fp,
+      );
+      manifest[component.componentId] = (
+        url: '$bundleUrlPrefix/${component.componentId}.ast',
+        fingerprint: fp,
+      );
+    }
+    return ServerComponentsBuildResult(
+      components: built,
+      manifest: manifest,
+    );
+  }
 }
 
-/// AST converter that extends the generator's default to handle
-/// newer analyzer node types without crashing.
-class SafeAstConverter extends AstConverter {
-  @override
-  SAstNode? convert(analyzer.AstNode? node) {
-    if (node == null) return null;
-    if (node is analyzer.LibraryIdentifier) {
-      final name = node.components.map((c) => c.name).join('.');
-      return SSimpleIdentifier(
-        offset: node.offset,
-        length: node.length,
-        name: name,
-        inDeclarationContext: false,
-      );
-    }
-    final nodeType = node.runtimeType.toString();
-    if (nodeType.contains('DotShorthandPropertyAccess')) {
-      final propName = (node as dynamic).propertyName?.name?.toString() ??
-          (node as dynamic).identifier?.name?.toString() ??
-          node.toString().replaceAll(RegExp(r'^\.'), '');
-      return SSimpleIdentifier(
-        offset: node.offset,
-        length: node.length,
-        name: propName,
-        inDeclarationContext: false,
-      );
-    }
-    if (nodeType.contains('DotShorthandInvocation')) {
-      final methodName = (node as dynamic).methodName?.name?.toString() ??
-          (node as dynamic).identifier?.name?.toString() ??
-          '';
-      final args = (node as dynamic).argumentList as analyzer.AstNode?;
-      return SMethodInvocation(
-        offset: node.offset,
-        length: node.length,
-        methodName: SSimpleIdentifier(
-          offset: node.offset,
-          length: methodName.length,
-          name: methodName,
-          inDeclarationContext: false,
-        ),
-        argumentList: convert(args) as SArgumentList?,
-      );
-    }
-    return super.convert(node);
+/// FNV-1a 64-bit hex over [bytes] (matches the bundler fingerprint style).
+String _fingerprintBytes(List<int> bytes) {
+  var hash = 0xcbf29ce484222325;
+  const prime = 0x100000001b3;
+  for (final b in bytes) {
+    hash ^= b;
+    hash = (hash * prime) & 0xFFFFFFFFFFFFFFFF;
   }
+  return hash.toRadixString(16);
+}
+
+/// Serializes a component [manifest] to the dev-server / CDN JSON format.
+///
+/// ```json
+/// {
+///   "version": 1,
+///   "components": {
+///     "profile_card": {"url": "server_components/profile_card.ast", "fingerprint": "abc123"}
+///   }
+/// }
+/// ```
+Map<String, dynamic> serverManifestToJson(
+  Map<String, ({String url, String fingerprint})> manifest,
+) {
+  return {
+    'version': 1,
+    'components': {
+      for (final e in manifest.entries)
+        e.key: {'url': e.value.url, 'fingerprint': e.value.fingerprint},
+    },
+  };
+}
+
+/// Writes the component [manifest] as pretty JSON to [file].
+void saveServerManifestToFile(
+  Map<String, ({String url, String fingerprint})> manifest,
+  File file,
+) {
+  file.parent.createSync(recursive: true);
+  file.writeAsStringSync(
+    const JsonEncoder.withIndent('  ').convert(serverManifestToJson(manifest)),
+  );
 }

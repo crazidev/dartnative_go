@@ -8,7 +8,6 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:analyzer/dart/analysis/utilities.dart';
-import 'package:analyzer/dart/ast/ast.dart' as analyzer;
 import 'package:archive/archive.dart' show GZipEncoder;
 import 'package:path/path.dart' as p;
 import 'package:tom_ast_generator/tom_ast_generator.dart';
@@ -16,62 +15,13 @@ import 'package:tom_d4rt_ast/runtime.dart' show AstBundle;
 
 import '../runner/logger.dart';
 import 'client_module_index.dart';
+import 'safe_ast_converter.dart';
+import 'server_annotation_scanner.dart';
+import 'server_component_bundler.dart';
 
 // GZip encoder used to pre-compress module bytes during parse.
 // Declared final (not const) for archive 3.x / 4.x compat — see AstBundle.
 final _gzipEncoder = GZipEncoder();
-
-/// Extended [AstConverter] that handles newer/unmapped analyzer nodes
-/// such as [analyzer.LibraryIdentifier] in `library foo;` directives.
-class SafeAstConverter extends AstConverter {
-  @override
-  SAstNode? convert(analyzer.AstNode? node) {
-    if (node == null) return null;
-    if (node is analyzer.LibraryIdentifier) {
-      final name = node.components.map((c) => c.name).join('.');
-      return SSimpleIdentifier(
-        offset: node.offset,
-        length: node.length,
-        name: name,
-        inDeclarationContext: false,
-      );
-    }
-    final nodeType = node.runtimeType.toString();
-    if (nodeType.contains('DotShorthandPropertyAccess')) {
-      final propName = (node as dynamic).propertyName?.name?.toString() ??
-          (node as dynamic).identifier?.name?.toString() ??
-          node.toString().replaceAll(RegExp(r'^\.'), '');
-      return SSimpleIdentifier(
-        offset: node.offset,
-        length: node.length,
-        name: propName,
-        inDeclarationContext: false,
-      );
-    }
-    if (nodeType.contains('DotShorthandInvocation')) {
-      final methodName = (node as dynamic).methodName?.name?.toString() ??
-          (node as dynamic).identifier?.name?.toString() ??
-          '';
-      final args = (node as dynamic).argumentList as analyzer.AstNode?;
-      return SMethodInvocation(
-        offset: node.offset,
-        length: node.length,
-        methodName: SSimpleIdentifier(
-          offset: node.offset,
-          length: methodName.length,
-          name: methodName,
-          inDeclarationContext: false,
-        ),
-        argumentList: convert(args) as SArgumentList?,
-      );
-    }
-    final res = super.convert(node);
-    if (res != null && res.runtimeType.toString().contains('Unknown')) {
-      print('[AST] Unhandled node: ${node.runtimeType} -> "$node"');
-    }
-    return res;
-  }
-}
 
 /// Libraries handled by native bridges at runtime — skipped during bundling.
 ///
@@ -101,6 +51,30 @@ const kAstBridgedLibraries = {
   'package:native_bottomsheet/src/sheet_platform_config.dart',
   'package:native_bottomsheet/src/ffi_bindings.dart',
   'package:native_bottomsheet/src/sheet_native_bindings.dart',
+  'package:dartnative_notifications/dartnative_notifications.dart',
+  'package:dartnative_notifications/src/dartnative_notifications.dart',
+  'package:dartnative_notifications/src/notifications_ffi_bindings.dart',
+  'package:dartnative_system/dartnative_system.dart',
+  'package:dartnative_system/src/package_info.dart',
+  'package:dartnative_system/src/app_badge.dart',
+  'package:dartnative_system/src/system_ffi_bindings.dart',
+  'package:dartnative_connectivity/connectivity.dart',
+  'package:dartnative_connectivity/src/connectivity.dart',
+  'package:dartnative_connectivity/src/connectivity_result.dart',
+  'package:dartnative_connectivity/src/connectivity_ffi_bindings.dart',
+  'package:dartnative_media_picker/dartnative_media_picker.dart',
+  'package:dartnative_media_picker/gallery.dart',
+  'package:dartnative_media_picker/src/media_picker.dart',
+  'package:dartnative_media_picker/src/gallery.dart',
+  'package:dartnative_media_picker/src/media_picker_ffi_bindings.dart',
+  'package:dartnative_media_picker/src/gallery_ffi_bindings.dart',
+  'package:dartnative_background/dartnative_background.dart',
+  'package:dartnative_background/task_manager.dart',
+  'package:dartnative_background/src/task_manager.dart',
+  'package:dartnative_background/src/options.dart',
+  'package:dartnative_background/src/task_manager_ffi_bindings.dart',
+  'package:dartnative_hive/dartnative_hive.dart',
+  'package:dartnative_hive/src/hive_init.dart',
   'package:riverpod_kit/riverpod_kit.dart',
   'package:riverpod/riverpod.dart',
   'package:flutter/widgets.dart',
@@ -138,6 +112,9 @@ class AstBuildResult {
   /// Client module index emitted alongside the bundle, if available.
   final ClientModuleIndex? clientModuleIndex;
 
+  /// Server component build results, if any annotated components were found.
+  final ServerComponentsBuildResult? serverComponents;
+
   const AstBuildResult({
     required this.success,
     required this.outputPath,
@@ -150,6 +127,7 @@ class AstBuildResult {
     this.fingerprint = '',
     this.patchBytes,
     this.clientModuleIndex,
+    this.serverComponents,
   });
 }
 
@@ -633,6 +611,9 @@ class _LastBuild {
   /// Client module index from the last successful build.
   final ClientModuleIndex? clientModuleIndex;
 
+  /// Server component build results, if any.
+  final ServerComponentsBuildResult? serverComponents;
+
   const _LastBuild({
     required this.fingerprint,
     required this.outputPath,
@@ -644,6 +625,7 @@ class _LastBuild {
     this.patchBundle,
     this.patchBytes,
     this.clientModuleIndex,
+    this.serverComponents,
   });
 }
 
@@ -1080,6 +1062,7 @@ Future<AstBuildResult> buildGuestAstBundle(
           moduleFingerprints: last.moduleFingerprints,
           fingerprint: fp,
           clientModuleIndex: last.clientModuleIndex,
+          serverComponents: last.serverComponents,
         );
       }
     }
@@ -1253,6 +1236,42 @@ Future<AstBuildResult> buildGuestAstBundle(
     );
     clientIndex.saveToFile(indexFile);
 
+    // Scan for @ServerComponent annotations and build per-component delta bundles.
+    ServerComponentsBuildResult? serverComponents;
+    final annotated = ServerAnnotationScanner.scanBundle(bundle);
+    if (annotated.isNotEmpty) {
+      final componentBundler = ServerComponentBundler(
+        bridgedLibraries: kAstBridgedLibraries,
+        explicitSources: explicitSources,
+        packageName: packageName,
+        projectRoot: projectDir.path,
+        converter: SafeAstConverter(),
+        clientModuleIndex: clientIndex,
+      );
+
+      final result = await componentBundler.buildAll(
+        annotated,
+        allSources: {
+          ...bundle.sources ?? const {},
+          ...explicitSources,
+        },
+      );
+
+      if (result.components.isNotEmpty) {
+        final compDir = Directory('${outFile.parent.path}/server_components');
+        for (final entry in result.components.entries) {
+          final compFile = File('${compDir.path}/${entry.key}.ast');
+          compFile.parent.createSync(recursive: true);
+          compFile.writeAsBytesSync(entry.value.astBytes);
+        }
+        saveServerManifestToFile(
+          result.manifest,
+          File('${compDir.path}/manifest.json'),
+        );
+        serverComponents = result;
+      }
+    }
+
     _lastBuilds[projectDir.path] = _LastBuild(
       fingerprint: fp,
       outputPath: outFile.path,
@@ -1264,6 +1283,7 @@ Future<AstBuildResult> buildGuestAstBundle(
       patchBundle: patchBundle,
       patchBytes: patchBytes,
       clientModuleIndex: clientIndex,
+      serverComponents: serverComponents,
     );
     final writeMs = t3.elapsedMilliseconds;
     DartGoLogger.bench(
@@ -1289,6 +1309,7 @@ Future<AstBuildResult> buildGuestAstBundle(
       fingerprint: fp,
       patchBytes: patchBytes,
       clientModuleIndex: clientIndex,
+      serverComponents: serverComponents,
     );
   } catch (e, st) {
     return AstBuildResult(
@@ -1426,6 +1447,7 @@ class AstBuildWorker {
           moduleFingerprints: result.moduleFingerprints,
           patchBytes: result.patchBytes,
           clientModuleIndex: result.clientModuleIndex,
+          serverComponents: result.serverComponents,
         );
       }
       return result;

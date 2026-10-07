@@ -93,11 +93,11 @@ class ServerAnnotationScanner {
     // positional first argument.
     for (final arg in args.arguments) {
       if (arg is SNamedExpression) {
-        final label = arg.name?.name;
-        if (label == 'id') {
+        final labelName = arg.name?.label?.name;
+        if (labelName == 'id') {
           final expr = arg.expression;
           if (expr is SSimpleStringLiteral) {
-            return expr.value ?? fallback;
+            return expr.value;
           }
         }
       }
@@ -107,7 +107,7 @@ class ServerAnnotationScanner {
     if (args.arguments.isNotEmpty) {
       final first = args.arguments.first;
       if (first is SSimpleStringLiteral) {
-        return first.value ?? fallback;
+        return first.value;
       }
     }
 
@@ -121,8 +121,8 @@ class ServerAnnotationScanner {
 
     for (final arg in args.arguments) {
       if (arg is SNamedExpression) {
-        final label = arg.name?.name;
-        if (label == 'version') {
+        final labelName = arg.name?.label?.name;
+        if (labelName == 'version') {
           final expr = arg.expression;
           if (expr is SIntegerLiteral) {
             return expr.value;
