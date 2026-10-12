@@ -65,5 +65,29 @@ d4rtgen:
         - package:dartnative/flutter_compat.dart
       barrelImport: package:dartnative/flutter_compat.dart
       outputPath: lib/src/interpreter/dartnative_flutter_compat_bridges.b.dart
-
-
+    - name: dartnative_notifications
+      barrelFiles:
+        - package:dartnative_notifications/dartnative_notifications.dart
+      barrelImport: package:dartnative_notifications/dartnative_notifications.dart
+      outputPath: lib/src/interpreter/dartnative_notifications_bridges.b.dart
+    - name: dartnative_system
+      barrelFiles:
+        - package:dartnative_system/dartnative_system.dart
+      barrelImport: package:dartnative_system/dartnative_system.dart
+      outputPath: lib/src/interpreter/dartnative_system_bridges.b.dart
+    - name: dartnative_connectivity
+      barrelFiles:
+        - package:dartnative_connectivity/connectivity.dart
+      barrelImport: package:dartnative_connectivity/connectivity.dart
+      outputPath: lib/src/interpreter/dartnative_connectivity_bridges.b.dart
+    - name: dartnative_media_picker
+      barrelFiles:
+        - package:dartnative_media_picker/dartnative_media_picker.dart
+        - package:dartnative_media_picker/gallery.dart
+      barrelImport: package:dartnative_media_picker/dartnative_media_picker.dart
+      outputPath: lib/src/interpreter/dartnative_media_picker_bridges.b.dart
+    - name: dartnative_background
+      barrelFiles:
+        - package:dartnative_background/dartnative_background.dart
+      barrelImport: package:dartnative_background/dartnative_background.dart
+      outputPath: lib/src/interpreter/dartnative_background_bridges.b.dart

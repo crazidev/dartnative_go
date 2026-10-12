@@ -107,6 +107,36 @@ const List<SupportedPlugin> kSupportedNativePlugins = [
     description: 'System browser and external URL launcher',
   ),
   SupportedPlugin(
+    name: 'dartnative_notifications',
+    supportedConstraint: '^1.0.0',
+    isCore: false,
+    description: 'Local notifications: permissions, alerts, chat style, tap payloads',
+  ),
+  SupportedPlugin(
+    name: 'dartnative_system',
+    supportedConstraint: '^1.0.0',
+    isCore: false,
+    description: 'Package info and app icon badge',
+  ),
+  SupportedPlugin(
+    name: 'dartnative_connectivity',
+    supportedConstraint: '^1.0.0',
+    isCore: false,
+    description: 'Internet reachability and network transport monitoring',
+  ),
+  SupportedPlugin(
+    name: 'dartnative_media_picker',
+    supportedConstraint: '^1.1.0',
+    isCore: false,
+    description: 'Native media picker and photo-library gallery layer',
+  ),
+  SupportedPlugin(
+    name: 'dartnative_background',
+    supportedConstraint: '^1.0.0',
+    isCore: false,
+    description: 'Background task scheduling over WorkManager / BGTaskScheduler',
+  ),
+  SupportedPlugin(
     name: 'native_bottomsheet',
     supportedConstraint: '^0.1.0',
     isCore: false,

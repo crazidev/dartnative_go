@@ -13,6 +13,14 @@
 // overwriting it.
 //
 // Plugins loaded:
+//   • dartnative_connectivity
+//   • dartnative_media_picker
+//   • dartnative_notifications
+//   • dartnative_share
+//   • dartnative_shared_preferences
+//   • dartnative_system
+//   • dartnative_url_launcher
+//   • dartnative_webview
 //   • native_bottomsheet
 
 import 'dart:io' show Platform;
@@ -20,6 +28,15 @@ import 'dart:io' show Platform;
 import 'package:dartnative/dartnative.dart';
 import 'package:dartnative_ios/dartnative_ios.dart';
 import 'package:dartnative_android/dartnative_android.dart';
+import 'package:dartnative_connectivity/connectivity.dart';
+import 'package:dartnative_media_picker/dartnative_media_picker.dart';
+import 'package:dartnative_media_picker/gallery.dart';
+import 'package:dartnative_notifications/dartnative_notifications.dart';
+import 'package:dartnative_share/dartnative_share.dart';
+import 'package:dartnative_shared_preferences/dartnative_shared_preferences.dart';
+import 'package:dartnative_system/dartnative_system.dart';
+import 'package:dartnative_url_launcher/dartnative_url_launcher.dart';
+import 'package:dartnative_webview/dartnative_webview.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
 
 abstract final class DartNativePluginRegistrant {
@@ -39,6 +56,17 @@ abstract final class DartNativePluginRegistrant {
       DartNativeLicense.instance.noteTrialEnded();
     }
     DartNativeLicense.instance.reportPluginUsage(const <String>[
+      'dartnative_background',
+      'dartnative_connectivity',
+      'dartnative_media_picker',
+      'dartnative_notifications',
+      'dartnative_path_provider',
+      'dartnative_share',
+      'dartnative_shared_preferences',
+      'dartnative_splash',
+      'dartnative_system',
+      'dartnative_url_launcher',
+      'dartnative_webview',
       'native_bottomsheet',
       'riverpod_kit',
     ]);
@@ -47,6 +75,31 @@ abstract final class DartNativePluginRegistrant {
           ? AndroidNativeBindings.instance
           : IOSNativeBindings.instance,
     );
+    _load('dartnative_connectivity', () {
+      ConnectivityFFIBindings.loadSymbols();
+    });
+    _load('dartnative_media_picker', () {
+      MediaPickerFFIBindings.loadSymbols();
+      MediaGalleryFFIBindings.loadSymbols();
+    });
+    _load('dartnative_notifications', () {
+      NotificationsFFIBindings.loadSymbols();
+    });
+    _load('dartnative_share', () {
+      ShareFFIBindings.loadSymbols();
+    });
+    _load('dartnative_shared_preferences', () {
+      PrefsBindings.loadSymbols();
+    });
+    _load('dartnative_system', () {
+      SystemFFIBindings.loadSymbols();
+    });
+    _load('dartnative_url_launcher', () {
+      UrlLauncherFFIBindings.loadSymbols();
+    });
+    _load('dartnative_webview', () {
+      WebViewFFIBindings.loadSymbols();
+    });
     _load('native_bottomsheet', () {
       BottomSheetFFIBindings.loadSymbols();
     });

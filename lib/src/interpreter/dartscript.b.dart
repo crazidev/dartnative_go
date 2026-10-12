@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Dartscript registration for dartnative_go
-// Generated: 2026-09-21T20:32:07.294703 by tom_d4rt_generator 1.26.2
+// Generated: 2026-10-12T04:51:14.115645 by tom_d4rt_generator 1.26.2
 
 /// D4rt Bridge Registration for dartnative_go
 library;
@@ -17,6 +17,11 @@ import 'crypto_bridges.b.dart' as crypto_bridges;
 import 'native_bottomsheet_bridges.b.dart' as native_bottomsheet_bridges;
 import 'riverpod_kit_bridges.b.dart' as riverpod_kit_bridges;
 import 'dartnative_flutter_compat_bridges.b.dart' as dartnative_flutter_compat_bridges;
+import 'dartnative_notifications_bridges.b.dart' as dartnative_notifications_bridges;
+import 'dartnative_system_bridges.b.dart' as dartnative_system_bridges;
+import 'dartnative_connectivity_bridges.b.dart' as dartnative_connectivity_bridges;
+import 'dartnative_media_picker_bridges.b.dart' as dartnative_media_picker_bridges;
+import 'dartnative_background_bridges.b.dart' as dartnative_background_bridges;
 import 'relaxers.b.dart' as relaxer_factories;
 
 /// Combined bridge registration for dartnative_go.
@@ -32,13 +37,6 @@ class DartnativeGoBridges {
     // Register under sub-package barrels for direct imports
     for (final barrel in dartnative_ui_bridges.DartnativeUiBridge.subPackageBarrels()) {
       dartnative_ui_bridges.DartnativeUiBridge.registerBridges(d4rt, barrel);
-    }
-    dartnative_flutter_compat_bridges.DartnativeFlutterCompatBridge.registerBridges(
-      d4rt,
-      'package:dartnative/flutter_compat.dart',
-    );
-    for (final barrel in dartnative_flutter_compat_bridges.DartnativeFlutterCompatBridge.subPackageBarrels()) {
-      dartnative_flutter_compat_bridges.DartnativeFlutterCompatBridge.registerBridges(d4rt, barrel);
     }
     dartnative_webview_bridges.DartnativeWebviewBridge.registerBridges(
       d4rt,
@@ -112,6 +110,58 @@ class DartnativeGoBridges {
     for (final barrel in riverpod_kit_bridges.RiverpodKitBridge.subPackageBarrels()) {
       riverpod_kit_bridges.RiverpodKitBridge.registerBridges(d4rt, barrel);
     }
+    dartnative_flutter_compat_bridges.DartnativeFlutterCompatBridge.registerBridges(
+      d4rt,
+      'package:dartnative/flutter_compat.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel in dartnative_flutter_compat_bridges.DartnativeFlutterCompatBridge.subPackageBarrels()) {
+      dartnative_flutter_compat_bridges.DartnativeFlutterCompatBridge.registerBridges(d4rt, barrel);
+    }
+    dartnative_notifications_bridges.DartnativeNotificationsBridge.registerBridges(
+      d4rt,
+      'package:dartnative_notifications/dartnative_notifications.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel in dartnative_notifications_bridges.DartnativeNotificationsBridge.subPackageBarrels()) {
+      dartnative_notifications_bridges.DartnativeNotificationsBridge.registerBridges(d4rt, barrel);
+    }
+    dartnative_system_bridges.DartnativeSystemBridge.registerBridges(
+      d4rt,
+      'package:dartnative_system/dartnative_system.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel in dartnative_system_bridges.DartnativeSystemBridge.subPackageBarrels()) {
+      dartnative_system_bridges.DartnativeSystemBridge.registerBridges(d4rt, barrel);
+    }
+    dartnative_connectivity_bridges.DartnativeConnectivityBridge.registerBridges(
+      d4rt,
+      'package:dartnative_connectivity/connectivity.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel in dartnative_connectivity_bridges.DartnativeConnectivityBridge.subPackageBarrels()) {
+      dartnative_connectivity_bridges.DartnativeConnectivityBridge.registerBridges(d4rt, barrel);
+    }
+    dartnative_media_picker_bridges.DartnativeMediaPickerBridge.registerBridges(
+      d4rt,
+      'package:dartnative_media_picker/dartnative_media_picker.dart',
+    );
+    dartnative_media_picker_bridges.DartnativeMediaPickerBridge.registerBridges(
+      d4rt,
+      'package:dartnative_media_picker/gallery.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel in dartnative_media_picker_bridges.DartnativeMediaPickerBridge.subPackageBarrels()) {
+      dartnative_media_picker_bridges.DartnativeMediaPickerBridge.registerBridges(d4rt, barrel);
+    }
+    dartnative_background_bridges.DartnativeBackgroundBridge.registerBridges(
+      d4rt,
+      'package:dartnative_background/dartnative_background.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel in dartnative_background_bridges.DartnativeBackgroundBridge.subPackageBarrels()) {
+      dartnative_background_bridges.DartnativeBackgroundBridge.registerBridges(d4rt, barrel);
+    }
 
     // RC-2: Register generic constructor factories
     relaxer_factories.registerGenericConstructors();
@@ -123,7 +173,6 @@ class DartnativeGoBridges {
   static String getImportBlock() {
     final buffer = StringBuffer();
     buffer.writeln(dartnative_ui_bridges.DartnativeUiBridge.getImportBlock());
-    buffer.writeln(dartnative_flutter_compat_bridges.DartnativeFlutterCompatBridge.getImportBlock());
     buffer.writeln(dartnative_webview_bridges.DartnativeWebviewBridge.getImportBlock());
     buffer.writeln(dartnative_share_bridges.DartnativeShareBridge.getImportBlock());
     buffer.writeln(dartnative_shared_preferences_bridges.DartnativeSharedPreferencesBridge.getImportBlock());
@@ -133,6 +182,12 @@ class DartnativeGoBridges {
     buffer.writeln(crypto_bridges.CryptoBridge.getImportBlock());
     buffer.writeln(native_bottomsheet_bridges.NativeBottomsheetBridge.getImportBlock());
     buffer.writeln(riverpod_kit_bridges.RiverpodKitBridge.getImportBlock());
+    buffer.writeln(dartnative_flutter_compat_bridges.DartnativeFlutterCompatBridge.getImportBlock());
+    buffer.writeln(dartnative_notifications_bridges.DartnativeNotificationsBridge.getImportBlock());
+    buffer.writeln(dartnative_system_bridges.DartnativeSystemBridge.getImportBlock());
+    buffer.writeln(dartnative_connectivity_bridges.DartnativeConnectivityBridge.getImportBlock());
+    buffer.writeln(dartnative_media_picker_bridges.DartnativeMediaPickerBridge.getImportBlock());
+    buffer.writeln(dartnative_background_bridges.DartnativeBackgroundBridge.getImportBlock());
     return buffer.toString();
   }
 }

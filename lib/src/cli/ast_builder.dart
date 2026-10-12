@@ -74,8 +74,6 @@ const kAstBridgedLibraries = {
   'package:dartnative_background/src/task_manager.dart',
   'package:dartnative_background/src/options.dart',
   'package:dartnative_background/src/task_manager_ffi_bindings.dart',
-  'package:dartnative_hive/dartnative_hive.dart',
-  'package:dartnative_hive/src/hive_init.dart',
   'package:riverpod_kit/riverpod_kit.dart',
   'package:riverpod/riverpod.dart',
   'package:flutter/widgets.dart',
@@ -1115,6 +1113,11 @@ Future<AstBuildResult> buildGuestAstBundle(
     // terminates in ~1 ms instead of traversing all 2 000+ nodes.
     Map<String, SCompilationUnit>? seedModules;
     final previousBundle = _lastBuilds[projectDir.path]?.cachedBundle;
+    // URIs successfully re-parsed from changed files. The seed DFS below
+    // `continue`s at every URI already in the seed, so without an extra
+    // traversal pass the *new* imports of these modules (e.g. a
+    // just-created file) would never be discovered — see below.
+    final reparsedUris = <String>{};
     if (incremental && !force && changedFiles != null && previousBundle != null) {
       // Start with the full previous module map.
       seedModules = Map<String, SCompilationUnit>.of(previousBundle.modules);
@@ -1147,10 +1150,12 @@ Future<AstBuildResult> buildGuestAstBundle(
               (mtime: File(canonicalPath).lastModifiedSync(), source: source);
           final unit = bundler._getOrParse(source, uri, path: canonicalPath);
           seedModules[uri] = unit;
+          reparsedUris.add(uri);
         } catch (_) {
           // If pre-parse fails (e.g. syntax error), remove from seed so the
           // DFS picks it up normally and surfaces the parse error.
           seedModules.remove(uri);
+          reparsedUris.remove(uri);
         }
       }
     }
@@ -1160,6 +1165,28 @@ Future<AstBuildResult> buildGuestAstBundle(
       seedModules: seedModules,
     );
     final parseBundleMs = t2.elapsedMilliseconds;
+
+    // New-file fix: the seed DFS skips every URI already in the seed, so a
+    // changed module's *new* imports are never traversed. A just-created
+    // file imported by an edited file would be missing from the bundle,
+    // and the device would fail with `Package module ... not found in
+    // bundle` until a full restart.
+    // Traverse each re-parsed module's own directives to pull newly added
+    // dependencies (and their sources) into the bundle. Unresolvable new
+    // imports fail the build here — same as a cold build — so the device
+    // keeps its working generation instead of hot-reloading into an error.
+    for (final uri in reparsedUris) {
+      final unit = bundle.modules[uri];
+      if (unit == null) continue;
+      await bundler._resolveImports(
+        unit,
+        Uri.parse(uri),
+        bundle.modules,
+        bundleSources: bundle.sources,
+        depth: 0,
+        fileSystemRoot: projectDir.path,
+      );
+    }
 
     final t3 = Stopwatch()..start();
 
@@ -1204,6 +1231,20 @@ Future<AstBuildResult> buildGuestAstBundle(
           if (prevFps[entry.key] != entry.value) {
             final unit = bundle.modules[entry.key];
             if (unit != null) patchModules[entry.key] = unit;
+          }
+        }
+      }
+      // New-module union: a just-created file pulled in by the traversal
+      // above may not be in changedFiles (watcher batches can split the
+      // file creation from the import edit). Union every module whose
+      // fingerprint is new or changed so the patch is self-sufficient —
+      // otherwise the device applies a patch whose importer references a
+      // module it never received.
+      if (last != null) {
+        final prevFps = last.moduleFingerprints;
+        for (final entry in bundle.modules.entries) {
+          if (prevFps[entry.key] != moduleFingerprints[entry.key]) {
+            patchModules[entry.key] = entry.value;
           }
         }
       }
