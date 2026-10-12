@@ -9,6 +9,8 @@ import '../interpreter/d4rt_flutter_application.dart';
 import '../interpreter/dartscript.b.dart';
 import '../interpreter/debug_controller.dart';
 import '../interpreter/dn_bridge.dart';
+import '../interpreter/server_component_source_bridge.dart';
+import '../widgets/server_component_loader.dart';
 import 'ast_interpreter_runner.dart';
 import 'bundle_loader.dart';
 import 'logger.dart';
@@ -35,6 +37,7 @@ class InterpreterRunner {
   final Map<String, Map<String, Object?>> _globalStaticSnapshot = {};
 
   AstInterpreterRunner? _astRunner;
+  ServerComponentLoader? _sourceComponentLoader;
   DebugController get debugController => _debugController;
   D4rt get interpreter => _interpreter;
   RuntimeMode get runtimeMode => runtimeModeFromBool(useAst);
@@ -84,6 +87,21 @@ class InterpreterRunner {
     try {
       DartnativeGoBridges.register(_interpreter);
     } catch (_) {}
+
+    // 2b. Host ServerComponentView (`package:dartnative_go/server_component.dart`).
+    // Components are AST bundles, so they mount through the embedded AST runner.
+    registerSourceServerComponentBridge(
+      _interpreter,
+      loaderProvider: () => _sourceComponentLoader ??= ServerComponentLoader(
+        serverUrl: currentServerUrl ?? '',
+        serverUrlProvider: () => currentServerUrl ?? '',
+        runner: _astRunner ??= AstInterpreterRunner(
+          onLog: onLog,
+          onExit: onExit,
+          currentServerUrl: currentServerUrl,
+        ),
+      ),
+    );
 
     // 3. Special Framework Bridges: D4rtFlutterApplication, runApp, unawaited
     Object? captureRunApp(
@@ -560,5 +578,9 @@ class InterpreterRunner {
     } catch (_) {}
     _astRunner?.dispose();
     _astRunner = null;
+    try {
+      _sourceComponentLoader?.bundleLoader.close();
+    } catch (_) {}
+    _sourceComponentLoader = null;
   }
 }

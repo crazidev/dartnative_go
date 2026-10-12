@@ -24,7 +24,8 @@ class ServerDemoCard extends StatefulWidget {
 class _ServerDemoCardState extends State<ServerDemoCard> {
   @override
   void initState() {
-    print("=== This code was executed in the server");
+    print("This is a server component");
+
     super.initState();
   }
 

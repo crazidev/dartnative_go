@@ -1,5 +1,4 @@
 import 'package:dartnative/dartnative.dart';
-import 'package:dartnative_go/server_component.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 
 import 'server_demo_card.dart';
@@ -42,11 +41,7 @@ class _MyAppState extends State<MyApp> {
   ];
 
   void changeColor() {
-    if (currentIndex >= colors.length) {
-      currentIndex = 0;
-    } else {
-      currentIndex = currentIndex + 1;
-    }
+    currentIndex = (currentIndex + 1) % colors.length;
     print("currentIndex $currentIndex ${(currentIndex == colors.length)}");
     setState(() {
       textColor = colors[currentIndex];
@@ -68,17 +63,40 @@ class _MyAppState extends State<MyApp> {
           ),
           SizedBox(height: 10),
           ServerDemoCard(userId: currentIndex),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           const ServerDemoText(userId: 7),
-          const SizedBox(height: 8),
-          // Same component as above, but mounted through the server path:
-          // the host ServerComponentView bridge fetches demo_text.ast and
-          // resolves it against the live client modules. Compare the two
-          // texts — identical output proves the delta merge works.
-          ServerComponentView(
-            componentId: 'demo_text',
-            props: const {'userId': 7},
-          ),
+          const SizedBox(height: 10),
+
+          // ServerComponentView(
+          //   componentId: 'demo_text',
+          //   props: const {'userId': 2},
+          //   fallback: Container(
+          //     width: 300,
+          //     height: 100,
+          //     decoration: BoxDecoration(
+          //       borderRadius: BorderRadius.circular(10),
+          //       color: Colors.blue,
+          //     ),
+          //   ),
+          //   loadingBuilder: (context) => Container(
+          //     width: 300,
+          //     height: 100,
+          //     decoration: BoxDecoration(
+          //       borderRadius: BorderRadius.circular(10),
+          //       color: Colors.yellow,
+          //     ),
+          //   ),
+          //   errorBuilder: (error) {
+          //     return Container(
+          //       width: 300,
+          //       height: 100,
+          //       decoration: BoxDecoration(
+          //         borderRadius: BorderRadius.circular(10),
+          //         color: Colors.red,
+          //       ),
+          //     );
+          //   },
+          // ),
           const SizedBox(height: 10),
 
           Button(

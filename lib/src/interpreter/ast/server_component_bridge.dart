@@ -20,12 +20,12 @@ const kServerComponentBridgeUri = 'package:dartnative_go/server_component.dart';
 /// analyzer-free runtime, so interpreted guest code can mount server
 /// components declaratively — the same class the host mounts directly.
 ///
-/// Only guest-meaningful constructor parameters are bridged
-/// (`componentId`, `props`, `fallbackComponentId`, `key`). Native-only
-/// parameters (`runner`, `loadComponent`) and function-typed UI hooks
-/// (`loadingBuilder`, `errorBuilder`) are intentionally NOT bridged:
-/// the adapter wires [loader] (fetch) and its runner (shared interpreter)
-/// itself, and loading/error UI falls back to the view defaults.
+/// Guest-meaningful constructor parameters are bridged (`componentId`,
+/// `props`, `fallbackComponentId`, `fallback`, `loadingBuilder`,
+/// `errorBuilder`, `key`). Interpreted builder closures are invoked through
+/// `D4.callInterpreterCallback` on the evaluating visitor. Native-only
+/// parameters (`runner`, `loadComponent`) are NOT bridged: the adapter wires
+/// [loader] (fetch) and its runner (shared interpreter) itself.
 ///
 /// Call once per runner before the first execution — `AstInterpreterRunner`
 /// does this in `initRunner`, alongside the other hand-written bridges.
@@ -53,11 +53,35 @@ void registerServerComponentBridge(
           'fallbackComponentId',
         );
         final key = D4.getOptionalNamedArg<Key?>(named, 'key');
+        final fallback = D4.extractBridgedArgOrNull<Widget>(
+          named['fallback'],
+          'fallback',
+          visitor,
+        );
+        final loadingRaw = named['loadingBuilder'];
+        final loadingBuilder = loadingRaw == null
+            ? null
+            : (BuildContext context) => D4.extractBridgedArg<Widget>(
+                  D4.callInterpreterCallback(visitor, loadingRaw, [context]),
+                  'loadingBuilder',
+                  visitor,
+                );
+        final errorRaw = named['errorBuilder'];
+        final errorBuilder = errorRaw == null
+            ? null
+            : (Object error) => D4.extractBridgedArg<Widget>(
+                  D4.callInterpreterCallback(visitor, errorRaw, [error]),
+                  'errorBuilder',
+                  visitor,
+                );
         return ServerComponentView(
           key: key,
           componentId: componentId,
           props: props,
           fallbackComponentId: fallbackComponentId,
+          fallback: fallback,
+          loadingBuilder: loadingBuilder,
+          errorBuilder: errorBuilder,
           runner: loader.runner,
           loadComponent: loader.loadComponent,
         );
@@ -65,7 +89,7 @@ void registerServerComponentBridge(
     },
     constructorSignatures: {
       '':
-          'ServerComponentView({required String componentId, Map<String, dynamic>? props, String? fallbackComponentId, Key? key})',
+          'ServerComponentView({required String componentId, Map<String, dynamic>? props, String? fallbackComponentId, Widget? fallback, Widget Function(BuildContext)? loadingBuilder, Widget Function(Object)? errorBuilder, Key? key})',
     },
     getters: {
       'componentId': (visitor, target) =>

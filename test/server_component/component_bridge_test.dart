@@ -1,11 +1,18 @@
 import 'dart:io';
 
-import 'package:dartnative/dartnative.dart' show Text, Widget;
+import 'package:dartnative/dartnative.dart' show BuildContext, Text, Widget;
 import 'package:dartnative_go/src/cli/ast_builder.dart';
 import 'package:dartnative_go/src/cli/safe_ast_converter.dart';
 import 'package:dartnative_go/src/runner/ast_interpreter_runner.dart';
 import 'package:dartnative_go/src/widgets/server_component_view.dart';
 import 'package:test/test.dart';
+
+/// Stand-in context: the guest builder ignores its argument, and no widget
+/// tree exists under `dn test`.
+class _FakeContext implements BuildContext {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 /// Proves the `package:dartnative_go/server_component.dart` bridge:
 /// interpreted guest code constructs the host [ServerComponentView]
@@ -102,6 +109,43 @@ void main() {
       );
       expect(widget, isA<Text>());
       expect((widget as Text).data, equals('badge_x'));
+    });
+
+    test('interpreted fallback and builder callbacks reach the host view',
+        () async {
+      File('${tmp.path}/lib/main_builders.dart').writeAsStringSync(
+        "import 'package:dartnative/dartnative.dart';\n"
+        "import 'package:dartnative_go/server_component.dart';\n"
+        'void main() {\n'
+        '  runApp(ServerComponentView(\n'
+        "    componentId: 'profile_card',\n"
+        "    fallback: Text('fallback'),\n"
+        "    loadingBuilder: (context) => Text('loading'),\n"
+        "    errorBuilder: (error) => Text('error'),\n"
+        '  ));\n'
+        '}\n',
+      );
+      final bundler = IncrementalAstBundler(
+        bridgedLibraries: kAstBridgedLibraries,
+        packageName: 'bridge_app',
+        projectRoot: tmp.path,
+        converter: SafeAstConverter(),
+      );
+      final bundle =
+          await bundler.createFromFile('${tmp.path}/lib/main_builders.dart');
+      final widget = await runner.evaluateAstBundleAs<Widget>(
+        bundle.toBytes(),
+      ) as ServerComponentView;
+
+      expect((widget.fallback as Text).data, equals('fallback'));
+      expect(
+        ((widget.loadingBuilder!)(_FakeContext()) as Text).data,
+        equals('loading'),
+      );
+      expect(
+        ((widget.errorBuilder!)(StateError('boom')) as Text).data,
+        equals('error'),
+      );
     });
 
     test('minimum delay in _load() prevents flash-to-error on fast 404', () {
