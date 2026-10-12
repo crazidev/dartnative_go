@@ -1,21 +1,31 @@
 PODS:
+  - dartnative_background (1.0.1)
+  - dartnative_connectivity (1.0.0)
   - dartnative_ios (1.0.0):
     - FlexLayout (= 2.0.10)
+  - dartnative_media_picker (1.1.0)
+  - dartnative_notifications (1.0.1)
   - dartnative_path_provider (1.0.0)
-  - dartnative_share (1.0.0)
+  - dartnative_share (1.0.2)
   - dartnative_shared_preferences (1.0.1)
+  - dartnative_system (1.0.0)
   - dartnative_url_launcher (1.0.0)
-  - dartnative_webview (1.0.0)
+  - dartnative_webview (1.0.1)
   - DartNativeCore (1.0.0)
   - FlexLayout (2.0.10)
   - native_bottomsheet (0.1.0):
     - FlexLayout
 
 DEPENDENCIES:
+  - dartnative_background (from `.symlinks/plugins/dartnative_background/ios`)
+  - dartnative_connectivity (from `.symlinks/plugins/dartnative_connectivity/ios`)
   - dartnative_ios (from `.symlinks/plugins/dartnative_ios/ios`)
+  - dartnative_media_picker (from `.symlinks/plugins/dartnative_media_picker/ios`)
+  - dartnative_notifications (from `.symlinks/plugins/dartnative_notifications/ios`)
   - dartnative_path_provider (from `.symlinks/plugins/dartnative_path_provider/ios`)
   - dartnative_share (from `.symlinks/plugins/dartnative_share/ios`)
   - dartnative_shared_preferences (from `.symlinks/plugins/dartnative_shared_preferences/ios`)
+  - dartnative_system (from `.symlinks/plugins/dartnative_system/ios`)
   - dartnative_url_launcher (from `.symlinks/plugins/dartnative_url_launcher/ios`)
   - dartnative_webview (from `.symlinks/plugins/dartnative_webview/ios`)
   - DartNativeCore (from `DartNative`)
@@ -26,14 +36,24 @@ SPEC REPOS:
     - FlexLayout
 
 EXTERNAL SOURCES:
+  dartnative_background:
+    :path: ".symlinks/plugins/dartnative_background/ios"
+  dartnative_connectivity:
+    :path: ".symlinks/plugins/dartnative_connectivity/ios"
   dartnative_ios:
     :path: ".symlinks/plugins/dartnative_ios/ios"
+  dartnative_media_picker:
+    :path: ".symlinks/plugins/dartnative_media_picker/ios"
+  dartnative_notifications:
+    :path: ".symlinks/plugins/dartnative_notifications/ios"
   dartnative_path_provider:
     :path: ".symlinks/plugins/dartnative_path_provider/ios"
   dartnative_share:
     :path: ".symlinks/plugins/dartnative_share/ios"
   dartnative_shared_preferences:
     :path: ".symlinks/plugins/dartnative_shared_preferences/ios"
+  dartnative_system:
+    :path: ".symlinks/plugins/dartnative_system/ios"
   dartnative_url_launcher:
     :path: ".symlinks/plugins/dartnative_url_launcher/ios"
   dartnative_webview:
@@ -44,12 +64,17 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/native_bottomsheet/ios"
 
 SPEC CHECKSUMS:
+  dartnative_background: ec8ba5a3951f356d8dad6a24c86e2fa780986061
+  dartnative_connectivity: b92e376910df710d3887cb6e21cb8271a36bdff3
   dartnative_ios: 88d434758a21de28291d1ca70f9a144bd28548c7
+  dartnative_media_picker: 40d66ec01fb29ea267640e71d56291b30bd3c472
+  dartnative_notifications: 8bb4b59755d97fbc7b7f4f8f22451edb64958ea9
   dartnative_path_provider: c70d5d38a31ebf4a132a67dfa8de9f435fb11ed6
-  dartnative_share: 9739fdb17c1cc0393460821503a28ccac33e8e3e
+  dartnative_share: ff194b41435ca672fab6cfc7511ae76883e11506
   dartnative_shared_preferences: ec7c5f6b4fe20033acade3aab5c763a2348f4067
+  dartnative_system: 7c5082ad91c93afbaf882129cd2c6e2c97ef35d2
   dartnative_url_launcher: 64da45efde475aa218c467a26c0052040c20ddde
-  dartnative_webview: 545bebb91ae75cbe11a8ed64460aeb30a37da42a
+  dartnative_webview: e30910314a27fdd067a3d958301b6d7b04e686ce
   DartNativeCore: 225e49d9e35e234bcadc6b81586fc4275a1006ee
   FlexLayout: ea94491c923485f7f28891cb5b10245d22df380b
   native_bottomsheet: 32d2e15c1db2812363d1ffabf1ac8acf6c63a82d

@@ -4,7 +4,7 @@ publish_to: "none"
 version: 0.1.0+1
 
 environment:
-  sdk: ^3.12.0-192.0.dev
+  sdk: ^3.9.0-0
 
 # Plain version deps: `dn pub get` resolves DartNative packages from your
 # installed SDK (closed resolution) — no registry setup, works offline.
@@ -21,6 +21,11 @@ dependencies:
   dartnative_path_provider: ^1.0.0
   dartnative_url_launcher: ^1.0.0
   dartnative_splash: ^1.0.0
+  dartnative_notifications: ^1.0.0
+  dartnative_system: ^1.0.0
+  dartnative_connectivity: ^1.0.0
+  dartnative_media_picker: ^1.1.0
+  dartnative_background: ^1.0.0
   crypto: ^3.0.0
   riverpod_kit:
     hosted: https://dartpub.dev
@@ -37,7 +42,10 @@ dependencies:
 
 dev_dependencies:
   lints: ^6.0.0
-  image: ^4.0.0
+  # Pinned exact: dartnative_splash 1.0.1 (SDK) needs image 4.3.0, and the
+  # SDK itself is built with archive 3.6.1 which newer image 4.x releases
+  # no longer accept. `dn pub get` fails otherwise.
+  image: 4.3.0
   tom_d4rt_generator: any
   tom_ast_generator: any
   tom_d4rt_exec: any

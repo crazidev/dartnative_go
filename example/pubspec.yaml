@@ -9,9 +9,6 @@ environment:
 # Plain version deps: `dn pub get` resolves DartNative packages from your
 # installed SDK (closed resolution) — no registry setup, works offline.
 dependencies:
-  dartnative: ^1.0.0
-  dartnative_ios: ^1.0.0
-  dartnative_android: ^1.0.0
   ffi: ^2.1.4
   meta: ^1.17.0
   riverpod_kit:
@@ -19,31 +16,19 @@ dependencies:
     version: ^0.1.0
   native_bottomsheet:
     path: ../../dartnative_bottomsheet
-  # Server-component annotation (`package:dartnative_go/server.dart`).
-  # Guest code imports the REAL host annotation; the dev server injects its
-  # sources into the AST bundler implicitly, so this dependency exists only
-  # to keep the analyzer/IDE happy. It is excluded from guest bundles
-  # (see resolvePackageSources) and never compiled into the native app.
   dartnative_go:
     path: ../
-  # Skia GPU canvas: SkSL runtime shaders and rich shaped text. Adds about
-  # 9 MB to an iPhone app; on Android the library is already in the platform
-  # binding. For shapes, paths and charts use CustomPaint, which is native
-  # and free. Uncomment here, then in lib/main.dart:
-  #
-  #   import 'package:dartnative_skia/dartnative_skia.dart';
-  #
-  #   void main() {
-  #     DartNativePluginRegistrant.registerAll();
-  #     registerSkiaFactories();          // without this a CanvasSurface throws
-  #     runApp(const HomeScreen());
-  #   }
-  #
-  # dartnative_skia: ^1.0.0
+
+  # dartnative_system: ^1.0.0
+  # dartnative_connectivity: ^1.0.0
+  # dartnative_media_picker: ^1.1.0
+  # dartnative_background: ^1.0.0
 
 dev_dependencies:
   lints: ^6.0.0
-  image: ^4.0.0
+  # Pinned exact: dartnative_splash 1.0.1 (SDK) needs image 4.3.0 (mirrors
+  # the root pubspec).
+  image: 4.3.0
 
 # Which Skia binary ships with the app. Pick one; see the Skia page.
 #
@@ -61,3 +46,39 @@ dartnative:
 
 # Branded launch splash + app icon: add the dartnative_splash plugin from
 # dartpub.dev, then see tool/generate_app_assets.dart.
+
+dependency_overrides:
+  dartnative_shared_preferences:
+    path: .dart_tool/dartnative_sdk/dartnative_shared_preferences
+  dartnative_android:
+    path: .dart_tool/dartnative_sdk/dartnative_android
+  dartnative:
+    path: .dart_tool/dartnative_sdk/dartnative
+  dartnative_splash:
+    path: .dart_tool/dartnative_sdk/dartnative_splash
+  dartnative_notifications:
+    path: .dart_tool/dartnative_sdk/dartnative_notifications
+  dartnative_ios:
+    path: .dart_tool/dartnative_sdk/dartnative_ios
+  dartnative_system:
+    path: .dart_tool/dartnative_sdk/dartnative_system
+  dartnative_url_launcher:
+    path: .dart_tool/dartnative_sdk/dartnative_url_launcher
+  dartnative_path_provider:
+    path: .dart_tool/dartnative_sdk/dartnative_path_provider
+  dartnative_connectivity:
+    path: .dart_tool/dartnative_sdk/dartnative_connectivity
+  dartnative_webview:
+    path: .dart_tool/dartnative_sdk/dartnative_webview
+  dartnative_media_picker:
+    path: .dart_tool/dartnative_sdk/dartnative_media_picker
+  dartnative_share:
+    path: .dart_tool/dartnative_sdk/dartnative_share
+  dartnative_background:
+    path: .dart_tool/dartnative_sdk/dartnative_background
+  # Same vendored fork as the root app (relaxes archive to the SDK's 3.6.1,
+  # which dartnative_splash 1.0.1 requires). Without this, the transitive
+  # tom_d4rt_ast (via dartnative_go) pulls archive ^4.0.9 and resolution
+  # fails.
+  tom_d4rt_ast:
+    path: ../pkgs/tom_d4rt_ast
