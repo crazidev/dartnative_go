@@ -1,5 +1,5 @@
 import 'package:dartnative/dartnative.dart';
-import 'package:example/create_note_panel.dart';
+import 'package:example/sticky-note/create_note_panel.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
 

@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:dartnative/dartnative.dart';
-import 'package:example/todo_screen.dart';
+import 'package:example/sticky-note/todo_screen.dart';
 
 class CreateNotePanel extends StatefulWidget {
   final VoidCallback onClose;

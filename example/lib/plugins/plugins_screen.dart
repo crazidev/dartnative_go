@@ -9,7 +9,7 @@ class PluginsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // No plugin demo enabled (HiveDemo removed).
+    // HiveDemo removed; gallery demo enabled below.
     return Container(child: MediaPickerDemo());
   }
 }

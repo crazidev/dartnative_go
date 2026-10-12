@@ -195,9 +195,11 @@ class _DartNativeGoState extends State<DartNativeGo> {
   /// Launches a project given its server URL.
   Future<void> _launchProject(String rawUrl, {String? fallbackAppName}) async {
     final serverUrl = BundleLoader.normalizeUrl(rawUrl);
-    // A fresh launch supersedes any in-flight reload/restart.
+    // A fresh launch supersedes any in-flight reload/restart — and any
+    // earlier launch still awaiting its fetch.
     _reloadSeq++;
     _restartSeq++;
+    final launchSeq = _reloadSeq;
     setState(() {
       _isLoadingBundle = true;
       _errorMessage = null;
@@ -241,7 +243,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
           }
         },
       );
-      if (!mounted) return;
+      if (!mounted || launchSeq != _reloadSeq) return;
 
       setState(() {
         _activeBundle = bundle;
@@ -441,7 +443,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
         );
       }
 
-      if (!mounted) return;
+      if (!mounted || launchSeq != _reloadSeq) return;
       setState(() {
         _interpretedWidget = widget;
         _isAppMounted = true;
@@ -450,7 +452,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
     } catch (e, stack) {
       final err = e.toString();
       DartGoLogger.error('Interpreter Error: $err', null, stack);
-      if (!mounted) return;
+      if (!mounted || launchSeq != _reloadSeq) return;
       _recordError(err, stack);
     }
   }
@@ -630,6 +632,11 @@ class _DartNativeGoState extends State<DartNativeGo> {
   }
 
   void _unmountApp() {
+    // Invalidate any in-flight launch/reload/restart so a pending fetch
+    // cannot remount after the user goes home (e.g. bailing out of a
+    // stuck load via the floating DevTools button).
+    _reloadSeq++;
+    _restartSeq++;
     _liveConnection?.disconnect();
     _liveConnection = null;
     WidgetGenerationTracker.resetAll();
@@ -644,21 +651,57 @@ class _DartNativeGoState extends State<DartNativeGo> {
     });
   }
 
+  /// Wraps [child] in the floating DevTools overlay so the dev button is
+  /// reachable on every host screen — launcher, loading splash, and the
+  /// mounted guest app alike. Reload is a no-op while a bundle is loading
+  /// (there is nothing to restart yet); Home cancels back to the launcher.
+  DevToolOverlay _withDevTools(Widget child) {
+    return DevToolOverlay(
+      appName: _activeBundle?.appName ?? 'DartNative App',
+      appVersion: _activeBundle?.appVersion,
+      serverUrl: _activeBundle?.serverUrl ?? '',
+      isConnected: _liveConnection?.isConnected ?? false,
+      onGoHome: _unmountApp,
+      onReload: () {
+        if (_isLoadingBundle) return;
+        _restartApp();
+      },
+      depCache: _bundleLoader.depCache,
+      runtimeModeLabel: runtimeModeFromBool(_useAst).label,
+      useAst: _useAst,
+      onSelectMode: _setMode,
+      onCycleMode: _cycleMode,
+      verboseLogs: _verboseLogs,
+      onToggleVerbose: (enabled) {
+        setState(() {
+          _verboseLogs = enabled;
+          DartGoLogger.verbose = enabled;
+        });
+        _liveConnection?.sendSetVerbose(enabled);
+      },
+      errorDisplayMode: _errorDisplayMode,
+      onSelectErrorMode: _setErrorDisplayMode,
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // 1. Loading state: Project Splash Screen while fetching bundle
     if (_isLoadingBundle) {
-      return ProjectSplashScreen(
-        appName: _activeBundle?.appName ?? 'DartNative App',
-        splashUrl: _activeBundle?.splashUrl,
-        iconUrl: _activeBundle?.iconUrl,
-        backgroundColor: ProjectSplashScreen.parseHexColor(
-          _activeBundle?.splashBackgroundColor,
+      return _withDevTools(
+        ProjectSplashScreen(
+          appName: _activeBundle?.appName ?? 'DartNative App',
+          splashUrl: _activeBundle?.splashUrl,
+          iconUrl: _activeBundle?.iconUrl,
+          backgroundColor: ProjectSplashScreen.parseHexColor(
+            _activeBundle?.splashBackgroundColor,
+          ),
+          statusMessage: _statusMessage,
+          downloadProgress: _downloadProgress,
+          downloadedCount: _downloadedCount,
+          downloadTotal: _downloadTotal,
         ),
-        statusMessage: _statusMessage,
-        downloadProgress: _downloadProgress,
-        downloadedCount: _downloadedCount,
-        downloadTotal: _downloadTotal,
       );
     }
 
@@ -684,29 +727,8 @@ class _DartNativeGoState extends State<DartNativeGo> {
         );
       }
 
-      final overlay = DevToolOverlay(
-        appName: _activeBundle?.appName ?? 'DartNative App',
-        appVersion: _activeBundle?.appVersion,
-        serverUrl: _activeBundle?.serverUrl ?? '',
-        isConnected: _liveConnection?.isConnected ?? false,
-        onGoHome: _unmountApp,
-        onReload: () => _restartApp(),
-        depCache: _bundleLoader.depCache,
-        runtimeModeLabel: runtimeModeFromBool(_useAst).label,
-        useAst: _useAst,
-        onSelectMode: _setMode,
-        onCycleMode: _cycleMode,
-        verboseLogs: _verboseLogs,
-        onToggleVerbose: (enabled) {
-          setState(() {
-            _verboseLogs = enabled;
-            DartGoLogger.verbose = enabled;
-          });
-          _liveConnection?.sendSetVerbose(enabled);
-        },
-        errorDisplayMode: _errorDisplayMode,
-        onSelectErrorMode: _setErrorDisplayMode,
-        child: KeyedSubtree(
+      final overlay = _withDevTools(
+        KeyedSubtree(
           key: _guestProbeKey,
           child: KeyedSubtree(
             key: const ValueKey('guest_root'),
@@ -741,33 +763,35 @@ class _DartNativeGoState extends State<DartNativeGo> {
     }
 
     // 3. Default state: Launcher Screen
-    return LauncherScreen(
-      projects: _projects,
-      isLoading: _isLoading,
-      urlController: _urlController,
-      onUrlSubmitted: (value) async {
-        if (value.trim().isNotEmpty) {
-          final project = await _scanner.addManualProject(value);
-          _urlController.clear();
+    return _withDevTools(
+      LauncherScreen(
+        projects: _projects,
+        isLoading: _isLoading,
+        urlController: _urlController,
+        onUrlSubmitted: (value) async {
+          if (value.trim().isNotEmpty) {
+            final project = await _scanner.addManualProject(value);
+            _urlController.clear();
+            _launchProject(
+              project.url,
+              fallbackAppName: project.appName,
+            );
+          }
+        },
+        onSelectProject: (project) {
+          print(
+            '[DartNativeGo] Selected project from list: ${project.appName} (${project.url})',
+          );
+          _urlController.text = project.url;
           _launchProject(
             project.url,
             fallbackAppName: project.appName,
           );
-        }
-      },
-      onSelectProject: (project) {
-        print(
-          '[DartNativeGo] Selected project from list: ${project.appName} (${project.url})',
-        );
-        _urlController.text = project.url;
-        _launchProject(
-          project.url,
-          fallbackAppName: project.appName,
-        );
-      },
-      onRescan: () => _scanner.scanNow(),
-      onCycleMode: _cycleMode,
-      runtimeModeLabel: runtimeModeFromBool(_useAst).label,
+        },
+        onRescan: () => _scanner.scanNow(),
+        onCycleMode: _cycleMode,
+        runtimeModeLabel: runtimeModeFromBool(_useAst).label,
+      ),
     );
   }
 }
