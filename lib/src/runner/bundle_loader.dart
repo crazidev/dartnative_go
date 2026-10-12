@@ -80,8 +80,12 @@ class BundleLoader {
   Map<String, String>? _cachedDepSources;
   String? _loadedDepsHash;
 
-  BundleLoader({HttpClient? client, this._depCache})
-      : _client = client ?? (HttpClient()..connectionTimeout = const Duration(seconds: 10));
+  // NOTE: no `this._depCache` formal here: private named parameters need
+  // language version 3.12, but the device toolchain pins this package to
+  // 3.9 (see .dart_tool/package_config.json as written by `dn pub get`).
+  BundleLoader({HttpClient? client, DepCache? depCache})
+      : _client = client ?? (HttpClient()..connectionTimeout = const Duration(seconds: 10)),
+        _depCache = depCache;
 
   /// Sets the active on-device dependency cache.
   set depCache(DepCache? cache) {

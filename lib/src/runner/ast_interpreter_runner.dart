@@ -164,6 +164,37 @@ class AstInterpreterRunner {
       );
     }
 
+    // Mirror of the source engine (interpreter_runner.dart §4b):
+    // `unawaited()` from dart:async. Without this, guest code calling it
+    // fails in AST mode with "Default bridged constructor adapter for
+    // 'unawaited' returned null".
+    Object? captureUnawaited(
+      ast.InterpreterVisitor visitor,
+      List<Object?> positional,
+      Map<String, Object?> named,
+      List<ast.RuntimeType>? typeArgs,
+    ) {
+      final arg = positional.isNotEmpty ? positional[0] : null;
+      if (arg is Future) {
+        arg.ignore();
+      }
+      return null;
+    }
+
+    for (final lib in [
+      'dart:async',
+      'package:dartnative/dartnative.dart',
+      'package:dartnative/flutter_compat.dart',
+      'package:dartnative/src/framework.dart',
+    ]) {
+      runner.registertopLevelFunction(
+        'unawaited',
+        captureUnawaited,
+        lib,
+        signature: 'void unawaited(Future<void> future)',
+      );
+    }
+
     _runner = runner;
     _coreRunnerGeneration++;
   }

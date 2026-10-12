@@ -12224,6 +12224,24 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
       Logger.debug(
         "[SSetOrMapLiteral] Determined type via explicit args: isMap = $isMap",
       );
+    } else if (node.isSet && !node.isMap) {
+      // DN-PATCH: honor the analyzer-resolved kind. An empty `{}` in a Set
+      // context (e.g. `final Set<String> s = {};`) arrives with isSet=true;
+      // inferring from (absent) content would misclassify it as a Map, and
+      // every Set member access (contains/add/remove/...) would then fail at
+      // runtime with "Bridged class 'Map' has no instance method".
+      isMap = false;
+      typeExplicit = true;
+      Logger.debug(
+        "[SSetOrMapLiteral] Determined type via node flags: isMap = false (isSet)",
+      );
+    } else if (node.isMap && !node.isSet) {
+      // DN-PATCH: same as above, mirrored for Map context.
+      isMap = true;
+      typeExplicit = true;
+      Logger.debug(
+        "[SSetOrMapLiteral] Determined type via node flags: isMap = true (isMap)",
+      );
     } else {
       // No explicit types, infer from content
       isMap = false; // Default to Set if unsure initially

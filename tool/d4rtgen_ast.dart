@@ -57,13 +57,18 @@ void _applyAstBridgePostFixes() {
   final dnBridgesFile = File('lib/src/interpreter/ast/dartnative_bridges.b.dart');
   if (dnBridgesFile.existsSync()) {
     var content = dnBridgesFile.readAsStringSync();
-    content = content.replaceAll(
-      ': const [];\n        return \$dartnative_42.showActionSheet',
-      ': const <int>[];\n        return \$dartnative_42.showActionSheet',
+    // Alias-agnostic (regex): import alias numbers shift whenever the
+    // framework gains files. DN-PATCH.
+    content = content.replaceAllMapped(
+      RegExp(r':\s*const\s*\[\];\s*return\s+(\$dartnative_\d+\.showActionSheet)'),
+      (m) => ': const <int>[];\n        return ${m[1]}',
     );
-    content = content.replaceAll(
-      'required \$dartnative_3.Curve curve, int durationMs = 0',
-      '\$dartnative_3.Curve curve = \$dartnative_3.Curves.linear, int durationMs = 0',
+    content = content.replaceAllMapped(
+      RegExp(r'required\s+(\$dartnative_\d+\.Curve)\s+curve,\s*int\s+durationMs\s*=\s*0'),
+      (m) {
+        final prefix = m[1]!.split('.')[0];
+        return '${m[1]} curve = $prefix.Curves.linear, int durationMs = 0';
+      },
     );
     dnBridgesFile.writeAsStringSync(content);
   }
@@ -116,6 +121,16 @@ void _patchNativeBottomsheetBridges(File file) {
   content = content.replaceAll(
     "return D4.extractBridgedArg<\$flutter_widgets.Widget>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]), 'builder', visitor);",
     "return \$bottomsheet_mgr.NativeBottomSheetScope(controller: p1, child: D4.extractBridgedArg<\$flutter_widgets.Widget>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]), 'builder', visitor));",
+  );
+  // Single-line emission (current generator): the whole builder closure is
+  // one line with a trailing `as ... Function(...)` cast, so the patterns
+  // above silently no-op. Same coercion + scope wrap. DN-PATCH.
+  content = content.replaceAllMapped(
+    RegExp(
+      r'final builder = \(\(dynamic p0, (\$\w+\.DNSheetController) p1\) \{ return D4\.extractBridgedArg<[^>]+>\(D4\.callInterpreterCallback\(visitor!, builderRaw, \[p0, p1\]\), .callback., visitor\) as [^;]+; \}\) as [^;]+;',
+    ),
+    (m) =>
+        'final dynamic builder = (dynamic p0, ${m[1]} p1) { return \$bottomsheet_mgr.NativeBottomSheetScope(controller: p1, child: D4.extractBridgedArg<\$flutter_widgets.Widget>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]), \'builder\', visitor)); };',
   );
   file.writeAsStringSync(content);
 }
