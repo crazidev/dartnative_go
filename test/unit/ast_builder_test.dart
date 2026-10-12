@@ -160,6 +160,53 @@ void main() {
       }
     });
 
+    test('incremental build discovers a new file imported by an edited file',
+        () async {
+      // Regression: creating lib/extra.dart and editing helper.dart to
+      // import it must land the new module in both the full bundle and the
+      // hot-reload patch. Previously the seed DFS skipped changed modules'
+      // new imports, so the device failed with
+      // `Package module ... not found in bundle` until a full restart.
+      final guest = _makeGuestProject(tmp, 'new_file_guest');
+      final outPath = '${tmp.path}/new_file_guest.ast';
+      final first = await buildGuestAstBundle(
+        guest,
+        outputArg: outPath,
+        force: true,
+      );
+      expect(first.success, isTrue, reason: first.error);
+
+      final extra = File('${guest.path}/lib/extra.dart')
+        ..writeAsStringSync('int tripleIt(int x) => x * 3;\n');
+      final helper = File('${guest.path}/lib/helper.dart');
+      helper.writeAsStringSync(
+        'import \'package:new_file_guest/extra.dart\';\n'
+        'int doubleIt(int x) => tripleIt(x) - x;\n',
+      );
+      final second = await buildGuestAstBundle(
+        guest,
+        outputArg: outPath,
+        changedFiles: {extra.path, helper.path},
+      );
+      expect(second.success, isTrue, reason: second.error);
+
+      const newUri = 'package:new_file_guest/extra.dart';
+      final bundle = cachedBundleForProject(guest);
+      expect(bundle, isNotNull);
+      expect(
+        bundle!.modules.keys,
+        contains(newUri),
+        reason: 'full bundle must include the new file',
+      );
+      final patch = patchBundleForProject(guest);
+      expect(patch, isNotNull);
+      expect(
+        patch!.modules.keys,
+        contains(newUri),
+        reason: 'hot-reload patch must ship the new file',
+      );
+    });
+
     test('unchanged sources hit the incremental cache', () async {
       final guest = _makeGuestProject(tmp, 'cache_hit_guest');
       final out = File('${tmp.path}/cache_hit.ast');
