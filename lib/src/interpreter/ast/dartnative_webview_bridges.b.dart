@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 5 files
-// Generated: 2026-09-21T20:33:00.226155 by tom_d4rt_generator 1.26.2
+// Generated: 2026-10-12T04:52:20.422130 by tom_d4rt_generator 1.26.2
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -295,17 +295,20 @@ BridgedClass _createNavigationRequestBridge() {
     constructors: {
       '': (visitor, positional, named) {
         final url = D4.getRequiredNamedArg<String>(named, 'url', 'NavigationRequest');
-        return $dartnative_webview_2.NavigationRequest(url: url);
+        final isMainFrame = D4.getNamedArgWithDefault<bool>(named, 'isMainFrame', true);
+        return $dartnative_webview_2.NavigationRequest(url: url, isMainFrame: isMainFrame);
       },
     },
     getters: {
       'url': (visitor, target) => D4.validateTarget<$dartnative_webview_2.NavigationRequest>(target, 'NavigationRequest').url,
+      'isMainFrame': (visitor, target) => D4.validateTarget<$dartnative_webview_2.NavigationRequest>(target, 'NavigationRequest').isMainFrame,
     },
     constructorSignatures: {
-      '': 'const NavigationRequest({required String url})',
+      '': 'const NavigationRequest({required String url, bool isMainFrame = true})',
     },
     getterSignatures: {
       'url': 'String get url',
+      'isMainFrame': 'bool get isMainFrame',
     },
   );
 }
@@ -630,6 +633,33 @@ BridgedClass _createWebViewFFIBindingsBridge() {
         t.registerPageChangedCallback(id, (int p0, String p1) { D4.callInterpreterCallback(visitor!, onPageChangedRaw, [p0, p1]); });
         return null;
       },
+      'registerNavigationCallback': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        D4.requireMinArgs(positional, 2, 'registerNavigationCallback');
+        final id = D4.getRequiredArg<int>(positional, 0, 'id', 'registerNavigationCallback');
+        if (positional.length <= 1) {
+          throw ArgumentError('registerNavigationCallback: Missing required argument "onRequest" at position 1');
+        }
+        final onRequestRaw = positional[1];
+        t.registerNavigationCallback(id, ((int p0, String p1, bool p2) { return D4.callInterpreterCallback(visitor!, onRequestRaw, [p0, p1, p2]) as int; }) as int Function(int, String, bool));
+        return null;
+      },
+      'unregisterNavigationCallback': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        D4.requireMinArgs(positional, 1, 'unregisterNavigationCallback');
+        final id = D4.getRequiredArg<int>(positional, 0, 'id', 'unregisterNavigationCallback');
+        t.unregisterNavigationCallback(id);
+        return null;
+      },
+      'decide': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        D4.requireMinArgs(positional, 3, 'decide');
+        final id = D4.getRequiredArg<int>(positional, 0, 'id', 'decide');
+        final requestId = D4.getRequiredArg<int>(positional, 1, 'requestId', 'decide');
+        final answer = D4.getRequiredArg<int>(positional, 2, 'answer', 'decide');
+        t.decide(id, requestId, answer);
+        return null;
+      },
       'disconnect': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
         D4.requireMinArgs(positional, 1, 'disconnect');
@@ -661,6 +691,9 @@ BridgedClass _createWebViewFFIBindingsBridge() {
       'setBackgroundTransparent': 'void setBackgroundTransparent(int id, int transparent)',
       'registerProgressCallback': 'void registerProgressCallback(int id, void Function(int progress) onProgress)',
       'registerPageChangedCallback': 'void registerPageChangedCallback(int id, void Function(int type, String url) onPageChanged)',
+      'registerNavigationCallback': 'void registerNavigationCallback(int id, int Function(int requestId, String url, bool isMainFrame) onRequest)',
+      'unregisterNavigationCallback': 'void unregisterNavigationCallback(int id)',
+      'decide': 'void decide(int id, int requestId, int answer)',
       'disconnect': 'void disconnect(int id)',
     },
     staticMethodSignatures: {

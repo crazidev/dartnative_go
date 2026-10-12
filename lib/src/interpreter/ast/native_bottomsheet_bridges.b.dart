@@ -1,14 +1,16 @@
 // D4rt Bridge - Generated file, do not edit
-// Sources: 5 files
-// Generated: 2026-09-21T20:33:11.706882 by tom_d4rt_generator 1.26.2
+// Sources: 6 files
+// Generated: 2026-10-12T04:52:43.412313 by tom_d4rt_generator 1.26.2
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
 import 'package:tom_d4rt_ast/d4rt.dart';
 import 'package:tom_d4rt_ast/runtime.dart';
+
+import 'package:dartnative/src/core.dart' as $dartnative_1;
+import 'package:dartnative/src/painting.dart' as $dartnative_2;
 import 'package:dartnative/dartnative.dart' as $flutter_widgets;
 import 'package:dartnative_go/src/runner/native_bottomsheet_manager.dart' as $bottomsheet_mgr;
-
 import 'package:native_bottomsheet/src/ffi_bindings.dart' as $native_bottomsheet_1;
 import 'package:native_bottomsheet/src/sheet_controller.dart' as $native_bottomsheet_2;
 import 'package:native_bottomsheet/src/sheet_detent.dart' as $native_bottomsheet_3;
@@ -30,6 +32,7 @@ class NativeBottomsheetBridge {
       _createDNSheetAndroidConfigBridge(),
       _createDNSheetPlatformConfigBridge(),
       _createBottomSheetFFIBindingsBridge(),
+      _createColorBridge(),
     ];
   }
 
@@ -45,6 +48,7 @@ class NativeBottomsheetBridge {
       'DNSheetAndroidConfig': _createDNSheetAndroidConfigBridge,
       'DNSheetPlatformConfig': _createDNSheetPlatformConfigBridge,
       'BottomSheetFFIBindings': _createBottomSheetFFIBindingsBridge,
+      'Color': _createColorBridge,
     };
   }
 
@@ -59,6 +63,7 @@ class NativeBottomsheetBridge {
       'DNSheetAndroidConfig': $native_bottomsheet_4.DNSheetAndroidConfig,
       'DNSheetPlatformConfig': $native_bottomsheet_4.DNSheetPlatformConfig,
       'BottomSheetFFIBindings': $native_bottomsheet_1.BottomSheetFFIBindings,
+      'Color': $dartnative_2.Color,
     };
   }
 
@@ -74,6 +79,7 @@ class NativeBottomsheetBridge {
       'DNSheetAndroidConfig': 'package:native_bottomsheet/src/sheet_platform_config.dart',
       'DNSheetPlatformConfig': 'package:native_bottomsheet/src/sheet_platform_config.dart',
       'BottomSheetFFIBindings': 'package:native_bottomsheet/src/ffi_bindings.dart',
+      'Color': 'package:dartnative/src/painting.dart',
     };
   }
 
@@ -217,6 +223,7 @@ class NativeBottomsheetBridge {
         final showGrabber = D4.getNamedArgWithDefault<bool>(named, 'showGrabber', true);
         final cornerRadius = D4.getOptionalNamedArg<double?>(named, 'cornerRadius');
         final scrimOpacity = D4.getOptionalNamedArg<double?>(named, 'scrimOpacity');
+        final backgroundColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(named, 'backgroundColor');
         final adaptToContainerBackground = D4.getNamedArgWithDefault<bool>(named, 'adaptToContainerBackground', true);
         final isDismissable = D4.getNamedArgWithDefault<bool>(named, 'isDismissable', true);
         final scrollExpandsSheet = D4.getNamedArgWithDefault<bool>(named, 'scrollExpandsSheet', true);
@@ -230,21 +237,12 @@ class NativeBottomsheetBridge {
         final onDismissAttemptedRaw = named['onDismissAttempted'];
         final onDismissAttempted = onDismissAttemptedRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onDismissAttemptedRaw, []); };
         final platformConfig = D4.getOptionalNamedArg<$native_bottomsheet_4.DNSheetPlatformConfig?>(named, 'platformConfig');
-        if (!named.containsKey('detents') && !named.containsKey('backgroundColor')) {
-          return $native_bottomsheet_5.showBottomSheet(context, builder: builder, initialDetent: initialDetent, showGrabber: showGrabber, cornerRadius: cornerRadius, scrimOpacity: scrimOpacity, adaptToContainerBackground: adaptToContainerBackground, isDismissable: isDismissable, scrollExpandsSheet: scrollExpandsSheet, routerEnabled: routerEnabled, onDetentChanged: onDetentChanged, onPresented: onPresented, onDismissed: onDismissed, onDismissAttempted: onDismissAttempted, platformConfig: platformConfig);
+        if (!named.containsKey('detents')) {
+          return $native_bottomsheet_5.showBottomSheet(context, builder: builder, initialDetent: initialDetent, showGrabber: showGrabber, cornerRadius: cornerRadius, scrimOpacity: scrimOpacity, backgroundColor: backgroundColor, adaptToContainerBackground: adaptToContainerBackground, isDismissable: isDismissable, scrollExpandsSheet: scrollExpandsSheet, routerEnabled: routerEnabled, onDetentChanged: onDetentChanged, onPresented: onPresented, onDismissed: onDismissed, onDismissAttempted: onDismissAttempted, platformConfig: platformConfig);
         }
-        if (named.containsKey('detents') && !named.containsKey('backgroundColor')) {
+        if (named.containsKey('detents')) {
           final detents = D4.coerceList<$native_bottomsheet_3.DNSheetDetent>(named['detents'], 'detents');
-          return $native_bottomsheet_5.showBottomSheet(context, builder: builder, initialDetent: initialDetent, showGrabber: showGrabber, cornerRadius: cornerRadius, scrimOpacity: scrimOpacity, adaptToContainerBackground: adaptToContainerBackground, isDismissable: isDismissable, scrollExpandsSheet: scrollExpandsSheet, routerEnabled: routerEnabled, onDetentChanged: onDetentChanged, onPresented: onPresented, onDismissed: onDismissed, onDismissAttempted: onDismissAttempted, platformConfig: platformConfig, detents: detents);
-        }
-        if (!named.containsKey('detents') && named.containsKey('backgroundColor')) {
-          final backgroundColor = D4.getRequiredNamedArg<dynamic>(named, 'backgroundColor', 'showBottomSheet');
-          return $native_bottomsheet_5.showBottomSheet(context, builder: builder, initialDetent: initialDetent, showGrabber: showGrabber, cornerRadius: cornerRadius, scrimOpacity: scrimOpacity, adaptToContainerBackground: adaptToContainerBackground, isDismissable: isDismissable, scrollExpandsSheet: scrollExpandsSheet, routerEnabled: routerEnabled, onDetentChanged: onDetentChanged, onPresented: onPresented, onDismissed: onDismissed, onDismissAttempted: onDismissAttempted, platformConfig: platformConfig, backgroundColor: backgroundColor);
-        }
-        if (named.containsKey('detents') && named.containsKey('backgroundColor')) {
-          final detents = D4.coerceList<$native_bottomsheet_3.DNSheetDetent>(named['detents'], 'detents');
-          final backgroundColor = D4.getRequiredNamedArg<dynamic>(named, 'backgroundColor', 'showBottomSheet');
-          return $native_bottomsheet_5.showBottomSheet(context, builder: builder, initialDetent: initialDetent, showGrabber: showGrabber, cornerRadius: cornerRadius, scrimOpacity: scrimOpacity, adaptToContainerBackground: adaptToContainerBackground, isDismissable: isDismissable, scrollExpandsSheet: scrollExpandsSheet, routerEnabled: routerEnabled, onDetentChanged: onDetentChanged, onPresented: onPresented, onDismissed: onDismissed, onDismissAttempted: onDismissAttempted, platformConfig: platformConfig, detents: detents, backgroundColor: backgroundColor);
+          return $native_bottomsheet_5.showBottomSheet(context, builder: builder, initialDetent: initialDetent, showGrabber: showGrabber, cornerRadius: cornerRadius, scrimOpacity: scrimOpacity, backgroundColor: backgroundColor, adaptToContainerBackground: adaptToContainerBackground, isDismissable: isDismissable, scrollExpandsSheet: scrollExpandsSheet, routerEnabled: routerEnabled, onDetentChanged: onDetentChanged, onPresented: onPresented, onDismissed: onDismissed, onDismissAttempted: onDismissAttempted, platformConfig: platformConfig, detents: detents);
         }
         throw StateError('Unreachable: all named parameter combinations should be covered');
       },
@@ -264,7 +262,7 @@ class NativeBottomsheetBridge {
   /// Returns a map of global function names to their display signatures.
   static Map<String, String> globalFunctionSignatures() {
     return {
-      'showBottomSheet': 'DNSheetController showBottomSheet(dynamic context, {required InvalidType Function(dynamic context, DNSheetController controller) builder, List<DNSheetDetent> detents = const [DNSheetDetent.large], DNSheetDetent? initialDetent, bool showGrabber = true, double? cornerRadius, double? scrimOpacity, InvalidType backgroundColor, bool adaptToContainerBackground = true, bool isDismissable = true, bool scrollExpandsSheet = true, bool routerEnabled = false, void Function(DNSheetDetent detent)? onDetentChanged, void Function()? onPresented, void Function()? onDismissed, void Function()? onDismissAttempted, DNSheetPlatformConfig? platformConfig})',
+      'showBottomSheet': 'DNSheetController showBottomSheet(dynamic context, {required Widget Function(dynamic context, DNSheetController controller) builder, List<DNSheetDetent> detents = const [DNSheetDetent.large], DNSheetDetent? initialDetent, bool showGrabber = true, double? cornerRadius, double? scrimOpacity, Color? backgroundColor, bool adaptToContainerBackground = true, bool isDismissable = true, bool scrollExpandsSheet = true, bool routerEnabled = false, void Function(DNSheetDetent detent)? onDetentChanged, void Function()? onPresented, void Function()? onDismissed, void Function()? onDismissAttempted, DNSheetPlatformConfig? platformConfig})',
     };
   }
 
@@ -275,6 +273,7 @@ class NativeBottomsheetBridge {
   /// multiple barrels.
   static List<String> sourceLibraries() {
     return [
+      'package:dartnative/src/painting.dart',
       'package:native_bottomsheet/src/ffi_bindings.dart',
       'package:native_bottomsheet/src/sheet_controller.dart',
       'package:native_bottomsheet/src/sheet_detent.dart',
@@ -288,7 +287,10 @@ class NativeBottomsheetBridge {
   /// Use this in your D4rt initialization script to make all
   /// bridged classes available to scripts.
   static String getImportBlock() {
-    return "import 'package:native_bottomsheet/native_bottomsheet.dart';";
+    final imports = StringBuffer();
+    imports.writeln("import 'package:native_bottomsheet/native_bottomsheet.dart';");
+    imports.writeln("import 'package:dartnative/dartnative.dart';");
+    return imports.toString();
   }
 
   /// Returns barrel import URIs for sub-packages discovered through re-exports.
@@ -298,7 +300,9 @@ class NativeBottomsheetBridge {
   /// These barrels need to be registered with the interpreter separately
   /// so that module resolution finds content for those URIs.
   static List<String> subPackageBarrels() {
-    return [];
+    return [
+      'package:dartnative/dartnative.dart',
+    ];
   }
 
   /// Returns a list of bridged enum names.
@@ -382,6 +386,7 @@ BridgedClass _createDNSheetControllerBridge() {
       },
     },
     getters: {
+      'sheetId': (visitor, target) => D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController').sheetId,
       'currentDetent': (visitor, target) => D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController').currentDetent,
       'detents': (visitor, target) => D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController').detents,
       'isVisible': (visitor, target) => D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController').isVisible,
@@ -551,6 +556,7 @@ BridgedClass _createDNSheetControllerBridge() {
       'markDismissed': 'void markDismissed()',
     },
     getterSignatures: {
+      'sheetId': 'int get sheetId',
       'currentDetent': 'DNSheetDetent? get currentDetent',
       'detents': 'List<DNSheetDetent> get detents',
       'isVisible': 'bool get isVisible',
@@ -621,7 +627,10 @@ BridgedClass _createDNSheetAndroidConfigBridge() {
     constructors: {
       '': (visitor, positional, named) {
         final tonalElevation = D4.getOptionalNamedArg<double?>(named, 'tonalElevation');
+        final containerColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(named, 'containerColor');
+        final scrimColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(named, 'scrimColor');
         final scrimOpacity = D4.getOptionalNamedArg<double?>(named, 'scrimOpacity');
+        final contentColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(named, 'contentColor');
         final sheetGesturesEnabled = D4.getOptionalNamedArg<bool?>(named, 'sheetGesturesEnabled');
         final sheetMaxWidthDp = D4.getOptionalNamedArg<double?>(named, 'sheetMaxWidthDp');
         final shouldDismissOnBackPress = D4.getOptionalNamedArg<bool?>(named, 'shouldDismissOnBackPress');
@@ -630,43 +639,7 @@ BridgedClass _createDNSheetAndroidConfigBridge() {
         final isAppearanceLightStatusBars = D4.getOptionalNamedArg<bool?>(named, 'isAppearanceLightStatusBars');
         final isAppearanceLightNavigationBars = D4.getOptionalNamedArg<bool?>(named, 'isAppearanceLightNavigationBars');
         final floatingGrabber = D4.getNamedArgWithDefault<bool>(named, 'floatingGrabber', true);
-        if (!named.containsKey('containerColor') && !named.containsKey('scrimColor') && !named.containsKey('contentColor')) {
-          return $native_bottomsheet_4.DNSheetAndroidConfig(tonalElevation: tonalElevation, scrimOpacity: scrimOpacity, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber);
-        }
-        if (named.containsKey('containerColor') && !named.containsKey('scrimColor') && !named.containsKey('contentColor')) {
-          final containerColor = D4.getRequiredNamedArg<dynamic>(named, 'containerColor', 'DNSheetAndroidConfig');
-          return $native_bottomsheet_4.DNSheetAndroidConfig(tonalElevation: tonalElevation, scrimOpacity: scrimOpacity, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber, containerColor: containerColor);
-        }
-        if (!named.containsKey('containerColor') && named.containsKey('scrimColor') && !named.containsKey('contentColor')) {
-          final scrimColor = D4.getRequiredNamedArg<dynamic>(named, 'scrimColor', 'DNSheetAndroidConfig');
-          return $native_bottomsheet_4.DNSheetAndroidConfig(tonalElevation: tonalElevation, scrimOpacity: scrimOpacity, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber, scrimColor: scrimColor);
-        }
-        if (named.containsKey('containerColor') && named.containsKey('scrimColor') && !named.containsKey('contentColor')) {
-          final containerColor = D4.getRequiredNamedArg<dynamic>(named, 'containerColor', 'DNSheetAndroidConfig');
-          final scrimColor = D4.getRequiredNamedArg<dynamic>(named, 'scrimColor', 'DNSheetAndroidConfig');
-          return $native_bottomsheet_4.DNSheetAndroidConfig(tonalElevation: tonalElevation, scrimOpacity: scrimOpacity, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber, containerColor: containerColor, scrimColor: scrimColor);
-        }
-        if (!named.containsKey('containerColor') && !named.containsKey('scrimColor') && named.containsKey('contentColor')) {
-          final contentColor = D4.getRequiredNamedArg<dynamic>(named, 'contentColor', 'DNSheetAndroidConfig');
-          return $native_bottomsheet_4.DNSheetAndroidConfig(tonalElevation: tonalElevation, scrimOpacity: scrimOpacity, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber, contentColor: contentColor);
-        }
-        if (named.containsKey('containerColor') && !named.containsKey('scrimColor') && named.containsKey('contentColor')) {
-          final containerColor = D4.getRequiredNamedArg<dynamic>(named, 'containerColor', 'DNSheetAndroidConfig');
-          final contentColor = D4.getRequiredNamedArg<dynamic>(named, 'contentColor', 'DNSheetAndroidConfig');
-          return $native_bottomsheet_4.DNSheetAndroidConfig(tonalElevation: tonalElevation, scrimOpacity: scrimOpacity, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber, containerColor: containerColor, contentColor: contentColor);
-        }
-        if (!named.containsKey('containerColor') && named.containsKey('scrimColor') && named.containsKey('contentColor')) {
-          final scrimColor = D4.getRequiredNamedArg<dynamic>(named, 'scrimColor', 'DNSheetAndroidConfig');
-          final contentColor = D4.getRequiredNamedArg<dynamic>(named, 'contentColor', 'DNSheetAndroidConfig');
-          return $native_bottomsheet_4.DNSheetAndroidConfig(tonalElevation: tonalElevation, scrimOpacity: scrimOpacity, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber, scrimColor: scrimColor, contentColor: contentColor);
-        }
-        if (named.containsKey('containerColor') && named.containsKey('scrimColor') && named.containsKey('contentColor')) {
-          final containerColor = D4.getRequiredNamedArg<dynamic>(named, 'containerColor', 'DNSheetAndroidConfig');
-          final scrimColor = D4.getRequiredNamedArg<dynamic>(named, 'scrimColor', 'DNSheetAndroidConfig');
-          final contentColor = D4.getRequiredNamedArg<dynamic>(named, 'contentColor', 'DNSheetAndroidConfig');
-          return $native_bottomsheet_4.DNSheetAndroidConfig(tonalElevation: tonalElevation, scrimOpacity: scrimOpacity, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber, containerColor: containerColor, scrimColor: scrimColor, contentColor: contentColor);
-        }
-        throw StateError('Unreachable: all named parameter combinations should be covered');
+        return $native_bottomsheet_4.DNSheetAndroidConfig(tonalElevation: tonalElevation, containerColor: containerColor, scrimColor: scrimColor, scrimOpacity: scrimOpacity, contentColor: contentColor, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber);
       },
     },
     getters: {
@@ -691,17 +664,17 @@ BridgedClass _createDNSheetAndroidConfigBridge() {
       },
     },
     constructorSignatures: {
-      '': 'const DNSheetAndroidConfig({double? tonalElevation, InvalidType containerColor, InvalidType scrimColor, double? scrimOpacity, InvalidType contentColor, bool? sheetGesturesEnabled, double? sheetMaxWidthDp, bool? shouldDismissOnBackPress, bool? shouldDismissOnClickOutside, DNSecureFlagPolicy? securePolicy, bool? isAppearanceLightStatusBars, bool? isAppearanceLightNavigationBars, bool floatingGrabber = true})',
+      '': 'const DNSheetAndroidConfig({double? tonalElevation, Color? containerColor, Color? scrimColor, double? scrimOpacity, Color? contentColor, bool? sheetGesturesEnabled, double? sheetMaxWidthDp, bool? shouldDismissOnBackPress, bool? shouldDismissOnClickOutside, DNSecureFlagPolicy? securePolicy, bool? isAppearanceLightStatusBars, bool? isAppearanceLightNavigationBars, bool floatingGrabber = true})',
     },
     methodSignatures: {
       'toJson': 'Map<String, dynamic> toJson()',
     },
     getterSignatures: {
       'tonalElevation': 'double? get tonalElevation',
-      'containerColor': 'InvalidType get containerColor',
-      'scrimColor': 'InvalidType get scrimColor',
+      'containerColor': 'Color? get containerColor',
+      'scrimColor': 'Color? get scrimColor',
       'scrimOpacity': 'double? get scrimOpacity',
-      'contentColor': 'InvalidType get contentColor',
+      'contentColor': 'Color? get contentColor',
       'sheetGesturesEnabled': 'bool? get sheetGesturesEnabled',
       'sheetMaxWidthDp': 'double? get sheetMaxWidthDp',
       'shouldDismissOnBackPress': 'bool? get shouldDismissOnBackPress',
@@ -738,7 +711,10 @@ BridgedClass _createDNSheetPlatformConfigBridge() {
       },
       'android': (visitor, positional, named) {
         final tonalElevation = D4.getOptionalNamedArg<double?>(named, 'tonalElevation');
+        final containerColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(named, 'containerColor');
+        final scrimColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(named, 'scrimColor');
         final scrimOpacity = D4.getOptionalNamedArg<double?>(named, 'scrimOpacity');
+        final contentColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(named, 'contentColor');
         final sheetGesturesEnabled = D4.getOptionalNamedArg<bool?>(named, 'sheetGesturesEnabled');
         final sheetMaxWidthDp = D4.getOptionalNamedArg<double?>(named, 'sheetMaxWidthDp');
         final shouldDismissOnBackPress = D4.getOptionalNamedArg<bool?>(named, 'shouldDismissOnBackPress');
@@ -747,43 +723,7 @@ BridgedClass _createDNSheetPlatformConfigBridge() {
         final isAppearanceLightStatusBars = D4.getOptionalNamedArg<bool?>(named, 'isAppearanceLightStatusBars');
         final isAppearanceLightNavigationBars = D4.getOptionalNamedArg<bool?>(named, 'isAppearanceLightNavigationBars');
         final floatingGrabber = D4.getNamedArgWithDefault<bool>(named, 'floatingGrabber', true);
-        if (!named.containsKey('containerColor') && !named.containsKey('scrimColor') && !named.containsKey('contentColor')) {
-          return $native_bottomsheet_4.DNSheetPlatformConfig.android(tonalElevation: tonalElevation, scrimOpacity: scrimOpacity, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber);
-        }
-        if (named.containsKey('containerColor') && !named.containsKey('scrimColor') && !named.containsKey('contentColor')) {
-          final containerColor = D4.getRequiredNamedArg<dynamic>(named, 'containerColor', 'DNSheetPlatformConfig');
-          return $native_bottomsheet_4.DNSheetPlatformConfig.android(tonalElevation: tonalElevation, scrimOpacity: scrimOpacity, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber, containerColor: containerColor);
-        }
-        if (!named.containsKey('containerColor') && named.containsKey('scrimColor') && !named.containsKey('contentColor')) {
-          final scrimColor = D4.getRequiredNamedArg<dynamic>(named, 'scrimColor', 'DNSheetPlatformConfig');
-          return $native_bottomsheet_4.DNSheetPlatformConfig.android(tonalElevation: tonalElevation, scrimOpacity: scrimOpacity, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber, scrimColor: scrimColor);
-        }
-        if (named.containsKey('containerColor') && named.containsKey('scrimColor') && !named.containsKey('contentColor')) {
-          final containerColor = D4.getRequiredNamedArg<dynamic>(named, 'containerColor', 'DNSheetPlatformConfig');
-          final scrimColor = D4.getRequiredNamedArg<dynamic>(named, 'scrimColor', 'DNSheetPlatformConfig');
-          return $native_bottomsheet_4.DNSheetPlatformConfig.android(tonalElevation: tonalElevation, scrimOpacity: scrimOpacity, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber, containerColor: containerColor, scrimColor: scrimColor);
-        }
-        if (!named.containsKey('containerColor') && !named.containsKey('scrimColor') && named.containsKey('contentColor')) {
-          final contentColor = D4.getRequiredNamedArg<dynamic>(named, 'contentColor', 'DNSheetPlatformConfig');
-          return $native_bottomsheet_4.DNSheetPlatformConfig.android(tonalElevation: tonalElevation, scrimOpacity: scrimOpacity, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber, contentColor: contentColor);
-        }
-        if (named.containsKey('containerColor') && !named.containsKey('scrimColor') && named.containsKey('contentColor')) {
-          final containerColor = D4.getRequiredNamedArg<dynamic>(named, 'containerColor', 'DNSheetPlatformConfig');
-          final contentColor = D4.getRequiredNamedArg<dynamic>(named, 'contentColor', 'DNSheetPlatformConfig');
-          return $native_bottomsheet_4.DNSheetPlatformConfig.android(tonalElevation: tonalElevation, scrimOpacity: scrimOpacity, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber, containerColor: containerColor, contentColor: contentColor);
-        }
-        if (!named.containsKey('containerColor') && named.containsKey('scrimColor') && named.containsKey('contentColor')) {
-          final scrimColor = D4.getRequiredNamedArg<dynamic>(named, 'scrimColor', 'DNSheetPlatformConfig');
-          final contentColor = D4.getRequiredNamedArg<dynamic>(named, 'contentColor', 'DNSheetPlatformConfig');
-          return $native_bottomsheet_4.DNSheetPlatformConfig.android(tonalElevation: tonalElevation, scrimOpacity: scrimOpacity, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber, scrimColor: scrimColor, contentColor: contentColor);
-        }
-        if (named.containsKey('containerColor') && named.containsKey('scrimColor') && named.containsKey('contentColor')) {
-          final containerColor = D4.getRequiredNamedArg<dynamic>(named, 'containerColor', 'DNSheetPlatformConfig');
-          final scrimColor = D4.getRequiredNamedArg<dynamic>(named, 'scrimColor', 'DNSheetPlatformConfig');
-          final contentColor = D4.getRequiredNamedArg<dynamic>(named, 'contentColor', 'DNSheetPlatformConfig');
-          return $native_bottomsheet_4.DNSheetPlatformConfig.android(tonalElevation: tonalElevation, scrimOpacity: scrimOpacity, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber, containerColor: containerColor, scrimColor: scrimColor, contentColor: contentColor);
-        }
-        throw StateError('Unreachable: all named parameter combinations should be covered');
+        return $native_bottomsheet_4.DNSheetPlatformConfig.android(tonalElevation: tonalElevation, containerColor: containerColor, scrimColor: scrimColor, scrimOpacity: scrimOpacity, contentColor: contentColor, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber);
       },
     },
     getters: {
@@ -793,7 +733,7 @@ BridgedClass _createDNSheetPlatformConfigBridge() {
     constructorSignatures: {
       '': 'const DNSheetPlatformConfig({DNSheetIOSConfig? ios, DNSheetAndroidConfig? android})',
       'ios': 'factory DNSheetPlatformConfig.ios({DNSheetDetent? largestUndimmedDetent, bool edgeAttachedInCompactHeight = false, bool widthFollowsContentSizeWhenEdgeAttached = false, bool prefersPageSizing = true})',
-      'android': 'factory DNSheetPlatformConfig.android({double? tonalElevation, InvalidType containerColor, InvalidType scrimColor, double? scrimOpacity, InvalidType contentColor, bool? sheetGesturesEnabled, double? sheetMaxWidthDp, bool? shouldDismissOnBackPress, bool? shouldDismissOnClickOutside, DNSecureFlagPolicy? securePolicy, bool? isAppearanceLightStatusBars, bool? isAppearanceLightNavigationBars, bool floatingGrabber = true})',
+      'android': 'factory DNSheetPlatformConfig.android({double? tonalElevation, Color? containerColor, Color? scrimColor, double? scrimOpacity, Color? contentColor, bool? sheetGesturesEnabled, double? sheetMaxWidthDp, bool? shouldDismissOnBackPress, bool? shouldDismissOnClickOutside, DNSecureFlagPolicy? securePolicy, bool? isAppearanceLightStatusBars, bool? isAppearanceLightNavigationBars, bool floatingGrabber = true})',
     },
     getterSignatures: {
       'ios': 'DNSheetIOSConfig? get ios',
@@ -928,6 +868,120 @@ BridgedClass _createBottomSheetFFIBindingsBridge() {
       'eventDismissed': 'int get eventDismissed',
       'eventDismissAttempted': 'int get eventDismissAttempted',
       'eventPresented': 'int get eventPresented',
+    },
+  );
+}
+
+// =============================================================================
+// Color Bridge
+// =============================================================================
+
+BridgedClass _createColorBridge() {
+  return BridgedClass(
+    nativeType: $dartnative_2.Color,
+    name: 'Color',
+    isAssignable: (v) => v is $dartnative_2.Color,
+    constructors: {
+      '': (visitor, positional, named) {
+        D4.requireMinArgs(positional, 1, 'Color');
+        final value = D4.getRequiredArg<int>(positional, 0, 'value', 'Color');
+        return $dartnative_2.Color(value);
+      },
+      'fromRGBO': (visitor, positional, named) {
+        D4.requireMinArgs(positional, 4, 'Color');
+        final r = D4.getRequiredArg<int>(positional, 0, 'r', 'Color');
+        final g = D4.getRequiredArg<int>(positional, 1, 'g', 'Color');
+        final b = D4.getRequiredArg<int>(positional, 2, 'b', 'Color');
+        final opacity = D4.getRequiredArg<double>(positional, 3, 'opacity', 'Color');
+        return $dartnative_2.Color.fromRGBO(r, g, b, opacity);
+      },
+      'fromARGB': (visitor, positional, named) {
+        D4.requireMinArgs(positional, 4, 'Color');
+        final a = D4.getRequiredArg<int>(positional, 0, 'a', 'Color');
+        final r = D4.getRequiredArg<int>(positional, 1, 'r', 'Color');
+        final g = D4.getRequiredArg<int>(positional, 2, 'g', 'Color');
+        final b = D4.getRequiredArg<int>(positional, 3, 'b', 'Color');
+        return $dartnative_2.Color.fromARGB(a, r, g, b);
+      },
+    },
+    getters: {
+      'value': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').value,
+      'alpha': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').alpha,
+      'red': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').red,
+      'green': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').green,
+      'blue': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').blue,
+      'a': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').a,
+      'r': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').r,
+      'g': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').g,
+      'b': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').b,
+      'opacity': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').opacity,
+      'hashCode': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').hashCode,
+    },
+    methods: {
+      'withOpacity': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_2.Color>(target, 'Color');
+        D4.requireMinArgs(positional, 1, 'withOpacity');
+        final opacity = D4.getRequiredArg<double>(positional, 0, 'opacity', 'withOpacity');
+        return t.withOpacity(opacity);
+      },
+      'withValues': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_2.Color>(target, 'Color');
+        final alpha = D4.getOptionalNamedArg<double?>(named, 'alpha');
+        return t.withValues(alpha: alpha);
+      },
+      'withAlpha': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_2.Color>(target, 'Color');
+        D4.requireMinArgs(positional, 1, 'withAlpha');
+        final a = D4.getRequiredArg<int>(positional, 0, 'a', 'withAlpha');
+        return t.withAlpha(a);
+      },
+      'toString': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_2.Color>(target, 'Color');
+        return t.toString();
+      },
+      '==': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$dartnative_2.Color>(target, 'Color');
+        // GEN-103: Dart spec — non-null == null is always false.
+        if (positional.isEmpty || positional[0] == null) return false;
+        final other = D4.getRequiredArg<Object>(positional, 0, 'other', 'operator==');
+        return t == other;
+      },
+    },
+    staticMethods: {
+      'lerp': (visitor, positional, named, typeArgs) {
+        D4.requireMinArgs(positional, 3, 'lerp');
+        final a = D4.getRequiredArg<$dartnative_2.Color?>(positional, 0, 'a', 'lerp');
+        final b = D4.getRequiredArg<$dartnative_2.Color?>(positional, 1, 'b', 'lerp');
+        final t_ = D4.getRequiredArg<double>(positional, 2, 't', 'lerp');
+        return $dartnative_2.Color.lerp(a, b, t_);
+      },
+    },
+    constructorSignatures: {
+      '': 'const Color(int value)',
+      'fromRGBO': 'const Color.fromRGBO(int r, int g, int b, double opacity)',
+      'fromARGB': 'const Color.fromARGB(int a, int r, int g, int b)',
+    },
+    methodSignatures: {
+      'withOpacity': 'Color withOpacity(double opacity)',
+      'withValues': 'Color withValues({double? alpha})',
+      'withAlpha': 'Color withAlpha(int a)',
+      'toString': 'String toString()',
+    },
+    getterSignatures: {
+      'value': 'int get value',
+      'alpha': 'int get alpha',
+      'red': 'int get red',
+      'green': 'int get green',
+      'blue': 'int get blue',
+      'a': 'int get a',
+      'r': 'int get r',
+      'g': 'int get g',
+      'b': 'int get b',
+      'opacity': 'double get opacity',
+      'hashCode': 'int get hashCode',
+    },
+    staticMethodSignatures: {
+      'lerp': 'Color? lerp(Color? a, Color? b, double t)',
     },
   );
 }
