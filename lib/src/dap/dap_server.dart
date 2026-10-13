@@ -246,7 +246,7 @@ class DartNativeDapServer {
         ? args['port'] as int
         : int.tryParse(args['port']?.toString() ?? '') ?? 8088;
 
-    _sendOutput('🚀 [DartNative] Connecting to Dev Server at ws://$_serverHost:$_serverPort/ws...');
+    _sendOutput('[CONNECT] [DartNative] Connecting to Dev Server at ws://$_serverHost:$_serverPort/ws...');
 
     try {
       final wsUrl = Uri.parse('ws://$_serverHost:$_serverPort/ws');
@@ -254,17 +254,17 @@ class DartNativeDapServer {
         const Duration(seconds: 5),
       );
       _isAttached = true;
-      _sendOutput('✅ [DartNative] Attached to dev server (port $_serverPort).');
+      _sendOutput('[OK] [DartNative] Attached to dev server (port $_serverPort).');
 
       _devServerSocket!.listen(
         _handleDevServerMessage,
         onDone: () {
           _isAttached = false;
-          _sendOutput('⚠️ [DartNative] Dev server connection closed.');
+          _sendOutput('! [DartNative] Dev server connection closed.');
           _sendEvent('terminated');
         },
         onError: (err) {
-          _sendOutput('❌ [DartNative] Dev server error: $err', 'stderr');
+          _sendOutput('[ERROR] [DartNative] Dev server error: $err', 'stderr');
         },
       );
 
@@ -273,7 +273,7 @@ class DartNativeDapServer {
 
       _sendResponse(DapResponse.success(seq: _seq++, request: request));
     } catch (e) {
-      _sendOutput('⚠️ [DartNative] Warning: Could not connect to dev server ($e). Debug session active offline.', 'console');
+      _sendOutput('! [DartNative] Warning: Could not connect to dev server ($e). Debug session active offline.', 'console');
       _sendResponse(DapResponse.success(seq: _seq++, request: request));
     }
   }
@@ -289,7 +289,7 @@ class DartNativeDapServer {
 
         final file = data['file'] ?? '<guest>';
         final line = data['line'] ?? 1;
-        _sendOutput('🛑 [DartNative] Hit breakpoint at $file:$line');
+        _sendOutput('[STOP] [DartNative] Hit breakpoint at $file:$line');
 
         _sendEvent('stopped', {
           'reason': 'breakpoint',
@@ -521,7 +521,7 @@ class DartNativeDapServer {
 
   Future<void> _handleHotReload(DapRequest request) async {
     final sw = Stopwatch()..start();
-    _sendOutput('⚡️ [DartNative] Triggering Hot Reload...');
+    _sendOutput('[RELOAD] [DartNative] Triggering Hot Reload...');
 
     try {
       final client = HttpClient();
@@ -532,15 +532,15 @@ class DartNativeDapServer {
 
       final elapsed = sw.elapsedMilliseconds;
       if (res.statusCode == 200) {
-        _sendOutput('⚡️ [DartNative] Hot Reload completed in ${elapsed}ms.');
+        _sendOutput('[RELOAD] [DartNative] Hot Reload completed in ${elapsed}ms.');
       } else {
         // Fallback to WebSocket reload broadcast
         _devServerSocket?.add(jsonEncode({'type': 'reload', 'origin': 'test'}));
-        _sendOutput('⚡️ [DartNative] Hot Reload broadcast sent (${elapsed}ms).');
+        _sendOutput('[RELOAD] [DartNative] Hot Reload broadcast sent (${elapsed}ms).');
       }
     } catch (_) {
       _devServerSocket?.add(jsonEncode({'type': 'reload', 'origin': 'test'}));
-      _sendOutput('⚡️ [DartNative] Hot Reload broadcast sent.');
+      _sendOutput('[RELOAD] [DartNative] Hot Reload broadcast sent.');
     }
 
     _sendResponse(DapResponse.success(seq: _seq++, request: request));
@@ -548,7 +548,7 @@ class DartNativeDapServer {
 
   Future<void> _handleHotRestart(DapRequest request) async {
     final sw = Stopwatch()..start();
-    _sendOutput('🔄 [DartNative] Triggering Hot Restart...');
+    _sendOutput('[RESTART] [DartNative] Triggering Hot Restart...');
 
     try {
       final client = HttpClient();
@@ -559,14 +559,14 @@ class DartNativeDapServer {
 
       final elapsed = sw.elapsedMilliseconds;
       if (res.statusCode == 200) {
-        _sendOutput('🔄 [DartNative] Hot Restart completed in ${elapsed}ms.');
+        _sendOutput('[RESTART] [DartNative] Hot Restart completed in ${elapsed}ms.');
       } else {
         _devServerSocket?.add(jsonEncode({'type': 'restart', 'origin': 'test'}));
-        _sendOutput('🔄 [DartNative] Hot Restart broadcast sent (${elapsed}ms).');
+        _sendOutput('[RESTART] [DartNative] Hot Restart broadcast sent (${elapsed}ms).');
       }
     } catch (_) {
       _devServerSocket?.add(jsonEncode({'type': 'restart', 'origin': 'test'}));
-      _sendOutput('🔄 [DartNative] Hot Restart broadcast sent.');
+      _sendOutput('[RESTART] [DartNative] Hot Restart broadcast sent.');
     }
 
     _sendResponse(DapResponse.success(seq: _seq++, request: request));

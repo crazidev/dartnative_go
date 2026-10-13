@@ -718,9 +718,9 @@ class _DartNativeGoState extends State<DartNativeGo> {
           onGoHome: _unmountApp,
           onRetry: () => _restartApp(),
           onLogToTerminal: (error) {
-            print('🔴 [Interpreter Error] $error');
+            print('[ERROR] [Interpreter Error] $error');
             _liveConnection?.sendDeviceLog(
-              '🔴 [Interpreter Error] $error',
+              '[ERROR] [Interpreter Error] $error',
               level: 'ERROR',
             );
           },

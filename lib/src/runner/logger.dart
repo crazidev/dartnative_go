@@ -39,7 +39,7 @@ class DartGoLogger {
     final breakdownStr = breakdown != null && breakdown.isNotEmpty
         ? ' (${breakdown.entries.map((e) => '${e.key}=${e.value}${e.value is int ? 'ms' : ''}').join(', ')})'
         : '';
-    _output('[$tag] ⏱️ $operation ready in ${totalMs}ms$breakdownStr', level: 'BENCH');
+    _output('[$tag] [TIME] $operation ready in ${totalMs}ms$breakdownStr', level: 'BENCH');
   }
 
   /// Logs hot reload duration and step breakdowns.
@@ -52,14 +52,14 @@ class DartGoLogger {
   }) {
     final details = timings.entries.map((e) => '${e.key}=${e.value}ms').join(', ');
     final msg = verbose
-        ? '🚀 [Hot Reload] $mode finished in ${totalMs}ms ($details)'
-        : '🚀 [Hot Reload] $mode finished in ${totalMs}ms';
+        ? '[RELOAD] $mode finished in ${totalMs}ms ($details)'
+        : '[RELOAD] $mode finished in ${totalMs}ms';
     _output(msg, level: 'INFO');
   }
 
   /// Logs warnings (always output).
   static void warn(String message, {String? tag}) {
-    final prefix = tag != null ? '[$tag] ⚠️ ' : '⚠️ ';
+    final prefix = tag != null ? '[$tag] ! ' : '! ';
     _output('$prefix$message', level: 'WARN');
   }
 
@@ -71,7 +71,7 @@ class DartGoLogger {
   /// Verbose mode sends the whole trace.
   static void error(String message, [dynamic err, StackTrace? stack]) {
     final msg = err != null ? '$message: $err' : message;
-    _output('🔴 $msg', level: 'ERROR');
+    _output('[ERROR] $msg', level: 'ERROR');
     if (stack == null) return;
     final lines = '$stack'.split('\n');
     _output(

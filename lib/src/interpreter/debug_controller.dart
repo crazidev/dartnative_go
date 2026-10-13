@@ -170,7 +170,7 @@ class DebugController {
   /// Clears all active breakpoints.
   void clearBreakpoints() {
     _breakpoints.clear();
-    _log('🧹 [Debugger] All breakpoints cleared.');
+    _log('[CLEAN] [Debugger] All breakpoints cleared.');
   }
 
   /// Resets all controller state, breakpoints, listeners, and resume completers.
@@ -229,7 +229,7 @@ class DebugController {
       variables: vars,
     );
 
-    _log('🛑 [DEBUGGER] Execution paused: ${event.message}');
+    _log('[STOP] [DEBUGGER] Execution paused: ${event.message}');
     if (vars.isNotEmpty) {
       _log(
         '   Variables: ${vars.entries.map((e) => '${e.key}=${e.value}').join(', ')}',
@@ -270,8 +270,8 @@ class DebugController {
     _log(
       '\n╔═══════════════════════════════════════════════════════════════════════════════╗',
     );
-    _log('║ 🛑 [BREAKPOINT HIT] $cleanFile:$line (hit #${bp?.hitCount ?? 1})');
-    _log('║ 👉 guest_app/$cleanFile:$line');
+    _log('║ [STOP] [BREAKPOINT HIT] $cleanFile:$line (hit #${bp?.hitCount ?? 1})');
+    _log('║ -> guest_app/$cleanFile:$line');
     if (vars.isNotEmpty) {
       _log(
         '║ Scope: ${vars.entries.map((e) => '${e.key}=${e.value}').join(', ')}',

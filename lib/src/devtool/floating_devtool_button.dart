@@ -6,7 +6,7 @@ import 'package:dartnative/dartnative.dart';
 /// - Smooth pan gestures (`onPanStart`, `onPanUpdate`, `onPanEnd`) for freeform positioning.
 /// - Clamps coordinates to the visible screen area and safe area insets.
 /// - Distinct tap vs. drag detection so taps open DevTools without accidental drags.
-/// - Can be minimized to an edge icon ('⚡️') or expanded back to full pill.
+/// - Can be minimized to an edge icon ('+') or expanded back to full pill.
 class FloatingDevToolButton extends StatefulWidget {
   final VoidCallback onTap;
   final bool isConnected;
@@ -186,7 +186,7 @@ class _FloatingDevToolButtonState extends State<FloatingDevToolButton> {
       ),
       child: const Center(
         child: Text(
-          '⚡️',
+          '+',
           style: TextStyle(fontSize: 16),
         ),
       ),
