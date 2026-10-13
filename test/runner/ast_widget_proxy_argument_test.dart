@@ -9,7 +9,7 @@ import 'dart:io';
 
 import 'package:dartnative/dartnative.dart';
 // ignore: implementation_imports
-import 'package:dartnative_go/src/cli/ast_builder.dart';
+import 'package:dartnative_go/src/cli/packaging/ast_builder.dart';
 import 'package:dartnative_go/src/interpreter/ast/ast_widget_proxies.dart';
 import 'package:dartnative_go/src/runner/ast_interpreter_runner.dart';
 import 'package:test/test.dart';

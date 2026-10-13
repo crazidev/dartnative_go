@@ -1,10 +1,10 @@
 import 'dart:io';
 
-import 'package:dartnative_go/src/cli/ast_builder.dart';
-import 'package:dartnative_go/src/cli/client_module_index.dart';
-import 'package:dartnative_go/src/cli/safe_ast_converter.dart';
-import 'package:dartnative_go/src/cli/server_annotation_scanner.dart';
-import 'package:dartnative_go/src/cli/server_component_bundler.dart';
+import 'package:dartnative_go/src/cli/packaging/ast_builder.dart';
+import 'package:dartnative_go/src/cli/server_components/client_module_index.dart';
+import 'package:dartnative_go/src/cli/packaging/safe_ast_converter.dart';
+import 'package:dartnative_go/src/cli/server_components/server_annotation_scanner.dart';
+import 'package:dartnative_go/src/cli/server_components/server_component_bundler.dart';
 import 'package:test/test.dart';
 
 import '../test_lab/server_component_harness.dart';

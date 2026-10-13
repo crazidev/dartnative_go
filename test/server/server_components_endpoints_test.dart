@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dartnative_go/src/cli/ast_builder.dart';
-import 'package:dartnative_go/src/cli/server.dart';
+import 'package:dartnative_go/src/cli/packaging/ast_builder.dart';
+import 'package:dartnative_go/src/cli/server/server.dart';
 import 'package:dartnative_go/src/runner/bundle_loader.dart';
 import 'package:test/test.dart';
 

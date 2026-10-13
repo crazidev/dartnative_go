@@ -1,4 +1,4 @@
-import 'package:dartnative_go/src/cli/qr_code.dart';
+import 'package:dartnative_go/src/cli/server/qr_code.dart';
 import 'package:test/test.dart';
 
 void main() {

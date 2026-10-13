@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:test/test.dart';
-import 'package:dartnative_go/src/cli/dep_packager.dart';
+import 'package:dartnative_go/src/cli/packaging/dep_packager.dart';
 
 void main() {
   test('DepPackager packs files, computes deterministic hash and creates ZIP', () {

@@ -9,7 +9,7 @@ library;
 
 import 'dart:io';
 
-import 'package:dartnative_go/src/cli/pubspec_validator.dart';
+import 'package:dartnative_go/src/cli/diagnostics/pubspec_validator.dart';
 import 'package:dartnative_go/src/runner/bundle_loader.dart';
 import 'package:test/test.dart';
 

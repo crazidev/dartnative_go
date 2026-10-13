@@ -10,7 +10,7 @@ import 'dart:io';
 
 import 'package:dartnative/dartnative.dart';
 // ignore: implementation_imports
-import 'package:dartnative_go/src/cli/ast_builder.dart';
+import 'package:dartnative_go/src/cli/packaging/ast_builder.dart';
 import 'package:dartnative_go/src/interpreter/widget_generation_tracker.dart';
 import 'package:dartnative_go/src/runner/ast_interpreter_runner.dart';
 import 'package:test/test.dart';

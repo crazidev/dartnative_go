@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:dartnative_go/src/cli/asset_detector.dart';
+import 'package:dartnative_go/src/cli/diagnostics/asset_detector.dart';
 import 'package:test/test.dart';
 
 void main() {

@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:dartnative/dartnative.dart' show BuildContext, Text, Widget;
-import 'package:dartnative_go/src/cli/ast_builder.dart';
-import 'package:dartnative_go/src/cli/safe_ast_converter.dart';
+import 'package:dartnative_go/src/cli/packaging/ast_builder.dart';
+import 'package:dartnative_go/src/cli/packaging/safe_ast_converter.dart';
 import 'package:dartnative_go/src/runner/ast_interpreter_runner.dart';
 import 'package:dartnative_go/src/widgets/server_component_view.dart';
 import 'package:test/test.dart';

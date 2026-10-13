@@ -1,5 +1,5 @@
 import 'package:dartnative/dartnative.dart' show Widget;
-import 'package:dartnative_go/src/cli/server_annotation_scanner.dart';
+import 'package:dartnative_go/src/cli/server_components/server_annotation_scanner.dart';
 import 'package:dartnative_go/src/runner/ast_interpreter_runner.dart';
 import 'package:dartnative_go/src/widgets/server_component_view.dart'
     show mountServerComponent;

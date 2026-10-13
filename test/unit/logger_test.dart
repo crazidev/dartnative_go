@@ -34,7 +34,7 @@ void main() {
 
       expect(logs.length, equals(2));
       expect(logs[0], contains('[UnitTest] Visible debug message'));
-      expect(logs[1], contains('[TestTag] ⏱️ Heavy task ready in 150ms (step1=50ms, step2=100ms)'));
+      expect(logs[1], contains('[TestTag] [TIME] Heavy task ready in 150ms (step1=50ms, step2=100ms)'));
     });
 
     test('always emits info, warn, error regardless of verbose', () {
@@ -46,8 +46,8 @@ void main() {
 
       expect(logs.length, equals(3));
       expect(logs[0], contains('Info notice'));
-      expect(logs[1], contains('[Security] ⚠️ Warning notice'));
-      expect(logs[2], contains('🔴 Failure notice'));
+      expect(logs[1], contains('[Security] ! Warning notice'));
+      expect(logs[2], contains('[ERROR] Failure notice'));
     });
 
     test('reload logs single line when not verbose and full details when verbose', () {
@@ -59,7 +59,7 @@ void main() {
       );
 
       expect(logs.length, equals(1));
-      expect(logs[0], equals('[INFO] 🚀 [Hot Reload] Source finished in 45ms'));
+      expect(logs[0], equals('[INFO] [RELOAD] Source finished in 45ms'));
 
       logs.clear();
       DartGoLogger.verbose = true;
@@ -72,7 +72,7 @@ void main() {
       expect(logs.length, equals(1));
       expect(
         logs[0],
-        equals('[INFO] 🚀 [Hot Reload] AST finished in 12ms (fetch=2ms, track=0ms, eval=10ms, remount=0ms)'),
+        equals('[INFO] [RELOAD] AST finished in 12ms (fetch=2ms, track=0ms, eval=10ms, remount=0ms)'),
       );
     });
 

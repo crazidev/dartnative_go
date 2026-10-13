@@ -36,7 +36,7 @@ import 'dart:io';
 import 'package:dartnative/dartnative.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 import 'package:test/test.dart';
-import 'package:dartnative_go/src/cli/ast_builder.dart';
+import 'package:dartnative_go/src/cli/packaging/ast_builder.dart';
 import 'package:dartnative_go/src/interpreter/ast/ast_widget_proxies.dart'
     as ast_proxies;
 import 'package:dartnative_go/src/interpreter/ast/riverpod_kit_bridges.b.dart'

@@ -4,7 +4,7 @@ import 'package:dartnative/dartnative.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 import 'package:riverpod_kit/src/widget_ref.dart';
 import 'package:test/test.dart';
-import 'package:dartnative_go/src/cli/ast_builder.dart';
+import 'package:dartnative_go/src/cli/packaging/ast_builder.dart';
 import 'package:dartnative_go/src/interpreter/auto_import_parser.dart';
 import 'package:dartnative_go/src/runner/ast_interpreter_runner.dart';
 import 'package:dartnative_go/src/runner/interpreter_runner.dart';

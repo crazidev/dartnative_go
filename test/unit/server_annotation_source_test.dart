@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:dartnative_go/src/cli/ast_builder.dart';
-import 'package:dartnative_go/src/cli/server_annotation_source.dart';
+import 'package:dartnative_go/src/cli/packaging/ast_builder.dart';
+import 'package:dartnative_go/src/cli/server_components/server_annotation_source.dart';
 import 'package:test/test.dart';
 
 void main() {

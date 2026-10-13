@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:test/test.dart';
-import 'package:dartnative_go/src/cli/dep_packager.dart';
+import 'package:dartnative_go/src/cli/packaging/dep_packager.dart';
 import 'package:dartnative_go/src/runner/dep_cache.dart';
 
 void main() {

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:dartnative_go/src/cli/ast_builder.dart';
+import 'package:dartnative_go/src/cli/packaging/ast_builder.dart';
 import 'package:dartnative_go/src/runner/ast_interpreter_runner.dart';
 import 'package:test/test.dart';
 import 'package:tom_d4rt_ast/runtime.dart' show D4rtIsolateWorker;

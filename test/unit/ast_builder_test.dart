@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:dartnative_go/src/cli/ast_builder.dart';
+import 'package:dartnative_go/src/cli/packaging/ast_builder.dart';
 import 'package:test/test.dart';
 
 /// Creates a minimal guest-style project: pubspec + multi-file lib/
