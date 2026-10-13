@@ -12,6 +12,7 @@ under 50 ms — no native recompilation.
 | [Getting Started](getting_started.md) | Install the CLI, start the dev server, connect the app, make your first hot reload. |
 | [CLI Reference](cli.md) | Every `dart_go` command, flag, and interactive key. |
 | [Architecture](architecture.md) | A plain-language map of how the pieces fit together. |
+| [Architecture by feature](architecture/README.md) | Per-feature ownership, flows, and invariants. |
 | [Dev Server & Protocol](dev_server.md) | HTTP endpoints, WebSocket messages, discovery beacons, dependency packaging. |
 | [Runtime Modes](runtime_modes.md) | AST mode vs Source mode — what they are and when to use which. |
 | [Hot Reload](hot_reload.md) | How state survives a reload: declaration cells, generations, module reuse. |

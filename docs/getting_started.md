@@ -86,7 +86,7 @@ The terminal shows:
 
 - the server URL (e.g. `http://192.168.1.20:8088`),
 - a scannable **QR code**,
-- `📦 AST auto-build: on` (hot reload mode),
+- `[AST] AST auto-build: on` (hot reload mode),
 - an initial `guest.ast ready` line once the first bundle is built.
 
 Keep this terminal open — device logs and errors appear here.
