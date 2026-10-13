@@ -21,10 +21,15 @@ void main() {
           enableBroadcast: false,
           enableQrCode: false,
           customHost: '127.0.0.1',
+          rebuildAst: false,
         ),
       );
       unawaited(server.start());
-      await Future.delayed(const Duration(milliseconds: 500));
+      final deadline = DateTime.now().add(const Duration(seconds: 2));
+      while (server.boundPort == null && DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(server.boundPort, equals(9120));
       client = HttpClient();
     });
 

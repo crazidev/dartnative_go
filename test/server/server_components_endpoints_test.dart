@@ -61,7 +61,11 @@ void main() {
         ),
       );
       unawaited(server.start());
-      await Future.delayed(const Duration(milliseconds: 800));
+      final deadline = DateTime.now().add(const Duration(seconds: 2));
+      while (server.boundPort == null && DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(server.boundPort, equals(port));
       client = HttpClient();
     });
 

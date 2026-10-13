@@ -14,6 +14,17 @@ import 'package:test/test.dart';
 
 import '../test_lab/fake_server.dart';
 
+Future<void> _waitUntil(
+  bool Function() condition, {
+  Duration timeout = const Duration(seconds: 2),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (!condition() && DateTime.now().isBefore(deadline)) {
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
+  expect(condition(), isTrue, reason: 'timed out waiting for websocket event');
+}
+
 void main() {
   group('websocket events (LiveConnection + FakeDevServer)', () {
     late FakeDevServer server;
@@ -37,8 +48,7 @@ void main() {
       expect(conn.isConnected, isTrue);
 
       server.emitReload('lib/main.dart');
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      expect(reloads, contains('lib/main.dart'));
+      await _waitUntil(() => reloads.contains('lib/main.dart'));
       conn.disconnect();
       expect(conn.isConnected, isFalse);
     });
@@ -53,12 +63,13 @@ void main() {
 
       server.emitVerbose(true);
       server.emitVerbose(false);
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await _waitUntil(() => verboseStates.length == 2);
       expect(verboseStates, equals([true, false]));
 
       // Client → server toggle lands on the fake server.
       conn.sendSetVerbose(true);
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await _waitUntil(() =>
+          server.receivedVerboseToggles.any((m) => m['enabled'] == true));
       expect(
         server.receivedVerboseToggles.any((m) => m['enabled'] == true),
         isTrue,
@@ -80,10 +91,8 @@ void main() {
         {'file': 'main.dart', 'line': 15},
       ]);
       server.emitResume();
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      expect(receivedBreakpoints, hasLength(1));
+      await _waitUntil(() => receivedBreakpoints.length == 1 && resumed);
       expect(receivedBreakpoints.single.single['line'], equals(15));
-      expect(resumed, isTrue);
       conn.disconnect();
     });
 
@@ -93,7 +102,14 @@ void main() {
 
       conn.sendDeviceLog('hello from device');
       conn.sendDeviceLog('boom', level: 'ERROR');
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await _waitUntil(() =>
+          server.receivedLogs.length >= 2 &&
+          server.receivedLogs.any(
+            (m) => m['message'] == 'hello from device' && m['level'] == 'INFO',
+          ) &&
+          server.receivedLogs.any(
+            (m) => m['message'] == 'boom' && m['level'] == 'ERROR',
+          ));
       expect(
         server.receivedLogs.any(
           (m) => m['message'] == 'hello from device' && m['level'] == 'INFO',
@@ -118,8 +134,7 @@ void main() {
         'line': 15,
         'message': 'tapped',
       });
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      expect(server.receivedBreakpointHits, hasLength(1));
+      await _waitUntil(() => server.receivedBreakpointHits.length == 1);
       expect(server.receivedBreakpointHits.single['line'], equals(15));
       conn.disconnect();
     });
@@ -133,8 +148,7 @@ void main() {
       await conn.connect();
 
       server.emitRestart();
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      expect(restarted, isTrue);
+      await _waitUntil(() => restarted);
       conn.disconnect();
     });
   });
