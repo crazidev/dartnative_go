@@ -208,13 +208,13 @@ class _TodoScreenState extends ConsumerState<TodoScreen> {
           ),
         ),
         actions: [
-          BarButtonItem(
-            fontIcon: CupertinoIcons.plus,
-            titleStyle: TextStyle(color: Colors.white, fontSize: 16),
-            onPressed: () {
-              showCreateNote(context);
-            },
-          ),
+          // BarButtonItem(
+          //   fontIcon: CupertinoIcons.plus,
+          //   titleStyle: TextStyle(color: Colors.white, fontSize: 16),
+          //   onPressed: () {
+          //     showCreateNote(context);
+          //   },
+          // ),
         ],
       ),
       extendBodyBehindAppBar: false,

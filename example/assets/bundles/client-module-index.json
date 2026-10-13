@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "fingerprint": "-6074ed791173ba25",
+  "modules": [
+    "package:example/dartnative_plugin_registrant.dart",
+    "package:example/main.dart",
+    "package:example/plugins/dartnative_media_picker.dart",
+    "package:example/plugins/galary_demo.dart",
+    "package:example/plugins/plugins_screen.dart",
+    "package:example/sticky-note/create_note_panel.dart",
+    "package:example/sticky-note/todo_screen.dart"
+  ]
+}

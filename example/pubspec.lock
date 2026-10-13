@@ -114,14 +114,14 @@ packages:
   dartnative_background:
     dependency: "direct overridden"
     description:
-      path: ".dart_tool/dartnative_sdk/dartnative_background"
+      path: "../.dart_tool/dn_plugins/dartnative_background"
       relative: true
     source: path
     version: "1.0.1"
   dartnative_connectivity:
     dependency: "direct overridden"
     description:
-      path: ".dart_tool/dartnative_sdk/dartnative_connectivity"
+      path: "../.dart_tool/dn_plugins/dartnative_connectivity"
       relative: true
     source: path
     version: "1.0.0"
@@ -142,21 +142,21 @@ packages:
   dartnative_media_picker:
     dependency: "direct overridden"
     description:
-      path: ".dart_tool/dartnative_sdk/dartnative_media_picker"
+      path: "../.dart_tool/dn_plugins/dartnative_media_picker"
       relative: true
     source: path
     version: "1.1.0"
   dartnative_notifications:
     dependency: "direct overridden"
     description:
-      path: ".dart_tool/dartnative_sdk/dartnative_notifications"
+      path: "../.dart_tool/dn_plugins/dartnative_notifications"
       relative: true
     source: path
     version: "1.0.1"
   dartnative_path_provider:
     dependency: "direct overridden"
     description:
-      path: ".dart_tool/dartnative_sdk/dartnative_path_provider"
+      path: "../.dart_tool/dn_plugins/dartnative_path_provider"
       relative: true
     source: path
     version: "1.0.0"
@@ -170,42 +170,42 @@ packages:
   dartnative_share:
     dependency: "direct overridden"
     description:
-      path: ".dart_tool/dartnative_sdk/dartnative_share"
+      path: "../.dart_tool/dn_plugins/dartnative_share"
       relative: true
     source: path
     version: "1.0.2"
   dartnative_shared_preferences:
     dependency: "direct overridden"
     description:
-      path: ".dart_tool/dartnative_sdk/dartnative_shared_preferences"
+      path: "../.dart_tool/dn_plugins/dartnative_shared_preferences"
       relative: true
     source: path
     version: "1.0.1"
   dartnative_splash:
     dependency: "direct overridden"
     description:
-      path: ".dart_tool/dartnative_sdk/dartnative_splash"
+      path: "../.dart_tool/dn_plugins/dartnative_splash"
       relative: true
     source: path
     version: "1.0.1"
   dartnative_system:
     dependency: "direct overridden"
     description:
-      path: ".dart_tool/dartnative_sdk/dartnative_system"
+      path: "../.dart_tool/dn_plugins/dartnative_system"
       relative: true
     source: path
     version: "1.0.0"
   dartnative_url_launcher:
     dependency: "direct overridden"
     description:
-      path: ".dart_tool/dartnative_sdk/dartnative_url_launcher"
+      path: "../.dart_tool/dn_plugins/dartnative_url_launcher"
       relative: true
     source: path
     version: "1.0.0"
   dartnative_webview:
     dependency: "direct overridden"
     description:
-      path: ".dart_tool/dartnative_sdk/dartnative_webview"
+      path: "../.dart_tool/dn_plugins/dartnative_webview"
       relative: true
     source: path
     version: "1.0.1"

@@ -48,34 +48,44 @@ dartnative:
 # dartpub.dev, then see tool/generate_app_assets.dart.
 
 dependency_overrides:
-  dartnative_shared_preferences:
-    path: .dart_tool/dartnative_sdk/dartnative_shared_preferences
-  dartnative_android:
-    path: .dart_tool/dartnative_sdk/dartnative_android
+  # Core SDK packages materialized by `dn` into this app's own
+  # .dart_tool/dartnative_sdk (3 packages only).
   dartnative:
     path: .dart_tool/dartnative_sdk/dartnative
-  dartnative_splash:
-    path: .dart_tool/dartnative_sdk/dartnative_splash
-  dartnative_notifications:
-    path: .dart_tool/dartnative_sdk/dartnative_notifications
+  dartnative_android:
+    path: .dart_tool/dartnative_sdk/dartnative_android
   dartnative_ios:
     path: .dart_tool/dartnative_sdk/dartnative_ios
+  # First-party plugins are NOT in .dart_tool/dartnative_sdk — `dn` layers
+  # them into .dart_tool/dn_plugins. The root app's copy
+  # (../.dart_tool/dn_plugins, populated by the root `dn pub get` which runs
+  # first) is used here so plain `dart pub` (which `dn` runs for `example/`)
+  # can resolve the transitive plugin deps from dartnative_go via path.
+  # The `dartnative`/`dartnative_android`/`dartnative_ios` overrides above
+  # also cover the plugins' own `path: ../dartnative` relative deps, which
+  # don't exist inside dn_plugins.
+  dartnative_shared_preferences:
+    path: ../.dart_tool/dn_plugins/dartnative_shared_preferences
+  dartnative_splash:
+    path: ../.dart_tool/dn_plugins/dartnative_splash
+  dartnative_notifications:
+    path: ../.dart_tool/dn_plugins/dartnative_notifications
   dartnative_system:
-    path: .dart_tool/dartnative_sdk/dartnative_system
+    path: ../.dart_tool/dn_plugins/dartnative_system
   dartnative_url_launcher:
-    path: .dart_tool/dartnative_sdk/dartnative_url_launcher
+    path: ../.dart_tool/dn_plugins/dartnative_url_launcher
   dartnative_path_provider:
-    path: .dart_tool/dartnative_sdk/dartnative_path_provider
+    path: ../.dart_tool/dn_plugins/dartnative_path_provider
   dartnative_connectivity:
-    path: .dart_tool/dartnative_sdk/dartnative_connectivity
+    path: ../.dart_tool/dn_plugins/dartnative_connectivity
   dartnative_webview:
-    path: .dart_tool/dartnative_sdk/dartnative_webview
+    path: ../.dart_tool/dn_plugins/dartnative_webview
   dartnative_media_picker:
-    path: .dart_tool/dartnative_sdk/dartnative_media_picker
+    path: ../.dart_tool/dn_plugins/dartnative_media_picker
   dartnative_share:
-    path: .dart_tool/dartnative_sdk/dartnative_share
+    path: ../.dart_tool/dn_plugins/dartnative_share
   dartnative_background:
-    path: .dart_tool/dartnative_sdk/dartnative_background
+    path: ../.dart_tool/dn_plugins/dartnative_background
   # Same vendored fork as the root app (relaxes archive to the SDK's 3.6.1,
   # which dartnative_splash 1.0.1 requires). Without this, the transitive
   # tom_d4rt_ast (via dartnative_go) pulls archive ^4.0.9 and resolution
