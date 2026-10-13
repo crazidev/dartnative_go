@@ -23,23 +23,27 @@ class ProjectAssets {
   String formatReport() {
     final buffer = StringBuffer();
     if (hasIcon) {
-      buffer.writeln('🎨 \x1B[32mApp Icon:\x1B[0m $iconPath');
+      buffer.writeln('[ICON] \x1B[32mApp Icon:\x1B[0m $iconPath');
     } else {
-      buffer.writeln('🎨 \x1B[33mApp Icon:\x1B[0m (default DartNative logo will be used)');
+      buffer.writeln(
+        '[ICON] \x1B[33mApp Icon:\x1B[0m (default DartNative logo will be used)',
+      );
     }
 
     if (hasSplash) {
       buffer.writeln(
-        '✨ \x1B[32mSplash Screen:\x1B[0m $splashPath '
+        '[SPLASH] \x1B[32mSplash Screen:\x1B[0m $splashPath '
         '(Background: \x1B[1m$splashBackgroundColor\x1B[0m)',
       );
     } else {
-      buffer.writeln('✨ \x1B[33mSplash Screen:\x1B[0m (default launcher splash will be used)');
+      buffer.writeln(
+        '[SPLASH] \x1B[33mSplash Screen:\x1B[0m (default launcher splash will be used)',
+      );
     }
 
     if (!hasIcon || !hasSplash) {
       buffer.writeln(
-        '   \x1B[90m💡 Tip: Add dartnative_splash config or assets/icon.png to personalize your launch experience.\x1B[0m',
+        '   \x1B[90m[TIP] Add dartnative_splash config or assets/icon.png to personalize your launch experience.\x1B[0m',
       );
     }
 

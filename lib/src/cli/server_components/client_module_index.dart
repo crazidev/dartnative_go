@@ -51,7 +51,8 @@ class ClientModuleIndex {
     return ClientModuleIndex(
       version: json['version'] as int? ?? kClientModuleIndexVersion,
       fingerprint: json['fingerprint'] as String? ?? '',
-      modules: (json['modules'] as List<dynamic>?)
+      modules:
+          (json['modules'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toSet() ??
           const {},

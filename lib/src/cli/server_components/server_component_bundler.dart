@@ -14,7 +14,7 @@ import 'package:tom_ast_generator/tom_ast_generator.dart';
 import 'package:tom_d4rt_ast/runtime.dart' show AstBundle;
 
 import 'client_module_index.dart';
-import 'safe_ast_converter.dart';
+import '../packaging/safe_ast_converter.dart';
 import 'server_annotation_scanner.dart';
 
 /// Result of building a single server component bundle.
@@ -231,8 +231,7 @@ class ServerComponentBundler {
         // package:<self>/... → <root>/lib/...
         // package:<other>/... → not resolvable from this project.
         if (packageName != null && segments.first == packageName) {
-          filePath =
-              '$root/lib/${segments.skip(1).join('/')}';
+          filePath = '$root/lib/${segments.skip(1).join('/')}';
         } else {
           return null;
         }

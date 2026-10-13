@@ -4,14 +4,15 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import '../runner/logger.dart';
-import 'asset_detector.dart';
-import 'ast_builder.dart';
+import '../../runner/logger.dart';
+import '../diagnostics/asset_detector.dart';
+import '../packaging/ast_builder.dart';
 import 'broadcaster.dart';
-import 'dart_go_version.dart';
-import 'dep_packager.dart';
-import 'pubspec_validator.dart';
-import 'qr_code.dart';
+import 'dev_socket_hub.dart';
+import 'terminal_ui.dart';
+import '../diagnostics/dart_go_version.dart';
+import '../packaging/dep_packager.dart';
+import '../diagnostics/pubspec_validator.dart';
 
 /// Configuration options for launching the DartNative Go server.
 class DartGoServerOptions {
@@ -52,9 +53,9 @@ class DartGoServer {
   DartGoBroadcaster? _broadcaster;
   StreamSubscription? _fileWatchSub;
   StreamSubscription? _assetsWatchSub;
-  StreamSubscription? _stdinSub;
-  final List<WebSocket> _sockets = [];
-  final List<Map<String, dynamic>> _activeBreakpoints = [];
+  StdinCommands? _stdinCommands;
+  late final DevSocketHub _socketHub = DevSocketHub(options.projectDir);
+  List<Map<String, dynamic>> get _activeBreakpoints => _socketHub.breakpoints;
   bool _astRebuildInFlight = false;
   bool _astRebuildQueued = false;
   final Set<String> _pendingDartChanges = {};
@@ -88,7 +89,9 @@ class DartGoServer {
     }
 
     if (!mainFile.existsSync()) {
-      print('\x1B[31mError: No entrypoint found at lib/main.dart in ${projectDir.path}.\x1B[0m');
+      print(
+        '\x1B[31mError: No entrypoint found at lib/main.dart in ${projectDir.path}.\x1B[0m',
+      );
       exit(1);
     }
 
@@ -99,8 +102,7 @@ class DartGoServer {
     );
     _server = server;
 
-    final hostStr =
-        options.customHost ?? await NetworkHelper.getLocalIp();
+    final hostStr = options.customHost ?? await NetworkHelper.getLocalIp();
 
     // 4. Start UDP Discovery Broadcaster across port range
     if (options.enableBroadcast) {
@@ -117,34 +119,22 @@ class DartGoServer {
       await _broadcaster!.start();
     }
 
-    // 5. Print Startup Diagnostics & Banner
-    print('\x1B[2J\x1B[0;0H'); // Clear terminal screen
-    print('╔══════════════════════════════════════════════════════════╗');
-    print('║            ⚡️ DartNative Go Dev Server ⚡️               ║');
-    print('║                 CLI & Runtime v$kDartGoVersion                   ║');
-    print('╚══════════════════════════════════════════════════════════╝\n');
-
+    // 5. Print startup diagnostics and terminal controls.
+    printBanner();
     print(validation.formatReport());
     print(assets.formatReport());
 
     final serverUrl = 'http://$hostStr:$port';
-    final wsUrl = 'ws://$hostStr:$port/ws';
 
-    // 6. Display Scannable QR Code
-    if (options.enableQrCode) {
-      print('📱 \x1B[1mScan with DartNative Go mobile app:\x1B[0m');
-      final qr = QrCode(serverUrl);
-      print(qr.renderToTerminal());
-    }
-
-    print('🌐 Server URL: \x1B[36m$serverUrl\x1B[0m');
-    print('⚡️ WebSocket:  \x1B[36m$wsUrl\x1B[0m');
+    // 6. Display scannable QR code and connection details.
+    if (options.enableQrCode) printQr(serverUrl);
+    printConnectionInfo(serverUrl);
     print(
       options.rebuildAst
-          ? '📦 AST auto-build: \x1B[36mon\x1B[0m (guest.ast rebuilt on save; --no-rebuild-ast to disable)\n'
-          : '📦 AST auto-build: \x1B[90moff (--no-rebuild-ast)\x1B[0m\n',
+          ? '[AST] AST auto-build: \x1B[36mon\x1B[0m (guest.ast rebuilt on save; --no-rebuild-ast to disable)\n'
+          : '[AST] AST auto-build: \x1B[90moff (--no-rebuild-ast)\x1B[0m\n',
     );
-    print('\x1B[90mPress h for help\x1B[0m\n');
+    printHelpHint();
 
     // 6b. Initial AST bundle build (background) so `/guest.ast` exists
     // before the first client connects — later saves reuse the watcher.
@@ -174,7 +164,9 @@ class DartGoServer {
         if (p.contains('/assets/bundles') || p.endsWith('guest.ast')) return;
         assetsDebounceTimer?.cancel();
         assetsDebounceTimer = Timer(const Duration(milliseconds: 150), () {
-          print('[DevServer] 🔄 Asset change detected: ${event.path}. Broadcasting reload...');
+          print(
+            '[DevServer] [RELOAD] Asset change detected: ${event.path}. Broadcasting reload...',
+          );
           _broadcastReload(event.path, projectDir.path, true);
         });
       });
@@ -194,31 +186,25 @@ class DartGoServer {
     }
   }
 
-  /// Initial background build at startup (fire-and-forget).
-  ///
-  /// Ensures `/guest.ast` is served from the first connection; failures
-  /// (e.g. FFI registrants in full native shells) only log — source mode
-  /// Initial background build at startup (fire-and-forget).
-  ///
-  /// Ensures `/guest.ast` is served from the first connection; failures
-  /// (e.g. FFI registrants in full native shells) only log — source mode
-  /// is unaffected.
+  /// Builds `guest.ast` in the background at startup so `/guest.ast` exists
+  /// before the first client connects. Failures only log; source mode is
+  /// unaffected.
   Future<void> _initialAstBuild(Directory projectDir) async {
     try {
       final result = await AstBuildWorker.instance.build(projectDir);
       if (result.success) {
         print(
-          '[DevServer] 📦 guest.ast ready '
+          '[DevServer] [AST] guest.ast ready '
           '(${result.moduleCount} modules, ${result.byteSize} bytes)',
         );
       } else {
         print(
-          '[DevServer] ⚠️ Initial bundle build skipped (${result.error}). '
+          '[DevServer] ! Initial bundle build skipped (${result.error}). '
           'Source hot reload unaffected.',
         );
       }
     } catch (e) {
-      print('[DevServer] ⚠️ Initial bundle build error: $e');
+      print('[DevServer] ! Initial bundle build error: $e');
     }
   }
 
@@ -251,12 +237,21 @@ class DartGoServer {
     if (changedPaths.isEmpty) return;
     final sw = Stopwatch()..start();
     final fileNames = changedPaths.map(p.basename).join(', ');
-    DartGoLogger.info('[DevServer] 🔄 File changes (${changedPaths.length}): $fileNames');
-    DartGoLogger.debug('Full paths: ${changedPaths.join(', ')}', tag: 'DevServer');
+    DartGoLogger.info(
+      '[DevServer] [RELOAD] File changes (${changedPaths.length}): $fileNames',
+    );
+    DartGoLogger.debug(
+      'Full paths: ${changedPaths.join(', ')}',
+      tag: 'DevServer',
+    );
 
     if (!options.rebuildAst) {
       _broadcastReload(changedPaths, codeDir.path);
-      DartGoLogger.bench('DevServer', 'Reload broadcast sent', sw.elapsedMilliseconds);
+      DartGoLogger.bench(
+        'DevServer',
+        'Reload broadcast sent',
+        sw.elapsedMilliseconds,
+      );
       return;
     }
     if (_astRebuildInFlight) {
@@ -328,106 +323,22 @@ class DartGoServer {
     }
   }
 
-  void _broadcast(Map<String, dynamic> data) {
-    final payload = jsonEncode(data);
-    for (final ws in _sockets) {
-      try {
-        ws.add(payload);
-      } catch (_) {}
-    }
-  }
+  void _broadcast(Map<String, dynamic> data) => _socketHub.broadcast(data);
 
-  void _broadcastBreakpoints() {
-    _broadcast({
-      'type': 'breakpoints',
-      'breakpoints': _activeBreakpoints,
-    });
-  }
+  void _broadcastBreakpoints() => _socketHub.broadcastBreakpoints();
 
   void _broadcastReload([
     Object? changedFilesInput,
     String? baseDir,
     bool isAssetChange = false,
-  ]) {
-    final relPaths = <String>[];
-    if (changedFilesInput is String && changedFilesInput.isNotEmpty) {
-      var rel = changedFilesInput;
-      if (baseDir != null) {
-        rel = rel.replaceFirst('$baseDir/', '').replaceAll(r'\', '/');
-      } else {
-        rel = rel.replaceAll(r'\', '/');
-      }
-      relPaths.add(rel);
-    } else if (changedFilesInput is Iterable) {
-      for (final item in changedFilesInput) {
-        if (item is String && item.isNotEmpty) {
-          var rel = item;
-          if (baseDir != null) {
-            rel = rel.replaceFirst('$baseDir/', '').replaceAll(r'\', '/');
-          } else {
-            rel = rel.replaceAll(r'\', '/');
-          }
-          relPaths.add(rel);
-        }
-      }
-    }
-    final patchBytes = patchBytesForProject(options.projectDir);
-    final hasPatch = patchBytes != null && patchBytes.isNotEmpty;
-    _broadcast({
-      'type': 'reload',
-      'changedFile': relPaths.firstOrNull,
-      'changedFiles': relPaths,
-      'isPatch': hasPatch && !isAssetChange,
-      'isAssetChange': isAssetChange,
-      'patchUrl': (hasPatch && !isAssetChange) ? '/guest.ast.patch' : null,
-      'patchSize': (hasPatch && !isAssetChange) ? patchBytes.length : null,
-      'timestamp': DateTime.now().millisecondsSinceEpoch,
-    });
-  }
+  ]) => _socketHub.broadcastReload(changedFilesInput, baseDir, isAssetChange);
 
   void _setupStdinListener(String serverUrl) {
-    try {
-      if (stdin.hasTerminal) {
-        stdin.lineMode = false;
-        stdin.echoMode = false;
-      }
-    } catch (_) {}
-
-    _stdinSub = stdin.listen((bytes) {
-      for (final byte in bytes) {
-        if (byte == 3) {
-          // Ctrl+C
-          stop();
-          exit(0);
-        }
-
-        final char = String.fromCharCode(byte).toLowerCase();
-        if (char == 'h') {
-          print('\nCommands:');
-          print('  h  Help');
-          print('  r  Hot reload');
-          print('  v  Toggle verbose logging (currently: ${DartGoLogger.verbose ? "on" : "off"})');
-          print('  q  Show QR code');
-          print('  c  Clear screen\n');
-        } else if (char == 'r') {
-          print('\n🔄 Triggering manual reload...');
-          _broadcastReload();
-        } else if (char == 'v') {
-          final enabled = DartGoLogger.toggleVerbose();
-          _broadcast({'type': 'set_verbose', 'enabled': enabled});
-          print('\n📢 Verbose mode: ${enabled ? "\x1B[32mON\x1B[0m (detailed telemetry)" : "\x1B[33mOFF\x1B[0m (clean output)"}\n');
-        } else if (char == 'q') {
-          print('\n📱 Scan with DartNative Go mobile app:');
-          print(QrCode(serverUrl).renderToTerminal());
-          print('\x1B[90mPress h for help\x1B[0m\n');
-        } else if (char == 'c') {
-          print('\x1B[2J\x1B[0;0H');
-          print('🌐 Server URL: \x1B[36m$serverUrl\x1B[0m');
-          print('⚡️ WebSocket:  \x1B[36m${serverUrl.replaceFirst('http', 'ws')}/ws\x1B[0m\n');
-          print('\x1B[90mPress h for help\x1B[0m\n');
-        }
-      }
-    });
+    _stdinCommands = StdinCommands(
+      serverUrl: serverUrl,
+      hub: _socketHub,
+      onStop: stop,
+    )..start();
   }
 
   Future<void> _handleHttpRequest({
@@ -442,143 +353,7 @@ class DartGoServer {
     final path = request.uri.path;
 
     if (path == '/ws') {
-      if (WebSocketTransformer.isUpgradeRequest(request)) {
-        final socket = await WebSocketTransformer.upgrade(request);
-        _sockets.add(socket);
-        print('[DevServer] 📱 Client connected via WebSocket (${_sockets.length} active)');
-
-        // Send current verbose state and active breakpoints to newly connected client
-        socket.add(jsonEncode({
-          'type': 'set_verbose',
-          'enabled': DartGoLogger.verbose,
-        }));
-
-        if (_activeBreakpoints.isNotEmpty) {
-          socket.add(jsonEncode({
-            'type': 'breakpoints',
-            'breakpoints': _activeBreakpoints,
-          }));
-        }
-
-        socket.listen(
-          (message) {
-            try {
-              final data = jsonDecode(message as String);
-              if (data is Map) {
-                if (data['type'] == 'log') {
-                  final time =
-                      DateTime.now().toIso8601String().substring(11, 19);
-                  final msg = data['message'] ?? '';
-                  final level = data['level'] ?? 'INFO';
-                  if (level == 'ERROR') {
-                    print('\x1B[31m[$time][Device Error]\x1B[0m $msg');
-                  } else {
-                    print('\x1B[36m[$time][Device Log]\x1B[0m $msg');
-                  }
-                  return;
-                } else if (data['type'] == 'set_verbose') {
-                  final enabled = data['enabled'] == true;
-                  DartGoLogger.verbose = enabled;
-                  print('\n📢 Verbose mode toggled from app: ${enabled ? "\x1B[32mON\x1B[0m (detailed telemetry)" : "\x1B[33mOFF\x1B[0m (clean output)"}\n');
-                  _broadcast({'type': 'set_verbose', 'enabled': enabled});
-                  return;
-                } else if (data['type'] == 'breakpoint_hit') {
-                  final file = data['file'] ?? '<guest>';
-                  final line = data['line'] ?? '?';
-                  final note = data['message'];
-                  final vars = data['variables'] as Map?;
-
-                  print('\n\x1B[31m🛑 BREAKPOINT HIT: $file:$line\x1B[0m');
-                  if (note != null) print('   Note: $note');
-                  if (vars != null && vars.isNotEmpty) {
-                    print('   Variables:');
-                    vars.forEach((k, v) => print('     $k = $v'));
-                  }
-                  print('   👉 Type c to resume execution.\n');
-                  return;
-                } else if (data['type'] == 'reload' &&
-                    data['origin'] == 'test') {
-                  // UI automation: a test script without filesystem access
-                  // asks for a reload. Only `origin: test` messages are
-                  // relayed — device reloads originate server-side, so this
-                  // cannot loop back.
-                  print('[DevServer] 📲 Test-triggered reload requested');
-                  _broadcastReload(
-                    data['changedFile']?.toString(),
-                    options.projectDir.path,
-                  );
-                  return;
-                } else if (data['type'] == 'restart' &&
-                    data['origin'] == 'test') {
-                  // UI automation: a test script asks for a full restart
-                  // (fresh interpreter, e.g. before a scenario). Same
-                  // loop-safety as the test reload above.
-                  print('[DevServer] 📲 Test-triggered restart requested');
-                  _broadcast({
-                    'type': 'restart',
-                    'origin': 'test',
-                    'timestamp': DateTime.now().millisecondsSinceEpoch,
-                  });
-                  return;
-                } else if (data['type'] == 'ui_probe_request' ||
-                    data['type'] == 'ui_tap' ||
-                    data['type'] == 'ui_hover' ||
-                    data['type'] == 'ui_focus' ||
-                    data['type'] == 'ui_blur' ||
-                    data['type'] == 'ui_submit' ||
-                    data['type'] == 'ui_type' ||
-                    data['type'] == 'ui_scroll') {
-                  // UI automation: a test script drives the connected
-                  // device(s) — probe, tap, hover, focus, blur, submit, type, scroll.
-                  // Relay to everyone; the device answers with `ui_tree` /
-                  // `*_result` messages handled below.
-                  _broadcast(Map<String, dynamic>.from(data));
-                  return;
-                } else if (data['type'] == 'ui_tree') {
-                  final req = data['requestId'] ?? '?';
-                  print('[DevServer] 📲 UI tree received (request $req)');
-                  _broadcast(Map<String, dynamic>.from(data));
-                  return;
-                } else if (data['type'] == 'ui_tap_result' ||
-                    data['type'] == 'ui_hover_result' ||
-                    data['type'] == 'ui_focus_result' ||
-                    data['type'] == 'ui_blur_result' ||
-                    data['type'] == 'ui_submit_result' ||
-                    data['type'] == 'ui_type_result' ||
-                    data['type'] == 'ui_scroll_result') {
-                  final req = data['requestId'] ?? '?';
-                  final action = (data['type'] as String)
-                      .replaceFirst('ui_', '')
-                      .replaceFirst('_result', '');
-                  final ok = data['ok'] == true;
-                  final err = data['error'];
-                  final view = data['viewId'];
-                  if (ok) {
-                    print('[DevServer] 📲 UI $action ok (request $req'
-                        '${view != null ? ', view $view' : ''})');
-                  } else {
-                    print('[DevServer] 📲 UI $action FAILED (request $req): $err');
-                  }
-                  _broadcast(Map<String, dynamic>.from(data));
-                  return;
-                }
-              }
-            } catch (_) {}
-          },
-          onDone: () {
-            _sockets.remove(socket);
-            print('[DevServer] 📱 Client disconnected (${_sockets.length} active)');
-          },
-          onError: (_) {
-            _sockets.remove(socket);
-          },
-        );
-      } else {
-        request.response
-          ..statusCode = HttpStatus.badRequest
-          ..write('Expected WebSocket upgrade')
-          ..close();
-      }
+      await _socketHub.accept(request);
     } else if (path == '/manifest.json') {
       final depResult = DepPackager.resolveAndPack(
         projectDir,
@@ -621,11 +396,13 @@ class DartGoServer {
         'supportedPlugins': validation.validSupportedPlugins,
         'unsupportedPlugins': validation.unsupportedNativePlugins,
         'versionMismatches': validation.versionMismatches
-            .map((m) => {
-                  'plugin': m.pluginName,
-                  'declared': m.declaredConstraint,
-                  'required': m.requiredConstraint,
-                })
+            .map(
+              (m) => {
+                'plugin': m.pluginName,
+                'declared': m.declaredConstraint,
+                'required': m.requiredConstraint,
+              },
+            )
             .toList(),
       };
       request.response
@@ -644,10 +421,12 @@ class DartGoServer {
         ..headers.contentType = ContentType.json
         ..headers.add('Access-Control-Allow-Origin', '*')
         ..headers.add('Cache-Control', 'no-cache')
-        ..write(jsonEncode({
-          'depsHash': depResult.depsHash,
-          'deps': depResult.deps.map((e) => e.toJson()).toList(),
-        }))
+        ..write(
+          jsonEncode({
+            'depsHash': depResult.depsHash,
+            'deps': depResult.deps.map((e) => e.toJson()).toList(),
+          }),
+        )
         ..close();
     } else if (path.startsWith('/pkg/') && path.endsWith('.zip')) {
       final pkgKey = path.substring(5, path.length - 4); // <name>@<version>
@@ -732,8 +511,9 @@ class DartGoServer {
         }
       }
     } else if (path.startsWith('/assets/') || path == '/asset') {
-      final assetPath =
-          path == '/asset' ? (request.uri.queryParameters['path'] ?? '') : path;
+      final assetPath = path == '/asset'
+          ? (request.uri.queryParameters['path'] ?? '')
+          : path;
       final file = _resolveAssetFile(projectDir, assetPath);
       if (file != null) {
         await _serveAssetFile(request, file);
@@ -779,8 +559,9 @@ class DartGoServer {
             'userCodeHash': userCode.hash,
             'splashBackgroundColor': assets.splashBackgroundColor,
             'iconUrl': assets.hasIcon ? '$serverUrl/assets/icon.png' : null,
-            'splashUrl':
-                assets.hasSplash ? '$serverUrl/assets/splash.png' : null,
+            'splashUrl': assets.hasSplash
+                ? '$serverUrl/assets/splash.png'
+                : null,
             'assets': projectAssets,
           },
           'deps': depResult.deps.map((e) => e.toJson()).toList(),
@@ -794,7 +575,9 @@ class DartGoServer {
           ..headers.add('Cache-Control', 'no-cache')
           ..write(jsonStr)
           ..close();
-        print('[DevServer] 📦 Served bundle.json (${bundle.length} user files, ${depResult.deps.length} deps)');
+        print(
+          '[DevServer] [BUNDLE] Served bundle.json (${bundle.length} user files, ${depResult.deps.length} deps)',
+        );
       } catch (e) {
         request.response
           ..statusCode = HttpStatus.internalServerError
@@ -810,8 +593,9 @@ class DartGoServer {
       if (astFile != null) {
         final fp = astBundleFingerprintForProject(projectDir, astFile);
         final etag = '"$fp"';
-        final clientEtag =
-            request.headers.value(HttpHeaders.ifNoneMatchHeader)?.trim();
+        final clientEtag = request.headers
+            .value(HttpHeaders.ifNoneMatchHeader)
+            ?.trim();
         if (clientEtag != null &&
             (clientEtag == etag ||
                 clientEtag == fp ||
@@ -826,7 +610,7 @@ class DartGoServer {
         }
         await _serveAssetFile(request, astFile, etag: etag);
         print(
-          '[DevServer] 📦 Served guest.ast (${await astFile.length()} bytes, etag=$etag)',
+          '[DevServer] [AST] Served guest.ast (${await astFile.length()} bytes, etag=$etag)',
         );
       } else {
         request.response
@@ -846,8 +630,9 @@ class DartGoServer {
             ? astBundleFingerprintForProject(projectDir, astFile)
             : '${DateTime.now().millisecondsSinceEpoch}';
         final etag = '"$fp-patch"';
-        final clientEtag =
-            request.headers.value(HttpHeaders.ifNoneMatchHeader)?.trim();
+        final clientEtag = request.headers
+            .value(HttpHeaders.ifNoneMatchHeader)
+            ?.trim();
         if (clientEtag != null &&
             (clientEtag == etag ||
                 clientEtag == '$fp-patch' ||
@@ -870,7 +655,7 @@ class DartGoServer {
           ..add(patchBytes);
         await request.response.close();
         print(
-          '[DevServer] ⚡️ Served guest.ast.patch (${patchBytes.length} bytes, etag=$etag)',
+          '[DevServer] [PATCH] Served guest.ast.patch (${patchBytes.length} bytes, etag=$etag)',
         );
       } else {
         request.response
@@ -884,8 +669,9 @@ class DartGoServer {
       // builders subtract these from each delta. 404 until the first
       // successful AST build writes it alongside guest.ast.
       final astFile = _resolveAstBundleFile(projectDir);
-      final indexFile =
-          astFile != null ? File('${astFile.parent.path}/client-module-index.json') : null;
+      final indexFile = astFile != null
+          ? File('${astFile.parent.path}/client-module-index.json')
+          : null;
       if (indexFile != null && indexFile.existsSync()) {
         await _serveAssetFile(request, indexFile);
       } else {
@@ -912,7 +698,8 @@ class DartGoServer {
           ..write(jsonEncode({'version': 1, 'components': {}}))
           ..close();
       }
-    } else if (path.startsWith('/server-components/') && path.endsWith('.ast')) {
+    } else if (path.startsWith('/server-components/') &&
+        path.endsWith('.ast')) {
       // One pre-built delta bundle per @ServerComponent (Phase 5).
       // The id is strictly validated — no traversal, no sub-paths.
       final astFile = _resolveAstBundleFile(projectDir);
@@ -927,7 +714,7 @@ class DartGoServer {
       if (compFile != null && compFile.existsSync()) {
         await _serveAssetFile(request, compFile);
         print(
-          '[DevServer] 🧩 Served server component $id '
+          '[DevServer] [COMPONENT] Served server component $id '
           '(${await compFile.length()} bytes)',
         );
       } else {
@@ -941,8 +728,11 @@ class DartGoServer {
       try {
         final content = await mainFile.readAsString();
         request.response
-          ..headers.contentType =
-              ContentType('application', 'dart', charset: 'utf-8')
+          ..headers.contentType = ContentType(
+            'application',
+            'dart',
+            charset: 'utf-8',
+          )
           ..headers.add('Access-Control-Allow-Origin', '*')
           ..write(content)
           ..close();
@@ -992,7 +782,7 @@ class DartGoServer {
       }
     } else if (path == '/resume' && request.method == 'POST') {
       _broadcast({'type': 'resume'});
-      print('[DevServer] ▶️ Resumed execution via HTTP /resume');
+      print('[DevServer] [RESUME] Resumed execution via HTTP /resume');
       request.response
         ..headers.contentType = ContentType.json
         ..headers.add('Access-Control-Allow-Origin', '*')
@@ -1002,15 +792,17 @@ class DartGoServer {
       request.response
         ..headers.contentType = ContentType.json
         ..headers.add('Access-Control-Allow-Origin', '*')
-        ..write(jsonEncode({
-          'status': 'ok',
-          'protocol': 'dart_go',
-          'appName': validation.appName,
-          'version': kDartGoVersion,
-          'clients': _sockets.length,
-          'hasIcon': assets.hasIcon,
-          'hasSplash': assets.hasSplash,
-        }))
+        ..write(
+          jsonEncode({
+            'status': 'ok',
+            'protocol': 'dart_go',
+            'appName': validation.appName,
+            'version': kDartGoVersion,
+            'clients': _socketHub.clientCount,
+            'hasIcon': assets.hasIcon,
+            'hasSplash': assets.hasSplash,
+          }),
+        )
         ..close();
     } else {
       // Fallback: check if requested path points to any project asset
@@ -1071,12 +863,10 @@ class DartGoServer {
       }
       final raw =
           jsonDecode(manifestFile.readAsStringSync()) as Map<String, dynamic>;
-      final entries =
-          (raw['components'] as Map<String, dynamic>?) ?? const {};
+      final entries = (raw['components'] as Map<String, dynamic>?) ?? const {};
       return {
         'hasServerComponents': true,
-        'serverComponentsUrl':
-            '$serverUrl/server-components/manifest.json',
+        'serverComponentsUrl': '$serverUrl/server-components/manifest.json',
         'serverComponents': {
           for (final e in entries.entries)
             e.key: {
@@ -1097,7 +887,8 @@ class DartGoServer {
   /// Locates a pre-compiled AST bundle if `tool/build_ast_bundle.dart` ran.
   ///
   /// Checks `assets/bundles/guest.ast` then `build/guest.ast` (traversal-safe).
-  static File? _resolveAstBundleFile(Directory projectDir) {    const candidates = [
+  static File? _resolveAstBundleFile(Directory projectDir) {
+    const candidates = [
       'assets/bundles/guest.ast',
       'build/guest.ast',
     ];
@@ -1262,12 +1053,8 @@ class DartGoServer {
     _pendingDartChanges.clear();
     _fileWatchSub?.cancel();
     _assetsWatchSub?.cancel();
-    _stdinSub?.cancel();
-    for (final ws in _sockets) {
-      try {
-        ws.close();
-      } catch (_) {}
-    }
+    _stdinCommands?.stop();
+    _socketHub.closeAll();
     AstBuildWorker.instance.stop();
     _server?.close(force: true);
   }

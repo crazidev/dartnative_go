@@ -42,19 +42,19 @@ class PubspecValidationResult {
   /// Formats the validation report for terminal display.
   String formatReport() {
     final buffer = StringBuffer();
-    buffer.writeln('📋 \x1B[1mProject: $appName ($appVersion)\x1B[0m');
+    buffer.writeln('[INFO] \x1B[1mProject: $appName ($appVersion)\x1B[0m');
     buffer.writeln('   DartNative Go Target: v$kDartGoVersion');
     buffer.writeln('──────────────────────────────────────────────────');
 
     if (validSupportedPlugins.isNotEmpty) {
-      buffer.writeln('\x1B[32m✔ Supported Native Plugins:\x1B[0m');
+      buffer.writeln('\x1B[32m+ Supported Native Plugins:\x1B[0m');
       for (final entry in validSupportedPlugins.entries) {
         buffer.writeln('   • ${entry.key}: ${entry.value}');
       }
     }
 
     if (versionMismatches.isNotEmpty) {
-      buffer.writeln('\n\x1B[33m⚠ Plugin Version Mismatches:\x1B[0m');
+      buffer.writeln('\n\x1B[33m! Plugin Version Mismatches:\x1B[0m');
       for (final mismatch in versionMismatches) {
         buffer.writeln(
           '   • \x1B[1m${mismatch.pluginName}\x1B[0m: declared '
@@ -63,7 +63,7 @@ class PubspecValidationResult {
         );
       }
       buffer.writeln(
-        '\n   \x1B[36m💡 Action Required: Update your pubspec.yaml to match DartNative Go v$kDartGoVersion plugin versions.\x1B[0m',
+        '\n   \x1B[36m[TIP] Action Required: Update your pubspec.yaml to match DartNative Go v$kDartGoVersion plugin versions.\x1B[0m',
       );
     }
 
@@ -75,13 +75,15 @@ class PubspecValidationResult {
         );
       }
       buffer.writeln(
-        '   \x1B[33m⚠ This project includes native plugins not bundled in DartNative Go.\n'
+        '   \x1B[33m! This project includes native plugins not bundled in DartNative Go.\n'
         '     Native method calls for these packages may fail at runtime.\x1B[0m',
       );
     }
 
     if (isFullyCompatible) {
-      buffer.writeln('\n\x1B[32m✔ All dependencies are 100% compatible with DartNative Go v$kDartGoVersion.\x1B[0m');
+      buffer.writeln(
+        '\n\x1B[32m✔ All dependencies are 100% compatible with DartNative Go v$kDartGoVersion.\x1B[0m',
+      );
     }
 
     return buffer.toString();
@@ -155,7 +157,10 @@ class PubspecValidator {
 
       final supported = kSupportedPluginsByName[name];
       if (supported != null) {
-        if (_isConstraintCompatible(constraint, supported.supportedConstraint)) {
+        if (_isConstraintCompatible(
+          constraint,
+          supported.supportedConstraint,
+        )) {
           validSupportedPlugins[name] = constraint;
         } else {
           versionMismatches.add(

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:dartnative_go/src/cli/server.dart';
+import 'package:dartnative_go/src/cli/server/server.dart';
 
 Future<void> main(List<String> args) async {
   final server = DartGoServer(

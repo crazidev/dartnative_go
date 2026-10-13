@@ -26,7 +26,8 @@
 /// mutation-listener hook) would additionally allow asserting which
 /// `ViewMutation`s a tap emits.
 ///
-/// Wire protocol (relayed by `DartGoServer`, see `lib/src/cli/server.dart`):
+/// Wire protocol (relayed by `DartGoServer`, see
+/// `lib/src/cli/server/server.dart`):
 /// - test script → all clients: `{'type': 'ui_probe_request', 'requestId': ...}`
 /// - device → all clients: `{'type': 'ui_tree', 'requestId': ..., 'tree': {...}}`
 /// - test script → all clients: `{'type': 'ui_tap', 'requestId': ..., 'title': ...}`

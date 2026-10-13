@@ -50,8 +50,7 @@ Map<String, String> serverAnnotationSources() {
     final file = File('${root.path}/${_kServerAnnotationPaths[i]}');
     try {
       if (!file.existsSync()) return const {};
-      sources[kServerAnnotationUris.elementAt(i)] =
-          file.readAsStringSync();
+      sources[kServerAnnotationUris.elementAt(i)] = file.readAsStringSync();
     } catch (_) {
       return const {};
     }

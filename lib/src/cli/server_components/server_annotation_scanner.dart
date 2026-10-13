@@ -70,12 +70,14 @@ class ServerAnnotationScanner {
           // Extract the `version` argument.
           final version = _extractVersion(annotation);
 
-          results.add(AnnotatedComponent(
-            className: className,
-            moduleUri: moduleUri,
-            componentId: componentId,
-            version: version,
-          ));
+          results.add(
+            AnnotatedComponent(
+              className: className,
+              moduleUri: moduleUri,
+              componentId: componentId,
+              version: version,
+            ),
+          );
         }
       }
     }

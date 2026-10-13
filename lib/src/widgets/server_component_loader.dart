@@ -1,7 +1,7 @@
 import 'package:dartnative/dartnative.dart' show Widget;
 import 'package:tom_d4rt_ast/runtime.dart' as ast;
 
-import '../cli/server_annotation_scanner.dart';
+import '../cli/server_components/server_annotation_scanner.dart';
 import '../runner/ast_interpreter_runner.dart';
 import '../runner/bundle_loader.dart';
 import 'server_component_view.dart' show mountServerComponent;
@@ -77,8 +77,7 @@ class ServerComponentLoader {
     String componentId, {
     bool forceReload = false,
   }) async {
-    final manifest =
-        await bundleLoader.fetchServerComponentsManifest(_baseUrl);
+    final manifest = await bundleLoader.fetchServerComponentsManifest(_baseUrl);
     final fingerprint = manifest[componentId]?['fingerprint'];
     if (!forceReload &&
         fingerprint != null &&

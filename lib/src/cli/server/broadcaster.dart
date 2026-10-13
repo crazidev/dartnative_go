@@ -7,8 +7,9 @@ class NetworkHelper {
   /// Finds the first non-loopback IPv4 address for local network access.
   static Future<String> getLocalIp() async {
     try {
-      final interfaces =
-          await NetworkInterface.list(type: InternetAddressType.IPv4);
+      final interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+      );
       for (final iface in interfaces) {
         for (final addr in iface.addresses) {
           if (!addr.isLoopback &&
@@ -69,7 +70,9 @@ class DartGoBroadcaster {
   });
 
   /// Starts periodic UDP discovery broadcasting.
-  Future<void> start({Duration interval = const Duration(milliseconds: 1500)}) async {
+  Future<void> start({
+    Duration interval = const Duration(milliseconds: 1500),
+  }) async {
     try {
       _udpSocket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
       _udpSocket!.broadcastEnabled = true;

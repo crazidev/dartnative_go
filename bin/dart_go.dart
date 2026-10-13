@@ -1,157 +1,56 @@
 import 'dart:io';
 
-import 'package:dartnative_go/src/cli/asset_detector.dart';
-import 'package:dartnative_go/src/cli/dart_go_version.dart';
-import 'package:dartnative_go/src/cli/pubspec_validator.dart';
-import 'package:dartnative_go/src/cli/server.dart';
+import 'package:dartnative_go/src/cli/diagnostics/asset_detector.dart';
+import 'package:dartnative_go/src/cli/commands/command_line.dart';
+import 'package:dartnative_go/src/cli/diagnostics/dart_go_version.dart';
+import 'package:dartnative_go/src/cli/diagnostics/pubspec_validator.dart';
+import 'package:dartnative_go/src/cli/server/server.dart';
 import 'package:dartnative_go/src/dap/dap_server.dart';
 
 Future<void> main(List<String> args) async {
-  if (args.isEmpty || args.contains('-h') || args.contains('--help') || args.first == 'help') {
-    if (args.isNotEmpty && args.first != 'help' && !args.contains('-h') && !args.contains('--help')) {
-      // Proceed to default start
-    } else {
+  final cli = DartGoCommandLine.parse(args);
+  switch (cli.command) {
+    case DartGoCommand.help:
       _printHelp();
       return;
-    }
+    case DartGoCommand.version:
+      _printVersion();
+      return;
+    case DartGoCommand.doctor:
+      _runDoctor(cli.projectDir);
+      return;
+    case DartGoCommand.dap:
+      await runDartNativeDap(cli.commandArgs);
+      return;
+    case DartGoCommand.unknown:
+      print('Unknown command: ${args.first}\n');
+      _printHelp();
+      exit(1);
+    case DartGoCommand.start:
+      final server = DartGoServer(
+        DartGoServerOptions(
+          projectDir: cli.projectDir,
+          startPort: cli.startPort,
+          endPort: cli.endPort,
+          enableBroadcast: cli.broadcast,
+          enableQrCode: cli.qrCode,
+          customHost: cli.host,
+          rebuildAst: cli.rebuildAst,
+          verbose: cli.verbose,
+        ),
+      );
+      ProcessSignal.sigint.watch().listen((_) {
+        print('\n[STOP] Shutting down DartNative Go server...');
+        server.stop();
+        exit(0);
+      });
+      await server.start();
   }
-
-  final command = args.isEmpty ? 'start' : args.first;
-
-  if (command == 'version' || command == '--version') {
-    _printVersion();
-    return;
-  }
-
-  if (command == '-v' && args.length == 1) {
-    _printVersion();
-    return;
-  }
-
-  if (command == 'doctor') {
-    final projectDir = _parseProjectDir(args.skip(1).toList());
-    _runDoctor(projectDir);
-    return;
-  }
-
-  if (command == 'dap' || command == 'debug_adapter') {
-    final dapArgs = args.skip(1).toList();
-    await runDartNativeDap(dapArgs);
-    return;
-  }
-
-  if (command == 'start' || !command.startsWith('-') || command == '-v' || command == '--verbose') {
-    final commandArgs = (command == 'start') ? args.skip(1).toList() : args;
-    final projectDir = _parseProjectDir(commandArgs);
-    final (startPort, endPort) = _parsePortRange(commandArgs);
-    final enableBroadcast = !commandArgs.contains('--no-broadcast');
-    final enableQrCode = !commandArgs.contains('--no-qrcode');
-    final customHost = _parseStringArg(commandArgs, 'host');
-    final rebuildAst = !commandArgs.contains('--no-rebuild-ast');
-    final verbose = commandArgs.contains('--verbose') || commandArgs.contains('-v');
-
-    final server = DartGoServer(
-      DartGoServerOptions(
-        projectDir: projectDir,
-        startPort: startPort,
-        endPort: endPort,
-        enableBroadcast: enableBroadcast,
-        enableQrCode: enableQrCode,
-        customHost: customHost,
-        rebuildAst: rebuildAst,
-        verbose: verbose,
-      ),
-    );
-
-    // Trap SIGINT / SIGTERM for graceful shutdown
-    ProcessSignal.sigint.watch().listen((_) {
-      print('\n🛑 Shutting down DartNative Go server...');
-      server.stop();
-      exit(0);
-    });
-
-    await server.start();
-    return;
-  }
-
-  print('Unknown command: $command\n');
-  _printHelp();
-  exit(1);
-}
-
-Directory _parseProjectDir(List<String> args) {
-  for (final a in args) {
-    if (a.startsWith('--project=')) {
-      return Directory(a.substring('--project='.length));
-    }
-  }
-  for (var i = 0; i < args.length; i++) {
-    if (args[i] == '--project' && i + 1 < args.length) {
-      return Directory(args[i + 1]);
-    }
-  }
-  // If a positional directory argument is passed
-  for (final a in args) {
-    if (!a.startsWith('-')) {
-      final dir = Directory(a);
-      if (dir.existsSync()) return dir;
-    }
-  }
-  return Directory.current;
-}
-
-(int startPort, int endPort) _parsePortRange(List<String> args) {
-  var start = 8088;
-  var end = 8098;
-
-  for (final a in args) {
-    if (a.startsWith('--port-range=')) {
-      final val = a.substring('--port-range='.length);
-      final parts = val.split('-');
-      if (parts.length == 2) {
-        start = int.tryParse(parts[0]) ?? start;
-        end = int.tryParse(parts[1]) ?? end;
-      }
-    } else if (a.startsWith('--port=') || a.startsWith('-p=')) {
-      final val = a.replaceFirst(RegExp(r'^(-p|--port)='), '');
-      final p = int.tryParse(val);
-      if (p != null) {
-        start = p;
-        end = p + 10;
-      }
-    }
-  }
-
-  for (var i = 0; i < args.length; i++) {
-    if ((args[i] == '-p' || args[i] == '--port') && i + 1 < args.length) {
-      final p = int.tryParse(args[i + 1]);
-      if (p != null) {
-        start = p;
-        end = p + 10;
-      }
-    }
-  }
-
-  return (start, end);
-}
-
-String? _parseStringArg(List<String> args, String name) {
-  for (final a in args) {
-    if (a.startsWith('--$name=')) {
-      return a.substring('--$name='.length);
-    }
-  }
-  for (var i = 0; i < args.length; i++) {
-    if (args[i] == '--$name' && i + 1 < args.length) {
-      return args[i + 1];
-    }
-  }
-  return null;
 }
 
 void _runDoctor(Directory projectDir) {
   print('╔══════════════════════════════════════════════════════════╗');
-  print('║             🩺 DartNative Go Project Doctor              ║');
+  print('║             [CHECK] DartNative Go Project Doctor         ║');
   print('╚══════════════════════════════════════════════════════════╝\n');
 
   final validator = PubspecValidator(projectDir);
@@ -169,13 +68,15 @@ void _printVersion() {
   print('Supported Native Plugins in DartNative Go v$kDartGoVersion:');
   for (final p in kSupportedNativePlugins) {
     final coreTag = p.isCore ? ' [core]' : '';
-    print('  • ${p.name.padRight(24)} ${p.supportedConstraint.padRight(10)}$coreTag (${p.description})');
+    print(
+      '  • ${p.name.padRight(24)} ${p.supportedConstraint.padRight(10)}$coreTag (${p.description})',
+    );
   }
 }
 
 void _printHelp() {
   print('''
-⚡️ dart_go — The DartNative Go CLI
+[DART] dart_go — The DartNative Go CLI
 
 USAGE:
   dart_go <command> [arguments]

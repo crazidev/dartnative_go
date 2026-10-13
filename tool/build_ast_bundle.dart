@@ -1,6 +1,6 @@
 // Builds `<project>/assets/bundles/guest.ast` for AST-mode testing.
 //
-// Thin CLI over `lib/src/cli/ast_builder.dart` (shared with the dev server's
+// Thin CLI over `lib/src/cli/packaging/ast_builder.dart` (shared with the dev server's
 // `--rebuild-ast` watcher so both produce identical bundles).
 //
 // Usage:
@@ -9,7 +9,7 @@
 //     [--package=my_app]
 import 'dart:io';
 
-import 'package:dartnative_go/src/cli/ast_builder.dart';
+import 'package:dartnative_go/src/cli/packaging/ast_builder.dart';
 
 String? _flag(List<String> args, String name) {
   final prefix = '--$name=';

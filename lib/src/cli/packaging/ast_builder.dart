@@ -13,12 +13,12 @@ import 'package:path/path.dart' as p;
 import 'package:tom_ast_generator/tom_ast_generator.dart';
 import 'package:tom_d4rt_ast/runtime.dart' show AstBundle;
 
-import '../runner/logger.dart';
-import 'client_module_index.dart';
+import '../../runner/logger.dart';
+import '../server_components/client_module_index.dart';
 import 'safe_ast_converter.dart';
-import 'server_annotation_scanner.dart';
-import 'server_annotation_source.dart';
-import 'server_component_bundler.dart';
+import '../server_components/server_annotation_scanner.dart';
+import '../server_components/server_annotation_source.dart';
+import '../server_components/server_component_bundler.dart';
 
 // GZip encoder used to pre-compress module bytes during parse.
 // Declared final (not const) for archive 3.x / 4.x compat — see AstBundle.
@@ -179,7 +179,8 @@ final Map<
     String fingerprint,
     List<int> compressedBytes,
   })
-> _moduleAstCache = {};
+>
+_moduleAstCache = {};
 
 /// Process-lifetime cache of gzip-compressed module bytes (module URI → bytes).
 ///
@@ -213,7 +214,9 @@ final Map<String, String> _uriToFilePath = {};
 ///
 /// Fast path: reuses cached fingerprints for unchanged units, avoiding
 /// expensive `jsonEncode(unit.toJson())` serialization on every reload.
-Map<String, String> fingerprintBundleModules(Map<String, SCompilationUnit> modules) {
+Map<String, String> fingerprintBundleModules(
+  Map<String, SCompilationUnit> modules,
+) {
   final out = <String, String>{};
   modules.forEach((uri, unit) {
     final cached = _moduleAstCache[uri];
@@ -296,16 +299,18 @@ Map<String, String> registrantStubs(
   String? packageName,
 ) {
   final stubs = <String, String>{};
-  if (File('${projectDir.path}/lib/dartnative_plugin_registrant.dart')
-      .existsSync()) {
+  if (File(
+    '${projectDir.path}/lib/dartnative_plugin_registrant.dart',
+  ).existsSync()) {
     stubs['lib/dartnative_plugin_registrant.dart'] = kRegistrantStub;
     if (packageName != null) {
       stubs['package:$packageName/dartnative_plugin_registrant.dart'] =
           kRegistrantStub;
     }
   }
-  if (File('${projectDir.path}/guest_app/dartnative_plugin_registrant.dart')
-      .existsSync()) {
+  if (File(
+    '${projectDir.path}/guest_app/dartnative_plugin_registrant.dart',
+  ).existsSync()) {
     stubs['guest_app/dartnative_plugin_registrant.dart'] = kRegistrantStub;
     if (packageName != null) {
       stubs['package:$packageName/dartnative_plugin_registrant.dart'] =
@@ -341,9 +346,9 @@ const kExcludedDevPackages = {
 };
 
 final Map<String, ({DateTime mtime, Map<String, String> sources})>
-    _packageSourcesCache = {};
+_packageSourcesCache = {};
 final Map<String, ({DateTime mtime, Map<String, String> sources})>
-    _pkgDirCache = {};
+_pkgDirCache = {};
 
 /// Discovers and loads source code for third-party and pure Dart packages
 /// listed in `.dart_tool/package_config.json`.
@@ -403,10 +408,10 @@ Map<String, String> resolvePackageSources(
       final rawPkgUriStr = (pkg['packageUri'] as String?) ?? 'lib/';
       if (rawRootStr == null) continue;
 
-      final rootUriStr =
-          rawRootStr.endsWith('/') ? rawRootStr : '$rawRootStr/';
-      final packageUriStr =
-          rawPkgUriStr.endsWith('/') ? rawPkgUriStr : '$rawPkgUriStr/';
+      final rootUriStr = rawRootStr.endsWith('/') ? rawRootStr : '$rawRootStr/';
+      final packageUriStr = rawPkgUriStr.endsWith('/')
+          ? rawPkgUriStr
+          : '$rawPkgUriStr/';
 
       final rootUri = baseUri.resolve(rootUriStr);
       final libUri = rootUri.resolve(packageUriStr);
@@ -451,8 +456,7 @@ String? detectGuestPackageName(Directory projectDir) {
     final pubspec = File('${projectDir.path}/pubspec.yaml');
     if (!pubspec.existsSync()) return null;
     for (final line in pubspec.readAsLinesSync()) {
-      final match =
-          RegExp(r'^name:\s*([A-Za-z0-9_]+)').firstMatch(line.trim());
+      final match = RegExp(r'^name:\s*([A-Za-z0-9_]+)').firstMatch(line.trim());
       if (match != null) return match.group(1);
     }
   } catch (_) {}
@@ -522,7 +526,6 @@ Future<String> fingerprintGuestSources(
   }
   return hash.hex;
 }
-
 
 /// Per-file content fingerprint cache: absolute path → (mtime, contentHash).
 ///
@@ -613,13 +616,17 @@ class _LastBuild {
   final int byteSize;
   final String entryPointUri;
   final Map<String, String> moduleFingerprints;
+
   /// In-memory bundle: avoids reading + decompressing guest.ast from disk on
   /// client reload. Set after every successful build.
   final AstBundle? cachedBundle;
+
   /// Delta patch bundle containing ONLY the modules changed in this reload cycle.
   final AstBundle? patchBundle;
+
   /// Compressed bytes of [patchBundle] (gzip JSON), ready for sub-10ms network transfer.
   final List<int>? patchBytes;
+
   /// Client module index from the last successful build.
   final ClientModuleIndex? clientModuleIndex;
 
@@ -688,8 +695,9 @@ class IncrementalAstBundler {
     final source = await file.readAsString();
 
     final root = projectRoot ?? _detectProjectRoot(entryPointPath);
-    final canonicalEntryPath =
-        Uri.file(File(entryPointPath).absolute.path).normalizePath().toFilePath();
+    final canonicalEntryPath = Uri.file(
+      File(entryPointPath).absolute.path,
+    ).normalizePath().toFilePath();
     final String entryUri;
     if (root != null &&
         packageName != null &&
@@ -699,8 +707,9 @@ class IncrementalAstBundler {
           .replaceAll(r'\', '/');
       entryUri = 'package:$packageName/$rel';
     } else if (root != null) {
-      entryUri =
-          p.relative(canonicalEntryPath, from: root).replaceAll(r'\', '/');
+      entryUri = p
+          .relative(canonicalEntryPath, from: root)
+          .replaceAll(r'\', '/');
     } else {
       entryUri = entryPointPath.replaceAll(r'\', '/');
     }
@@ -934,8 +943,9 @@ class IncrementalAstBundler {
       );
     }
 
-    final canonicalPath =
-        Uri.file(File(filePath).absolute.path).normalizePath().toFilePath();
+    final canonicalPath = Uri.file(
+      File(filePath).absolute.path,
+    ).normalizePath().toFilePath();
     final file = File(canonicalPath);
     if (!file.existsSync()) {
       return ImportResolution.error(
@@ -956,8 +966,9 @@ class IncrementalAstBundler {
     } else if (uri.isScheme('package')) {
       canonicalUri = uriString;
     } else if (root != null && p.isWithin(root, canonicalPath)) {
-      canonicalUri =
-          p.relative(canonicalPath, from: root).replaceAll(r'\', '/');
+      canonicalUri = p
+          .relative(canonicalPath, from: root)
+          .replaceAll(r'\', '/');
     } else {
       canonicalUri = uriString;
     }
@@ -1031,7 +1042,8 @@ Future<AstBuildResult> buildGuestAstBundle(
     return const AstBuildResult(
       success: false,
       outputPath: '',
-      error: 'No entrypoint (looked for lib/main.dart, then guest_app/main.dart)',
+      error:
+          'No entrypoint (looked for lib/main.dart, then guest_app/main.dart)',
     );
   }
 
@@ -1040,7 +1052,8 @@ Future<AstBuildResult> buildGuestAstBundle(
     return const AstBuildResult(
       success: false,
       outputPath: '',
-      error: 'Could not detect package name from pubspec.yaml (pass packageArg)',
+      error:
+          'Could not detect package name from pubspec.yaml (pass packageArg)',
     );
   }
 
@@ -1048,8 +1061,8 @@ Future<AstBuildResult> buildGuestAstBundle(
   final outPath = rawPath.startsWith('${projectDir.path}/')
       ? rawPath
       : p.isAbsolute(rawPath)
-          ? rawPath
-          : p.join(projectDir.path, rawPath);
+      ? rawPath
+      : p.join(projectDir.path, rawPath);
   final outFile = File(outPath);
 
   // Incremental fast path: unchanged sources since last success → skip parse.
@@ -1060,7 +1073,11 @@ Future<AstBuildResult> buildGuestAstBundle(
     if (last != null && last.outputPath == outFile.path) {
       // Fast incremental fingerprint: only re-read changed files.
       final fp = changedFiles != null
-          ? await fastFingerprintGuestSources(codeRoot, projectDir, changedFiles)
+          ? await fastFingerprintGuestSources(
+              codeRoot,
+              projectDir,
+              changedFiles,
+            )
           : await fingerprintGuestSources(codeRoot, projectDir);
       if (fp == last.fingerprint && outFile.existsSync()) {
         final size = outFile.lengthSync();
@@ -1118,14 +1135,18 @@ Future<AstBuildResult> buildGuestAstBundle(
     // traversal pass the *new* imports of these modules (e.g. a
     // just-created file) would never be discovered — see below.
     final reparsedUris = <String>{};
-    if (incremental && !force && changedFiles != null && previousBundle != null) {
+    if (incremental &&
+        !force &&
+        changedFiles != null &&
+        previousBundle != null) {
       // Start with the full previous module map.
       seedModules = Map<String, SCompilationUnit>.of(previousBundle.modules);
 
       // Evict changed modules by resolving file paths → URIs.
       for (final path in changedFiles) {
-        final canonicalPath =
-            Uri.file(File(path).absolute.path).normalizePath().toFilePath();
+        final canonicalPath = Uri.file(
+          File(path).absolute.path,
+        ).normalizePath().toFilePath();
         final uri = _filePathToUri[canonicalPath];
         if (uri != null) {
           seedModules.remove(uri);
@@ -1139,15 +1160,18 @@ Future<AstBuildResult> buildGuestAstBundle(
       // Pre-parse the changed files and insert into the seed so the DFS sees
       // all 2 041 entries immediately and short-circuits on every lookup.
       for (final path in changedFiles) {
-        final canonicalPath =
-            Uri.file(File(path).absolute.path).normalizePath().toFilePath();
+        final canonicalPath = Uri.file(
+          File(path).absolute.path,
+        ).normalizePath().toFilePath();
         final uri = _filePathToUri[canonicalPath];
         if (uri == null) continue; // new file — let DFS discover it normally
         try {
           final source = await File(canonicalPath).readAsString();
           // Update the mtime cache with the new source.
-          _fileSourceCache[canonicalPath] =
-              (mtime: File(canonicalPath).lastModifiedSync(), source: source);
+          _fileSourceCache[canonicalPath] = (
+            mtime: File(canonicalPath).lastModifiedSync(),
+            source: source,
+          );
           final unit = bundler._getOrParse(source, uri, path: canonicalPath);
           seedModules[uri] = unit;
           reparsedUris.add(uri);
@@ -1209,7 +1233,8 @@ Future<AstBuildResult> buildGuestAstBundle(
     //   • force=true rebuilds — bridge change, need a fresh canonical .ast.
     //   • Non-incremental builds.
     final hasCachedBundle = _lastBuilds[projectDir.path]?.cachedBundle != null;
-    final isHotReload = incremental && !force && changedFiles != null && hasCachedBundle;
+    final isHotReload =
+        incremental && !force && changedFiles != null && hasCachedBundle;
 
     int size;
     AstBundle? patchBundle;
@@ -1218,8 +1243,9 @@ Future<AstBuildResult> buildGuestAstBundle(
       final last = _lastBuilds[projectDir.path];
       final patchModules = <String, SCompilationUnit>{};
       for (final path in changedFiles) {
-        final canonical =
-            Uri.file(File(path).absolute.path).normalizePath().toFilePath();
+        final canonical = Uri.file(
+          File(path).absolute.path,
+        ).normalizePath().toFilePath();
         final uri = _filePathToUri[canonical];
         if (uri != null && bundle.modules.containsKey(uri)) {
           patchModules[uri] = bundle.modules[uri]!;
@@ -1279,7 +1305,10 @@ Future<AstBuildResult> buildGuestAstBundle(
     } else {
       // Cold/forced build — write synchronously before returning.
       await outFile.parent.create(recursive: true);
-      bundle.saveToFile(outFile.path, precompressedModules: _compressedBytesCache);
+      bundle.saveToFile(
+        outFile.path,
+        precompressedModules: _compressedBytesCache,
+      );
       size = outFile.lengthSync();
     }
 
@@ -1346,7 +1375,9 @@ Future<AstBuildResult> buildGuestAstBundle(
     final writeMs = t3.elapsedMilliseconds;
     DartGoLogger.bench(
       'AstBuilder',
-      isHotReload ? 'guest.ast hot-reload (disk write deferred)' : 'guest.ast generated',
+      isHotReload
+          ? 'guest.ast hot-reload (disk write deferred)'
+          : 'guest.ast generated',
       resolveMs + parseBundleMs + writeMs,
       {
         'resolve': resolveMs,
@@ -1534,15 +1565,15 @@ class AstBuildWorker {
     _isolate = null;
     for (final c in _pending.values) {
       if (!c.isCompleted) {
-        c.complete(const AstBuildResult(
-          success: false,
-          outputPath: '',
-          error: 'Worker stopped',
-        ));
+        c.complete(
+          const AstBuildResult(
+            success: false,
+            outputPath: '',
+            error: 'Worker stopped',
+          ),
+        );
       }
     }
     _pending.clear();
   }
 }
-
-

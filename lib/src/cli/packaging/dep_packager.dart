@@ -22,20 +22,20 @@ class DepEntry {
   });
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'version': version,
-        'zipUrl': zipUrl,
-        'contentHash': contentHash,
-        'byteSize': byteSize,
-      };
+    'name': name,
+    'version': version,
+    'zipUrl': zipUrl,
+    'contentHash': contentHash,
+    'byteSize': byteSize,
+  };
 
   factory DepEntry.fromJson(Map<String, dynamic> json) => DepEntry(
-        name: json['name'] as String,
-        version: json['version'] as String? ?? '1.0.0',
-        zipUrl: json['zipUrl'] as String,
-        contentHash: json['contentHash'] as String,
-        byteSize: json['byteSize'] as int? ?? 0,
-      );
+    name: json['name'] as String,
+    version: json['version'] as String? ?? '1.0.0',
+    zipUrl: json['zipUrl'] as String,
+    contentHash: json['contentHash'] as String,
+    byteSize: json['byteSize'] as int? ?? 0,
+  );
 }
 
 /// Result of resolving dependencies and building package ZIP archives.
@@ -54,8 +54,8 @@ class DepPackagerResult {
 /// Server-side packager that bundles third-party packages into individual ZIPs.
 class DepPackager {
   // In-memory cache for package zips: "$projectPath" -> DepPackagerResult
-  static final Map<String, ({DateTime mtime, DepPackagerResult result})> _cache =
-      {};
+  static final Map<String, ({DateTime mtime, DepPackagerResult result})>
+  _cache = {};
 
   /// Computes a deterministic SHA-256 hash over sorted name@version pairs.
   static String computeDepsHash(List<DepEntry> deps) {
@@ -71,7 +71,9 @@ class DepPackager {
       final pubspec = File('${pkgRootDir.path}/pubspec.yaml');
       if (pubspec.existsSync()) {
         for (final line in pubspec.readAsLinesSync()) {
-          final match = RegExp(r'^version:\s*([^\s#]+)').firstMatch(line.trim());
+          final match = RegExp(
+            r'^version:\s*([^\s#]+)',
+          ).firstMatch(line.trim());
           if (match != null) {
             return match.group(1)!.trim();
           }
@@ -110,7 +112,9 @@ class DepPackager {
     String serverUrl, {
     String? packageName,
   }) {
-    final configFile = File('${projectDir.path}/.dart_tool/package_config.json');
+    final configFile = File(
+      '${projectDir.path}/.dart_tool/package_config.json',
+    );
     if (!configFile.existsSync()) {
       return const DepPackagerResult(
         depsHash: 'empty',
@@ -152,10 +156,12 @@ class DepPackager {
             final rawPkgUriStr = (pkg['packageUri'] as String?) ?? 'lib/';
             if (rawRootStr == null) continue;
 
-            final rootUriStr =
-                rawRootStr.endsWith('/') ? rawRootStr : '$rawRootStr/';
-            final packageUriStr =
-                rawPkgUriStr.endsWith('/') ? rawPkgUriStr : '$rawPkgUriStr/';
+            final rootUriStr = rawRootStr.endsWith('/')
+                ? rawRootStr
+                : '$rawRootStr/';
+            final packageUriStr = rawPkgUriStr.endsWith('/')
+                ? rawPkgUriStr
+                : '$rawPkgUriStr/';
 
             final rootUri = baseUri.resolve(rootUriStr);
             final libUri = rootUri.resolve(packageUriStr);
@@ -184,7 +190,10 @@ class DepPackager {
             final version = extractPackageVersion(pkgRootDir);
             final zipKey = '$name@$version';
             final zipBytes = zipFilesMap(filesMap);
-            final contentHash = sha256.convert(zipBytes).toString().substring(0, 16);
+            final contentHash = sha256
+                .convert(zipBytes)
+                .toString()
+                .substring(0, 16);
 
             packageZips[zipKey] = zipBytes;
             depEntries.add(

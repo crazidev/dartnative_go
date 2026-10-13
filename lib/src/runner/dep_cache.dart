@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
-import '../cli/dep_packager.dart';
+import '../cli/packaging/dep_packager.dart';
 
 /// On-device persistent cache for third-party dependency packages (Expo Go-style).
 class DepCache {
@@ -10,14 +10,13 @@ class DepCache {
   final File metaFile;
   String? _cachedDepsHash;
 
-  DepCache(this.cacheDir)
-      : metaFile = File('${cacheDir.path}/deps_meta.json') {
+  DepCache(this.cacheDir) : metaFile = File('${cacheDir.path}/deps_meta.json') {
     _init();
   }
 
   static Future<DepCache> create([Directory? baseDir]) async {
-    final root = baseDir ??
-        Directory('${Directory.systemTemp.path}/dn_dep_cache');
+    final root =
+        baseDir ?? Directory('${Directory.systemTemp.path}/dn_dep_cache');
     if (!root.existsSync()) {
       root.createSync(recursive: true);
     }

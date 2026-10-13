@@ -6,7 +6,7 @@ import 'package:tom_d4rt_ast/runtime.dart' as ast;
 
 import 'ast_bundle_codec.dart';
 import 'logger.dart';
-import '../cli/server_annotation_scanner.dart';
+import '../cli/server_components/server_annotation_scanner.dart';
 import '../interpreter/ast/ast_asset_bridge.dart';
 import '../interpreter/ast/ast_widget_proxies.dart';
 import '../interpreter/ast/dartscript.b.dart' as ast_bridges;
@@ -46,7 +46,8 @@ class AstInterpreterRunner {
   /// function bodies and variable storage are swapped in place; cleared by
   /// [dispose] (hot restart, runtime-mode switch, unmount) together with the
   /// core runner.
-  final ast.DeclarationRegistry _declarationRegistry = ast.DeclarationRegistry();
+  final ast.DeclarationRegistry _declarationRegistry =
+      ast.DeclarationRegistry();
 
   /// Decoded-bundle cache (Phase 5). Decoding a `.ast` archive is the single
   /// most expensive host-side step of a reload, and the dev server re-sends the
@@ -217,7 +218,7 @@ class AstInterpreterRunner {
     List<Object?>? positionalArgs,
     Map<String, Object?>? namedArgs,
     bool isHotReload = false,
-    Map<String, String>     moduleFingerprints = const {},
+    Map<String, String> moduleFingerprints = const {},
   }) async {
     final totalSw = Stopwatch()..start();
     _capturedApp = null;

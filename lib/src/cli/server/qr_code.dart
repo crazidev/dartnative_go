@@ -18,12 +18,54 @@ class QrCode {
   // Version specs for Level L:
   // [version, totalCodewords, dataCodewords, ecCodewords, size, alignmentPatternPos]
   static const List<_VersionSpec> _specs = [
-    _VersionSpec(version: 1, total: 26, data: 19, ec: 7, size: 21, alignPos: []),
-    _VersionSpec(version: 2, total: 44, data: 34, ec: 10, size: 25, alignPos: [6, 18]),
-    _VersionSpec(version: 3, total: 70, data: 55, ec: 15, size: 29, alignPos: [6, 22]),
-    _VersionSpec(version: 4, total: 100, data: 80, ec: 20, size: 33, alignPos: [6, 26]),
-    _VersionSpec(version: 5, total: 134, data: 108, ec: 26, size: 37, alignPos: [6, 30]),
-    _VersionSpec(version: 6, total: 172, data: 136, ec: 36, size: 41, alignPos: [6, 34]),
+    _VersionSpec(
+      version: 1,
+      total: 26,
+      data: 19,
+      ec: 7,
+      size: 21,
+      alignPos: [],
+    ),
+    _VersionSpec(
+      version: 2,
+      total: 44,
+      data: 34,
+      ec: 10,
+      size: 25,
+      alignPos: [6, 18],
+    ),
+    _VersionSpec(
+      version: 3,
+      total: 70,
+      data: 55,
+      ec: 15,
+      size: 29,
+      alignPos: [6, 22],
+    ),
+    _VersionSpec(
+      version: 4,
+      total: 100,
+      data: 80,
+      ec: 20,
+      size: 33,
+      alignPos: [6, 26],
+    ),
+    _VersionSpec(
+      version: 5,
+      total: 134,
+      data: 108,
+      ec: 26,
+      size: 37,
+      alignPos: [6, 30],
+    ),
+    _VersionSpec(
+      version: 6,
+      total: 172,
+      data: 136,
+      ec: 36,
+      size: 41,
+      alignPos: [6, 34],
+    ),
   ];
 
   void _init() {
@@ -43,7 +85,10 @@ class QrCode {
     version = spec.version;
     size = spec.size;
     _modules = List.generate(size, (_) => List<int>.filled(size, -1));
-    _isFunctionPattern = List.generate(size, (_) => List<bool>.filled(size, false));
+    _isFunctionPattern = List.generate(
+      size,
+      (_) => List<bool>.filled(size, false),
+    );
 
     // 1. Encode data bits into bytes
     final dataBytes = _encodeData(bytes, spec.data);
@@ -174,8 +219,7 @@ class QrCode {
           final col = c + dc;
           if (row >= 0 && row < size && col >= 0 && col < size) {
             final isBorder = dr == -1 || dr == 7 || dc == -1 || dc == 7;
-            final isOuterSquare =
-                dr == 0 || dr == 6 || dc == 0 || dc == 6;
+            final isOuterSquare = dr == 0 || dr == 6 || dc == 0 || dc == 6;
             final isInnerDot = dr >= 2 && dr <= 4 && dc >= 2 && dc <= 4;
             final val = (!isBorder && (isOuterSquare || isInnerDot)) ? 1 : 0;
             _modules[row][col] = val;

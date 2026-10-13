@@ -15,8 +15,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dartnative_go/src/cli/ast_builder.dart';
-import 'package:dartnative_go/src/cli/server_component_bundler.dart'
+import 'package:dartnative_go/src/cli/packaging/ast_builder.dart';
+import 'package:dartnative_go/src/cli/server_components/server_component_bundler.dart'
     show serverManifestToJson;
 
 String? _flag(List<String> args, String name) {

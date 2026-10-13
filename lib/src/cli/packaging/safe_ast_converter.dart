@@ -26,7 +26,8 @@ class SafeAstConverter extends AstConverter {
     }
     final nodeType = node.runtimeType.toString();
     if (nodeType.contains('DotShorthandPropertyAccess')) {
-      final propName = (node as dynamic).propertyName?.name?.toString() ??
+      final propName =
+          (node as dynamic).propertyName?.name?.toString() ??
           (node as dynamic).identifier?.name?.toString() ??
           node.toString().replaceAll(RegExp(r'^\.'), '');
       return SSimpleIdentifier(
@@ -37,7 +38,8 @@ class SafeAstConverter extends AstConverter {
       );
     }
     if (nodeType.contains('DotShorthandInvocation')) {
-      final methodName = (node as dynamic).methodName?.name?.toString() ??
+      final methodName =
+          (node as dynamic).methodName?.name?.toString() ??
           (node as dynamic).identifier?.name?.toString() ??
           '';
       final args = (node as dynamic).argumentList as analyzer.AstNode?;

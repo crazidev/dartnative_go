@@ -110,7 +110,8 @@ const List<SupportedPlugin> kSupportedNativePlugins = [
     name: 'dartnative_notifications',
     supportedConstraint: '^1.0.0',
     isCore: false,
-    description: 'Local notifications: permissions, alerts, chat style, tap payloads',
+    description:
+        'Local notifications: permissions, alerts, chat style, tap payloads',
   ),
   SupportedPlugin(
     name: 'dartnative_system',
@@ -134,7 +135,8 @@ const List<SupportedPlugin> kSupportedNativePlugins = [
     name: 'dartnative_background',
     supportedConstraint: '^1.0.0',
     isCore: false,
-    description: 'Background task scheduling over WorkManager / BGTaskScheduler',
+    description:
+        'Background task scheduling over WorkManager / BGTaskScheduler',
   ),
   SupportedPlugin(
     name: 'native_bottomsheet',

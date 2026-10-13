@@ -4,7 +4,7 @@ import 'dart:io';
 
 import 'package:archive/archive.dart';
 
-import '../cli/dep_packager.dart';
+import '../cli/packaging/dep_packager.dart';
 import '../interpreter/auto_import_parser.dart';
 import 'dep_cache.dart';
 import 'logger.dart';
@@ -84,8 +84,10 @@ class BundleLoader {
   // language version 3.12, but the device toolchain pins this package to
   // 3.9 (see .dart_tool/package_config.json as written by `dn pub get`).
   BundleLoader({HttpClient? client, DepCache? depCache})
-      : _client = client ?? (HttpClient()..connectionTimeout = const Duration(seconds: 10)),
-        _depCache = depCache;
+    : _client =
+          client ??
+          (HttpClient()..connectionTimeout = const Duration(seconds: 10)),
+      _depCache = depCache;
 
   /// Sets the active on-device dependency cache.
   set depCache(DepCache? cache) {
@@ -93,6 +95,7 @@ class BundleLoader {
     _cachedDepSources = null;
     _loadedDepsHash = null;
   }
+
   DepCache? get depCache => _depCache;
 
   /// Normalizes base server URL without trailing slash.
@@ -110,7 +113,9 @@ class BundleLoader {
 
   /// Reads `astModuleFingerprints` from a manifest, tolerating older servers
   /// (and malformed payloads) by returning an empty map.
-  static Map<String, String> _moduleFingerprintsFrom(Map<String, dynamic>? manifest) {
+  static Map<String, String> _moduleFingerprintsFrom(
+    Map<String, dynamic>? manifest,
+  ) {
     final raw = manifest?['astModuleFingerprints'];
     if (raw is! Map) return const {};
     final out = <String, String>{};
@@ -214,8 +219,9 @@ class BundleLoader {
     if (!RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(componentId)) return null;
     final baseUrl = normalizeUrl(serverUrl);
     try {
-      final req = await _client
-          .getUrl(Uri.parse('$baseUrl/server-components/$componentId.ast'));
+      final req = await _client.getUrl(
+        Uri.parse('$baseUrl/server-components/$componentId.ast'),
+      );
       final res = await req.close();
       if (res.statusCode != HttpStatus.ok) return null;
       final bytes = await res.fold<List<int>>(
@@ -236,8 +242,9 @@ class BundleLoader {
   ) async {
     final baseUrl = normalizeUrl(serverUrl);
     try {
-      final req = await _client
-          .getUrl(Uri.parse('$baseUrl/server-components/manifest.json'));
+      final req = await _client.getUrl(
+        Uri.parse('$baseUrl/server-components/manifest.json'),
+      );
       final res = await req.close();
       if (res.statusCode != HttpStatus.ok) return const {};
       final body = await res.transform(utf8.decoder).join();
@@ -465,8 +472,12 @@ class BundleLoader {
           final pool = <Future>[];
           for (final dep in needed) {
             pool.add(
-              _fetchAndCachePackage(dep.zipUrl, dep.name, dep.version, cache)
-                  .then((_) {
+              _fetchAndCachePackage(
+                dep.zipUrl,
+                dep.name,
+                dep.version,
+                cache,
+              ).then((_) {
                 downloaded++;
                 onProgress?.call(downloaded, total);
               }),
@@ -498,7 +509,8 @@ class BundleLoader {
         ...userSources,
       };
 
-      final packageName = manifest['packageName']?.toString() ??
+      final packageName =
+          manifest['packageName']?.toString() ??
           manifest['appName']?.toString() ??
           'guest_app';
 
@@ -593,7 +605,8 @@ class BundleLoader {
           });
         }
 
-        final packageName = manifest['packageName']?.toString() ??
+        final packageName =
+            manifest['packageName']?.toString() ??
             manifest['appName']?.toString() ??
             'guest_app';
 
