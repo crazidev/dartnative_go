@@ -681,6 +681,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       },
       errorDisplayMode: _errorDisplayMode,
       onSelectErrorMode: _setErrorDisplayMode,
+      astProfile: _useAst ? _interpreterRunner.astRunner?.lastAstProfile : null,
       child: child,
     );
   }

@@ -19,9 +19,10 @@ Downloads guest code, evaluates it, and keeps state across reloads.
 ## Flow
 
 ```text
-LiveConnection(reload) -> BundleLoader (patch or full bundle)
+LiveConnection(reload) -> BundleLoader (patch with ?base= lineage, or full bundle)
   -> AstInterpreterRunner.evaluate as new generation
   -> WidgetGenerationTracker marks changed classes -> remount only those
+  -> pushed routes + sheets rebind via loaded-module lookup
 ```
 
 ## Invariants
@@ -31,6 +32,8 @@ LiveConnection(reload) -> BundleLoader (patch or full bundle)
 - The core runner, bridges, and stdlib parent are built once; only restart,
   mode switch, or unmount tears them down.
 - Overlapping reloads are ordered by monotonic sequence tokens.
+- A patch applies only to its recorded base; on mismatch the client takes
+  the full bundle instead of building a franken-bundle.
 - Errors always reach the CLI (trimmed stack; full under `-v`).
 
 Reload internals (declaration cells, module reuse, transactions): root

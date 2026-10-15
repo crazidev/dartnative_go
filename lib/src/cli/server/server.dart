@@ -387,6 +387,13 @@ class DartGoServer {
         'assets': _collectProjectAssets(projectDir),
         'hasAstBundle': astFile != null,
         'astUrl': astFile != null ? '$serverUrl/guest.ast' : null,
+        // Tells AST-mode clients whether a bundle is still being built: the
+        // initial build runs in the background, so a client that connects in
+        // the first seconds sees hasAstBundle=false while bytes are moments
+        // away. Clients wait briefly instead of falling back to source mode.
+        // Stays true when the build failed — clients retry briefly, then fall
+        // back; the build error is in this process's log.
+        'astPending': options.rebuildAst && astFile == null,
         'astModuleFingerprints': astFile != null
             ? moduleFingerprintsForProject(projectDir)
             : const <String, String>{},
@@ -608,7 +615,13 @@ class DartGoServer {
           await request.response.close();
           return;
         }
-        await _serveAssetFile(request, astFile, etag: etag);
+        await _serveAssetFile(request, astFile, etag: etag,
+            // Patch lineage: the fingerprint of the exact bytes served, so
+            // devices know which bundle generation they are based on.
+            extraHeaders: {
+              if (fileSourceFingerprintForPath(astFile.path).isNotEmpty)
+                'X-Ast-Bundle': fileSourceFingerprintForPath(astFile.path),
+            });
         print(
           '[DevServer] [AST] Served guest.ast (${await astFile.length()} bytes, etag=$etag)',
         );
@@ -625,6 +638,33 @@ class DartGoServer {
     } else if (path == '/guest.ast.patch') {
       final patchBytes = patchBytesForProject(projectDir);
       if (patchBytes != null && patchBytes.isNotEmpty) {
+        // Patch lineage: a delta is only valid on the base it was computed
+        // against. A device that missed an intermediate reload (aborted by a
+        // newer broadcast) sends a stale `?base=` and must take the full
+        // bundle instead — applying the delta would strand stale modules
+        // with no error (franken-bundle). Clients that predate lineage send
+        // no `base` and keep the legacy behavior.
+        final query = request.uri.queryParameters;
+        final patchBaseFp = patchBaseFingerprintForProject(projectDir);
+        if (query.containsKey('base') &&
+            patchBaseFp != null &&
+            patchBaseFp.isNotEmpty &&
+            query['base'] != patchBaseFp) {
+          request.response
+            ..statusCode = HttpStatus.notFound
+            ..headers.add('Access-Control-Allow-Origin', '*')
+            ..write(
+              'Patch base mismatch (patch is based on $patchBaseFp); '
+              'fetch full /guest.ast.',
+            )
+            ..close();
+          print(
+            '[DevServer] [PATCH] base mismatch (device=${query['base']}, '
+            'patch base=$patchBaseFp) — full fetch advised.',
+          );
+          return;
+        }
+        final bundleFp = bundleFingerprintForProject(projectDir);
         final astFile = _resolveAstBundleFile(projectDir);
         final fp = astFile != null
             ? astBundleFingerprintForProject(projectDir, astFile)
@@ -650,8 +690,9 @@ class DartGoServer {
           ..headers.contentType = ContentType('application', 'octet-stream')
           ..headers.set(HttpHeaders.contentLengthHeader, patchBytes.length)
           ..headers.set(HttpHeaders.etagHeader, etag)
+          ..headers.set('X-Ast-Bundle', bundleFp)
           ..headers.add('Access-Control-Allow-Origin', '*')
-          ..headers.add('Access-Control-Expose-Headers', 'ETag')
+          ..headers.add('Access-Control-Expose-Headers', 'ETag, X-Ast-Bundle')
           ..add(patchBytes);
         await request.response.close();
         print(
@@ -1014,6 +1055,7 @@ class DartGoServer {
     HttpRequest request,
     File file, {
     String? etag,
+    Map<String, String>? extraHeaders,
   }) async {
     try {
       final bytes = await file.readAsBytes();
@@ -1023,9 +1065,22 @@ class DartGoServer {
         ..headers.contentType = contentType
         ..headers.add('Access-Control-Allow-Origin', '*')
         ..headers.add('Cache-Control', 'no-cache');
+      final expose = <String>[];
       if (etag != null) {
         request.response.headers.set(HttpHeaders.etagHeader, etag);
-        request.response.headers.set('Access-Control-Expose-Headers', 'ETag');
+        expose.add('ETag');
+      }
+      if (extraHeaders != null) {
+        extraHeaders.forEach((name, value) {
+          request.response.headers.set(name, value);
+          expose.add(name);
+        });
+      }
+      if (expose.isNotEmpty) {
+        request.response.headers.set(
+          'Access-Control-Expose-Headers',
+          expose.join(', '),
+        );
       }
       request.response
         ..headers.contentLength = bytes.length

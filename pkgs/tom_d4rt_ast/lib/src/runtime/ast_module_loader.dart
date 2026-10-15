@@ -153,6 +153,7 @@ class AstModuleLoader implements ModuleContext {
     this.sharedBridgedModuleEnvironments,
     this.sharedModuleEnclosing,
     this.onBridgedModuleEnvBuilt,
+    this.onModuleProfile,
     this.fallbackLoader,
   });
 
@@ -173,6 +174,20 @@ class AstModuleLoader implements ModuleContext {
   /// Invoked once each time a bridged-module env is actually built (cache miss).
   /// Lets the runner expose a debug build counter for the reuse unit test.
   final void Function()? onBridgedModuleEnvBuilt;
+
+  /// Optional execution diagnostics for module resolution.
+  ///
+  /// [elapsedMicros] is inclusive: loading a bundle module includes the time
+  /// spent recursively loading its imports. Bridged symbol counts help
+  /// identify large generated plugin/framework surfaces.
+  final void Function(
+    String uri,
+    int elapsedMicros,
+    bool isBundleModule,
+    bool cacheHit,
+    int bridgedSymbolCount,
+  )?
+  onModuleProfile;
 
   /// Previously-completed loader consulted when a module is absent from
   /// [modules] (server-component delta support — see constructor docs).
@@ -197,13 +212,36 @@ class AstModuleLoader implements ModuleContext {
     Set<String>? showNames,
     Set<String>? hideNames,
   }) {
+    final profile = onModuleProfile;
+    final stopwatch = profile == null ? null : (Stopwatch()..start());
+    final cacheHit = _moduleCache.containsKey(uri);
     try {
       return _loadModule(uri, showNames: showNames, hideNames: hideNames);
     } catch (_) {
       _inFlightModules.remove(uri);
       rethrow;
+    } finally {
+      if (profile != null) {
+        final uriString = uri.toString();
+        profile(
+          uriString,
+          stopwatch!.elapsedMicroseconds,
+          modules.containsKey(uriString),
+          cacheHit,
+          _bridgedSymbolCount(uriString),
+        );
+      }
     }
   }
+
+  int _bridgedSymbolCount(String uri) =>
+      (runner.bridgedClasses[uri]?.length ?? 0) +
+      (runner.bridgedEnumDefinitions[uri]?.length ?? 0) +
+      (runner.bridgedExtensions[uri]?.length ?? 0) +
+      (runner.libraryFunctions[uri]?.length ?? 0) +
+      (runner.libraryVariables[uri]?.length ?? 0) +
+      (runner.libraryGetters[uri]?.length ?? 0) +
+      (runner.librarySetters[uri]?.length ?? 0);
 
   LoadedModule _loadModule(
     Uri uri, {

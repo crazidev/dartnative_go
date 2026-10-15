@@ -31,6 +31,17 @@ registry for exact, transactional state preservation and the decoded-bundle /
 module-reuse caches for speed. See [Hot Reload](hot_reload.md) for the full
 mechanism.
 
+### AST bundle explorer (DevTool)
+
+Every evaluation retains lightweight per-module timings (a few hundred map
+entries — always on, not gated on verbose), and `AstInterpreterRunner`
+builds a structured `AstProfileSnapshot` from them on demand: bundle totals,
+a per-package rollup, all modules by AST size, slowest loads, largest
+classes, and bridged libraries. The DevTool sheet renders it as an
+**AST BUNDLE** section, and the same data backs the verbose `[PROFILE]`
+device logs — so the CLI table and the on-device explorer can never disagree.
+Opening the viewer is the only thing that pays the AST sizing walk.
+
 **Trade-offs / constraints:**
 
 - The bundle only contains what the bundler can statically reach and what
@@ -83,8 +94,12 @@ selected engine.
 
 - If AST mode is selected **and** the bundle has AST bytes (`hasAst`), it runs
   `evaluateAstBundle` with the per-module fingerprints.
-- If AST mode is selected but the server returned 404 for `/guest.ast`, it
-  logs a line and **falls back to source** so you're never stuck.
+- If AST mode is selected but no bundle is available yet, the device waits
+  briefly while the manifest advertises `astPending` (the server builds the
+  initial bundle in the background), then falls back to source with a log
+  line naming the likely cause (still building vs. build failed vs.
+  `--no-rebuild-ast`) — so a fast connect after server start lands in AST
+  mode instead of a broken source fallback.
 - Otherwise it runs the source path (`evaluate`).
 
 `BundleLoader.fetchBundle` mirrors this: in AST mode with a bundle available

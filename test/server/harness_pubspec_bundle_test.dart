@@ -171,5 +171,102 @@ dependencies:
       final second = await loader.fetchAstBytes(server.baseUrl);
       expect(second, equals([10, 20, 30]));
     });
+
+    test('fetchAstBytesAwaitReady fails fast when nothing is pending',
+        () async {
+      // No bundle, not pending (--no-rebuild-ast): single attempt, no wait.
+      final sw = Stopwatch()..start();
+      final bytes = await loader.fetchAstBytesAwaitReady(
+        server.baseUrl,
+        pending: false,
+      );
+      expect(bytes, isNull);
+      expect(sw.elapsedMilliseconds, lessThan(5000));
+    });
+
+    test('fetchAstBytesAwaitReady waits for a bundle that appears mid-build',
+        () async {
+      await server.stop();
+      server = FakeDevServer(appName: 'AST Pending App', astPending: true);
+      await server.start();
+      loader.clearAstCache();
+
+      // Bundle appears 300ms in, like a background initial build finishing.
+      Future.delayed(const Duration(milliseconds: 300), () {
+        server.astBytes = [7, 8, 9];
+      });
+      final bytes = await loader.fetchAstBytesAwaitReady(
+        server.baseUrl,
+        pending: true,
+        maxAttempts: 20,
+        delay: const Duration(milliseconds: 100),
+      );
+      expect(bytes, equals([7, 8, 9]));
+    });
+
+    test('fetchAstBytesAwaitReady gives up after maxAttempts', () async {
+      final bytes = await loader.fetchAstBytesAwaitReady(
+        server.baseUrl,
+        pending: true,
+        maxAttempts: 3,
+        delay: const Duration(milliseconds: 50),
+      );
+      expect(bytes, isNull);
+    });
+
+    test('patch applies when base matches, advancing client lineage',
+        () async {
+      await server.stop();
+      server = FakeDevServer(
+        appName: 'AST Lineage App',
+        astBytes: [1, 2, 3],
+        bundleFp: 'gen1',
+      );
+      await server.start();
+
+      // Cold launch learns the base generation from X-Ast-Bundle.
+      final full = await loader.fetchBundle(server.baseUrl, onlyAst: true);
+      expect(full.hasAst, isTrue);
+
+      // Server rebuilds: full advances to gen2, patch covers gen1→gen2.
+      server.astBytes = [4, 5, 6];
+      server.bundleFp = 'gen2';
+      server.patchBytes = [9, 9];
+      server.patchBaseFp = 'gen1';
+      server.patchBundleFp = 'gen2';
+
+      final reloaded = await loader.fetchBundle(
+        server.baseUrl,
+        onlyAst: true,
+        isHotReload: true,
+      );
+      expect(reloaded.isPatch, isTrue);
+      expect(reloaded.astPatchBytes, equals([9, 9]));
+    });
+
+    test('stale patch base falls back to a full fetch', () async {
+      await server.stop();
+      server = FakeDevServer(
+        appName: 'AST Stale App',
+        astBytes: [4, 5, 6],
+        bundleFp: 'gen2',
+        patchBytes: [9, 9],
+        patchBaseFp: 'gen1',
+        patchBundleFp: 'gen2',
+      );
+      await server.start();
+
+      // Fresh client never learned a base (empty `?base=`): the server must
+      // refuse the delta so the client takes the full bundle instead of a
+      // franken-bundle.
+      final reloaded = await loader.fetchBundle(
+        server.baseUrl,
+        onlyAst: true,
+        isHotReload: true,
+      );
+      expect(reloaded.isPatch, isFalse);
+      expect(reloaded.hasAst, isTrue);
+      expect(reloaded.astBytes, equals([4, 5, 6]));
+    });
   });
 }

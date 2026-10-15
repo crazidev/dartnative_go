@@ -78,8 +78,8 @@ All responses set `Access-Control-Allow-Origin: *`. Mutable routes use
 | `/pkg/<name>@<version>.zip` | GET | One pure-Dart dependency as a ZIP. Immutable (`max-age=31536000`) since it's content-addressed by version. |
 | `/user-code.zip` | GET | Your project's `lib/` (or `guest_app/`) Dart files as a single ZIP. Always fresh. |
 | `/user-code-hash` | GET | `{ "hash": … }` for the user-code ZIP — a cheap way to poll for changes. |
-| `/guest.ast` | GET | The precompiled full AST bundle. 404 when it hasn't been built — the device then stays on source mode. |
-| `/guest.ast.patch` | GET | Delta AST patch containing only modified compilation units for incremental reloads (~20 KB). 404 when no patch is available. |
+| `/guest.ast` | GET | The precompiled full AST bundle. 404 when it hasn't been built — the device then stays on source mode. Serves `X-Ast-Bundle` (the source fingerprint of the exact bytes) so devices track their patch base. |
+| `/guest.ast.patch` | GET | Delta AST patch containing only modified compilation units for incremental reloads (~20 KB). 404 when no patch is available — or when the client's `?base=` doesn't match the generation the delta was computed against (see [Patch lineage](hot_reload.md#patch-lineage-deltas-apply-only-to-their-base)). Serves `X-Ast-Bundle` with the new generation. |
 | `/bundle.json` | GET | Monolithic fallback: manifest + deps + all source files + breakpoints in one JSON. |
 | `/app.dart` | GET | Just the entrypoint source (`lib/main.dart`). The last-resort fallback. |
 | `/assets.json` | GET | `{ "assets": [relative paths…] }` for everything under `assets/`. |
@@ -100,6 +100,9 @@ The manifest is the contract between server and device. Key fields:
   and this is the hash to compare against the on-device cache.
 - `userCodeUrl`, `userCodeHash` — where your code is and how to tell it changed.
 - `hasAstBundle`, `astUrl` — whether an AST bundle exists and where to get it.
+- `astPending` — rebuilds are enabled but no bundle file exists yet (the
+  initial build runs in the background). AST-mode devices wait briefly for
+  the build instead of falling back to source mode immediately.
 - `astModuleFingerprints` — map of module URI → FNV-1a hex of that module's
   serialized AST. The device uses these to skip re-declaring unchanged modules
   on a hot reload (see [Hot Reload](hot_reload.md#module-reuse)).
@@ -242,6 +245,15 @@ When `--rebuild-ast` is on, the server (and `tool/build_ast_bundle.dart`) call
   serialized AST is hashed and surfaced via `/manifest.json` as
   `astModuleFingerprints`. This is what powers
   [module reuse](hot_reload.md#module-reuse) on the device.
+- **Patch lineage.** Every hot build records which generation its delta
+  applies to (`patchBaseFingerprint`, served and enforced as `?base=` on
+  `/guest.ast.patch`). See
+  [Patch lineage](hot_reload.md#patch-lineage-deltas-apply-only-to-their-base).
+- **Sources survive rebuilds.** The incremental DFS only re-parses changed
+  files, so the rebuilt bundle's `sources` map is backfilled: changed files
+  are re-read from disk and everything still present carries forward from
+  the previous bundle. Without this, rebuilt bundles (and everything
+  derived from them, like patches) degrade to entry-only sources.
 - **`SafeAstConverter`.** Extends the generator's `AstConverter` to handle
   newer analyzer nodes (e.g. `LibraryIdentifier` in `library foo;`) so the
   build doesn't choke on them.

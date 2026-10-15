@@ -3,6 +3,7 @@ import 'package:native_bottomsheet/native_bottomsheet.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 
 import '../client/error_display_storage.dart';
+import '../runner/ast_profile.dart';
 import '../runner/dep_cache.dart';
 import '../runner/runtime_mode.dart';
 import '../theme/theme_providers.dart';
@@ -45,6 +46,9 @@ class DevToolOverlay extends StatefulWidget {
   final ErrorDisplayMode errorDisplayMode;
   final void Function(ErrorDisplayMode mode)? onSelectErrorMode;
 
+  /// Structured snapshot of the last AST bundle evaluation for the viewer.
+  final AstProfileSnapshot? astProfile;
+
   const DevToolOverlay({
     super.key,
     required this.child,
@@ -65,6 +69,7 @@ class DevToolOverlay extends StatefulWidget {
     this.onToggleVerbose,
     this.errorDisplayMode = ErrorDisplayMode.overlay,
     this.onSelectErrorMode,
+    this.astProfile,
   });
 
   @override
@@ -127,6 +132,7 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
               .setPreference(preference),
           onGoHome: widget.onGoHome,
           onReload: widget.onReload,
+          astProfile: widget.astProfile,
         ),
       ),
       onDetentChanged: (detent) => print('settled at ${detent.label}'),

@@ -140,9 +140,17 @@ class BundleLoader {
 
   final Map<String, ({String etag, List<int> bytes})> _astCache = {};
 
+  /// Source fingerprint of the AST bundle generation this client is based on
+  /// (the server's `X-Ast-Bundle`), keyed by normalized base URL. Sent back
+  /// as `?base=` on patch requests so the server only serves deltas that
+  /// apply cleanly; a mismatch falls back to a full fetch instead of
+  /// building a franken-bundle from a skipped intermediate reload.
+  final Map<String, String> _astBaseFp = {};
+
   /// Clears in-memory AST bundle cache (e.g. for testing or fresh cold start).
   void clearAstCache() {
     _astCache.clear();
+    _astBaseFp.clear();
   }
 
   /// Best-effort fetch of pre-compiled `AstBundle` bytes from `/guest.ast`.
@@ -173,25 +181,82 @@ class BundleLoader {
       if (etag != null && etag.isNotEmpty) {
         _astCache[baseUrl] = (etag: etag, bytes: bytes);
       }
+      // Patch lineage: the served bundle's generation. Absent on servers
+      // that predate lineage (or when the file outruns the write tracker) —
+      // the base then stays unknown and the next patch re-syncs via a full
+      // fetch instead of risking a misapplied delta.
+      final bundleFp = res.headers.value('x-ast-bundle')?.trim();
+      if (bundleFp != null && bundleFp.isNotEmpty) {
+        _astBaseFp[baseUrl] = bundleFp;
+      } else {
+        _astBaseFp.remove(baseUrl);
+      }
       return bytes;
     } catch (_) {
       return null;
     }
   }
 
+  /// Best-effort fetch of pre-compiled `AstBundle` bytes from `/guest.ast`,
+  /// waiting briefly while the server is still building its initial bundle.
+  ///
+  /// The server builds `guest.ast` in the background at startup, so a client
+  /// that connects in the first seconds would otherwise see a 404 and fall
+  /// back to source mode — which cannot run packages (e.g. `collection`'s
+  /// import cycle) the AST runtime handles fine. When [pending] (the
+  /// manifest's `astPending`) is true, retries until bytes arrive or
+  /// [maxAttempts] is exhausted; otherwise a single attempt. Never throws.
+  Future<List<int>?> fetchAstBytesAwaitReady(
+    String serverUrl, {
+    required bool pending,
+    int maxAttempts = 6,
+    Duration delay = const Duration(seconds: 1),
+  }) async {
+    final first = await fetchAstBytes(serverUrl);
+    if (first != null && first.isNotEmpty) return first;
+    if (!pending) return null;
+    DartGoLogger.debug(
+      '[BundleLoader] AST bundle pending on server, waiting for build…',
+    );
+    for (var attempt = 1; attempt < maxAttempts; attempt++) {
+      await Future.delayed(delay);
+      final bytes = await fetchAstBytes(serverUrl);
+      if (bytes != null && bytes.isNotEmpty) return bytes;
+    }
+    return null;
+  }
+
   /// Best-effort fetch of incremental `AstBundle` delta patch bytes from `/guest.ast.patch`.
   /// Returns null when no patch is active (e.g. 404), falling back to full bundle fetch.
-  Future<List<int>?> fetchAstPatchBytes(String serverUrl) async {
+  ///
+  /// [baseFp] is this client's patch base (the `X-Ast-Bundle` generation it
+  /// last applied). It is always sent — even empty — so servers with lineage
+  /// can reject deltas computed against a newer base (the client missed an
+  /// intermediate reload); servers without lineage ignore it. On success the
+  /// response's `X-Ast-Bundle` advances the base. Never throws.
+  Future<List<int>?> fetchAstPatchBytes(
+    String serverUrl, {
+    String? baseFp,
+  }) async {
     final baseUrl = normalizeUrl(serverUrl);
     try {
-      final req = await _client.getUrl(Uri.parse('$baseUrl/guest.ast.patch'));
+      final uri = Uri.parse('$baseUrl/guest.ast.patch')
+          .replace(queryParameters: {'base': baseFp ?? ''});
+      final req = await _client.getUrl(uri);
       final res = await req.close();
       if (res.statusCode != HttpStatus.ok) return null;
       final bytes = await res.fold<List<int>>(
         <int>[],
         (prev, el) => prev..addAll(el),
       );
-      return bytes.isNotEmpty ? bytes : null;
+      if (bytes.isEmpty) return null;
+      final bundleFp = res.headers.value('x-ast-bundle')?.trim();
+      if (bundleFp != null && bundleFp.isNotEmpty) {
+        _astBaseFp[baseUrl] = bundleFp;
+      } else {
+        _astBaseFp.remove(baseUrl);
+      }
+      return bytes;
     } catch (_) {
       return null;
     }
@@ -357,12 +422,25 @@ class BundleLoader {
     // When performing an AST hot reload with NO asset changes, skip fetching
     // /manifest.json entirely and download /guest.ast.patch directly (< 5 KB, ~15ms).
     // If the patch succeeds, return immediately without touching /manifest.json.
-    // If the patch returns null (404/not available), gracefully fall back to full
+    // If the patch returns null (404/not available, or a base mismatch after
+    // a skipped intermediate reload), gracefully fall back to full
     // manifest + bundle download.
     if (onlyAst && isHotReload && !hasAssetChanges) {
       final patchSw = Stopwatch()..start();
-      final patchBytes = await fetchAstPatchBytes(baseUrl);
+      // A superseded reload may have skipped the broadcast this patch was
+      // built for: the server 404s on a base mismatch and we fall through
+      // to a full fetch below instead of applying a stale delta.
+      final patchBytes = await fetchAstPatchBytes(
+        baseUrl,
+        baseFp: _astBaseFp[baseUrl],
+      );
       final patchMs = patchSw.elapsedMilliseconds;
+      if (patchBytes == null) {
+        DartGoLogger.debug(
+          '[BundleLoader] no usable patch (none available or stale base) — '
+          'falling back to full fetch.',
+        );
+      }
       if (patchBytes != null && patchBytes.isNotEmpty) {
         DartGoLogger.bench(
           'BundleLoader',
@@ -416,7 +494,10 @@ class BundleLoader {
     // 1b. Fast AST Mode Path (zero source downloading)
     if (onlyAst && (manifest['hasAstBundle'] == true || fetchAst)) {
       final astSw = Stopwatch()..start();
-      final astBytes = await fetchAstBytes(baseUrl);
+      final astBytes = await fetchAstBytesAwaitReady(
+        baseUrl,
+        pending: manifest['astPending'] == true,
+      );
       final astMs = astSw.elapsedMilliseconds;
       if (astBytes != null && astBytes.isNotEmpty) {
         final moduleFingerprints = _moduleFingerprintsFrom(manifest);
@@ -563,7 +644,12 @@ class BundleLoader {
         entrypointLibrary: entrypointLibrary,
         breakpoints: const [],
         assets: rawAssets,
-        astBytes: fetchAst ? await fetchAstBytes(baseUrl) : null,
+        astBytes: fetchAst
+            ? await fetchAstBytesAwaitReady(
+                baseUrl,
+                pending: manifest['astPending'] == true,
+              )
+            : null,
         astEntryPoint: manifest['astEntryPoint']?.toString(),
         astModuleFingerprints: _moduleFingerprintsFrom(manifest),
       );
@@ -645,7 +731,12 @@ class BundleLoader {
           entrypointLibrary: entrypointLibrary,
           breakpoints: breakpoints,
           assets: rawAssets,
-          astBytes: fetchAst ? await fetchAstBytes(baseUrl) : null,
+          astBytes: fetchAst
+              ? await fetchAstBytesAwaitReady(
+                  baseUrl,
+                  pending: manifest['astPending'] == true,
+                )
+              : null,
           astEntryPoint: manifest['astEntryPoint']?.toString(),
           astModuleFingerprints: _moduleFingerprintsFrom(manifest),
         );

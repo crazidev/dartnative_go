@@ -505,7 +505,9 @@ class InterpreterRunner {
         );
       }
       onLog?.call(
-        '[Runner] AST mode enabled but no /guest.ast on server — falling back to source.',
+        '[Runner] AST mode enabled but no /guest.ast on server — falling back to source. '
+        'If the server just started, wait for `[AST] guest.ast ready` there and reload; '
+        'if it never appears, check the server log for the bundle build error (or --no-rebuild-ast).',
       );
     }
     return evaluate(

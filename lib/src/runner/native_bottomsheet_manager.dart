@@ -309,16 +309,41 @@ dynamic findUserClassInVisitor(dynamic visitor, String className) {
     }
   } catch (_) {}
 
-  // 3. Try moduleLoader (Source mode) or moduleContext (AST mode)
+  // 3. Loaded module environments (authoritative in AST mode): the
+  // loader's per-execution module cache holds every module's live
+  // environment for the current generation — including classes never merged
+  // into the entry environment (e.g. pushed-route screens), which steps 1-2
+  // cannot see. This is what makes post-reload rebinding work on device,
+  // where bundle sources are usually absent.
+  dynamic loader;
   try {
-    dynamic loader;
+    loader = visitor.moduleLoader;
+  } catch (_) {
     try {
-      loader = visitor.moduleLoader;
-    } catch (_) {
-      try {
-        loader = visitor.moduleContext;
-      } catch (_) {}
+      loader = visitor.moduleContext;
+    } catch (_) {}
+  }
+  try {
+    final cache = loader?.moduleCache;
+    if (cache is Map) {
+      for (final mod in cache.values) {
+        try {
+          final env = mod?.environment;
+          if (env?.values is Map && env.values.containsKey(className)) {
+            return env.values[className];
+          }
+          final exported = mod?.exportedEnvironment;
+          if (exported?.values is Map &&
+              exported.values.containsKey(className)) {
+            return exported.values[className];
+          }
+        } catch (_) {}
+      }
     }
+  } catch (_) {}
+
+  // 4. Try moduleLoader (Source mode) or moduleContext (AST mode)
+  try {
     if (loader != null) {
       try {
         final modules = loader.modules;

@@ -11,6 +11,11 @@
 /// in bundle`.
 ///
 /// Skipped when `example/` is absent (the suite is optional in trimmed checkouts).
+///
+/// Two full analyzer builds + three evaluations of a ~37-module project
+/// (including `collection`'s export cycle) can exceed the default 30 s budget
+/// on a loaded host; the device behavior under test has no such limit.
+@Timeout(Duration(seconds: 120))
 library;
 
 import 'dart:io';

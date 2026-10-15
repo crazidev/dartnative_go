@@ -230,5 +230,105 @@ void main() {
       );
       expect(out.existsSync(), isTrue);
     });
+
+    test('hot-reload patches chain base fingerprints across builds', () async {      // Regression: devices apply patch deltas onto their last-evaluated
+      // bundle. Without base lineage a skipped intermediate reload yields a
+      // franken-bundle (stale modules, no error). Each hot build must record
+      // which generation its patch applies to.
+      final guest = _makeGuestProject(tmp, 'lineage_guest');
+      final outPath = '${tmp.path}/lineage_guest.ast';
+      final first = await buildGuestAstBundle(
+        guest,
+        outputArg: outPath,
+        force: true,
+      );
+      expect(first.success, isTrue, reason: first.error);
+      expect(
+        patchBytesForProject(guest),
+        isNull,
+        reason: 'cold build emits no patch (nothing to delta against)',
+      );
+      final fp1 = bundleFingerprintForProject(guest);
+      expect(fp1, isNotEmpty);
+      expect(fileSourceFingerprintForPath(outPath), equals(fp1));
+
+      final helper = File('${guest.path}/lib/helper.dart');
+      helper.writeAsStringSync(
+        '${helper.readAsStringSync()}int tripleIt(int x) => x * 3;\n',
+      );
+      final second = await buildGuestAstBundle(
+        guest,
+        outputArg: outPath,
+        changedFiles: {helper.path},
+      );
+      expect(second.success, isTrue, reason: second.error);
+      expect(patchBytesForProject(guest), isNotNull);
+      expect(
+        patchBaseFingerprintForProject(guest),
+        equals(fp1),
+        reason: 'patch N applies to the bundle the device last evaluated',
+      );
+      final fp2 = bundleFingerprintForProject(guest);
+      expect(fp2, isNot(equals(fp1)));
+
+      helper.writeAsStringSync(
+        '${helper.readAsStringSync()}int quadIt(int x) => x * 4;\n',
+      );
+      final third = await buildGuestAstBundle(
+        guest,
+        outputArg: outPath,
+        changedFiles: {helper.path},
+      );
+      expect(third.success, isTrue, reason: third.error);
+      expect(
+        patchBaseFingerprintForProject(guest),
+        equals(fp2),
+        reason: 'consecutive patches chain: base advances every build',
+      );
+    });
+
+    test('incremental rebuild preserves bundle sources', () async {
+      // Regression: createFromFile only records sources for modules it
+      // (re)parses, so rebuilt bundles carried just the entry source
+      // (devices reported `source=n/a`). Sources must carry forward.
+      final guest = _makeGuestProject(tmp, 'sources_guest');
+      final outPath = '${tmp.path}/sources_guest.ast';
+      final first = await buildGuestAstBundle(
+        guest,
+        outputArg: outPath,
+        force: true,
+      );
+      expect(first.success, isTrue, reason: first.error);
+
+      const mainUri = 'package:sources_guest/main.dart';
+      const helperUri = 'package:sources_guest/helper.dart';
+      final firstSources = cachedBundleForProject(guest)!.sources;
+      expect(firstSources, isNotNull);
+      expect(firstSources!.keys, containsAll([mainUri, helperUri]));
+
+      final helper = File('${guest.path}/lib/helper.dart');
+      helper.writeAsStringSync(
+        '${helper.readAsStringSync()}int tripleIt(int x) => x * 3;\n',
+      );
+      final second = await buildGuestAstBundle(
+        guest,
+        outputArg: outPath,
+        changedFiles: {helper.path},
+      );
+      expect(second.success, isTrue, reason: second.error);
+
+      final secondSources = cachedBundleForProject(guest)!.sources;
+      expect(secondSources, isNotNull);
+      expect(
+        secondSources!.keys,
+        containsAll([mainUri, helperUri]),
+        reason: 'untouched modules keep their sources across rebuilds',
+      );
+      expect(
+        secondSources[helperUri],
+        contains('tripleIt'),
+        reason: 'edited module source must be fresh, not stale',
+      );
+    });
   });
 }

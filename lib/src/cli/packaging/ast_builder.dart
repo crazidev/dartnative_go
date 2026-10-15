@@ -274,6 +274,33 @@ AstBundle? patchBundleForProject(Directory projectDir) {
   return _lastBuilds[projectDir.path]?.patchBundle;
 }
 
+/// Source fingerprint of the bundle the current patch delta applies to.
+///
+/// Devices send this back as `?base=` on `/guest.ast.patch`; a mismatch
+/// means the device missed an intermediate reload and must take the full
+/// bundle. Null when no patch is active.
+String? patchBaseFingerprintForProject(Directory projectDir) {
+  return _lastBuilds[projectDir.path]?.patchBaseFingerprint;
+}
+
+/// Source fingerprint of the current in-memory bundle for [projectDir].
+///
+/// Sent as `X-Ast-Bundle` on patch responses so devices advance their patch
+/// base without a full fetch. Empty when no build has completed yet.
+String bundleFingerprintForProject(Directory projectDir) {
+  return _lastBuilds[projectDir.path]?.fingerprint ?? '';
+}
+
+/// Source fingerprint of the bundle bytes last written to [outFilePath].
+///
+/// Sent as `X-Ast-Bundle` on full `/guest.ast` responses. Empty when the
+/// file was not written by a tracked build (e.g. predates this server
+/// process) — devices then treat their base as unknown and re-sync via a
+/// full fetch before trusting patches.
+String fileSourceFingerprintForPath(String outFilePath) {
+  return _fileSourceFingerprints[outFilePath] ?? '';
+}
+
 /// Stub replacing `dartnative_plugin_registrant.dart` inside AST bundles.
 ///
 /// The real file loads native FFI symbols (`dartnative_ios/android`), which
@@ -627,6 +654,12 @@ class _LastBuild {
   /// Compressed bytes of [patchBundle] (gzip JSON), ready for sub-10ms network transfer.
   final List<int>? patchBytes;
 
+  /// Source fingerprint of the bundle this [patchBytes] delta applies to
+  /// (the *previous* build's [fingerprint]). A device whose base differs
+  /// must take the full bundle — applying the delta would strand stale
+  /// modules (franken-bundle) with no error. Null when [patchBytes] is null.
+  final String? patchBaseFingerprint;
+
   /// Client module index from the last successful build.
   final ClientModuleIndex? clientModuleIndex;
 
@@ -643,6 +676,7 @@ class _LastBuild {
     this.cachedBundle,
     this.patchBundle,
     this.patchBytes,
+    this.patchBaseFingerprint,
     this.clientModuleIndex,
     this.serverComponents,
   });
@@ -650,6 +684,15 @@ class _LastBuild {
 
 /// Last successful build per project (server-process lifetime).
 final Map<String, _LastBuild> _lastBuilds = {};
+
+/// Source fingerprint of the bundle bytes last written to each output file.
+///
+/// The disk write for hot reloads is deferred to the background, so the file
+/// can lag the in-memory bundle: this map is updated only on write
+/// *completion*, guaranteeing the recorded fingerprint always describes the
+/// bytes actually served from disk (unlike [_lastBuilds], which tracks the
+/// newer in-memory state). Keyed by output file path.
+final Map<String, String> _fileSourceFingerprints = {};
 
 /// Incremental AST bundler that reuses parsed [SCompilationUnit]s for modules
 /// whose source content has not changed.
@@ -1212,6 +1255,37 @@ Future<AstBuildResult> buildGuestAstBundle(
       );
     }
 
+    // Sources fix: createFromFile only records sources for modules it
+    // (re)parses in this run, so incremental bundles would otherwise carry
+    // just the entry (devices report `source=n/a` and source-dependent
+    // fallbacks go blind). Refresh changed files from disk first — the seed
+    // DFS skips them (already seeded), so their fresh text never reaches
+    // bundleSources — then carry forward the previous bundle's sources for
+    // everything still present.
+    final bundleSources = bundle.sources;
+    if (changedFiles != null && bundleSources != null) {
+      for (final path in changedFiles) {
+        try {
+          final canonical = Uri.file(
+            File(path).absolute.path,
+          ).normalizePath().toFilePath();
+          final uri = _filePathToUri[canonical];
+          if (uri != null && bundle.modules.containsKey(uri)) {
+            bundleSources[uri] = await File(canonical).readAsString();
+          }
+        } catch (_) {}
+      }
+    }
+    // Carry forward the previous bundle's sources for everything still present.
+    final prevSources = previousBundle?.sources;
+    if (prevSources != null && bundleSources != null) {
+      for (final entry in prevSources.entries) {
+        if (bundle.modules.containsKey(entry.key)) {
+          bundleSources.putIfAbsent(entry.key, () => entry.value);
+        }
+      }
+    }
+
     final t3 = Stopwatch()..start();
 
     final moduleFingerprints = fingerprintBundleModules(bundle.modules);
@@ -1239,7 +1313,11 @@ Future<AstBuildResult> buildGuestAstBundle(
     int size;
     AstBundle? patchBundle;
     List<int>? patchBytes;
+    String? previousFingerprint;
     if (isHotReload) {
+      // Capture the base BEFORE this build overwrites [_lastBuilds]: the
+      // patch below is a delta from the previous bundle to this one.
+      previousFingerprint = _lastBuilds[projectDir.path]?.fingerprint;
       final last = _lastBuilds[projectDir.path];
       final patchModules = <String, SCompilationUnit>{};
       for (final path in changedFiles) {
@@ -1291,10 +1369,14 @@ Future<AstBuildResult> buildGuestAstBundle(
       // Uses the precompressed cache so the background ZIP is still fast.
       final outFilePath = outFile.path;
       final cachedBytes = Map<String, List<int>>.of(_compressedBytesCache);
+      final writtenFingerprint = fp;
       Future(() async {
         try {
           await outFile.parent.create(recursive: true);
           bundle.saveToFile(outFilePath, precompressedModules: cachedBytes);
+          // Record only on success: the fingerprint must describe the bytes
+          // actually on disk, which clients use as their patch base.
+          _fileSourceFingerprints[outFilePath] = writtenFingerprint;
         } catch (_) {
           // Background write failure is non-fatal: the server continues
           // serving the in-memory bundle. It will be retried on next rebuild.
@@ -1309,6 +1391,7 @@ Future<AstBuildResult> buildGuestAstBundle(
         outFile.path,
         precompressedModules: _compressedBytesCache,
       );
+      _fileSourceFingerprints[outFile.path] = fp;
       size = outFile.lengthSync();
     }
 
@@ -1369,6 +1452,7 @@ Future<AstBuildResult> buildGuestAstBundle(
       cachedBundle: bundle,
       patchBundle: patchBundle,
       patchBytes: patchBytes,
+      patchBaseFingerprint: patchBytes != null ? previousFingerprint : null,
       clientModuleIndex: clientIndex,
       serverComponents: serverComponents,
     );

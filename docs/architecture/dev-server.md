@@ -17,7 +17,7 @@
 | Path | Purpose |
 | :--- | :--- |
 | `/manifest.json`, `/health`, `/dart_go/discover` | Project metadata and discovery. |
-| `/guest.ast`, `/guest.ast.patch` | Full AST bundle and delta (ETag/304 aware). |
+| `/guest.ast`, `/guest.ast.patch` | Full AST bundle and delta (ETag/304 aware). Patches carry lineage: `?base=` must match the generation the delta was computed against, else 404 and the client full-fetches; `X-Ast-Bundle` tracks generations both ways. |
 | `/user-code.zip`, `/user-code-hash`, `/bundle.json`, `/deps.json`, `/pkg/*` | Source-mode payloads and dependency ZIPs. |
 | `/assets/*`, `/asset`, `/assets.json`, icon/splash | Project assets. |
 | `/server-components/*`, `/client-module-index.json` | See server-components.md. |

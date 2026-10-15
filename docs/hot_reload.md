@@ -193,6 +193,32 @@ the server re-sends the same bytes whenever the edited module isn't the entry.
 Keyed by the bundle's FNV-1a hash, a cache hit skips the decode entirely — you
 see `decode_cache: hit` in the verbose log.
 
+## Patch lineage: deltas apply only to their base
+
+Reloads are fast because the device fetches a delta (`/guest.ast.patch`) and
+merges it over its live bundle — but a delta is only valid on the exact
+generation it was computed against. Rapid saves break that invariant: each
+broadcast starts a device reload, a newer reload aborts the older one
+mid-flight, and the server keeps only the *latest* patch. A device that missed
+an intermediate generation and applies the newest delta anyway builds a
+**franken-bundle** — some modules new, some permanently stale — with no
+error, and every later patch applies cleanly on top of the wreckage, so it
+never heals short of a full restart.
+
+Patches therefore carry lineage:
+
+- Every hot build records `patchBaseFingerprint`: the source fingerprint of
+  the bundle the delta applies to.
+- The device tracks its own base (`X-Ast-Bundle`, learned from full and patch
+  responses) and sends it as `?base=` on every patch request.
+- On mismatch the server answers 404 (`Patch base mismatch …`), and the
+  device falls back to a full `/guest.ast` fetch — a slower reload, but a
+  correct one. The next save then heals everything with no restart.
+- Clients that predate lineage send no `base` and keep the legacy behavior.
+
+You can watch it happen: the server prints `[PATCH] base mismatch …` and the
+device logs `[BundleLoader] no usable patch … falling back to full fetch.`
+
 ## The widget side: rebuild only what changed
 
 Preserving interpreter state is only half the story — the framework still has
@@ -212,6 +238,17 @@ root:
    `NativeBottomSheetManager.notifyHotReload` rebinds them explicitly: the
    visitor advances, state fields carry over, and the unchanged child is
    marked dirty.
+4. **Pushed routes** are not rebuilt when the root widget is replaced, so
+   each mounted state proxy also gets a direct reload notification
+   (`WidgetGenerationTracker.notifyMountedWidgets`). The proxy looks its
+   widget and state classes up in the *new* generation
+   (`findUserClassInVisitor`) and rebinds + rebuilds in place. The lookup
+   searches the loader's live module cache — the only place that holds every
+   module's current environment (entry-merged names miss transitively
+   imported screens, and bundle sources are usually absent on device). A
+   `[HotReload] could not find <Class> in the updated interpreter` device
+   log means the lookup missed and that screen will go stale until it
+   remounts: pop and re-push, or fix the lookup, never ignore it.
 4. **Proxies unwrap.** A host widget handed back to guest code (say, in
    `didUpdateWidget`) implements `D4InterpretedProxy`, so argument checks and
    field reads resolve through the interpreted class behind it.

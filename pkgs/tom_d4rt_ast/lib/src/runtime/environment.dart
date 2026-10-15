@@ -210,6 +210,14 @@ class Environment {
   // qualifier a script uses to disambiguate. Written only for registrations
   // that supply a source URI (the generated bridge modules all do).
   Map<String, String>? _bridgeSourceUrisRaw;
+  // Declared native type per registered simple name. Written on every
+  // name-binding write ([defineBridgeLazy], [defineBridgeAlias],
+  // [importEnvironment], [shallowCopyFiltered]) so a re-registration of the
+  // same class through a second barrel (e.g. `dartnative_ui` +
+  // `dartnative_flutter_compat` both bridging `Widget`) can be recognised
+  // WITHOUT building either thunk — see the fast path in [defineBridgeLazy].
+  // Plain data: probing it never forces a [BridgedClass] build.
+  Map<String, Type>? _bridgeNativeTypesRaw;
   // Simple names declared by two or more DIFFERENT native classes that are in
   // scope unprefixed — Dart's ambiguous-import situation. Maps the name to
   // `qualifier → source URI` for every candidate, which is both the error
@@ -272,6 +280,7 @@ class Environment {
   Map<String, List<BridgedClass>> get _shadowedBridgesOrNew =>
       _shadowedBridgesRaw ??= {};
   Map<String, String> get _bridgeSourceUrisOrNew => _bridgeSourceUrisRaw ??= {};
+  Map<String, Type> get _bridgeNativeTypesOrNew => _bridgeNativeTypesRaw ??= {};
   Map<String, Map<String, String>> get _ambiguousBridgeNamesOrNew =>
       _ambiguousBridgeNamesRaw ??= {};
   Set<String> get _importedBridgeNames =>
@@ -468,6 +477,23 @@ class Environment {
     BridgedClass Function() thunk, {
     String? sourceUri,
   }) {
+    // Fast path: the same native class re-registered under the same name —
+    // the same class arriving through a second barrel (e.g. `dartnative_ui`
+    // + `dartnative_flutter_compat` both bridging `Widget`). The recorded
+    // native type proves this without building either thunk, so swap the
+    // thunk lazily: last registration still wins the name, exactly as the
+    // slow path below would decide, but with zero eager [BridgedClass]
+    // builds, no shadow bookkeeping and no warn log. This is the dominant
+    // cold-start cost (~hundreds of duplicate UI/compat registrations, each
+    // previously forcing two full member-map builds).
+    final knownType = _bridgeNativeTypesRaw?[name];
+    if (knownType != null && knownType == nativeType) {
+      if (sourceUri != null) _bridgeSourceUrisOrNew[name] = sourceUri;
+      _bridgedClassesOrNew.putThunk(name, thunk);
+      _bridgedClassesLookupByTypeOrNew.putThunk(nativeType, thunk);
+      _invalidateResolutionCache();
+      return;
+    }
     final priorBridge = _bridgedClassesRaw?[name];
     final collides =
         _values.containsKey(name) ||
@@ -502,6 +528,7 @@ class Environment {
     if (sourceUri != null) _bridgeSourceUrisOrNew[name] = sourceUri;
     _bridgedClassesOrNew.putThunk(name, thunk);
     _bridgedClassesLookupByTypeOrNew.putThunk(nativeType, thunk);
+    _bridgeNativeTypesOrNew[name] = nativeType;
     _invalidateResolutionCache();
     Logger.debugLazy(() => "[Environment] Defined bridge for class: $name");
   }
@@ -900,6 +927,7 @@ class Environment {
       return;
     }
     _bridgedClassesOrNew[aliasName] = target;
+    _bridgeNativeTypesOrNew[aliasName] = target.nativeType;
     Logger.debug(
       "[Environment] Defined bridge alias: $aliasName -> $targetName",
     );
@@ -2095,6 +2123,7 @@ class Environment {
       }
       if (include) {
         newEnv._bridgedClassesOrNew[name] = bridgedClass;
+        newEnv._bridgeNativeTypesOrNew[name] = bridgedClass.nativeType;
         newEnv._bridgedClassesLookupByTypeOrNew[bridgedClass.nativeType] =
             bridgedClass;
         final sourceUri = _bridgeSourceUrisRaw?[name];
@@ -2148,6 +2177,42 @@ class Environment {
       "[Environment.shallowCopyFiltered] Created filtered environment. Original size: ${_values.length} values. New size: ${newEnv._values.length} values.",
     );
     return newEnv;
+  }
+
+  /// Whether [a] and [b] denote the same native class declaration, even when
+  /// built in different generations.
+  ///
+  /// Hot reload rebuilds every stdlib surface per evaluation while bundle
+  /// modules reuse their previous generation's environments, so a reload
+  /// re-merge routinely compares two distinct-but-equivalent [BridgedClass]
+  /// instances (e.g. `UnmodifiableListView` re-exported from
+  /// `dart:collection` through `package:collection`). The native [Type] is
+  /// the stable identity across generations; object identity is not.
+  ///
+  /// Placeholder bridges are excluded: `Function`-typed typedef shells and
+  /// the `dynamic` bridge share one [Type] across genuinely different
+  /// declarations, so they keep the legacy identity rule.
+  static bool _sameBridgedClass(BridgedClass a, BridgedClass b) {
+    if (identical(a, b)) return true;
+    final t = a.nativeType;
+    if (t != b.nativeType) return false;
+    if (t == Function || t == dynamic) return false;
+    return true;
+  }
+
+  /// Generation-tolerant identity for bridged enums: same name and same
+  /// value set (e.g. a `dart:*` enum re-exported through an interpreted
+  /// barrel, rebuilt on every evaluation). Falls back to the legacy identity
+  /// rule on any mismatch, so genuinely different same-named enums still
+  /// conflict.
+  static bool _sameBridgedEnum(BridgedEnum a, BridgedEnum b) {
+    if (identical(a, b)) return true;
+    if (a.name != b.name) return false;
+    if (a.values.length != b.values.length) return false;
+    for (final key in a.values.keys) {
+      if (!b.values.containsKey(key)) return false;
+    }
+    return true;
   }
 
   /// Imports definitions from another environment into this one.
@@ -2282,8 +2347,11 @@ class Environment {
 
     sourceEnvToImportFrom._bridgedClasses.forEach((name, bridgedClass) {
       if (_bridgedClasses.containsKey(name)) {
-        // Allow if it's the same bridged class (identity check)
-        if (identical(_bridgedClasses[name], bridgedClass)) {
+        // Allow if it's the same bridged class. Identity covers the common
+        // case; the native-type check covers the same declaration rebuilt in
+        // another generation (reload re-merges of re-exported stdlib
+        // bridges) — without it every reload throws a spurious conflict.
+        if (_sameBridgedClass(_bridgedClasses[name]!, bridgedClass)) {
           return;
         }
         if (errorOnConflict) {
@@ -2328,6 +2396,7 @@ class Environment {
           }
         }
         _bridgedClassesOrNew[name] = bridgedClass;
+        _bridgeNativeTypesOrNew[name] = bridgedClass.nativeType;
         _bridgedClassesLookupByTypeOrNew[bridgedClass.nativeType] =
             bridgedClass;
         _noteImportedBridge(name, sourceEnvToImportFrom._bridgeSourceUrisRaw);
@@ -2355,6 +2424,7 @@ class Environment {
         return;
       }
       _bridgedClassesOrNew[name] = bridgedClass;
+      _bridgeNativeTypesOrNew[name] = bridgedClass.nativeType;
       _bridgedClassesLookupByTypeOrNew[bridgedClass.nativeType] = bridgedClass;
       _noteImportedBridge(name, sourceEnvToImportFrom._bridgeSourceUrisRaw);
       _invalidateResolutionCache();
@@ -2365,7 +2435,8 @@ class Environment {
     // static/constructor fallback.
     sourceEnvToImportFrom._shadowedBridgesRaw?.forEach((name, bridges) {
       for (final bridge in bridges) {
-        if (identical(_bridgedClassesRaw?[name], bridge)) continue;
+        final current = _bridgedClassesRaw?[name];
+        if (current != null && _sameBridgedClass(current, bridge)) continue;
         final shadowed = _shadowedBridgesOrNew.putIfAbsent(name, () => []);
         if (!shadowed.any((b) => identical(b, bridge))) shadowed.add(bridge);
       }
@@ -2386,8 +2457,9 @@ class Environment {
 
     sourceEnvToImportFrom._bridgedEnums.forEach((name, bridgedEnum) {
       if (_bridgedEnums.containsKey(name)) {
-        // Allow if it's the same bridged enum (identity check)
-        if (identical(_bridgedEnums[name], bridgedEnum)) {
+        // Allow if it's the same bridged enum (identity, or same
+        // declaration rebuilt in another generation — see _sameBridgedEnum).
+        if (_sameBridgedEnum(_bridgedEnums[name]!, bridgedEnum)) {
           return;
         }
         if (errorOnConflict) {

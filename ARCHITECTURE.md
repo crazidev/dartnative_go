@@ -87,7 +87,8 @@
   3. **Delta Patch Bundles (`/guest.ast.patch`)**: The server isolates only the modified compilation units and pre-compresses them into an in-memory gzip delta patch (**~20 KB** vs 1.89 MB, a **99% reduction** in network payload).
   4. **Zero-Manifest Fast-Path**: Code-only reloads bypass `/manifest.json` completely, saving 300–500ms of roundtrip latency. The full manifest is automatically fetched only when asset additions in `assets/` are detected.
   5. **In-Memory `AstBundle.applyPatch()`**: The device runtime merges the delta compilation units into the live AST tree in **~5ms**, skipping the deserialization of hundreds of unchanged modules and swapping declaration cells in **~45ms**.
-  6. **Scale Benchmarks**: 10 changed files out of 2,000 modules rebuild in **19ms** and hot-reload on device in **~100–150ms**.
+  6. **Patch lineage**: every hot build records the generation its delta applies to; the device sends its base as `?base=` and takes the full bundle on mismatch instead of building a franken-bundle from a skipped intermediate reload (self-healing on the next save, no restart).
+  7. **Scale Benchmarks**: 10 changed files out of 2,000 modules rebuild in **19ms** and hot-reload on device in **~100–150ms**.
 
 ### 4.3 Sub-100ms Hot Reload & State Preservation
 * **Challenge**: full state snapshots walked thousands of symbols across 93+ dependencies (~6,700ms per reload), root unmounts killed Riverpod containers, and the AST engine rebuilt the whole runtime then guessed what to keep by type-name heuristic — so ordinary state reset and live objects ran stale code.
@@ -142,7 +143,10 @@ gen N (todo.dart unchanged → REUSED)     gen N+1 (sticky.dart edited → re-de
   1. **Generational keys** (`Stateful_<Class>_gen_$gen`): the tracker maps changed files to widget classes. AST bundles carry no source text, so the class→file map is derived from the decoded compilation units (`AstInterpreterRunner.classFileMap`) on every load/reload/restart.
   2. **Stable root** (`guest_root` key) keeps providers and state alive; overlapping reloads/ restarts are ordered by monotonic sequence tokens.
   3. **Bottom sheets** live in their own reconciler outside the app root, so `NativeBottomSheetManager.notifyHotReload` rebinds them explicitly: visitor advances, state fields carry over on retired classes, never gated on `mounted`; the unchanged child widget is marked dirty via `lastStateProxy` (stateless content gets a per-reload subtree key instead).
-  4. **Proxies unwrap** — a host widget object handed back to guest code (`didUpdateWidget(covariant StickyNote oldWidget)`) implements `D4InterpretedProxy`, so argument checks and field reads resolve through the interpreted class behind it.
+  4. **Pushed routes** are not rebuilt with the root, so each mounted state proxy rebinds directly: `findUserClassInVisitor` searches the new generation's *loaded module environments* (entry-merged names miss transitively imported screens; bundle sources are usually absent on device). A `[HotReload] could not find X` log means that screen goes stale until remount.
+  5. **Proxies unwrap** — a host widget object handed back to guest code (`didUpdateWidget(covariant StickyNote oldWidget)`) implements `D4InterpretedProxy`, so argument checks and field reads resolve through the interpreted class behind it.
+* **Callback identity** — `==` / `!=` never invoke function values; callbacks compare by identity. (The binary-expression visitor used to auto-call zero-arg closures, so any `callback == null` guard executed the callback.)
+* **Bridge warm-up is lazy** — a same-type re-registration (one class bridged through two barrels) swaps the deferred thunk instead of building two `BridgedClass` member maps eagerly; cross-generation re-merges compare by native type rather than object identity, so reloads don't throw spurious conflicts or pay re-registration.
 * **Failures reach the terminal**:
 
 ```text

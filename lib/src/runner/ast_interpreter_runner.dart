@@ -5,6 +5,7 @@ import 'package:tom_ast_model/ast.dart' show SClassDeclaration;
 import 'package:tom_d4rt_ast/runtime.dart' as ast;
 
 import 'ast_bundle_codec.dart';
+import 'ast_profile.dart';
 import 'logger.dart';
 import '../cli/server_components/server_annotation_scanner.dart';
 import '../interpreter/ast/ast_asset_bridge.dart';
@@ -58,6 +59,41 @@ class AstInterpreterRunner {
   int? _cachedBundleHash;
   int? _cachedBundleLength;
   bool _lastDecodeWasCacheHit = false;
+
+  /// Enables detailed module/class/plugin diagnostics for the next evaluation.
+  /// Gates verbose log output only — per-module timing maps are always
+  /// collected (a few hundred map entries) so the in-app AST viewer
+  /// ([lastAstProfile]) has load data without verbose logging.
+  bool profileExecution = false;
+
+  /// Retained per-module timings from the last evaluation. Written on every
+  /// evaluation (initial + reload); read on demand by [lastAstProfile].
+  /// Cleared by [dispose].
+  Map<String, int> _lastModuleLoadMicros = const {};
+  Map<String, int> _lastModuleLoadCounts = const {};
+  Map<String, int> _lastModuleCacheHits = const {};
+  Map<String, int> _lastBridgedSymbols = const {};
+  int? _lastMainMicros;
+  bool _lastWasHotReload = false;
+
+  /// Structured snapshot of the last bundle evaluation for the AST viewer.
+  ///
+  /// Built on demand from the decoded bundle plus the retained timing maps,
+  /// so opening the viewer is the only thing that pays the AST sizing walk.
+  /// Null before the first evaluation or after [dispose].
+  AstProfileSnapshot? get lastAstProfile {
+    final bundle = _cachedBundle;
+    if (bundle == null) return null;
+    return buildAstProfile(
+      bundle: bundle,
+      moduleLoadMicros: _lastModuleLoadMicros,
+      moduleLoadCounts: _lastModuleLoadCounts,
+      moduleCacheHits: _lastModuleCacheHits,
+      bridgedSymbols: _lastBridgedSymbols,
+      mainMicros: _lastMainMicros,
+      isHotReload: _lastWasHotReload,
+    );
+  }
 
   AstInterpreterRunner({
     this.onLog,
@@ -226,10 +262,50 @@ class AstInterpreterRunner {
     final initSw = Stopwatch()..start();
     final hadCoreRunner = _runner != null;
     initRunner();
+    // Self-synchronize the profile gate with global verbosity: embedders may
+    // set profileExecution explicitly, but verbose device logs must also
+    // enable profile output (mirrors the assignment host runners perform).
+    profileExecution = DartGoLogger.verbose;
     final initMs = initSw.elapsedMilliseconds;
     final reusedCoreRunner = hadCoreRunner;
 
     final runner = _runner!;
+    // Timing maps are always collected: a few hundred integer entries that
+    // feed both the verbose [PROFILE] logs and the on-demand AST viewer
+    // ([lastAstProfile]). Only the log output is gated on [profileExecution].
+    final moduleLoadMicros = <String, int>{};
+    final moduleLoadCounts = <String, int>{};
+    final moduleCacheHits = <String, int>{};
+    final bridgedSymbols = <String, int>{};
+    int? mainMicros;
+    runner.onModuleLoadProfile =
+        (uri, elapsedMicros, isBundleModule, cacheHit, symbolCount) {
+          if (cacheHit) {
+            moduleCacheHits.update(
+              uri,
+              (count) => count + 1,
+              ifAbsent: () => 1,
+            );
+            return;
+          }
+          moduleLoadMicros.update(
+            uri,
+            (total) => total + elapsedMicros,
+            ifAbsent: () => elapsedMicros,
+          );
+          moduleLoadCounts.update(
+            uri,
+            (count) => count + 1,
+            ifAbsent: () => 1,
+          );
+          if (!isBundleModule && symbolCount > 0) {
+            bridgedSymbols[uri] = symbolCount;
+          }
+        };
+    runner.onFunctionProfile = (name, elapsedMicros) {
+      if (name == 'main') mainMicros = elapsedMicros;
+    };
+
     final decodeSw = Stopwatch()..start();
     final ast.AstBundle bundle;
     if (isPatch &&
@@ -296,6 +372,79 @@ class AstInterpreterRunner {
         'decl_swaps': _declarationRegistry.swaps,
       },
     );
+
+    String formatBytes(int bytes) =>
+        bytes >= 1024 ? '${(bytes / 1024).toStringAsFixed(1)}KiB' : '${bytes}B';
+
+    // Retain timings for the on-demand AST viewer ([lastAstProfile]).
+    _lastModuleLoadMicros = Map.of(moduleLoadMicros);
+    _lastModuleLoadCounts = Map.of(moduleLoadCounts);
+    _lastModuleCacheHits = Map.of(moduleCacheHits);
+    _lastBridgedSymbols = Map.of(bridgedSymbols);
+    _lastMainMicros = mainMicros;
+    _lastWasHotReload = isHotReload;
+
+    void logExecutionProfile(AstProfileSnapshot profile) {
+      DartGoLogger.debug(
+        '[PROFILE] bundle: modules=${profile.moduleCount}, '
+        'AST=${formatBytes(profile.totalAstBytes)}, '
+        'source=${profile.hasSources ? formatBytes(profile.totalSourceBytes) : 'not bundled'}, '
+        'classes=${profile.totalClasses}, mainCallSync=${profile.mainMs == null ? 'n/a' : '${profile.mainMs!.toStringAsFixed(1)}ms'}',
+        tag: 'AstInterpreter',
+      );
+
+      for (final module in profile.modules.take(10)) {
+        DartGoLogger.debug(
+          '[PROFILE] module ${module.uri}: AST=${formatBytes(module.astBytes)}, '
+          'source=${module.sourceBytes == null ? 'n/a' : formatBytes(module.sourceBytes!)} '
+          'classes=${module.classCount}, '
+          'loadTotal=${module.loadMicros == null ? 'not loaded' : '${(module.loadMicros! / 1000).toStringAsFixed(1)}ms inclusive'}, '
+          'loads=${module.loads}, cacheHits=${module.cacheHits}',
+          tag: 'AstInterpreter',
+        );
+      }
+
+      for (final slow in profile.slowestModules) {
+        final elapsedMicros = slow.loadMicros;
+        final loads = slow.loads;
+        DartGoLogger.debug(
+          '[PROFILE] slow module ${slow.uri}: '
+          'loadTotal=${(elapsedMicros / 1000).toStringAsFixed(1)}ms inclusive, '
+          'avg=${(elapsedMicros / loads / 1000).toStringAsFixed(1)}ms across $loads loads, '
+          'AST=${formatBytes(slow.astBytes)}',
+          tag: 'AstInterpreter',
+        );
+      }
+
+      for (final clazz in profile.largestClasses.take(10)) {
+        DartGoLogger.debug(
+          '[PROFILE] class ${clazz.uri}::${clazz.name}: AST=${formatBytes(clazz.astBytes)}',
+          tag: 'AstInterpreter',
+        );
+      }
+
+      for (final lib in profile.bridgedLibs.take(10)) {
+        DartGoLogger.debug(
+          '[PROFILE] bridged library ${lib.uri}: symbols=${lib.symbols}, '
+          'loadTotal=${lib.loadMicros == null ? 'cached' : '${(lib.loadMicros! / 1000).toStringAsFixed(1)}ms'}',
+          tag: 'AstInterpreter',
+        );
+      }
+    }
+
+    if (profileExecution) {
+      logExecutionProfile(
+        buildAstProfile(
+          bundle: bundle,
+          moduleLoadMicros: moduleLoadMicros,
+          moduleLoadCounts: moduleLoadCounts,
+          moduleCacheHits: moduleCacheHits,
+          bridgedSymbols: bridgedSymbols,
+          mainMicros: mainMicros,
+          isHotReload: isHotReload,
+        ),
+      );
+    }
 
     if (T == Widget || T == dynamic) {
       final captured = _capturedApp;
@@ -488,6 +637,11 @@ class AstInterpreterRunner {
     _cachedBundle = null;
     _cachedBundleHash = null;
     _cachedBundleLength = null;
+    _lastModuleLoadMicros = const {};
+    _lastModuleLoadCounts = const {};
+    _lastModuleCacheHits = const {};
+    _lastBridgedSymbols = const {};
+    _lastMainMicros = null;
     try {
       _componentLoader?.bundleLoader.close();
     } catch (_) {}

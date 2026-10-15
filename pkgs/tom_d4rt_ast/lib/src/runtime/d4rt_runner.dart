@@ -380,7 +380,12 @@ class D4rtRunner {
   /// using [providePackage]) still never share state *across instances*
   /// regardless of this flag — it governs reuse *within* a runner and, for
   /// migrated runners, participation in the process-global caches.
-  D4rtRunner({this.reuseAcrossRuns = true, this.declarationRegistry});
+  D4rtRunner({
+    this.reuseAcrossRuns = true,
+    this.declarationRegistry,
+    this.onModuleLoadProfile,
+    this.onFunctionProfile,
+  });
 
   /// Whether the cross-run bridge caches are reused between `executeBundle*`
   /// calls. See the constructor. `false` forces a fresh warm parent and fresh
@@ -396,6 +401,17 @@ class D4rtRunner {
   /// the registry and must call [DeclarationRegistry.clear] on restart /
   /// unmount — never on hot reload. Leave it null for one-shot executions.
   final DeclarationRegistry? declarationRegistry;
+
+  /// Optional callbacks used by embedders to profile guest startup.
+  void Function(
+    String uri,
+    int elapsedMicros,
+    bool isBundleModule,
+    bool cacheHit,
+    int bridgedSymbolCount,
+  )?
+  onModuleLoadProfile;
+  void Function(String functionName, int elapsedMicros)? onFunctionProfile;
 
   /// Gets the current interpreter visitor instance.
   InterpreterVisitor? get visitor => _visitor;
@@ -1684,6 +1700,7 @@ class D4rtRunner {
       sharedBridgedModuleEnvironments: sharedBridgedModuleEnvs,
       sharedModuleEnclosing: sharedModuleEnclosing,
       onBridgedModuleEnvBuilt: () => _debugBridgedModuleEnvBuilds++,
+      onModuleProfile: onModuleLoadProfile,
     );
     moduleLoader.currentLibrary = Uri.parse(entryUri);
     // Step #3 (retention) — track the current run's loader so dispose() can
@@ -1862,6 +1879,7 @@ class D4rtRunner {
         sharedBridgedModuleEnvironments: sharedBridgedModuleEnvs,
         sharedModuleEnclosing: sharedModuleEnclosing,
         onBridgedModuleEnvBuilt: () => _debugBridgedModuleEnvBuilds++,
+        onModuleProfile: onModuleLoadProfile,
         fallbackLoader: fallback,
       );
       moduleLoader.currentLibrary = Uri.parse(entryUri);
@@ -2247,11 +2265,19 @@ class D4rtRunner {
           "[_executeInEnvironment] Calling '$name' with positionalArgs: $interpreterArgs, namedArgs: $interpreterNamedArgs",
         );
 
-        functionResult = functionCallable.call(
-          _visitor!,
-          interpreterArgs,
-          interpreterNamedArgs,
-        );
+        final profile = onFunctionProfile;
+        final stopwatch = profile == null ? null : (Stopwatch()..start());
+        try {
+          functionResult = functionCallable.call(
+            _visitor!,
+            interpreterArgs,
+            interpreterNamedArgs,
+          );
+        } finally {
+          if (profile != null) {
+            profile(name, stopwatch!.elapsedMicroseconds);
+          }
+        }
       } else {
         throw RuntimeD4rtException(
           "No callable '$name' function found in the AST.",

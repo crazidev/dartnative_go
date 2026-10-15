@@ -88,6 +88,12 @@ void main() {
         isA<Map>(),
         reason: 'per-module fingerprints drive module reuse on reload',
       );
+      expect(
+        manifest['astPending'],
+        isA<bool>(),
+        reason: 'AST-mode clients wait for an in-flight build instead of '
+            'falling back to source mode',
+      );
       for (final key in [
         'hasBytecodeBundle',
         'bytecodeUrl',

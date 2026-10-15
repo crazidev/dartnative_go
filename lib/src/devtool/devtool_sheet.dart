@@ -3,8 +3,10 @@ import 'package:native_bottomsheet/native_bottomsheet.dart';
 
 import '../client/error_display_storage.dart';
 import '../client/theme_storage.dart';
+import '../runner/ast_profile.dart';
 import '../runner/dep_cache.dart';
 import '../runner/runtime_mode.dart';
+import 'ast_profile_panel.dart';
 
 /// Content panel rendered inside the native bottom sheet for DartNative DevTools.
 class DevToolSheet extends StatefulWidget {
@@ -29,6 +31,10 @@ class DevToolSheet extends StatefulWidget {
   final VoidCallback onGoHome;
   final VoidCallback onReload;
 
+  /// Structured snapshot of the last AST bundle evaluation, or null before
+  /// the first evaluation. Rendered in the AST BUNDLE explorer section.
+  final AstProfileSnapshot? astProfile;
+
   const DevToolSheet({
     super.key,
     required this.controller,
@@ -51,6 +57,7 @@ class DevToolSheet extends StatefulWidget {
     this.onSelectTheme,
     required this.onGoHome,
     required this.onReload,
+    this.astProfile,
   });
 
   @override
@@ -337,6 +344,10 @@ class _DevToolSheetState extends State<DevToolSheet> {
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
+
+              // AST bundle explorer (packages, modules, classes, loads)
+              AstProfilePanel(profile: widget.astProfile),
               const SizedBox(height: 16),
 
               // Error Display

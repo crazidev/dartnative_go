@@ -35,3 +35,10 @@ Local fixes to generated output are applied by the generator
 - A guest `build` that starts throwing renders its last good child.
 - Bridge registration order matters: the last registration wins (tests rely
   on this for fakes).
+- A re-registration of the *same* native class under one name (e.g. UI +
+  compat barrels bridging `Widget`) swaps the thunk lazily — never an eager
+  build, never a spurious ambiguity.
+- A re-merge of the *same* bridge/enum across generations (reload) is the
+  same declaration, not a conflict — compared by native type / value set,
+  not object identity.
+- `==` / `!=` never invoke function values; callbacks compare by identity.

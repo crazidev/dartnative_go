@@ -41,10 +41,10 @@ no native build step, no app store, no cable.
 | :--- | :--- |
 | `lib/main.dart` | The shell app: launcher screen, project list, guest mounting, DevTool overlay. |
 | `lib/src/cli/` | Everything the `dart_go` CLI uses: `server.dart` (HTTP/WS/file-watch), `broadcaster.dart` (UDP beacons), `dep_packager.dart` (dependency zips), `ast_builder.dart` (guest.ast builds), `pubspec_validator.dart`, `asset_detector.dart`, `qr_code.dart`. |
-| `lib/src/runner/` | Guest execution: `interpreter_runner.dart` (source mode), `ast_interpreter_runner.dart` (AST mode), `bundle_loader.dart` (fetch + unpack bundles), `live_connection.dart` (WebSocket client), `runtime_mode.dart`, `ui_probe.dart` (UI automation), `dep_cache.dart`. |
+| `lib/src/runner/` | Guest execution: `interpreter_runner.dart` (source mode), `ast_interpreter_runner.dart` (AST mode), `bundle_loader.dart` (fetch + unpack bundles, patch lineage), `ast_profile.dart` (structured bundle profile), `live_connection.dart` (WebSocket client), `runtime_mode.dart`, `ui_probe.dart` (UI automation), `dep_cache.dart`. |
 | `lib/src/interpreter/` | The bridge surface: `dartscript.b.dart` plus one `*_bridges.b.dart` per plugin (generated), `widget_proxies.dart`, `asset_bridge.dart`, `debug_controller.dart`. Subfolder `ast/` holds the AST-mode equivalents. |
 | `lib/src/launcher/` | The project-picker UI you see when the app starts. |
-| `lib/src/devtool/` | The in-app developer overlay (logs, error surfaces, settings). |
+| `lib/src/devtool/` | The in-app developer overlay (logs, error surfaces, settings, AST bundle explorer). |
 | `lib/src/client/` | Persistence + networking for the launcher (project storage, network scanner, preferences). |
 | `bin/` | The `dart_go` CLI entrypoint. |
 | `tool/` | Host-side tools: dev server entry, AST bundling, bridge generation, app-asset generation, theme conversion, UI scenario runner. |

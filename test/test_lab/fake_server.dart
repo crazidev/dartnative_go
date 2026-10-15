@@ -14,7 +14,30 @@ import 'dart:io';
 class FakeDevServer {
   final Map<String, String> files;
   final String appName;
-  final List<int>? astBytes;
+  final bool initialVerbose;
+
+  /// AST bytes served at `/guest.ast` (null → 404). Mutable so tests can
+  /// simulate a bundle that appears mid-retry, mirroring the real server's
+  /// background initial build.
+  List<int>? astBytes;
+
+  /// Mirrors the real manifest's `astPending`: a bundle is still building.
+  bool astPending;
+
+  /// Generation fingerprint served as `X-Ast-Bundle` on `/guest.ast`.
+  /// Null omits the header (an older server without lineage).
+  String? bundleFp;
+
+  /// Delta bytes served at `/guest.ast.patch` (null → 404). Mutable so
+  /// tests can advance generations like consecutive rebuilds.
+  List<int>? patchBytes;
+
+  /// Base generation [patchBytes] was computed against. When non-null, a
+  /// `?base=` mismatch is rejected with 404, mirroring the real server.
+  String? patchBaseFp;
+
+  /// Generation fingerprint served as `X-Ast-Bundle` on patch responses.
+  String? patchBundleFp;
 
   HttpServer? _server;
   final List<WebSocket> _sockets = [];
@@ -26,6 +49,12 @@ class FakeDevServer {
     this.files = const {'main.dart': "void main() {}"},
     this.appName = 'Fake App',
     this.astBytes,
+    this.astPending = false,
+    this.bundleFp,
+    this.patchBytes,
+    this.patchBaseFp,
+    this.patchBundleFp,
+    this.initialVerbose = false,
   });
 
   int get port => _server?.port ?? -1;
@@ -104,6 +133,7 @@ class FakeDevServer {
           'appVersion': '1.0.0',
           'serverUrl': baseUrl,
           'hasAstBundle': astBytes != null,
+          'astPending': astPending,
         }));
         await request.response.close();
       case '/bundle.json':
@@ -119,6 +149,11 @@ class FakeDevServer {
           request.response.headers.set(HttpHeaders.etagHeader, etag);
           request.response.headers.set('Access-Control-Allow-Origin', '*');
           request.response.headers.set('Access-Control-Expose-Headers', 'ETag');
+          if (bundleFp != null && bundleFp!.isNotEmpty) {
+            request.response.headers.set('X-Ast-Bundle', bundleFp!);
+            request.response.headers.set(
+                'Access-Control-Expose-Headers', 'ETag, X-Ast-Bundle');
+          }
           final ifNoneMatch = request.headers.value(HttpHeaders.ifNoneMatchHeader)?.trim();
           if (ifNoneMatch != null && (ifNoneMatch == etag || ifNoneMatch == '${astBytes.hashCode}')) {
             request.response.statusCode = HttpStatus.notModified;
@@ -132,6 +167,33 @@ class FakeDevServer {
         } else {
           request.response.statusCode = HttpStatus.notFound;
           request.response.write('No AST bundle');
+          await request.response.close();
+        }
+      case '/guest.ast.patch':
+        final patch = patchBytes;
+        if (patch != null && patch.isNotEmpty) {
+          final base = request.uri.queryParameters['base'];
+          if (base != null &&
+              patchBaseFp != null &&
+              patchBaseFp!.isNotEmpty &&
+              base != patchBaseFp) {
+            request.response.statusCode = HttpStatus.notFound;
+            request.response.write('Patch base mismatch; fetch full /guest.ast.');
+            await request.response.close();
+            return;
+          }
+          if (patchBundleFp != null && patchBundleFp!.isNotEmpty) {
+            request.response.headers.set('X-Ast-Bundle', patchBundleFp!);
+            request.response.headers.set(
+                'Access-Control-Expose-Headers', 'X-Ast-Bundle');
+          }
+          request.response.headers.contentType =
+              ContentType('application', 'octet-stream');
+          request.response.add(patch);
+          await request.response.close();
+        } else {
+          request.response.statusCode = HttpStatus.notFound;
+          request.response.write('No active AST patch available.');
           await request.response.close();
         }
       case '/health':
