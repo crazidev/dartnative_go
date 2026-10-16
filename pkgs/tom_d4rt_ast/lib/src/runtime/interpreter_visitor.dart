@@ -5442,6 +5442,47 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
         }
       }
 
+      // An interpreted object with an instance `call` method is a Dart
+      // callable object (`locator<User>()`). Resolve this before extensions so
+      // an extension named `call` cannot shadow the instance's own call method.
+      if (calleeValue is InterpretedInstance) {
+        Object? callMember;
+        try {
+          callMember = calleeValue.get('call', visitor: this);
+        } on UndefinedMemberD4rtException {
+          // It may still be callable through an extension method below.
+        }
+
+        if (callMember is Callable) {
+          final evaluationResult = _evaluateArgumentsAsync(node.argumentList);
+          if (evaluationResult is AsyncSuspensionRequest) {
+            return evaluationResult;
+          }
+          final (positionalArgs, namedArgs) =
+              evaluationResult as (List<Object?>, Map<String, Object?>);
+          final evaluatedTypeArguments = node.typeArguments?.arguments
+              .map((typeNode) => _resolveTypeAnnotation(typeNode))
+              .toList();
+          try {
+            return callMember.call(
+              this,
+              positionalArgs,
+              namedArgs,
+              evaluatedTypeArguments,
+            );
+          } on ReturnException catch (e) {
+            return e.value;
+          }
+        }
+
+        if (callMember != null) {
+          throw RuntimeD4rtException(
+            "Instance of '${calleeValue.klass.name}' has a non-callable "
+            "member named 'call'.",
+          );
+        }
+      }
+
       // Callee is NOT a standard Callable or a BridgedClass constructor
       // Try Extension 'call' Method
       const methodName = 'call';
@@ -5543,6 +5584,13 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
         } on ReturnException catch (e) {
           return e.value;
         }
+      }
+
+      if (calleeValue is InterpretedInstance) {
+        throw RuntimeD4rtException(
+          "'$nameForError' (type: ${calleeValue.klass.name}) is not callable "
+          "and has no 'call' method or extension.",
+        );
       }
 
       if (calleeValue != null) {
@@ -11940,6 +11988,21 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
   /// switch beside it. The catch-clause copy is the last one still outstanding
   /// (SCC20).
   bool _valueHasType(STypeAnnotation? typeNode, Object? expressionValue) {
+    // Null is assignable to every nullable type, including applied user types
+    // (`null is Box<int>?`). Handle this before the shape-specific checks
+    // below: their native/user-class branches otherwise reject null before
+    // consulting the annotation's nullability. `Null` and `dynamic` also
+    // accept null without a nullable suffix.
+    if (expressionValue == null) {
+      if (typeNode is SNamedType) {
+        final name = typeNode.name?.name;
+        final isUnprefixedBuiltin = typeNode.importPrefix == null;
+        return typeNode.isNullable ||
+            (isUnprefixedBuiltin && (name == 'Null' || name == 'dynamic'));
+      }
+      return typeNode?.isNullable ?? false;
+    }
+
     bool result = false;
 
     if (typeNode is SNamedType) {
@@ -12025,11 +12088,12 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           }
           break;
         case 'Null':
-          result = expressionValue == null;
+          // Null operands were handled by the nullable-type fast path above.
+          result = false;
           break;
         case 'Object':
-          // Everything non-null is an Object?
-          result = expressionValue != null;
+          // Null operands were handled by the nullable-type fast path above.
+          result = true;
           break;
         case 'dynamic': // 'is dynamic' is always true
         case 'void': // 'is void' is always false (or error?) - let's say false
@@ -12077,7 +12141,7 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
                   targetType,
                   value: expressionValue,
                 );
-              } else if (expressionValue != null) {
+              } else {
                 nativeValue = expressionValue;
               }
               // `isAssignable` closes over the host's native `v is X`

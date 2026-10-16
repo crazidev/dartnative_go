@@ -42,3 +42,20 @@ Local fixes to generated output are applied by the generator
   same declaration, not a conflict — compared by native type / value set,
   not object identity.
 - `==` / `!=` never invoke function values; callbacks compare by identity.
+- Callable interpreted instances dispatch through their `call` method and
+  preserve explicit generic type arguments (`locator<User>()`).
+
+## AST library parts
+
+`AstModuleLoader.loadLibraryUnits` follows `SPartDirective`s from a library
+unit and gathers the referenced part ASTs in directive order. The loader and
+the entrypoint execution path then run declaration passes over those units in
+one environment, so private declarations are visible across the library just
+as they are in Dart. Parts remain separate bundle entries for source mapping
+and incremental builds; the parent library's cache fingerprint includes its
+parts so a part-only edit triggers re-declaration.
+
+Regression coverage lives in
+[`test/runner/ast_part_files_test.dart`](../../test/runner/ast_part_files_test.dart)
+and covers both entrypoint parts and parts of an imported library, including
+part-only cache invalidation.

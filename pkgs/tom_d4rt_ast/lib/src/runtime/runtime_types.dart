@@ -52,7 +52,8 @@ class InterpretedClass implements Callable, RuntimeType {
   /// True when [other] is this same declaration, possibly from another
   /// generation (identity, or equal module + name).
   bool isSameClassAs(InterpretedClass other) =>
-      identical(this, other) || declarationIdentity == other.declarationIdentity;
+      identical(this, other) ||
+      declarationIdentity == other.declarationIdentity;
   final Map<String, InterpretedFunction> constructors;
   // Map for operator methods (e.g., '+', '==', '[]', etc.)
   final Map<String, InterpretedFunction> operators;
@@ -2291,6 +2292,15 @@ class InterpretedEnum implements RuntimeType {
   @override
   final String name;
 
+  /// Declaring library URI, used to recognize this same enum declaration
+  /// across hot-reload generations without conflating same-named enums from
+  /// different libraries.
+  final String? moduleUri;
+
+  bool isSameEnumAs(InterpretedEnum other) =>
+      identical(this, other) ||
+      (moduleUri != null && moduleUri == other.moduleUri && name == other.name);
+
   /// The environment where the enum was declared.
   final Environment declarationEnvironment;
 
@@ -2339,6 +2349,7 @@ class InterpretedEnum implements RuntimeType {
     }
     staticFields[name] = value;
   }
+
   final Map<String, InterpretedFunction> constructors =
       FrozenNameMap<InterpretedFunction>();
 
@@ -2353,6 +2364,7 @@ class InterpretedEnum implements RuntimeType {
     this.name,
     this.declarationEnvironment,
     this.valueNames, {
+    this.moduleUri,
     List<InterpretedClass>? mixins,
     List<BridgedClass>? bridgedMixins,
   }) : mixins = mixins ?? [],
@@ -2363,6 +2375,7 @@ class InterpretedEnum implements RuntimeType {
     this.name,
     this.declarationEnvironment,
     this.valueNames, {
+    this.moduleUri,
     List<InterpretedClass>? mixins,
     List<BridgedClass>? bridgedMixins,
   }) : mixins = mixins ?? [],
@@ -2404,9 +2417,11 @@ class InterpretedEnum implements RuntimeType {
   @override
   bool isSubtypeOf(RuntimeType other, {Object? value}) {
     // An enum is a subtype of itself and Object.
-    // For now, we don't handle complex type hierarchies involving enums.
-    // We might need to look up 'Object' in the environment later.
-    return identical(this, other) || other.name == 'Object';
+    // Declaration identity, rather than instance identity alone, keeps
+    // preserved enum values type-compatible with a re-declared enum after hot
+    // reload. URI qualification prevents unrelated same-named enums matching.
+    return (other is InterpretedEnum && isSameEnumAs(other)) ||
+        other.name == 'Object';
   }
 }
 
@@ -2441,8 +2456,7 @@ class InterpretedEnumValue implements RuntimeValue /* Add RuntimeValue */ {
     // Enums compare by identity (same enum type and same index)
     return identical(this, other) ||
         (other is InterpretedEnumValue &&
-            parentEnum ==
-                other.parentEnum && // Check if they belong to the same enum
+            parentEnum.isSameEnumAs(other.parentEnum) &&
             index == other.index);
   }
 

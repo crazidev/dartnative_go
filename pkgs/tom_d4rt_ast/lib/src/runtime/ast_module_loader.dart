@@ -9,6 +9,7 @@ import 'package:tom_d4rt_ast/src/runtime/interpreter_visitor.dart';
 import 'package:tom_d4rt_ast/src/runtime/module_context.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/collection.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/convert.dart';
+import 'package:tom_d4rt_ast/src/runtime/stdlib/developer.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/isolate.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/math.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/stdlib_io.dart'
@@ -358,6 +359,7 @@ class AstModuleLoader implements ModuleContext {
     'collection': (env) => CollectionStdlib.register(env),
     'typed_data': (env) => TypedDataStdlib.register(env),
     'isolate': (env) => IsolateStdlib.register(env),
+    'developer': (env) => DeveloperStdlib.register(env),
   };
 
   /// Per-stdlib isolated environments (GEN-101 design, restored in GEN-107
@@ -875,6 +877,87 @@ class AstModuleLoader implements ModuleContext {
   // Bundle Module Loading
   // ===========================================================================
 
+  /// Resolves a Dart library's main unit and all of its `part` units.
+  ///
+  /// Parts share their declaring library's environment and private namespace;
+  /// they are not independently imported modules. The bundler keeps their ASTs
+  /// keyed by URI for incremental builds, so the runtime follows the part
+  /// directives here and returns the units in declaration order.
+  ///
+  /// This is public for [D4rtRunner], whose entrypoint execution path performs
+  /// the declaration passes directly instead of going through
+  /// [_loadBundleModule].
+  List<({Uri uri, SCompilationUnit ast})> loadLibraryUnits(
+    Uri libraryUri,
+    SCompilationUnit libraryAst,
+  ) {
+    final units = <({Uri uri, SCompilationUnit ast})>[
+      (uri: libraryUri, ast: libraryAst),
+    ];
+    final visited = <String>{libraryUri.toString()};
+
+    void appendParts(Uri ownerUri, SCompilationUnit ownerAst) {
+      for (final directive in ownerAst.directives) {
+        if (directive is! SPartDirective ||
+            directive.uri is! SSimpleStringLiteral) {
+          continue;
+        }
+        final partPath = (directive.uri as SSimpleStringLiteral).value;
+        final partUri = _resolveUri(Uri.parse(partPath), ownerUri);
+        final partKey = partUri.toString();
+        if (!visited.add(partKey)) continue;
+
+        final partAst = modules[partKey] ?? _partAstFromFallback(partKey);
+        if (partAst == null) {
+          throw RuntimeD4rtException(
+            'Part "$partPath" of library "$libraryUri" is missing from the '
+            'AST bundle. Rebuild the bundle with part directives enabled.',
+          );
+        }
+        units.add((uri: partUri, ast: partAst));
+        appendParts(partUri, partAst);
+      }
+    }
+
+    appendParts(libraryUri, libraryAst);
+    return units;
+  }
+
+  SCompilationUnit? _partAstFromFallback(String partUri) {
+    final fallback = fallbackLoader;
+    if (fallback == null) return null;
+    return fallback.modules[partUri] ?? fallback._partAstFromFallback(partUri);
+  }
+
+  String? _libraryFingerprint(
+    Uri libraryUri,
+    List<({Uri uri, SCompilationUnit ast})> units,
+    String? suppliedLibraryFingerprint,
+  ) {
+    final fingerprints = units
+        .map((unit) {
+          final unitUri = unit.uri.toString();
+          return moduleFingerprints[unitUri] ??
+              fallbackLoader?._fingerprintFromFallback(unitUri) ??
+              (unit.uri == libraryUri ? suppliedLibraryFingerprint : null);
+        })
+        .toList(growable: false);
+    // A partial fingerprint set cannot prove that every unit stayed the same;
+    // disable reuse rather than risk retaining stale part declarations.
+    if (fingerprints.any((fingerprint) => fingerprint == null)) return null;
+
+    // Part edits must invalidate the owning library even when the library
+    // source itself has not changed. Include URIs to detect part additions,
+    // removals, and ordering changes as well as content changes.
+    return [
+      for (var i = 0; i < units.length; i++)
+        '${units[i].uri}=${fingerprints[i]!}',
+    ].join('|');
+  }
+
+  String? _fingerprintFromFallback(String uri) =>
+      moduleFingerprints[uri] ?? fallbackLoader?._fingerprintFromFallback(uri);
+
   /// Loads a module from the bundle by processing its AST.
   ///
   /// This performs the full module loading sequence:
@@ -889,6 +972,13 @@ class AstModuleLoader implements ModuleContext {
     SCompilationUnit ast, {
     String? fingerprint,
   }) {
+    final libraryUnits = loadLibraryUnits(uri, ast);
+    final libraryFingerprint = _libraryFingerprint(
+      uri,
+      libraryUnits,
+      fingerprint,
+    );
+
     // Save and set current library for relative import resolution
     final previousLibrary = currentLibrary;
     currentLibrary = uri;
@@ -900,7 +990,7 @@ class AstModuleLoader implements ModuleContext {
     // a registry cell, so state stays shared rather than duplicated.
     final registry = runner.declarationRegistry;
     if (registry != null) {
-      final cached = registry.cachedModule(uri.toString(), fingerprint);
+      final cached = registry.cachedModule(uri.toString(), libraryFingerprint);
       if (cached is LoadedModule) {
         cached.environment.reparentTo(globalEnvironment);
         cached.exportedEnvironment.reparentTo(globalEnvironment);
@@ -964,13 +1054,15 @@ class AstModuleLoader implements ModuleContext {
     // its conflict rules: `sameDeclaration` skips an import that denotes the
     // same declaration, so the fresh placeholder survives, and a genuinely
     // different definition still wins the merge (GEN-100).
-    final declVisitor = DeclarationVisitor(
-      moduleEnv,
-      declarationRegistry: runner.declarationRegistry,
-      moduleUri: uri.toString(),
-    );
-    for (final decl in ast.declarations) {
-      decl.accept<void>(declVisitor);
+    for (final unit in libraryUnits) {
+      final declVisitor = DeclarationVisitor(
+        moduleEnv,
+        declarationRegistry: runner.declarationRegistry,
+        moduleUri: unit.uri.toString(),
+      );
+      for (final decl in unit.ast.declarations) {
+        decl.accept<void>(declVisitor);
+      }
     }
 
     // Process import directives (after own declarations, see above)
@@ -985,7 +1077,8 @@ class AstModuleLoader implements ModuleContext {
     );
 
     // Order matters: enums → classes/mixins → functions → extensions → variables
-    _interpretDeclarations(ast, interpreter);
+    _interpretLibraryUnits(libraryUnits, interpreter);
+    currentLibrary = uri;
 
     // Build exported environment. `exportedEnv` was created up-front (DFUB10);
     // here it finally receives this module's own declarations, now that
@@ -1195,13 +1288,20 @@ class AstModuleLoader implements ModuleContext {
   /// 3. Functions (so top-level function bodies are ready)
   /// 4. Extensions (so extension methods are available)
   /// 5. Top-level variables (may reference any of the above)
-  void _interpretDeclarations(
-    SCompilationUnit ast,
+  void _interpretLibraryUnits(
+    List<({Uri uri, SCompilationUnit ast})> units,
     InterpreterVisitor interpreter,
   ) {
-    for (final decl in ast.declarations) {
-      if (decl is SEnumDeclaration) decl.accept<Object?>(interpreter);
+    void visitDeclarations(bool Function(SDeclaration) predicate) {
+      for (final unit in units) {
+        currentLibrary = unit.uri;
+        for (final declaration in unit.ast.declarations) {
+          if (predicate(declaration)) declaration.accept<Object?>(interpreter);
+        }
+      }
     }
+
+    visitDeclarations((decl) => decl is SEnumDeclaration);
     // Bug-43 / forward-class-reference FIX (mirrors D4rtRunner): defer
     // every class's static-field initializer evaluation until ALL class and
     // mixin members have been registered. Without this, a `static const`
@@ -1210,35 +1310,21 @@ class AstModuleLoader implements ModuleContext {
     // the referenced class's constructors have not been populated yet.
     interpreter.deferStaticFieldInits = true;
     try {
-      for (final decl in ast.declarations) {
-        if (decl is SClassDeclaration || decl is SMixinDeclaration) {
-          decl.accept<Object?>(interpreter);
-        }
-      }
+      visitDeclarations(
+        (decl) => decl is SClassDeclaration || decl is SMixinDeclaration,
+      );
     } finally {
       interpreter.deferStaticFieldInits = false;
     }
     interpreter.runDeferredStaticInitializers();
-    for (final decl in ast.declarations) {
-      if (decl is SFunctionDeclaration) decl.accept<Object?>(interpreter);
-    }
-    for (final decl in ast.declarations) {
-      if (decl is SExtensionDeclaration) decl.accept<Object?>(interpreter);
-    }
+    visitDeclarations((decl) => decl is SFunctionDeclaration);
+    visitDeclarations((decl) => decl is SExtensionDeclaration);
     // Cluster EXTTYPE: Extension type declarations (Dart 3.3+). Without
     // this pass the wrapper class is never registered for imported
     // modules — consumers see "Undefined variable" when invoking the
     // constructor.
-    for (final decl in ast.declarations) {
-      if (decl is SExtensionTypeDeclaration) {
-        decl.accept<Object?>(interpreter);
-      }
-    }
-    for (final decl in ast.declarations) {
-      if (decl is STopLevelVariableDeclaration) {
-        decl.accept<Object?>(interpreter);
-      }
-    }
+    visitDeclarations((decl) => decl is SExtensionTypeDeclaration);
+    visitDeclarations((decl) => decl is STopLevelVariableDeclaration);
   }
 }
 

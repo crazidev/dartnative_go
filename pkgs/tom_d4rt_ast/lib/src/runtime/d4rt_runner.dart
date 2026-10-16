@@ -2093,6 +2093,33 @@ class D4rtRunner {
     List<Object?>? positionalArgs,
     Map<String, Object?>? namedArgs,
   }) {
+    // The bundle entrypoint executes through this method rather than through
+    // AstModuleLoader._loadBundleModule. Resolve its part files here as well,
+    // so entry libraries and imported libraries get identical part semantics.
+    final entryLibraryUri = moduleContext.currentLibrary;
+    final List<({Uri? uri, SCompilationUnit ast})> libraryUnits;
+    if (moduleContext is AstModuleLoader && entryLibraryUri != null) {
+      libraryUnits = moduleContext
+          .loadLibraryUnits(entryLibraryUri, compilationUnit)
+          .map((unit) => (uri: unit.uri, ast: unit.ast))
+          .toList(growable: false);
+    } else {
+      libraryUnits = [(uri: entryLibraryUri, ast: compilationUnit)];
+    }
+
+    void visitLibraryDeclarations(
+      bool Function(SDeclaration declaration) predicate,
+    ) {
+      for (final unit in libraryUnits) {
+        if (unit.uri != null) moduleContext.currentLibrary = unit.uri;
+        for (final declaration in unit.ast.declarations) {
+          if (predicate(declaration)) {
+            declaration.accept<Object?>(_visitor!);
+          }
+        }
+      }
+    }
+
     // Step 6: implicit finalize on first execution. Any callbacks
     // registered via [registerExtensions] run here in registration
     // order before pass 1, so bridges are fully wired before the
@@ -2108,13 +2135,15 @@ class D4rtRunner {
     }
     Logger.debug("[_executeInEnvironment] Starting Pass 1: Declaration");
     final swPass1 = D4rtProfiler.enabled ? (Stopwatch()..start()) : null;
-    final declarationVisitor = DeclarationVisitor(
-      executionEnvironment,
-      declarationRegistry: declarationRegistry,
-      moduleUri: moduleContext.currentLibrary?.toString() ?? '',
-    );
-    for (final declaration in compilationUnit.declarations) {
-      declaration.accept<void>(declarationVisitor);
+    for (final unit in libraryUnits) {
+      final unitDeclarationVisitor = DeclarationVisitor(
+        executionEnvironment,
+        declarationRegistry: declarationRegistry,
+        moduleUri: unit.uri?.toString() ?? '',
+      );
+      for (final declaration in unit.ast.declarations) {
+        declaration.accept<void>(unitDeclarationVisitor);
+      }
     }
     if (D4rtProfiler.enabled) {
       D4rtProfiler.record(
@@ -2134,7 +2163,9 @@ class D4rtRunner {
     // S1 (perf plan_3 §9.1): populate the static-resolution side-table before
     // Pass 2 so the validation assert in visitSimpleIdentifier can cross-check
     // every resolved coordinate against the live environment depth.
-    _visitor!.resolveStaticCoordinates(compilationUnit.declarations);
+    _visitor!.resolveStaticCoordinates(
+      libraryUnits.expand((unit) => unit.ast.declarations),
+    );
     if (D4rtProfiler.enabled) {
       D4rtProfiler.record(
         '_executeInEnvironment.visitorBuild',
@@ -2171,11 +2202,9 @@ class D4rtRunner {
       // with empty constructor maps. We must populate class members before
       // evaluating top-level variable initializers that may reference them
       // (forward-reference problem: const lists using classes defined later).
-      for (final declaration in compilationUnit.declarations) {
-        if (declaration is SEnumDeclaration) {
-          declaration.accept<Object?>(_visitor!);
-        }
-      }
+      visitLibraryDeclarations(
+        (declaration) => declaration is SEnumDeclaration,
+      );
       // Bug-43 / forward-class-reference FIX: a `static const` initializer
       // can reference another class defined later in source order (e.g.
       //   class _ComparisonTable {
@@ -2195,38 +2224,32 @@ class D4rtRunner {
       // available when the deferred initializers finally run.
       _visitor!.deferStaticFieldInits = true;
       try {
-        for (final declaration in compilationUnit.declarations) {
-          if (declaration is SClassDeclaration ||
-              declaration is SMixinDeclaration) {
-            declaration.accept<Object?>(_visitor!);
-          }
-        }
+        visitLibraryDeclarations(
+          (declaration) =>
+              declaration is SClassDeclaration ||
+              declaration is SMixinDeclaration,
+        );
       } finally {
         _visitor!.deferStaticFieldInits = false;
       }
       _visitor!.runDeferredStaticInitializers();
-      for (final declaration in compilationUnit.declarations) {
-        if (declaration is SFunctionDeclaration) {
-          declaration.accept<Object?>(_visitor!);
-        }
-      }
-      for (final declaration in compilationUnit.declarations) {
-        if (declaration is SExtensionDeclaration) {
-          declaration.accept<Object?>(_visitor!);
-        }
-      }
+      visitLibraryDeclarations(
+        (declaration) => declaration is SFunctionDeclaration,
+      );
+      visitLibraryDeclarations(
+        (declaration) => declaration is SExtensionDeclaration,
+      );
       // Cluster EXTTYPE: Extension type declarations (Dart 3.3+). Without
       // this pass the wrapper class is never registered and `main()`
       // cannot resolve the constructor.
-      for (final declaration in compilationUnit.declarations) {
-        if (declaration is SExtensionTypeDeclaration) {
-          declaration.accept<Object?>(_visitor!);
-        }
-      }
-      for (final declaration in compilationUnit.declarations) {
-        if (declaration is STopLevelVariableDeclaration) {
-          declaration.accept<Object?>(_visitor!);
-        }
+      visitLibraryDeclarations(
+        (declaration) => declaration is SExtensionTypeDeclaration,
+      );
+      visitLibraryDeclarations(
+        (declaration) => declaration is STopLevelVariableDeclaration,
+      );
+      if (entryLibraryUri != null) {
+        moduleContext.currentLibrary = entryLibraryUri;
       }
       Logger.debug("[_executeInEnvironment] Finished processing declarations");
       if (D4rtProfiler.enabled) {

@@ -1,4 +1,5 @@
 import 'package:dartnative/dartnative.dart';
+import 'package:example/dependencies.dart';
 import 'package:example/plugins/plugins_screen.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 
@@ -6,6 +7,7 @@ import 'dartnative_plugin_registrant.dart';
 
 void main() {
   DartNativePluginRegistrant.registerAll();
+  configureDependencies();
 
   SystemChrome.defaultStyle = const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,

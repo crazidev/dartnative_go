@@ -18,6 +18,7 @@ dependencies:
     path: ../../dartnative_bottomsheet
   dartnative_go:
     path: ../
+  get_it: ^9.3.0
 
   # dartnative_system: ^1.0.0
   # dartnative_connectivity: ^1.0.0

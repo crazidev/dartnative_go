@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **AST library part support**:
+  - AST mode now interprets a library's `part` files in the owning library environment, preserving shared private-name visibility for generated code such as `build_runner` output.
+  - Parent library cache fingerprints include part URIs and content fingerprints so part-only edits reload the owning library.
+  - Added regression tests for entrypoint parts, imported-library parts, and part-only cache invalidation.
 - **Interpreted Guest Stack Traces**:
   - Implemented interpreted call frame tracking (`InterpretedCallFrame`) in `tom_d4rt_ast`.
   - Added line and column number resolution mapping from AST byte offsets to source code locations.
@@ -50,6 +54,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced `WidgetGenerationTracker` and `classFileMap` generation for AST module reload precision.
 
 ### Fixed
+- Fixed nullable `is` checks for null against user-defined and applied generic types; this unblocks get_it's nullable `_ObjectRegistration<T, dynamic, dynamic>?` lookup check.
+- Interpreted callable instances now dispatch generic `call<T>()` invocations instead of returning the instance itself.
+- Preserved enum type compatibility across reloads using library-qualified declaration identity, avoiding self-type mismatches for generic method parameters.
 - **FrozenNameMap Mutation Error**:
   - Resolved `Unsupported operation: FrozenNameMap is frozen and cannot be mutated` by preventing duplicate `lib/main.dart` and `package:<pkg>/main.dart` module collisions in the AST bundler.
   - Added defensive guard in `InterpreterVisitor.visitClassDeclaration` against overwritten frozen class placeholders.

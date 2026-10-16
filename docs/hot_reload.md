@@ -176,6 +176,11 @@ caches loaded modules by content fingerprint:
   not re-declared — its `LoadedModule` (environment, classes, functions) is
   reused and re-parented. That's safe precisely because every mutable piece of
   a module's state lives in a registry cell the new generation shares.
+- For a library with `part` files, the effective cache fingerprint includes
+  each part URI and its fingerprint. Editing only a generated part therefore
+  invalidates and re-declares its owning library without forcing unrelated
+  modules to reload. See [Runtime Modes](runtime_modes.md#library-part-files)
+  for the shared-library semantics.
 - Only the **latest** fingerprint is cached per module, never a history. If
   you edit a file and then revert it to a fingerprint seen two reloads ago, it
   is still re-declared — matching against an old fingerprint would resurrect a

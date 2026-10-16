@@ -191,6 +191,7 @@ class DeclarationVisitor extends GeneralizingSAstVisitor<void> {
       enumName,
       environment,
       valueNames,
+      moduleUri: moduleUri.isEmpty ? null : moduleUri,
     );
 
     // Define the enum type placeholder in the current environment
