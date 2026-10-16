@@ -1065,6 +1065,19 @@ class AstModuleLoader implements ModuleContext {
       }
     }
 
+    // Dart imports are not re-exported. Capture declarations before imports
+    // are merged, and make type placeholders visible early for cyclic imports.
+    final ownNames = Set<String>.of(moduleEnv.bindingNames);
+    for (final entry in moduleEnv.values.entries) {
+      if (entry.value is RuntimeType) {
+        try {
+          exportedEnv.define(entry.key, entry.value);
+        } catch (_) {
+          // A previous generation may already have published this declaration.
+        }
+      }
+    }
+
     // Process import directives (after own declarations, see above)
     _processImports(uri, ast, moduleEnv);
 
@@ -1083,7 +1096,22 @@ class AstModuleLoader implements ModuleContext {
     // Build exported environment. `exportedEnv` was created up-front (DFUB10);
     // here it finally receives this module's own declarations, now that
     // moduleEnv holds their initialized values.
-    exportedEnv.importEnvironment(moduleEnv);
+    // Keep imported names out of this module's export surface. Extensions are
+    // stored during interpretation, so add their declared names explicitly.
+    final ownExtensionNames = <String>{};
+    for (final unit in libraryUnits) {
+      for (final decl in unit.ast.declarations) {
+        if (decl is SExtensionDeclaration ||
+            decl is SExtensionTypeDeclaration) {
+          final name = decl.name?.name;
+          if (name != null && name.isNotEmpty) ownExtensionNames.add(name);
+        }
+      }
+    }
+    exportedEnv.importEnvironment(
+      moduleEnv,
+      show: {...ownNames, ...ownExtensionNames},
+    );
 
     // Process export directives
     _processExports(uri, ast, exportedEnv);

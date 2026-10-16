@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **AST pure-Dart dependency compatibility**:
+  - Added SDK collection-base bridges needed to interpret `collection` 1.19.1, including the dependency chain pulled in by `equatable` 3.0.0.
+  - Added an AST runtime regression test exercising `Equatable` equality through the collection dependency.
 - **AST library part support**:
   - AST mode now interprets a library's `part` files in the owning library environment, preserving shared private-name visibility for generated code such as `build_runner` output.
   - Parent library cache fingerprints include part URIs and content fingerprints so part-only edits reload the owning library.
@@ -54,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced `WidgetGenerationTracker` and `classFileMap` generation for AST module reload precision.
 
 ### Fixed
+- Fixed AST loading of cyclic pure-Dart imports by publishing type declarations early enough for dependent classes and mixins to resolve.
+- Fixed module exports to expose a library's declarations rather than its imports, preventing accidental name conflicts in package barrels.
+- Added the missing `Comparator` bridge required by collection's comparator extension.
 - Fixed nullable `is` checks for null against user-defined and applied generic types; this unblocks get_it's nullable `_ObjectRegistration<T, dynamic, dynamic>?` lookup check.
 - Interpreted callable instances now dispatch generic `call<T>()` invocations instead of returning the instance itself.
 - Preserved enum type compatibility across reloads using library-qualified declaration identity, avoiding self-type mismatches for generic method parameters.

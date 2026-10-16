@@ -1,4 +1,5 @@
 import 'package:tom_d4rt_ast/src/runtime/environment.dart';
+import 'package:tom_d4rt_ast/src/runtime/stdlib/collection/collection_bases.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/collection/collection_hierarchy.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/collection/double_linked_queue.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/collection/hash_map.dart';
@@ -31,6 +32,9 @@ class CollectionStdlib {
     environment.defineBridge(UnmodifiableListViewCollection.definition);
     environment.defineBridge(UnmodifiableMapViewCollection.definition);
     environment.defineBridge(UnmodifiableSetViewCollection.definition);
+    // Base helpers for package:collection (cycle + SDK extends/with).
+    // Must run before the hierarchy registration so the edges below resolve.
+    CollectionBasesCollection.register(environment);
     // After the bridges: the registry keys on NAME, so the edges are only
     // useful once the classes they name are registered.
     CollectionHierarchyCollection.register();

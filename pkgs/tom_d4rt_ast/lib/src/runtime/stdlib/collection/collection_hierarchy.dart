@@ -54,6 +54,22 @@ class CollectionHierarchyCollection {
       'Queue': ['Iterable'],
       // `LinkedList<E extends LinkedListEntry<E>>` implements `Iterable<E>`.
       'LinkedList': ['Iterable'],
+      // Base helpers for package:collection (SDK 3.12 typedefs + mixin bases).
+      // `IterableBase`/`IterableMixin` are typedefs to `Iterable`; the native
+      // type equality already answers `is`, but the edges make the registry
+      // walk explicit for interpreted subclasses extending the alias.
+      'IterableBase': ['Iterable'],
+      'IterableMixin': ['Iterable'],
+      // `ListBase implements List`, `SetBase implements Set`,
+      // `MapBase implements Map` (SDK `abstract mixin class`).
+      'ListBase': ['List'],
+      'ListMixin': ['List'],
+      'SetBase': ['Set'],
+      'SetMixin': ['Set'],
+      'MapBase': ['Map'],
+      'MapMixin': ['Map'],
+      // `UnmodifiableMapBase = MapBase with _UnmodifiableMapMixin`.
+      'UnmodifiableMapBase': ['MapBase'],
     });
   }
 }

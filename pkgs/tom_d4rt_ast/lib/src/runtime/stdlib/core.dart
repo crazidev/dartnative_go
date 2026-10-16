@@ -97,6 +97,20 @@ class CoreStdlib {
     environment.defineBridge(TypeCore.definition);
     environment.defineBridge(NullCore.definition);
     environment.defineBridge(ComparableCore.definition);
+    // `typedef Comparator<T> = int Function(T a, T b)` (dart:core/comparable).
+    // Required as an extension on-type by package:collection's
+    // `ComparatorExtension<T> on Comparator<T>` (used via `sorted`). Without
+    // it every bundle importing collection fails with "Could not resolve 'on'
+    // type 'Comparator'". Modelled as a Function alias (all Comparators are
+    // Functions); no isAssignable so concrete functions stay owned by the
+    // Function bridge. The extension's methods are interpreted, so no adapters.
+    environment.defineBridge(
+      BridgedClass(
+        nativeType: Function,
+        name: 'Comparator',
+        typeParameterCount: 1,
+      ),
+    );
     environment.defineBridge(EnumCore.definition);
     environment.defineBridge(NeverCore.definition);
     environment.defineBridge(SymbolCore.definition);

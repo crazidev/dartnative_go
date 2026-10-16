@@ -45,6 +45,23 @@ Local fixes to generated output are applied by the generator
 - Callable interpreted instances dispatch through their `call` method and
   preserve explicit generic type arguments (`locator<User>()`).
 
+## Pure-Dart dependencies and SDK bridges
+
+AST mode bundles reachable pure-Dart package source and interprets it on the
+device. That source can still extend or mix in SDK types, so those SDK names
+must be available in the runtime bridge registry even though the package
+itself is bundled rather than bridged. For example, `equatable` depends on
+`collection`, which uses `dart:collection` bases such as `IterableBase`,
+`ListBase`, and `MapBase`; the runtime registers minimal type bridges for
+those SDK helpers.
+
+The module loader also publishes declared type placeholders before resolving
+imports, allowing legal cyclic imports to resolve class and mixin names. A
+module exports its own declarations, not its imports; this avoids leaking
+dependency symbols through barrels and follows Dart library semantics.
+`test/unit/collection_dependency_test.dart` covers the `equatable`/`collection`
+path end to end in AST mode.
+
 ## AST library parts
 
 `AstModuleLoader.loadLibraryUnits` follows `SPartDirective`s from a library

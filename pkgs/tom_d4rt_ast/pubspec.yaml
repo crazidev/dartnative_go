@@ -11,6 +11,10 @@ version: 0.65.0
 #   SSetOrMapLiteral.isSet/isMap flags (empty `{}` in a Set context is a
 #   Set, not a Map); without it every Set member access on such a literal
 #   fails with "Bridged class 'Map' has no instance method".
+# - AST mode supports collection 1.19.1 (required by equatable 3.0.0):
+#   `ast_module_loader.dart` handles its cyclic imports and exports only own
+#   declarations; collection-base SDK bridges and a Comparator typedef bridge
+#   cover its `dart:collection` dependencies.
 # - lib/src/runtime/ast_module_loader.dart + d4rt_runner.dart: resolve library
 #   `part` units into the owning library environment (shared private names),
 #   including part-aware module fingerprints for hot reload.
