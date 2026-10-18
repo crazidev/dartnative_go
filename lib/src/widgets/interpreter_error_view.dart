@@ -82,6 +82,10 @@ class _InterpreterErrorViewState extends State<InterpreterErrorView> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         centerTitle: false,
+        // The preview is a pushed route, so the framework would imply a back
+        // chevron. This host surface owns its own actions ("Back to Home"), so
+        // suppress it and keep the error screen chrome-free on Android/iOS.
+        automaticallyImplyLeading: false,
         title: const Text(
           'Interpreter Error',
           style: TextStyle(fontWeight: FontWeight.bold),

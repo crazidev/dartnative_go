@@ -11,6 +11,10 @@ import 'recent_projects_list.dart';
 import 'server_url_input.dart';
 
 /// Launcher home screen when no guest project is actively mounted.
+///
+/// This is the root route of the host [App] (see `lib/main.dart`); opening a
+/// project pushes a separate route for the launch/preview instead of swapping
+/// this screen's content.
 class LauncherScreen extends StatefulWidget {
   final List<DartGoProject> projects;
   final bool isLoading;
@@ -39,18 +43,6 @@ class LauncherScreen extends StatefulWidget {
 
 class _LauncherScreenState extends State<LauncherScreen> {
   @override
-  void didChangeDependencies() {
-    print("didChangeDependencies");
-    super.didChangeDependencies();
-  }
-
-  @override
-  void didUpdateWidget(covariant LauncherScreen oldWidget) {
-    print("didUpdateWidget");
-    super.didUpdateWidget(oldWidget);
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Consumer(
       builder: (context, ref, _) {
@@ -61,71 +53,65 @@ class _LauncherScreenState extends State<LauncherScreen> {
           ThemePreference.dark => ShadcnAppearanceMode.dark,
         };
 
-        return App(
-          home: ShadcnTheme(
-            mode: appearanceMode,
-            child: Builder(
-              builder: (context) {
-                final theme = context.theme;
-                final colors = LauncherColors.fromTheme(theme);
-                return Scaffold(
-                  backgroundColor: theme.background,
-                  brightness: theme.brightness,
-                  appBar: LauncherAppBar(
-                    onRescan: widget.onRescan,
-                    colors: colors,
-                    onChangeTheme: () =>
-                        ref.read(themePreferenceProvider.notifier).cycle(),
-                    onCycleMode: widget.onCycleMode,
-                    runtimeModeLabel: widget.runtimeModeLabel,
+        return ShadcnTheme(
+          mode: appearanceMode,
+          child: Builder(
+            builder: (context) {
+              final theme = context.theme;
+              final colors = LauncherColors.fromTheme(theme);
+              return Scaffold(
+                backgroundColor: theme.background,
+                brightness: theme.brightness,
+                appBar: LauncherAppBar(
+                  onRescan: widget.onRescan,
+                  colors: colors,
+                  onChangeTheme: () =>
+                      ref.read(themePreferenceProvider.notifier).cycle(),
+                  onCycleMode: widget.onCycleMode,
+                  runtimeModeLabel: widget.runtimeModeLabel,
+                ),
+                body: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 24,
                   ),
-                  body: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 24,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Development Server',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: theme.foreground,
-                          ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Development Server',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: theme.foreground,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Connect to an active DartNative local dev server.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: theme.mutedForeground,
-                          ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Connect to an active DartNative local dev server.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.mutedForeground,
                         ),
-                        const SizedBox(height: 12),
-                        ServerUrlInput(
-                          controller: widget.urlController,
-                          onSubmitted: widget.onUrlSubmitted,
-                          colors: colors,
-                        ),
-                        const SizedBox(height: 32),
-                        // Button.root(
-                        //   onPressed: () => {},
-                        //   child: const Text('Submit'),
-                        // ),
-                        RecentProjectsList(
-                          projects: widget.projects,
-                          isLoading: widget.isLoading,
-                          onSelectProject: widget.onSelectProject,
-                          colors: colors,
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 12),
+                      ServerUrlInput(
+                        controller: widget.urlController,
+                        onSubmitted: widget.onUrlSubmitted,
+                        colors: colors,
+                      ),
+                      const SizedBox(height: 32),
+                      RecentProjectsList(
+                        projects: widget.projects,
+                        isLoading: widget.isLoading,
+                        onSelectProject: widget.onSelectProject,
+                        colors: colors,
+                      ),
+                    ],
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
         );
       },
