@@ -36,18 +36,6 @@ class _WebViewDemoScreenState extends State<WebViewDemoScreen> {
   @override
   void initState() {
     super.initState();
-    // White status + system navigation bars with dark icons — set in
-    // initState so the overlay style applies before the first frame.
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarBrightness: Brightness.light,
-        statusBarColor: Color(0xFFFFFFFF),
-        statusBarIconBrightness: Brightness.dark,
-        systemNavigationBarIconBrightness: Brightness.dark,
-        systemNavigationBarColor: Color(0xFFFFFFFF),
-        systemNavigationBarDividerColor: Color(0xFFFFFFFF),
-      ),
-    );
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
@@ -102,14 +90,12 @@ class _WebViewDemoScreenState extends State<WebViewDemoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFFFF),
+      // backgroundColor: const Color(0xFF000000),
       appBar: AppBar(
-        title: Text(_title, style: TextStyle(color: Colors.black)),
+        title: Text(_title),
         centerTitle: false,
-        actions: [
-          SizedBox(),
-        ],
       ),
+
       body: Column(
         children: [
           // Thin top progress line while loading. Always present (height collapses
@@ -143,13 +129,14 @@ class _WebViewDemoScreenState extends State<WebViewDemoScreen> {
   // above the home indicator or the gesture bar, by the bottom inset.
   Widget _bottomBar(BuildContext context) {
     final inset = MediaQuery.of(context).padding.bottom;
+
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFFFFFFFF),
+        color: Color(0xFF1C1C1E),
         border: Border(top: BorderSide(color: Color(0x22000000), width: 0.5)),
       ),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(13, 4, 13, 4 + inset),
+        padding: EdgeInsets.fromLTRB(13, 4, 13,inset),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -200,7 +187,7 @@ class _WebViewDemoScreenState extends State<WebViewDemoScreen> {
       opacity: enabled ? 1.0 : 0.25,
       child: Padding(
         padding: const EdgeInsets.all(10),
-        child: Icon(icon, size: 24, color: const Color(0xFF1C1C1E)),
+        child: Icon(icon, size: 24, color:  Colors.white),
       ),
     ),
   );

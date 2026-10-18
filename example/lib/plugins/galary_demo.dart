@@ -248,18 +248,11 @@ class _GalleryDemoState extends State<GalleryDemo> {
         title: const Text(
           'Gallery',
           style: TextStyle(
-            color: Color(0xFFFFFFFF),
             fontSize: 17,
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: const Color(0xFF1C1C1E),
       ),
-      // The Scaffold owns the background, not an inner Container: the
-      // route reports this colour to the navigator, which paints the
-      // transition backdrop with it. Painting inside the body instead
-      // leaves the backdrop at the white default and flashes on push.
-      backgroundColor: const Color(0xFF000000),
       body: SizedBox(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -318,6 +311,7 @@ class _GalleryDemoState extends State<GalleryDemo> {
   }
 
   Widget _albumBar() {
+    
     return Container(
       // The row reads as part of the bar above it, not as content.
       color: const Color(0xFF1C1C1E),
@@ -338,6 +332,7 @@ class _GalleryDemoState extends State<GalleryDemo> {
               padding: const EdgeInsets.only(right: 8, top: 6, bottom: 6),
               child: GestureDetector(
                 onTap: () {
+                  print('album tapped: ${album}, current: ${_album}');
                   setState(() => _album = album);
                   _loadPage(reset: true);
                 },

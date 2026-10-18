@@ -26,16 +26,11 @@ class _MediaPickerDemoState extends State<MediaPickerDemo> {
         title: const Text(
           'Media Picker Demo',
           style: TextStyle(
-            color: Color(0xFFFFFFFF),
             fontSize: 17,
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: const Color(0xFF1C1C1E),
       ),
-      // The Scaffold's own colour is what the navigator paints behind a
-      // push; a colour set on the body alone leaves a white frame.
-      backgroundColor: const Color(0xFF000000),
       body: SizedBox(
         child: ListView(
           padding: const EdgeInsets.all(24),

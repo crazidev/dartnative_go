@@ -136,21 +136,14 @@ class _NotificationsDemoState extends State<NotificationsDemo> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // The screen colour belongs on the Scaffold: iOS 26 paints the push
-      // backdrop with the route's colour, else it flashes at the corners.
-      backgroundColor: const Color(0xFF000000),
-      // Dark screen: iOS 26 renders its scroll-edge fades in the trait.
-      brightness: Brightness.dark,
       appBar: AppBar(
         title: const Text(
           'Notifications Demo',
           style: TextStyle(
-            color: Color(0xFFFFFFFF),
             fontSize: 17,
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: const Color(0xFF1C1C1E),
       ),
       body: ListView(
         padding: const EdgeInsets.all(24),
@@ -315,7 +308,7 @@ class _SectionHeader extends StatelessWidget {
     return Text(
       title,
       style: const TextStyle(
-        color: Color(0xFFFFFFFF),
+        // color: Color(0xFFFFFFFF),
         fontSize: 15,
         fontWeight: FontWeight.w600,
       ),

@@ -8,15 +8,6 @@ import 'dartnative_plugin_registrant.dart';
 void main() {
   DartNativePluginRegistrant.registerAll();
   configureDependencies();
-
-  SystemChrome.defaultStyle = const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarBrightness: Brightness.light,
-    statusBarIconBrightness: Brightness.dark,
-    systemNavigationBarColor: Colors.transparent,
-    systemNavigationBarIconBrightness: Brightness.dark,
-  );
-
   runApp(ProviderScope(child: MyApp()));
 }
 
