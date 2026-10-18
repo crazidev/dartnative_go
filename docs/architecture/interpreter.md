@@ -44,6 +44,13 @@ Local fixes to generated output are applied by the generator
 - `==` / `!=` never invoke function values; callbacks compare by identity.
 - Callable interpreted instances dispatch through their `call` method and
   preserve explicit generic type arguments (`locator<User>()`).
+- A declared for-in variable gets a fresh environment binding on every
+  iteration, so closures capture their own value; identifier-form loops keep
+  assigning the existing binding.
+- A non-generic class alias (`typedef Alias = Target;`) resolves to its target
+  in expressions as well as type positions, including constructor initializer
+  lists. The declaration-pass alias binding is limited to non-generic aliases;
+  generic aliases are not covered by this callable-alias behavior.
 
 ## Pure-Dart dependencies and SDK bridges
 
@@ -61,6 +68,31 @@ module exports its own declarations, not its imports; this avoids leaking
 dependency symbols through barrels and follows Dart library semantics.
 `test/unit/collection_dependency_test.dart` covers the `equatable`/`collection`
 path end to end in AST mode.
+
+The SDK compatibility surface also covers collection `MapView`/
+`UnmodifiableMapView` and `HashMap`/`LinkedHashMap` constructors, typed-data
+list views, conversion-sink typedef aliases, `WeakReference`, and a narrow
+`Zone` bridge. `Zone.current`, parent/fork, and run/delegation calls use the
+host zone; guest `runZoned`/`runZonedGuarded` remain interpreter-owned rather
+than being exposed as misleading no-op bridges.
+
+## Async execution and developer extensions
+
+Interpreted async continuations use a cooperative event-loop budget. Within the
+default 4 ms turn budget, continuations use microtasks; after the budget is
+spent, the next continuation moves to a zero-duration timer turn so the host
+event loop can render frames and process other work. Set
+`InterpretedFunction.asyncSliceBudgetMicros` to `0` to restore the historical
+all-microtask scheduling behavior.
+
+The `dart:developer` `registerExtension` bridge registers each method with the
+host once and updates its stored interpreted handler on later registrations.
+This allows guest top-level code to re-register service extensions after a hot
+reload without triggering the host's duplicate-registration error or leaving
+dispatch bound to an obsolete interpreter generation.
+
+Compile-time-gated initialization profiling is documented in
+[Runtime Modes](../runtime_modes.md#profiling-ast-initialization).
 
 ## Third-party packages compiled into the shell
 

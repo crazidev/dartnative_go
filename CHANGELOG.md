@@ -22,8 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The launcher now connects to the first online project the network scanner discovers, so the app reaches a mounted guest without a human tap — enabling simulator/CI automation (`dn run` + `tool/ui_test_run.dart`) to drive the app end-to-end.
   - Enabled by default in JIT/debug builds, disabled in AOT product builds; override either way with `--dart-define=DARTNATIVE_AUTO_CONNECT=true|false`. Runs at most once per app process, so returning to the launcher never causes a reconnect loop.
 - **AST pure-Dart dependency compatibility**:
-  - Added SDK collection-base bridges needed to interpret `collection` 1.19.1, including the dependency chain pulled in by `equatable` 3.0.0.
+  - Added SDK collection-base and map-view bridges needed to interpret `collection` 1.19.1, including the dependency chain pulled in by `equatable` 3.0.0.
+  - Expanded AST standard-library support for typed-data list views, conversion-sink aliases, `WeakReference`, and the host `Zone` observation/delegation API.
   - Added an AST runtime regression test exercising `Equatable` equality through the collection dependency.
+- **AST initialization profiler**:
+  - Added compile-time-gated `D4rtProfiler` setup measurements for bridge/stdlib registration, module-loader creation, and declaration passes. Enable with `--dart-define=D4RT_PROFILE_INIT=true`; it has no instrumentation cost when disabled.
 - **AST library part support**:
   - AST mode now interprets a library's `part` files in the owning library environment, preserving shared private-name visibility for generated code such as `build_runner` output.
   - Parent library cache fingerprints include part URIs and content fingerprints so part-only edits reload the owning library.
@@ -82,6 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Bare-name lookup for static methods and getters now walks mixins and superclasses, so an inherited method can call a static declared further up the chain (`DioMixin`'s `assureDioException` reached from the inherited `fetch`).
   - Async catch clauses now match against the thrown value's runtime type per clause instead of always taking the first clause, so `on FormatException catch (e)` selects the right handler.
   - Top-level class aliases (`typedef Alias = Target;`) now bind in a module's declaration pass, so a bare `Alias(...)` resolves to `Target` — including from a constructor initializer list, which is the only context dio's `MultipartFile` calls `DioMediaType(...)` from.
+  - Declared for-in loop variables now get a fresh binding per iteration, preserving each value captured by a closure; for-in loops also accept interpreted `Iterable` implementations through their `iterator` member.
 - Interpreted callable instances now dispatch generic `call<T>()` invocations instead of returning the instance itself.
 - Preserved enum type compatibility across reloads using library-qualified declaration identity, avoiding self-type mismatches for generic method parameters.
 - **FrozenNameMap Mutation Error**:
