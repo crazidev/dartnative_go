@@ -547,6 +547,7 @@ class InterpreterRunner {
     );
     _astRunner!.currentServerUrl = currentServerUrl;
     _astRunner!.onLog = onLog;
+    _astRunner!.profileExecution = DartGoLogger.verbose;
     _astRunner!.onGuestError ??= (error, stack) {
       final effectiveStack = (error is ast_runtime.D4rtException &&
               error.guestStackTrace != null &&

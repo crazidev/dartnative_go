@@ -76,15 +76,31 @@ class AstInterpreterRunner {
   int? _lastMainMicros;
   bool _lastWasHotReload = false;
 
+  /// Memoized profile snapshot + dirty flag.
+  ///
+  /// [buildAstProfile] sizes every module and class by serializing its AST to
+  /// JSON — far too expensive to run per widget build. [lastAstProfile] is read
+  /// from `main.dart`'s `build` on *every* rebuild, so the walk must run once
+  /// per bundle evaluation, not per frame. [_profileDirty] is set wherever the
+  /// bundle or the retained timing maps change; the getter recomputes lazily on
+  /// the next read and otherwise returns the cache.
+  AstProfileSnapshot? _cachedProfile;
+  bool _profileDirty = true;
+
   /// Structured snapshot of the last bundle evaluation for the AST viewer.
   ///
-  /// Built on demand from the decoded bundle plus the retained timing maps,
-  /// so opening the viewer is the only thing that pays the AST sizing walk.
-  /// Null before the first evaluation or after [dispose].
+  /// Computed on demand from the decoded bundle plus the retained timing maps,
+  /// then memoized until the next evaluation ([_profileDirty]). Null before the
+  /// first evaluation or after [dispose].
   AstProfileSnapshot? get lastAstProfile {
+    if (!_profileDirty) return _cachedProfile;
+    _profileDirty = false;
     final bundle = _cachedBundle;
-    if (bundle == null) return null;
-    return buildAstProfile(
+    if (bundle == null) {
+      _cachedProfile = null;
+      return null;
+    }
+    _cachedProfile = buildAstProfile(
       bundle: bundle,
       moduleLoadMicros: _lastModuleLoadMicros,
       moduleLoadCounts: _lastModuleLoadCounts,
@@ -93,6 +109,7 @@ class AstInterpreterRunner {
       mainMicros: _lastMainMicros,
       isHotReload: _lastWasHotReload,
     );
+    return _cachedProfile;
   }
 
   AstInterpreterRunner({
@@ -336,24 +353,39 @@ class AstInterpreterRunner {
 
     final execSw = Stopwatch()..start();
     Object? raw;
-    await runZoned(
-      () async {
-        final result = runner.executeBundle(
-          bundle,
-          entryPoint: effectiveEntry,
-          name: name,
-          positionalArgs: positionalArgs,
-          namedArgs: namedArgs,
-          moduleFingerprints: moduleFingerprints,
-        );
-        raw = result is Future ? await result : result;
-      },
-      zoneSpecification: ZoneSpecification(
-        print: (self, parent, zone, line) {
-          onLog?.call(line);
+    if (ast.D4rtProfiler.enabled) {
+      ast.D4rtProfiler.reset();
+    }
+    try {
+      await runZoned(
+        () async {
+          final result = runner.executeBundle(
+            bundle,
+            entryPoint: effectiveEntry,
+            name: name,
+            positionalArgs: positionalArgs,
+            namedArgs: namedArgs,
+            moduleFingerprints: moduleFingerprints,
+          );
+          raw = result is Future ? await result : result;
         },
-      ),
-    );
+        zoneSpecification: ZoneSpecification(
+          print: (self, parent, zone, line) {
+            onLog?.call(line);
+          },
+        ),
+      );
+    } finally {
+      if (ast.D4rtProfiler.enabled) {
+        final report = ast.D4rtProfiler.report(
+          title:
+              'D4rt AST init profile (${isHotReload ? "reload" : "initial"})',
+        );
+        for (final line in report.split('\n')) {
+          DartGoLogger.debug(line, tag: 'D4rtProfiler');
+        }
+      }
+    }
     final execMs = execSw.elapsedMilliseconds;
     _evaluationCount++;
 
@@ -383,6 +415,8 @@ class AstInterpreterRunner {
     _lastBridgedSymbols = Map.of(bridgedSymbols);
     _lastMainMicros = mainMicros;
     _lastWasHotReload = isHotReload;
+    // Invalidate the memoized viewer profile: the bundle/timings just changed.
+    _profileDirty = true;
 
     void logExecutionProfile(AstProfileSnapshot profile) {
       DartGoLogger.debug(
@@ -602,6 +636,7 @@ class AstInterpreterRunner {
     _cachedBundleHash = hash;
     _cachedBundleLength = bytes.length;
     _lastDecodeWasCacheHit = false;
+    _profileDirty = true;
     return decoded;
   }
 
@@ -642,6 +677,8 @@ class AstInterpreterRunner {
     _lastModuleCacheHits = const {};
     _lastBridgedSymbols = const {};
     _lastMainMicros = null;
+    _cachedProfile = null;
+    _profileDirty = true;
     try {
       _componentLoader?.bundleLoader.close();
     } catch (_) {}

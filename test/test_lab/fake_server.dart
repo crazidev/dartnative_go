@@ -78,6 +78,10 @@ class FakeDevServer {
       }
       final socket = await WebSocketTransformer.upgrade(request);
       _sockets.add(socket);
+      socket.add(jsonEncode({
+        'type': 'set_verbose',
+        'enabled': initialVerbose,
+      }));
       socket.listen(
         (message) {
           try {

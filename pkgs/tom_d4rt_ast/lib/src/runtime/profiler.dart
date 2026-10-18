@@ -10,28 +10,29 @@ import 'dart:math' show max;
 /// path; instrumentation deliberately stops at the point where script
 /// interpretation begins.
 ///
+/// ## Enabling locally
+///
+/// Pass `--dart-define=D4RT_PROFILE_INIT=true` when building/running the host
+/// Flutter app. The `dart_go --verbose` CLI flag enables report output, but
+/// cannot enable this compile-time instrumentation by itself.
+///
 /// ## Zero runtime cost when disabled
 ///
-/// [enabled] is a `static const bool`. Every measurement site is written as an
-/// `if (D4rtProfiler.enabled) { ... }` guard (or a
-/// `D4rtProfiler.enabled ? ... : null` ternary). When [enabled] is `false` the
-/// Dart compiler (VM TFA / AOT / dart2js) constant-folds the condition and
-/// eliminates the guarded code entirely — no `Stopwatch` allocation, no map
-/// lookup, and no call overhead in a normal run.
-///
-/// ## CRITICAL — never publish with [enabled] == `true`
-///
-/// Flip [enabled] to `true` only for a local profiling session, then revert it
-/// before committing or publishing the package. A `true` value would leave the
-/// instrumentation live in shipped builds. A guard test
-/// (`test/profiler_disabled_test.dart`) asserts it stays `false`.
+/// [enabled] is a `static const bool`. Every measurement site is guarded by
+/// [enabled], so the Dart compiler constant-folds the instrumentation away
+/// when the define is false — no `Stopwatch` allocation, map lookup, or call
+/// overhead in a normal build. Do not set the define in release or published
+/// builds.
 ///
 /// Twin of `tom_d4rt/lib/src/profiler.dart` — keep both in sync.
 class D4rtProfiler {
   D4rtProfiler._();
 
-  /// Master compile-time switch. **MUST remain `false` in published code.**
-  static const bool enabled = false;
+  /// Master compile-time switch. Keep the default false for normal builds.
+  static const bool enabled = bool.fromEnvironment(
+    'D4RT_PROFILE_INIT',
+    defaultValue: false,
+  );
 
   static final Map<String, _ProfileEntry> _entries = <String, _ProfileEntry>{};
   static final List<String> _order = <String>[];

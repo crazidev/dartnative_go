@@ -37,6 +37,7 @@ class LiveConnection {
 
   WebSocket? _socket;
   bool _isDisposed = false;
+  Completer<bool> _initialVerboseState = Completer<bool>();
 
   LiveConnection({
     required this.serverUrl,
@@ -70,6 +71,9 @@ class LiveConnection {
   /// Connects to the dev server WebSocket at `ws://$host:$port/ws`.
   Future<void> connect({Duration timeout = const Duration(seconds: 5)}) async {
     _isDisposed = false;
+    if (_initialVerboseState.isCompleted) {
+      _initialVerboseState = Completer<bool>();
+    }
     final wsUrl = '${serverUrl.replaceFirst('http', 'ws')}/ws';
 
     try {
@@ -114,7 +118,11 @@ class LiveConnection {
             } else if (type == 'set_vm_debugger') {
               onSetVmDebugger?.call(data['enabled'] == true);
             } else if (type == 'set_verbose') {
-              onSetVerbose?.call(data['enabled'] == true);
+              final enabled = data['enabled'] == true;
+              onSetVerbose?.call(enabled);
+              if (!_initialVerboseState.isCompleted) {
+                _initialVerboseState.complete(true);
+              }
             } else if (type == 'ui_probe_request') {
               onUiProbeRequest?.call(data['requestId']?.toString() ?? '');
             } else if (type == 'ui_tap') {
@@ -162,17 +170,36 @@ class LiveConnection {
         },
         onDone: () {
           _socket = null;
+          if (!_initialVerboseState.isCompleted) {
+            _initialVerboseState.complete(false);
+          }
         },
         onError: (e) {
           _socket = null;
+          if (!_initialVerboseState.isCompleted) {
+            _initialVerboseState.complete(false);
+          }
           onError?.call(e.toString());
         },
       );
     } catch (e) {
       _socket = null;
       onError?.call(e.toString());
+      if (!_initialVerboseState.isCompleted) {
+        _initialVerboseState.complete(false);
+      }
     }
   }
+
+  /// Waits for the server's initial verbose setting before the first guest
+  /// evaluation, so diagnostic callbacks are enabled for the cold load.
+  ///
+  /// Returns false if the server does not send the setting before [timeout] or
+  /// the connection closes. Older servers can still launch; callers can warn
+  /// that the initial verbose profile may be incomplete.
+  Future<bool> waitForInitialVerbose({
+    Duration timeout = const Duration(seconds: 2),
+  }) => _initialVerboseState.future.timeout(timeout, onTimeout: () => false);
 
   /// Sends device logs back to the dev server terminal.
   void sendDeviceLog(String message, {String level = 'INFO'}) {
@@ -264,5 +291,8 @@ class LiveConnection {
     _isDisposed = true;
     _socket?.close();
     _socket = null;
+    if (!_initialVerboseState.isCompleted) {
+      _initialVerboseState.complete(false);
+    }
   }
 }

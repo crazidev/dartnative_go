@@ -60,6 +60,8 @@ void main() {
         onSetVerbose: verboseStates.add,
       );
       await conn.connect();
+      expect(await conn.waitForInitialVerbose(), isTrue);
+      verboseStates.clear();
 
       server.emitVerbose(true);
       server.emitVerbose(false);
@@ -68,12 +70,30 @@ void main() {
 
       // Client → server toggle lands on the fake server.
       conn.sendSetVerbose(true);
-      await _waitUntil(() =>
-          server.receivedVerboseToggles.any((m) => m['enabled'] == true));
+      await _waitUntil(
+        () => server.receivedVerboseToggles.any((m) => m['enabled'] == true),
+      );
       expect(
         server.receivedVerboseToggles.any((m) => m['enabled'] == true),
         isTrue,
       );
+      conn.disconnect();
+    });
+
+    test('waits for the initial verbose setting before evaluation', () async {
+      await server.stop();
+      server = FakeDevServer(appName: 'WS App', initialVerbose: true);
+      await server.start();
+
+      var verbose = false;
+      final conn = LiveConnection(
+        serverUrl: server.baseUrl,
+        onSetVerbose: (enabled) => verbose = enabled,
+      );
+      await conn.connect();
+
+      expect(await conn.waitForInitialVerbose(), isTrue);
+      expect(verbose, isTrue);
       conn.disconnect();
     });
 
@@ -102,14 +122,17 @@ void main() {
 
       conn.sendDeviceLog('hello from device');
       conn.sendDeviceLog('boom', level: 'ERROR');
-      await _waitUntil(() =>
-          server.receivedLogs.length >= 2 &&
-          server.receivedLogs.any(
-            (m) => m['message'] == 'hello from device' && m['level'] == 'INFO',
-          ) &&
-          server.receivedLogs.any(
-            (m) => m['message'] == 'boom' && m['level'] == 'ERROR',
-          ));
+      await _waitUntil(
+        () =>
+            server.receivedLogs.length >= 2 &&
+            server.receivedLogs.any(
+              (m) =>
+                  m['message'] == 'hello from device' && m['level'] == 'INFO',
+            ) &&
+            server.receivedLogs.any(
+              (m) => m['message'] == 'boom' && m['level'] == 'ERROR',
+            ),
+      );
       expect(
         server.receivedLogs.any(
           (m) => m['message'] == 'hello from device' && m['level'] == 'INFO',
