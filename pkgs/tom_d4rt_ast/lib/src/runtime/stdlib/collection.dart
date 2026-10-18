@@ -8,6 +8,7 @@ import 'package:tom_d4rt_ast/src/runtime/stdlib/collection/linked_hash_map.dart'
 import 'package:tom_d4rt_ast/src/runtime/stdlib/collection/linked_hash_set.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/collection/linked_list.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/collection/list_queue.dart';
+import 'package:tom_d4rt_ast/src/runtime/stdlib/collection/map_view.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/collection/queue.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/collection/splay_tree_map.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/collection/splay_tree_set.dart';
@@ -26,6 +27,7 @@ class CollectionStdlib {
     environment.defineBridge(LinkedListCollection.definition);
     environment.defineBridge(LinkedListEntryCollection.definition);
     environment.defineBridge(ListQueueCollection.definition);
+    environment.defineBridge(MapViewCollection.definition);
     environment.defineBridge(QueueCollection.definition);
     environment.defineBridge(SplayTreeMapCollection.definition);
     environment.defineBridge(SplayTreeSetCollection.definition);

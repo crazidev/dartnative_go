@@ -177,6 +177,21 @@ class BridgedClass implements RuntimeType {
   /// case where no proxy is registered.
   final bool isAbstract;
 
+  /// Name of the interface whose full member contract this bridge supplies
+  /// when applied as a mixin or superclass to an interpreted class.
+  ///
+  /// The SDK collection typedefs (`ListMixin` → `ListBase`, …) provide every
+  /// concrete helper of their interface natively (`ListMixin.addAll`,
+  /// `MapMixin.containsKey`, …), but the stub bridges that model them declare
+  /// no members — so an interpreted `class Q with ListMixin` (or a subclass
+  /// inheriting through one, e.g. `package:typed_data`'s queues) would fail
+  /// the interface-contract check for members the VM provides. Naming the
+  /// contract here lets the check resolve the member against the *contract
+  /// bridge's* tables (e.g. the core `List` bridge) instead of demanding a
+  /// script declaration. Members the contract bridge itself lacks stay
+  /// unsatisfied, exactly as a call to them would fail at dispatch.
+  final String? providesContract;
+
   /// **GEN-115 (Phase 1)** — Distance from `Object` in the native Dart
   /// inheritance hierarchy, i.e. the number of distinct supertypes
   /// (`allSupertypes.length`, excluding `Object` itself).
@@ -224,6 +239,7 @@ class BridgedClass implements RuntimeType {
     this.typeParameterCount = 0,
     this.canBeUsedAsMixin = false,
     this.isAbstract = false,
+    this.providesContract,
     this.hierarchyDepth = 0,
     this.isAssignable,
     this.constructors = const {},

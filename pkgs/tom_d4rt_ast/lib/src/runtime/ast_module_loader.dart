@@ -294,7 +294,11 @@ class AstModuleLoader implements ModuleContext {
     final uriString = uri.toString();
     final ast = modules[uriString];
     if (ast != null) {
-      return _loadBundleModule(uri, ast, fingerprint: moduleFingerprints[uriString]);
+      return _loadBundleModule(
+        uri,
+        ast,
+        fingerprint: moduleFingerprints[uriString],
+      );
     }
 
     // 4b. Delegate to the fallback loader (server-component delta support).
@@ -304,7 +308,11 @@ class AstModuleLoader implements ModuleContext {
     final fallback = fallbackLoader;
     if (fallback != null && !identical(fallback, this)) {
       try {
-        return fallback.loadModule(uri, showNames: showNames, hideNames: hideNames);
+        return fallback.loadModule(
+          uri,
+          showNames: showNames,
+          hideNames: hideNames,
+        );
       } on RuntimeD4rtException {
         // Fall through to the not-found error below.
       }
@@ -1065,15 +1073,37 @@ class AstModuleLoader implements ModuleContext {
       }
     }
 
-    // Dart imports are not re-exported. Capture declarations before imports
-    // are merged, and make type placeholders visible early for cyclic imports.
+    // Own names for export filtering (Dart semantics: imports are NOT
+    // re-exported). Captured BEFORE imports are merged, so it contains only
+    // this module's own top-level declarations (classes, enums, functions,
+    // variables). Used below to prevent export pollution: without it each
+    // module's exportedEnv copies its imports (including SDK bridges), and a
+    // barrel exporting many modules sees duplicate SDK names (e.g.
+    // `UnmodifiableSetView` interpreted in package:collection vs bridged in
+    // dart:collection) as a spurious `errorOnConflict` failure.
     final ownNames = Set<String>.of(moduleEnv.bindingNames);
+
+    // Cycle fix (collection/equatable): publish type placeholders early so
+    // cyclic importers can resolve superclasses/mixins. `collection`
+    // 1.19.1 has a true import cycle:
+    //   unmodifiable_wrappers ↔ wrappers ↔ empty_unmodifiable_set
+    // where MapKeySet (wrappers) mixes in UnmodifiableSetMixin
+    // (unmodifiable_wrappers) while unmodifiable_wrappers extends
+    // Delegating* (wrappers). Depth-first loading interprets wrappers
+    // BEFORE unmodifiable_wrappers completes, so the mixin lookup fails.
+    // Publishing InterpretedClass/Enum placeholders (same objects mutated
+    // in place by Pass 2) unblocks the `with`/`extends` wiring; the deferred
+    // replay in [_mergeFromModule] then delivers full members. Only
+    // RuntimeTypes are published early — function shells capture an
+    // incomplete closure at decl time and must arrive via replay.
     for (final entry in moduleEnv.values.entries) {
-      if (entry.value is RuntimeType) {
+      // Private names stay library-local (see the export filter below); only
+      // public placeholders are published for cyclic importers.
+      if (entry.value is RuntimeType && !entry.key.startsWith('_')) {
         try {
           exportedEnv.define(entry.key, entry.value);
         } catch (_) {
-          // A previous generation may already have published this declaration.
+          // Already defined via a previous generation's merge — keep existing.
         }
       }
     }
@@ -1093,25 +1123,37 @@ class AstModuleLoader implements ModuleContext {
     _interpretLibraryUnits(libraryUnits, interpreter);
     currentLibrary = uri;
 
-    // Build exported environment. `exportedEnv` was created up-front (DFUB10);
-    // here it finally receives this module's own declarations, now that
-    // moduleEnv holds their initialized values.
-    // Keep imported names out of this module's export surface. Extensions are
-    // stored during interpretation, so add their declared names explicitly.
+    // Build exported environment. `exportedEnv` was created up-front (DFUB10)
+    // and already holds early type placeholders (same objects, now fully
+    // wired). Here it receives this module's OWN declarations (not imports),
+    // now that moduleEnv holds their initialized values. `show: exportNames`
+    // enforces Dart export semantics and prevents pollution-driven barrel
+    // conflicts (see ownNames above).
+    //
+    // Named extensions are defined during interpretation (not decl pass), so
+    // they are absent from ownNames — collect them from the AST or `sorted`
+    // et al. would be missing from barrel exports (extension lookup fails).
     final ownExtensionNames = <String>{};
     for (final unit in libraryUnits) {
       for (final decl in unit.ast.declarations) {
-        if (decl is SExtensionDeclaration ||
-            decl is SExtensionTypeDeclaration) {
+        if (decl is SExtensionDeclaration) {
+          final name = decl.name?.name;
+          if (name != null && name.isNotEmpty) ownExtensionNames.add(name);
+        } else if (decl is SExtensionTypeDeclaration) {
           final name = decl.name?.name;
           if (name != null && name.isNotEmpty) ownExtensionNames.add(name);
         }
       }
     }
-    exportedEnv.importEnvironment(
-      moduleEnv,
-      show: {...ownNames, ...ownExtensionNames},
-    );
+    final exportNames = {...ownNames, ...ownExtensionNames}
+        // Private declarations never cross a library boundary: `export`
+        // re-exports only public names, and an importer cannot see another
+        // library's privates. Without this, two unrelated libraries that each
+        // declare e.g. `_Sink` (http_parser's chunked encoder and decoder)
+        // collide as a spurious "Name conflict" when a barrel exports both.
+        .where((name) => !name.startsWith('_'))
+        .toSet();
+    exportedEnv.importEnvironment(moduleEnv, show: exportNames);
 
     // Process export directives
     _processExports(uri, ast, exportedEnv);
@@ -1120,7 +1162,7 @@ class AstModuleLoader implements ModuleContext {
     // were handed, so every reference to this module is the same object.
     final module = inFlight.partial;
     _moduleCache[uri] = module;
-    registry?.cacheModule(uri.toString(), fingerprint, module);
+    registry?.cacheModule(uri.toString(), libraryFingerprint, module);
     _inFlightModules.remove(uri);
 
     // DFUB10 — this module's exports are complete now, so replay every merge

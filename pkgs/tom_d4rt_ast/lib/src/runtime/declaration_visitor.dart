@@ -23,6 +23,43 @@ class DeclarationVisitor extends GeneralizingSAstVisitor<void> {
     this.moduleUri = '',
   });
 
+  /// Binds a top-level class alias (`typedef <alias> = <Target>;`) in this
+  /// module's environment, so a bare reference to `<alias>` — above all a
+  /// constructor call `<alias>(...)` — resolves to `<Target>`.
+  ///
+  /// A typedef has no runtime representation, so the declaration pass is the
+  /// only place it can be observed; without this, dio's `MultipartFile`
+  /// constructors fail on `DioMediaType('application', 'octet-stream')`
+  /// (`DioMediaType` is a top-level alias for `http_parser`'s `MediaType`).
+  ///
+  /// Only the non-generic rename form is bound: `typedef Foo<T> = Bar<T>;`
+  /// needs per-use instantiation and stays on the ordinary type paths. The
+  /// binding is a [GlobalGetter], not a snapshot, so it re-reads the target's
+  /// current class object on every access (hot reload safe) and tolerates a
+  /// target declared later in the unit or arriving via an import.
+  @override
+  void visitTypedefDeclaration(STypedefDeclaration node) {
+    final aliasName = node.name?.name;
+    if (aliasName == null || aliasName.isEmpty) return;
+    final type = node.type;
+    if (type is! SNamedType) return; // Function/record typedef, not a rename.
+    if (type.importPrefix != null) return;
+    final args = type.typeArguments;
+    if (args != null && args.arguments.isNotEmpty) return; // Generic alias.
+    final targetName = type.name?.name;
+    if (targetName == null || targetName.isEmpty) return;
+
+    // Never shadow an existing binding, and never shadow a real declaration
+    // that shares the alias name.
+    if (!identical(environment.readBinding(aliasName), Environment.kNotFound)) {
+      return;
+    }
+    environment.define(
+      aliasName,
+      GlobalGetter(() => environment.lookup(targetName)),
+    );
+  }
+
   @override
   void visitClassDeclaration(SClassDeclaration node) {
     final className = node.name?.name ?? '';

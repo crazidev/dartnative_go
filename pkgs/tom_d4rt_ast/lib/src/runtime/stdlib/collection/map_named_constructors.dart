@@ -104,3 +104,80 @@ class MapNamedConstructors {
     return map;
   }
 }
+
+/// Custom equality callbacks for `HashMap()` / `LinkedHashMap()`.
+///
+/// The SDK constructors accept `equals`, `hashCode` and `isValidKey` to build
+/// maps with non-default key semantics (`package:path`'s `PathMap` relies on
+/// all three). Interpreted closures arrive as [Callable] and are invoked
+/// through the constructing visitor, so guest functions work as equality
+/// hooks exactly as they do on the VM.
+class CustomMapEquality {
+  const CustomMapEquality._();
+
+  static bool Function(dynamic, dynamic)? wrapEquals(
+    String className,
+    InterpreterVisitor visitor,
+    Object? fn,
+  ) {
+    if (fn == null) return null;
+    if (fn is! Callable) {
+      throw RuntimeD4rtException(
+        'Argument $className.equals must be a function.',
+      );
+    }
+    return (a, b) {
+      final result = fn.call(visitor, [a, b]);
+      if (result is! bool) {
+        throw RuntimeD4rtException(
+          'The equals callback of $className must return a bool.',
+        );
+      }
+      return result;
+    };
+  }
+
+  static int Function(dynamic)? wrapHashCode(
+    String className,
+    InterpreterVisitor visitor,
+    Object? fn,
+  ) {
+    if (fn == null) return null;
+    if (fn is! Callable) {
+      throw RuntimeD4rtException(
+        'Argument $className.hashCode must be a function.',
+      );
+    }
+    return (key) {
+      final result = fn.call(visitor, [key]);
+      if (result is! int) {
+        throw RuntimeD4rtException(
+          'The hashCode callback of $className must return an int.',
+        );
+      }
+      return result;
+    };
+  }
+
+  static bool Function(Object?)? wrapIsValidKey(
+    String className,
+    InterpreterVisitor visitor,
+    Object? fn,
+  ) {
+    if (fn == null) return null;
+    if (fn is! Callable) {
+      throw RuntimeD4rtException(
+        'Argument $className.isValidKey must be a function.',
+      );
+    }
+    return (key) {
+      final result = fn.call(visitor, [key]);
+      if (result is! bool) {
+        throw RuntimeD4rtException(
+          'The isValidKey callback of $className must return a bool.',
+        );
+      }
+      return result;
+    };
+  }
+}

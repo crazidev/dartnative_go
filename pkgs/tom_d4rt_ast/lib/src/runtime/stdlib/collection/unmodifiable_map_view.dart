@@ -1,6 +1,7 @@
 import 'dart:collection';
 
 import 'package:tom_d4rt_ast/runtime.dart';
+import 'package:tom_d4rt_ast/src/runtime/stdlib/sdk_mixin_helpers.dart';
 
 /// Narrows [target] to the native view, or reports which member was reached
 /// with the wrong receiver.
@@ -64,8 +65,27 @@ class UnmodifiableMapViewCollection {
           );
         }
         final source = positionalArgs[0];
-        if (source is Map) {
-          return UnmodifiableMapView<dynamic, dynamic>(source);
+        final native = source is BridgedInstance ? source.nativeObject : source;
+        if (native is Map) {
+          return UnmodifiableMapView<dynamic, dynamic>(native);
+        }
+        if (source is InterpretedInstance) {
+          // An interpreted Map implementation (e.g. package:collection's
+          // CaseInsensitiveMap): snapshot its entries into a native map.
+          // Deviation: a snapshot, not a live view — mutations of the
+          // source afterwards are not reflected. Reads at construction
+          // (the overwhelmingly common shape, including MediaType's
+          // parameters map) are identical.
+          final copy = <dynamic, dynamic>{};
+          final keys = source.get('keys', visitor: visitor);
+          for (final key in SdkMixinHelpers.eachSource(
+            keys,
+            visitor,
+            'UnmodifiableMapView',
+          )) {
+            copy[key] = SdkMixinHelpers.readIndex(source, visitor, key);
+          }
+          return UnmodifiableMapView<dynamic, dynamic>(copy);
         }
         throw RuntimeD4rtException(
           "Argument to UnmodifiableMapView() must be a Map.",

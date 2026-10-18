@@ -46,18 +46,21 @@ import 'package:tom_d4rt_ast/runtime.dart';
 class TypedDataHierarchyTypedData {
   static void register() {
     BridgedClass.registerSupertypes(const {
-      // The eleven list views: `TypedData` and the List/Iterable chain.
-      'Uint8List': ['TypedData', 'List', 'Iterable'],
-      'Uint8ClampedList': ['TypedData', 'List', 'Iterable'],
-      'Uint16List': ['TypedData', 'List', 'Iterable'],
-      'Uint32List': ['TypedData', 'List', 'Iterable'],
-      'Uint64List': ['TypedData', 'List', 'Iterable'],
-      'Int8List': ['TypedData', 'List', 'Iterable'],
-      'Int16List': ['TypedData', 'List', 'Iterable'],
-      'Int32List': ['TypedData', 'List', 'Iterable'],
-      'Int64List': ['TypedData', 'List', 'Iterable'],
-      'Float32List': ['TypedData', 'List', 'Iterable'],
-      'Float64List': ['TypedData', 'List', 'Iterable'],
+      // The list-view root: `TypedData` and the List/Iterable chain.
+      'TypedDataList': ['TypedData', 'List', 'Iterable'],
+      // The eleven list views: `TypedData`, `TypedDataList`, and the
+      // List/Iterable chain.
+      'Uint8List': ['TypedData', 'TypedDataList', 'List', 'Iterable'],
+      'Uint8ClampedList': ['TypedData', 'TypedDataList', 'List', 'Iterable'],
+      'Uint16List': ['TypedData', 'TypedDataList', 'List', 'Iterable'],
+      'Uint32List': ['TypedData', 'TypedDataList', 'List', 'Iterable'],
+      'Uint64List': ['TypedData', 'TypedDataList', 'List', 'Iterable'],
+      'Int8List': ['TypedData', 'TypedDataList', 'List', 'Iterable'],
+      'Int16List': ['TypedData', 'TypedDataList', 'List', 'Iterable'],
+      'Int32List': ['TypedData', 'TypedDataList', 'List', 'Iterable'],
+      'Int64List': ['TypedData', 'TypedDataList', 'List', 'Iterable'],
+      'Float32List': ['TypedData', 'TypedDataList', 'List', 'Iterable'],
+      'Float64List': ['TypedData', 'TypedDataList', 'List', 'Iterable'],
       // `ByteData` implements `TypedData` without implementing `List`.
       'ByteData': ['TypedData'],
     });

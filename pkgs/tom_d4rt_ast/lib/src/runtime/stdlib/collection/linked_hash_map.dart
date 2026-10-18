@@ -16,7 +16,23 @@ class LinkedHashMapCollection {
           );
         }
         // ignore: prefer_collection_literals
-        return LinkedHashMap<dynamic, dynamic>();
+        return LinkedHashMap<dynamic, dynamic>(
+          equals: CustomMapEquality.wrapEquals(
+            'LinkedHashMap',
+            visitor,
+            namedArgs['equals'],
+          ),
+          hashCode: CustomMapEquality.wrapHashCode(
+            'LinkedHashMap',
+            visitor,
+            namedArgs['hashCode'],
+          ),
+          isValidKey: CustomMapEquality.wrapIsValidKey(
+            'LinkedHashMap',
+            visitor,
+            namedArgs['isValidKey'],
+          ),
+        );
       },
       'from': (visitor, positionalArgs, namedArgs) {
         if (positionalArgs.length != 1) {
@@ -236,26 +252,17 @@ class LinkedHashMapCollection {
       // `LinkedHashMap`, so the shadowing copy broke `addEntries` for
       // ordinary map literals too, not only for explicitly constructed
       // `LinkedHashMap`s.
+      // No `map` here on purpose — inherited from `MapCore` via the
+      // `LinkedHashMap -> Map` edge, like `addEntries`. The shadowing copy
+      // passed the callback's returned `MapEntry` through as the *value*
+      // (`MapEntry(key, callback(key, value))`), so `m.map((k, v) =>
+      // MapEntry(k, v))` produced a map of `MapEntry` values instead of the
+      // mapped values.
       'cast': (visitor, target, positionalArgs, namedArgs, _) {
         if (target is LinkedHashMap) {
           return target.cast<dynamic, dynamic>();
         }
         throw RuntimeD4rtException("Invalid arguments for LinkedHashMap.cast");
-      },
-      'map': (visitor, target, positionalArgs, namedArgs, _) {
-        if (target is LinkedHashMap && positionalArgs.length == 1) {
-          final transform = positionalArgs[0];
-          if (transform is InterpretedFunction) {
-            return target.map(
-              (key, value) =>
-                  MapEntry(key, transform.call(visitor, [key, value])),
-            );
-          }
-          throw RuntimeD4rtException(
-            "Argument to LinkedHashMap.map must be a function.",
-          );
-        }
-        throw RuntimeD4rtException("Invalid arguments for LinkedHashMap.map");
       },
     },
     getters: {

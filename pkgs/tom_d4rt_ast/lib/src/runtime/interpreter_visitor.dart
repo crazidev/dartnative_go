@@ -21,6 +21,45 @@ class _SClosurePresenceVisitor extends SAstVisitor<void> {
   }
 }
 
+/// Members `Object` provides concretely to every class.
+///
+/// The interface-contract check must never demand them — not even when an
+/// interface re-declares one (e.g. `QueueList.toString`) — because Dart
+/// resolves them through the implicit `Object` superclass.
+const _objectMembers = {
+  'toString',
+  '==',
+  'hashCode',
+  'runtimeType',
+  'noSuchMethod',
+};
+
+/// Comparability of a `==`/`!=` operand that denotes a type.
+///
+/// A bare type parameter (`T` in `T == String`) evaluates to a
+/// [TypeParameter] placeholder, not a `Type` value — but the VM reifies it to
+/// its bound (or `dynamic` when unbound), so the comparison must use that
+/// meaning. Returns the name to compare by, or null for non-type operands.
+String? _typeOperandName(Object? operand) {
+  if (operand is TypeParameter) return operand.bound?.name ?? 'dynamic';
+  if (operand is Type) return operand.toString();
+  return null;
+}
+
+/// Whether a plain (non-`mixin`) interpreted class may appear in a `with`
+/// clause.
+///
+/// Since Dart 2.1 any class qualifies when it extends `Object`, declares no
+/// constructors, and is not `final`/`interface`/`sealed` (e.g. `class
+/// DioForNative with DioMixin`, where `DioMixin` is an abstract class).
+/// `base` is checked separately at each use site, as before.
+bool _isPlainClassMixinApplication(InterpretedClass mixin) {
+  if (mixin.superclass != null) return false;
+  if (mixin.constructors.isNotEmpty) return false;
+  if (mixin.isFinal || mixin.isInterface || mixin.isSealed) return false;
+  return true;
+}
+
 /// Represents an active interpreted call frame in the guest call stack.
 class InterpretedCallFrame {
   final InterpretedFunction function;
@@ -125,12 +164,14 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
     } else {
       moduleUri = moduleContext.currentLibrary?.toString() ?? '';
     }
-    callStack.add(InterpretedCallFrame(
-      function: function,
-      memberName: memberName,
-      moduleUri: moduleUri,
-      currentNode: initialNode ?? function.currentCode.body,
-    ));
+    callStack.add(
+      InterpretedCallFrame(
+        function: function,
+        memberName: memberName,
+        moduleUri: moduleUri,
+        currentNode: initialNode ?? function.currentCode.body,
+      ),
+    );
   }
 
   /// Pops the topmost call frame from the guest call stack.
@@ -154,8 +195,13 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
     if (callStack.isEmpty) {
       if (nodeForTop != null) {
         final uri = moduleContext.currentLibrary?.toString() ?? '<unknown>';
-        final (line, col) = moduleContext.getLineAndColumn(uri, nodeForTop.offset);
-        final loc = line > 0 ? '$uri:$line:$col' : '$uri:offset ${nodeForTop.offset}';
+        final (line, col) = moduleContext.getLineAndColumn(
+          uri,
+          nodeForTop.offset,
+        );
+        final loc = line > 0
+            ? '$uri:$line:$col'
+            : '$uri:offset ${nodeForTop.offset}';
         return '#0      <top-level> ($loc)';
       }
       return '';
@@ -173,7 +219,9 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           : (0, 0);
       final loc = line > 0
           ? '${frame.moduleUri}:$line:$col'
-          : (offset > 0 ? '${frame.moduleUri}:offset $offset' : frame.moduleUri);
+          : (offset > 0
+                ? '${frame.moduleUri}:offset $offset'
+                : frame.moduleUri);
       lines.add('#$i      ${frame.memberName} ($loc)');
     }
     return lines.join('\n');
@@ -2131,6 +2179,25 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
       }
     }
 
+    // A bare type parameter (`T` in `T == String`, as in dio's
+    // `fetch<T>` response-type selection) evaluates to a [TypeParameter]
+    // placeholder. The VM reifies it to its bound (`dynamic` when unbound),
+    // so compare those meanings instead of letting the `Type` bridge cast
+    // the placeholder and throw.
+    if ((operatorName == '==' || operatorName == '!=') &&
+        (leftOperandValue is TypeParameter ||
+            rightOperandValue is TypeParameter)) {
+      final leftName = _typeOperandName(leftOperandValue);
+      final rightName = _typeOperandName(rightOperandValue);
+      final equal =
+          leftName != null && rightName != null && leftName == rightName;
+      if (operatorName == '==') {
+        return equal;
+      } else {
+        return !equal;
+      }
+    }
+
     // Check for bridged operator methods (e.g., +, -, *, /, etc. on BridgedInstance)
     // Reuse the wrappers already resolved above (leftBridgedInstance /
     // rightBridgedInstance): each `toBridgedInstance` call mints a fresh
@@ -2882,6 +2949,12 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
       final targetValue = targetExpression?.accept<Object?>(this);
       final propertyName = lhs.propertyName!.name;
       // rhsValue and operatorType already available from the top
+
+      // Dart null-shorting: `a?.b = v` (and compound `?.=` forms) evaluate
+      // to null when the receiver is null — no read, no write. Without this
+      // e.g. `requestOptions.cancelToken?.requestOptions = requestOptions`
+      // (dio) throws instead of short-circuiting.
+      if (targetValue == null && lhs.operator == '?.') return null;
 
       if (targetValue is BoundSuper) {
         // This handles cases like: super.value = expression; or super.value += expression;
@@ -3706,6 +3779,10 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
     } else {
       if (lhs is SIndexExpression) {
         final targetValue = lhs.target?.accept<Object?>(this);
+        // Dart null-shorting: `a?[i] = v` evaluates to null when `a` is
+        // null — index and value are not evaluated. (Mirrors the read path
+        // in visitIndexExpression.)
+        if (targetValue == null && lhs.isNullAware) return null;
         final rawIndexValue = lhs.index!.accept<Object?>(this);
         // Unwrap BridgedEnumValue for Map key operations
         final indexValue = rawIndexValue is BridgedEnumValue
@@ -4104,8 +4181,14 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
       } else if (targetValue is InterpretedInstance) {
         // Instance method call
         try {
-          // Get should return the BOUND method
-          calleeValue = targetValue.get(methodName);
+          // Get should return the BOUND method. Pass `this` so member lookup
+          // can reach the visitor-gated resolution paths — notably the SDK
+          // collection-mixin helpers (`SdkMixinHelpers`), which supply the
+          // inherited `List`/`Set`/`Map` algorithms for an interpreted class
+          // extending or mixing in `ListMixin` & co. Without a visitor those
+          // helpers were invisible to a method call (`interceptors.add(...)`
+          // failed) even though property access resolved them.
+          calleeValue = targetValue.get(methodName, visitor: this);
           Logger.debug(
             "[SMethodInvocation] Found direct instance member '$methodName' on ${targetValue.klass.name}. Type: ${calleeValue?.runtimeType}",
           );
@@ -6880,9 +6963,14 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
     } else if (expressionValue is Iterable) {
       iterableValue = expressionValue;
     } else {
-      throw RuntimeD4rtException(
-        'Value used in for-in loop must be an Iterable, but got ${expressionValue?.runtimeType}',
-      );
+      // Interpreted iterables resolve through their `iterator` member.
+      final resolved = forInIterableOf(expressionValue, this);
+      if (resolved == null) {
+        throw RuntimeD4rtException(
+          'Value used in for-in loop must be an Iterable, but got ${expressionValue?.runtimeType}',
+        );
+      }
+      iterableValue = resolved;
     }
 
     if (iterableValue is Iterable) {
@@ -6893,9 +6981,10 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
 
       try {
         String variableName;
+        final declaresVariable =
+            loopVariableOrIdentifier is SDeclaredIdentifier;
         if (loopVariableOrIdentifier is SDeclaredIdentifier) {
           variableName = loopVariableOrIdentifier.identifier!.name;
-          environment.define(variableName, null); // Define before loop
         } else if (loopVariableOrIdentifier is SSimpleIdentifier) {
           variableName = loopVariableOrIdentifier.name;
           try {
@@ -6913,8 +7002,17 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
 
         // Iterate over the native list
         for (final element in iterableValue) {
-          // Assign current element to the loop variable
-          environment.assign(variableName, element);
+          if (declaresVariable) {
+            // Each declared for-in variable has a fresh binding so closures
+            // created in this iteration retain this element.
+            final iterationEnvironment = Environment(
+              enclosing: loopEnvironment,
+            )..define(variableName, element);
+            environment = iterationEnvironment;
+          } else {
+            // An identifier loop updates the binding that already exists.
+            environment.assign(variableName, element);
+          }
 
           // Execute the body
           try {
@@ -6980,9 +7078,14 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
         );
       }
     } else {
-      throw RuntimeD4rtException(
-        'Value used in for-in loop must be an Iterable, but got ${expressionValue?.runtimeType}',
-      );
+      // Interpreted iterables resolve through their `iterator` member.
+      final resolved = forInIterableOf(expressionValue, this);
+      if (resolved == null) {
+        throw RuntimeD4rtException(
+          'Value used in for-in loop must be an Iterable, but got ${expressionValue?.runtimeType}',
+        );
+      }
+      iterableValue = resolved;
     }
 
     final previousEnvironment = environment;
@@ -8204,6 +8307,9 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           final bridged = toBridgedInstance(iterableValue);
           if (bridged.$2 && bridged.$1?.nativeObject is Iterable) {
             unwrappedIterable = bridged.$1!.nativeObject as Iterable;
+          } else {
+            // Interpreted iterables resolve through their `iterator` member.
+            unwrappedIterable = forInIterableOf(iterableValue, this);
           }
         }
 
@@ -8214,9 +8320,9 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
 
           try {
             String variableName;
+            final declaresVariable = loopVariableNode is SDeclaredIdentifier;
             if (loopVariableNode is SDeclaredIdentifier) {
               variableName = loopVariableNode.identifier!.name;
-              environment.define(variableName, null); // Define before loop
             } else if (loopVariableNode is SSimpleIdentifier) {
               variableName = loopVariableNode.name;
             } else {
@@ -8226,7 +8332,16 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
             }
 
             for (final item in unwrappedIterable) {
-              environment.assign(variableName, item);
+              if (declaresVariable) {
+                // A collection-for declaration has a distinct binding per
+                // iteration so closures keep the item used to build it.
+                environment = Environment(
+                  enclosing: loopEnvironment,
+                )..define(variableName, item);
+              } else {
+                loopEnvironment.assign(variableName, item);
+                environment = loopEnvironment;
+              }
               _processCollectionElement(
                 element.body!,
                 collection,
@@ -8258,9 +8373,14 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           if (bridged.$2 && bridged.$1?.nativeObject is Iterable) {
             iterable = bridged.$1!.nativeObject as Iterable;
           } else {
-            throw RuntimeD4rtException(
-              'Value used in collection \'for-in\' must be an Iterable, but got ${iterableValue?.runtimeType}',
-            );
+            // Interpreted iterables resolve through their `iterator` member.
+            final resolved = forInIterableOf(iterableValue, this);
+            if (resolved == null) {
+              throw RuntimeD4rtException(
+                'Value used in collection \'for-in\' must be an Iterable, but got ${iterableValue?.runtimeType}',
+              );
+            }
+            iterable = resolved;
           }
         }
 
@@ -8593,7 +8713,19 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
 
         if (valueRuntimeType != null) {
           if (declaredType != null) {
-            if (declaredType.name != "dynamic" &&
+            // `FutureOr<T>` accepts a `T` value or any future; the lattice
+            // does not model the union, so consult it here.
+            if (declaredType is FutureOrRuntimeType) {
+              if (!futureOrAcceptsValue(
+                returnValue,
+                valueRuntimeType,
+                declaredType.inner,
+              )) {
+                throw RuntimeD4rtException(
+                  "A value of type '${valueRuntimeType.name}' can't be returned from the function '$functionName' because it has a return type of '${declaredType.name}'.",
+                );
+              }
+            } else if (declaredType.name != "dynamic" &&
                 !valueRuntimeType.isSubtypeOf(
                   declaredType,
                   value: returnValue,
@@ -10178,7 +10310,7 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
         }
 
         if (mixin is InterpretedClass) {
-          if (!mixin.isMixin) {
+          if (!mixin.isMixin && !_isPlainClassMixinApplication(mixin)) {
             throw RuntimeD4rtException(
               "Class '$mixinName' cannot be used as a mixin because it's not declared with 'mixin' or 'class mixin'.",
             );
@@ -10241,7 +10373,11 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
       final registry = declarationRegistry;
       if (registry == null) return function;
       return registry.stabilizeFunction(
-        DeclarationKey(moduleUri, '${klass.name}#${member.name?.name ?? ''}', kind),
+        DeclarationKey(
+          moduleUri,
+          '${klass.name}#${member.name?.name ?? ''}',
+          kind,
+        ),
         function,
         home: staticInitEnv,
       );
@@ -10339,7 +10475,10 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
     // Pass 1: Register all static field names with their stable storage cell.
     final staticFieldDecls = <SVariableDeclaration>[];
     final staticFieldMeta =
-        <String, (bool isLate, bool isFinal, bool isConst, SAstNode? initializer)>{};
+        <
+          String,
+          (bool isLate, bool isFinal, bool isConst, SAstNode? initializer)
+        >{};
     final staticFieldFlags = <String, String>{};
     for (final member in node.members) {
       if (member is SFieldDeclaration && member.isStatic) {
@@ -10411,6 +10550,22 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
     klass.staticCells.forEach((name, cell) {
       staticFieldEvalEnv.defineCell(name, cell);
     });
+    // Unqualified names in a static initializer also resolve against the
+    // class's own static methods and getters (Dart class scope). Member
+    // tables live on the class object, not in any environment, so without
+    // this `static final platform = _getPlatformStyle();` fails with
+    // "Undefined variable". Shells match top-level function/getter behavior
+    // elsewhere in the engine (methods are invoked at the call site).
+    for (final entry in klass.staticMethods.entries) {
+      if (!staticFieldEvalEnv.isDefinedLocally(entry.key)) {
+        staticFieldEvalEnv.define(entry.key, entry.value);
+      }
+    }
+    for (final entry in klass.staticGetters.entries) {
+      if (!staticFieldEvalEnv.isDefinedLocally(entry.key)) {
+        staticFieldEvalEnv.define(entry.key, entry.value);
+      }
+    }
 
     void evaluateStaticFields() {
       final savedEnvOnEntry = environment;
@@ -10491,14 +10646,43 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
               );
             }
           } else {
-            // Regular static field handling
-            Object? value;
+            // Regular static field handling. Evaluation is eager, but a
+            // throwing initializer must not fail class loading: Dart
+            // initializes statics lazily on first use, so fall back to a
+            // lazy thunk — exactly like `late` fields above and the
+            // registry path, which also defers to first read — and let the
+            // first access surface the original error.
             if (initializer != null) {
-              value = initializer.accept<Object?>(this);
+              Object? value;
+              try {
+                value = initializer.accept<Object?>(this);
+              } on StackOverflowError {
+                rethrow;
+              } catch (e) {
+                Logger.debug(
+                  "[ClassDecl] Static initializer for '${klass.name}.$fieldName' "
+                  'threw at declaration time ($e); deferring to first access.',
+                );
+                final lazy = LateVariable(fieldName, () {
+                  final savedEnv = environment;
+                  try {
+                    environment = staticFieldEvalEnv;
+                    return initializer.accept<Object?>(this);
+                  } finally {
+                    environment = savedEnv;
+                  }
+                }, isFinal: isFinal);
+                klass.staticFields[fieldName] = lazy;
+                staticFieldEvalEnv.define(fieldName, lazy);
+                continue;
+              }
+              klass.staticFields[fieldName] = value;
+              // Define the evaluated value in the environment so subsequent fields can access it
+              staticFieldEvalEnv.define(fieldName, value);
+            } else {
+              klass.staticFields[fieldName] = null;
+              staticFieldEvalEnv.define(fieldName, null);
             }
-            klass.staticFields[fieldName] = value;
-            // Define the evaluated value in the environment so subsequent fields can access it
-            staticFieldEvalEnv.define(fieldName, value);
           }
         }
       } finally {
@@ -10528,7 +10712,9 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
     // Final Checks (run on the populated klass object)
     // Check for unimplemented abstract members
     if (!klass.isAbstract) {
-      final inheritedAbstract = klass.getAbstractInheritedMembers();
+      final inheritedAbstract = klass.getAbstractInheritedMembers(
+        subclassModuleUri: klass.moduleUri,
+      );
       // G-DOV-6/7 FIX: Use getAllConcreteMembers() to walk the full superclass chain
       // (not just this class + mixins), so grandparent concrete implementations are found.
       final concreteMembers = klass.getAllConcreteMembers();
@@ -10549,13 +10735,67 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
       }
     }
 
-    // Check for unimplemented interface members
+    // Check for unimplemented interface members. Like the inherited check
+    // above, an instance field satisfies its implicit getter — and a
+    // non-final field its setter — exactly as the VM accepts them. A field
+    // never satisfies a method requirement. Private (`_`) requirements from
+    // another library are skipped: they are invisible to this class, so Dart
+    // does not require them (e.g. `SpanScanner implements LineScanner` need
+    // not implement `LineScanner._adjustLineAndColumn`). Finally, an applied
+    // SDK mixin natively provides its interface's concrete helpers (e.g.
+    // `ListMixin.addAll`), so a member covered by such a mixin's contract
+    // counts as implemented.
     if (!klass.isAbstract) {
       final requiredInterfaceMembers = klass.getAllInterfaceMembers();
       final availableConcreteMembers = klass.getAllConcreteMembers();
-      for (final requiredName in requiredInterfaceMembers.keys) {
-        if (!availableConcreteMembers.containsKey(requiredName)) {
-          final memberType = requiredInterfaceMembers[requiredName]!;
+      final fieldNames = klass.getInstanceFieldNames();
+      final mutableFieldNames = klass.getInstanceMutableFieldNames();
+      bool contractCovers(String contractName, String member, String kind) {
+        if (contractName.isEmpty) return false;
+        Object? contract;
+        try {
+          contract = environment.get(contractName);
+        } on RuntimeD4rtException {
+          return false;
+        }
+        if (contract is! BridgedClass) return false;
+        switch (kind) {
+          case 'getter':
+            return contract.getters.containsKey(member);
+          case 'setter':
+            return contract.setters.containsKey(member);
+          default:
+            return contract.methods.containsKey(member);
+        }
+      }
+
+      final bridgedMixins = klass.inheritedBridgedMixins;
+      for (final requiredEntry in requiredInterfaceMembers.entries) {
+        final requiredName = requiredEntry.key;
+        final memberType = requiredEntry.value.kind;
+        // `Object` provides these concretely to every class, so Dart never
+        // requires re-implementing them — even when an interface re-declares
+        // one (e.g. `QueueList.toString`).
+        if (_objectMembers.contains(requiredName)) continue;
+        if (requiredName.startsWith('_') &&
+            requiredEntry.value.moduleUri != klass.moduleUri) {
+          continue;
+        }
+        final satisfied =
+            availableConcreteMembers.containsKey(requiredName) ||
+            (memberType == 'getter' && fieldNames.contains(requiredName)) ||
+            (memberType == 'setter' &&
+                mutableFieldNames.contains(requiredName)) ||
+            bridgedMixins.any(
+              (mixin) =>
+                  mixin.providesContract != null &&
+                  contractCovers(
+                    mixin.providesContract!,
+                    requiredName,
+                    memberType,
+                  ),
+            );
+        if (!satisfied) {
           throw RuntimeD4rtException(
             "Missing concrete implementation for interface $memberType '$requiredName' in class '${klass.name}'.",
           );
@@ -10831,7 +11071,7 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
         }
 
         if (mixin is InterpretedClass) {
-          if (!mixin.isMixin) {
+          if (!mixin.isMixin && !_isPlainClassMixinApplication(mixin)) {
             throw RuntimeD4rtException(
               "Class '$mixinName' cannot be used as a mixin because it's not declared with 'mixin' or 'class mixin'.",
             );
@@ -11726,11 +11966,15 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
             );
           }
           if (stackTraceParameterName != null) {
-            // Store the textual representation of the stack trace
-            // Ensure caughtStackTrace is not null before calling toString()
-            final stackTraceString =
-                caughtStackTrace?.toString() ?? "Stack trace unavailable";
-            catchEnv.define(stackTraceParameterName, stackTraceString);
+            // Bind the real trace object: `catch (e, s)` gives `s` the
+            // static type StackTrace on the VM, and guest code forwards it
+            // to StackTrace-typed parameters (completer.completeError,
+            // DioException(stackTrace:), Error.throwWithStackTrace). A
+            // stringified trace breaks those call sites with a cast error.
+            catchEnv.define(
+              stackTraceParameterName,
+              caughtStackTrace ?? StackTrace.empty,
+            );
             Logger.debug(
               "[STryStatement] Defined stacktrace var '$stackTraceParameterName'.",
             ); // Don't print full trace here
@@ -11976,6 +12220,30 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
     return node.isNot ? !result : result;
   }
 
+  /// Whether [clause]'s `on T` matches [thrownValue] — the shared predicate the
+  /// synchronous dispatch loop already uses, exposed so the `async` state
+  /// machine can select a clause the same way instead of taking the first
+  /// (SCC20). An unresolvable or unsupported `on T` MISSES rather than
+  /// throwing: a lookup failure must not replace the exception being
+  /// dispatched, exactly as the sync loop treats it.
+  bool catchClauseMatches(SCatchClause clause, Object? thrownValue) {
+    final typeNode = clause.exceptionType;
+    if (typeNode == null) return true;
+    try {
+      return _valueHasType(typeNode, thrownValue);
+    } on InternalInterpreterD4rtException catch (e) {
+      Logger.warn(
+        "[catchClauseMatches] Could not resolve catch clause type: ${e.originalThrownValue}",
+      );
+      return false;
+    } on UnimplementedD4rtException catch (e) {
+      Logger.warn(
+        "[catchClauseMatches] Unsupported catch clause type node ${typeNode.runtimeType}: ${e.message}",
+      );
+      return false;
+    }
+  }
+
   /// Whether [expressionValue] satisfies the type written as [typeNode] — the
   /// predicate behind the `is` operator.
   ///
@@ -12017,6 +12285,19 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
       final typeName = typePrefix != null
           ? '$typePrefix.$bareTypeName'
           : bareTypeName;
+
+      // `FutureOr<T>` is a union: a `T` value or any future satisfies it.
+      if (typeName == 'FutureOr') {
+        final argNodes = typeNode.typeArguments?.arguments;
+        final inner = (argNodes != null && argNodes.isNotEmpty)
+            ? _resolveTypeAnnotation(argNodes.first)
+            : const NamedRuntimeType('dynamic');
+        return futureOrAcceptsValue(
+          expressionValue,
+          environment.getRuntimeType(expressionValue),
+          inner,
+        );
+      }
 
       // SCB7: the cases below answer with the host's own `is` operator, so
       // they need the underlying native object. A bridged value arrives as a
@@ -12200,6 +12481,26 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
               } else {
                 // A non-instance value cannot be a subtype of a user-defined class
                 result = false;
+              }
+            } else if (targetType is TypeParameter) {
+              // `value is T` / `value is! T` where `T` is a type parameter of
+              // the enclosing class or function. Without this the operand fell
+              // through to the "not found or is not a <host type>" throw, which
+              // broke every generic body that guards with `key is! K` (e.g.
+              // `package:collection`'s `CanonicalizedMap._isValidKey`, reached
+              // from `http_parser`'s `MediaType`). The interpreter does not
+              // recover the concrete type argument an instance was built with
+              // in all cases, so fall back to the parameter's declared bound:
+              // an unbounded `T` accepts anything, a bounded `T extends X`
+              // accepts a value assignable to `X`.
+              final bound = targetType.bound;
+              if (bound == null) {
+                result = true;
+              } else {
+                final valueType = environment.getRuntimeType(expressionValue);
+                result =
+                    valueType != null &&
+                    valueType.isSubtypeOf(bound, value: expressionValue);
               }
             } else if (targetType is Callable) {
               // SCC64: a callable is never a type, so this is a diagnosis
@@ -12459,6 +12760,16 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
         return BridgedClass(nativeType: Null, name: 'void');
       }
       Logger.debug("[ResolveType] Resolving SNamedType: $typeName");
+      if (typeName == 'FutureOr') {
+        // `FutureOr<T>` is a union, not a nominal class: resolve the argument
+        // and model the union explicitly (see [FutureOrRuntimeType]). A bare
+        // `FutureOr` means `FutureOr<dynamic>`.
+        final typeArgs = typeNode.typeArguments?.arguments;
+        final inner = (typeArgs != null && typeArgs.isNotEmpty)
+            ? _resolveTypeAnnotationWithEnvironment(typeArgs.first, env)
+            : const NamedRuntimeType('dynamic');
+        return FutureOrRuntimeType(inner);
+      }
       try {
         final resolved = env.get(typeName);
         if (resolved is RuntimeType) {
@@ -12737,7 +13048,8 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           );
 
           // Factory constructors should return an instance of the expected type
-          if (result is InterpretedInstance && result.klass.isSameClassAs(klass)) {
+          if (result is InterpretedInstance &&
+              result.klass.isSameClassAs(klass)) {
             return applyInterfaceProxy(result);
           } else if (result is InterpretedInstance) {
             throw RuntimeD4rtException(

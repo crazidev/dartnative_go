@@ -325,11 +325,13 @@ class HttpClientIo {
         return;
       },
       'idleTimeout': (visitor, target, value) {
-        (target as HttpClient).idleTimeout = value as Duration;
+        (target as HttpClient).idleTimeout = D4.unwrapAs<Duration>(value);
         return;
       },
       'connectionTimeout': (visitor, target, value) {
-        (target as HttpClient).connectionTimeout = value as Duration?;
+        (target as HttpClient).connectionTimeout = D4.unwrapAs<Duration?>(
+          value,
+        );
         return;
       },
       'maxConnectionsPerHost': (visitor, target, value) {
@@ -496,7 +498,7 @@ class HttpServerIo {
         return;
       },
       'idleTimeout': (visitor, target, value) {
-        (target as HttpServer).idleTimeout = value as Duration?;
+        (target as HttpServer).idleTimeout = D4.unwrapAs<Duration?>(value);
         return;
       },
       'serverHeader': (visitor, target, value) {
@@ -710,7 +712,7 @@ class HttpResponseIo {
         return;
       },
       'deadline': (visitor, target, value) {
-        (target as HttpResponse).deadline = value as Duration?;
+        (target as HttpResponse).deadline = D4.unwrapAs<Duration?>(value);
         return;
       },
       'encoding': (visitor, target, value) {

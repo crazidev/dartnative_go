@@ -13,6 +13,7 @@ import 'package:tom_d4rt_ast/src/runtime/stdlib/convert/json.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/convert/json_utf8_encoder.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/convert/latin1.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/convert/line_splitter.dart';
+import 'package:tom_d4rt_ast/src/runtime/stdlib/convert/sink_aliases.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/convert/string_conversion.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/convert/utf.dart';
 import 'dart:convert';
@@ -68,6 +69,9 @@ class ConvertStdlib {
     environment.defineBridge(StringConversionConvert.definition);
     environment.defineBridge(ChunkedConversionConvert.definition);
     environment.defineBridge(ClosableStringSinkConvert.definition);
+    // Class-typedef aliases (`ByteConversionSinkBase`, …): name-only bridges
+    // so `extends` wiring and `is` checks resolve for code naming the alias.
+    SinkAliasesConvert.register(environment);
     // Must follow the sink bridges: it declares the edges that let the
     // resolver keep the specific sink over its newly-assignable root.
     ConvertHierarchyConvert.register();

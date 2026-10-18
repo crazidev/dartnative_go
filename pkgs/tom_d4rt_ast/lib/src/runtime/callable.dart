@@ -171,7 +171,8 @@ class InterpretedFunction implements Callable {
   bool get isNullable => currentCode.isNullable;
 
   // Store the class/enum where this function/method was defined
-  RuntimeType? get ownerType => currentCode.ownerType; // Nullable for non-class/enum functions
+  RuntimeType? get ownerType =>
+      currentCode.ownerType; // Nullable for non-class/enum functions
 
   // OPEN B.1 — for a redirecting factory (`factory X() = Y`), this holds the
   // redirect target (`Y` / `Y.named`). When set, calling the factory resolves
@@ -377,6 +378,14 @@ class InterpretedFunction implements Callable {
       Logger.debug(
         "[InterpretedFunction._resolveTypeAnnotationDynamic] Resolving SNamedType: $typeName",
       );
+
+      if (typeName == 'FutureOr') {
+        final typeArgs = typeNode.typeArguments?.arguments;
+        final inner = (typeArgs != null && typeArgs.isNotEmpty)
+            ? _resolveTypeAnnotationDynamic(typeArgs.first, env)
+            : const NamedRuntimeType('dynamic');
+        return FutureOrRuntimeType(inner);
+      }
 
       final resolved = env.get(typeName);
       if (resolved is RuntimeType) {
@@ -606,7 +615,15 @@ class InterpretedFunction implements Callable {
     }
     if (valueType == null || valueType is TypeParameter) return value;
 
-    if (valueType.isSubtypeOf(declaredType, value: value)) return value;
+    // `FutureOr<T>` is a union: a `T` value or any future satisfies it. The
+    // lattice implementations do not model the union, so consult it here.
+    if (declaredType is FutureOrRuntimeType) {
+      if (futureOrAcceptsValue(value, valueType, declaredType.inner)) {
+        return value;
+      }
+    } else if (valueType.isSubtypeOf(declaredType, value: value)) {
+      return value;
+    }
     throw D4rtTypeError(
       "type '${valueType.name}' is not a subtype of type '$displayName' "
       "of '$paramName'",
@@ -1133,6 +1150,29 @@ class InterpretedFunction implements Callable {
       }
     }
 
+    // Class type parameters for constructors, factories and methods of
+    // generic classes: a body like `factory C.fromFuture(...) =>
+    // (CancelableCompleter<T>()..complete(result))` references the class's
+    // `T`, which is absent when the call supplies no explicit type arguments
+    // (type inference from arguments is future work). Bind placeholders
+    // carrying the declared bounds so the names resolve instead of throwing
+    // "Type 'T' not found". Placeholder semantics are preserved, including
+    // the `const Object() is! T` uninferred-type idiom.
+    final owner = ownerType;
+    if (owner is InterpretedClass) {
+      for (final paramName in owner.typeParameterNames) {
+        if (!executionEnvironment.isDefinedLocally(paramName)) {
+          executionEnvironment.define(
+            paramName,
+            TypeParameter(
+              paramName,
+              bound: owner.typeParameterBounds[paramName],
+            ),
+          );
+        }
+      }
+    }
+
     final params = _parameters?.parameters;
     int positionalArgIndex = 0;
     final providedNamedArgs = namedArguments;
@@ -1363,7 +1403,8 @@ class InterpretedFunction implements Callable {
       final RuntimeValue thisValue = _closure.get('this') as RuntimeValue;
 
       final constructorInitializers = _constructorInitializers;
-      if (constructorInitializers != null && constructorInitializers.isNotEmpty) {
+      if (constructorInitializers != null &&
+          constructorInitializers.isNotEmpty) {
         final originalVisitorEnv = visitor.environment;
         try {
           // Initializers run in the environment of the constructor *body*,
@@ -2116,7 +2157,23 @@ class InterpretedFunction implements Callable {
           // activation can still resume, so a hot reload in between does not
           // strand it.
           final releaseActivation = trackAsyncActivation();
-          unawaited(completer.future.whenComplete(releaseActivation));
+          // Bookkeeping only: release the activation when the function settles.
+          // The error has to be swallowed on THIS derived future. `whenComplete`
+          // re-raises whatever `completer.future` failed with on its own result,
+          // and that result is deliberately not awaited — in native Dart the
+          // guest's own `catch` still runs, but here the re-raised error would
+          // be reported as an *unhandled host error* the moment the async
+          // function throws, terminating the isolate before the awaiting
+          // guest code resumes. The real error still travels through
+          // `completer.future` to whoever awaits it.
+          unawaited(
+            completer.future
+                .then<void>(
+                  (_) {},
+                  onError: (Object _, StackTrace _) {},
+                )
+                .whenComplete(releaseActivation),
+          );
 
           // Handle cases where the function completes immediately
           if (initialStateIdentifier == null) {
@@ -2733,9 +2790,19 @@ class InterpretedFunction implements Callable {
                   "[StateMachine] ForIn: Iterator created and added to stacks at index ${currentState.loopNodeStack.length - 1}",
                 );
               } else {
-                throw RuntimeD4rtException(
-                  "The value iterate over in a for-in loop must be an Iterable, but got ${iterableResult?.runtimeType}.",
-                );
+                // Interpreted iterables (e.g. a `with ListMixin` class)
+                // resolve through their `iterator` member.
+                final resolved = forInIterableOf(iterableResult, visitor);
+                if (resolved == null) {
+                  throw RuntimeD4rtException(
+                    "The value iterate over in a for-in loop must be an Iterable, but got ${iterableResult?.runtimeType}.",
+                  );
+                }
+                iterator = resolved.iterator;
+                currentState.currentForInIterator = iterator;
+                currentState.recordLoopEntry(forNode);
+                currentState.loopNodeStack.add(forNode);
+                currentState.forInIteratorMap[forNode] = iterator;
               }
             }
 
@@ -3630,7 +3697,28 @@ class InterpretedFunction implements Callable {
     }
   }
 
-  // Schedule the state machine execution via microtask
+  // --- Cooperative async time-slicing ------------------------------------
+  // Interpreted async continuations are normally queued as microtasks. All
+  // pending microtasks drain before the embedder regains control, so a long
+  // chain of interpreted `await`s (dio's request pipeline, for example) can
+  // starve the embedder's frame pipeline and freeze a Flutter UI for seconds.
+  // We slice execution by wall-clock: while one event-loop turn stays under
+  // [asyncSliceBudgetMicros] continuations keep the cheap microtask fast path,
+  // and as soon as the budget is spent the next continuation is handed to a
+  // zero-duration timer so the embedder gets a fresh turn (and can render a
+  // frame) before interpretation resumes.
+  static final Stopwatch _asyncSliceClock = Stopwatch()..start();
+  static int _asyncSliceTurnStartMicros = 0;
+
+  /// Wall-clock budget, in microseconds, for one uninterrupted event-loop turn
+  /// of interpreted async work. ~4 ms keeps a 60 fps embedder responsive (one
+  /// frame is ~16 ms) while leaving throughput high. Set to `0` to disable
+  /// slicing — every continuation then runs as a microtask, which is the
+  /// historical behaviour.
+  static int asyncSliceBudgetMicros = 4000;
+
+  // Schedule the state machine execution via microtask, unless the current
+  // event-loop turn has spent its slice budget — then defer to a timer turn.
   static void _scheduleStateMachineRun(
     InterpreterVisitor visitor,
     AsyncExecutionState state,
@@ -3642,16 +3730,35 @@ class InterpretedFunction implements Callable {
       );
       return;
     }
-    Future.microtask(() => _runStateMachine(visitor, state)).catchError((
-      error,
-      stackTrace,
-    ) {
+
+    void onUncaught(Object error, StackTrace stackTrace) {
       // Catch errors not caught by the internal logic of _runStateMachine
       if (!state.completer.isCompleted) {
         Logger.error(
           "[StateMachine] Uncaught async error in microtask: $error\n$stackTrace",
         );
         state.completer.completeError(error, stackTrace);
+      }
+    }
+
+    final budget = asyncSliceBudgetMicros;
+    final nowMicros = _asyncSliceClock.elapsedMicroseconds;
+    if (budget <= 0 || nowMicros - _asyncSliceTurnStartMicros < budget) {
+      Future.microtask(() => _runStateMachine(visitor, state)).catchError(
+        onUncaught,
+      );
+      return;
+    }
+
+    // Budget spent: start a new turn as a macrotask so the embedder's event
+    // loop (and therefore its frame pipeline) can run in between.
+    _asyncSliceTurnStartMicros = nowMicros;
+    Timer.run(() {
+      if (state.completer.isCompleted) return;
+      try {
+        _runStateMachine(visitor, state);
+      } catch (error, stackTrace) {
+        onUncaught(error, stackTrace);
       }
     });
   }
@@ -3675,12 +3782,20 @@ class InterpretedFunction implements Callable {
     bool isRethrow = state.isCurrentlyRethrowing;
     STryStatement? currentTry = state.activeTryStatement;
 
-    // 1. Find an enclosing STryStatement
+    // 1. Find an enclosing STryStatement. SCC33: skip a try whose own
+    // catch/finally raised the error — a handler never catches what it threw.
     STryStatement? enclosingTry = _findEnclosingTryStatement(
       nodeWhereErrorOccurred,
+      skipHandlers: true,
     );
-    // Fallback: use state.activeTryStatement if parent-walk didn't find one
-    enclosingTry ??= currentTry;
+    // Fallback: use state.activeTryStatement if parent-walk didn't find one —
+    // but never when the error came out of that same try's handler, which must
+    // escape it.
+    if (enclosingTry == null &&
+        currentTry != null &&
+        !_isWithinHandlerOf(currentTry, nodeWhereErrorOccurred)) {
+      enclosingTry = currentTry;
+    }
 
     // If this is a rethrow and we found the same try statement, look for an outer one
     if (isRethrow && enclosingTry != null && enclosingTry == currentTry) {
@@ -3716,22 +3831,31 @@ class InterpretedFunction implements Callable {
       );
       state.activeTryStatement = enclosingTry; // Marquer comme actif
 
-      // 2. Find a matching SCatchClause (simplified: take the first one)
+      // 2. Find the first clause whose `on T` actually matches, through the
+      // same predicate the synchronous loop uses (the `is` operator).
       //
-      // SCC31: except for an undefined name, which no clause may claim. The
-      // guard has to be here as well as in `visitTryStatement` — this path is
-      // the one an `async` function takes, and it does not type-match at all,
-      // so without it a typo inside an `async` body was swallowed even by a
-      // clause as specific as `on FormatException`.
-      if (enclosingTry.catchClauses.isNotEmpty &&
-          error is! UndefinedNameD4rtException) {
-        matchingCatchClause = enclosingTry.catchClauses.first;
+      // SCC20/SCC31: this used to take `catchClauses.first` unconditionally
+      // (except for an undefined name), so an `async` body's
+      // `on DioException catch (e)` placed before a `catch (e)` claimed every
+      // error regardless of type — a `FormatException` was delivered as a
+      // `DioException`, and `e.type` then failed. An undefined name stays
+      // unhandleable: it is a defect in the program text, not a condition a
+      // clause may claim.
+      if (error is! UndefinedNameD4rtException) {
+        for (final clause in enclosingTry.catchClauses) {
+          if (visitor.catchClauseMatches(clause, error)) {
+            matchingCatchClause = clause;
+            break;
+          }
+        }
         Logger.debug(
-          " [_handleAsyncError] Found matching SCatchClause (simplified: first one).",
+          matchingCatchClause != null
+              ? " [_handleAsyncError] Found matching SCatchClause for ${error.runtimeType}."
+              : " [_handleAsyncError] No matching SCatchClause for ${error.runtimeType}.",
         );
       } else {
         Logger.debug(
-          " [_handleAsyncError] No CatchClauses found in the STryStatement.",
+          " [_handleAsyncError] Undefined name is unhandleable; no clause matches.",
         );
       }
     }
@@ -3925,16 +4049,60 @@ class InterpretedFunction implements Callable {
     if (outermost != null) state.truncateLoopStacks(outermost);
   }
 
-  static STryStatement? _findEnclosingTryStatement(SAstNode? node) {
+  static STryStatement? _findEnclosingTryStatement(
+    SAstNode? node, {
+    bool skipHandlers = false,
+  }) {
     // Walk up the parent chain using _parentMap to find enclosing TryStatement
+    SAstNode? child = node;
     SAstNode? current = _parentOf(node);
     while (current != null) {
-      if (current is STryStatement) return current;
+      if (current is STryStatement) {
+        if (!skipHandlers || !_tryHandlerContainsChild(current, child)) {
+          return current;
+        }
+        // SCC33: the node sits in this try's own catch/finally clause, so the
+        // error it raised is escaping that try, not entering it. Handing the
+        // error back to the clause it just came out of re-runs the clause with
+        // its own output as input, forever (a `catch (e) { throw wrap(e); }`
+        // nested its wrapper to unbounded depth). Keep walking outward.
+      }
       // Do not search beyond the current function's limit
       if (current is SFunctionBody) return null;
+      child = current;
       current = _parentOf(current);
     }
     return null;
+  }
+
+  /// Whether [child] is one of [tryNode]'s direct handler children — a catch
+  /// clause or the finally block — as opposed to its protected body.
+  static bool _tryHandlerContainsChild(STryStatement tryNode, SAstNode? child) {
+    if (child == null) return false;
+    if (identical(tryNode.finallyBlock, child)) return true;
+    for (final clause in tryNode.catchClauses) {
+      if (identical(clause, child)) return true;
+    }
+    return false;
+  }
+
+  /// Whether [node] lies *inside* one of [tryNode]'s catch clauses or its
+  /// finally block, rather than in its protected body. Used to decide whether an
+  /// error escapes [tryNode] (raised by its own handler) or is eligible for it.
+  static bool _isWithinHandlerOf(STryStatement tryNode, SAstNode? node) {
+    SAstNode? child = node;
+    for (
+      SAstNode? current = node;
+      current != null;
+      current = _parentOf(current)
+    ) {
+      if (identical(current, tryNode)) {
+        return _tryHandlerContainsChild(tryNode, child);
+      }
+      if (current is SFunctionBody) return false;
+      child = current;
+    }
+    return false;
   }
 
   // Determine the next AST node to execute after the resolution of an awaited Future.

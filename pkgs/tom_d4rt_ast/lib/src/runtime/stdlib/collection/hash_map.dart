@@ -16,7 +16,23 @@ class HashMapCollection {
             "Constructor HashMap() does not take positional arguments.",
           );
         }
-        return HashMap<dynamic, dynamic>();
+        return HashMap<dynamic, dynamic>(
+          equals: CustomMapEquality.wrapEquals(
+            'HashMap',
+            visitor,
+            namedArgs['equals'],
+          ),
+          hashCode: CustomMapEquality.wrapHashCode(
+            'HashMap',
+            visitor,
+            namedArgs['hashCode'],
+          ),
+          isValidKey: CustomMapEquality.wrapIsValidKey(
+            'HashMap',
+            visitor,
+            namedArgs['isValidKey'],
+          ),
+        );
       },
       'from': (visitor, positionalArgs, namedArgs) {
         if (positionalArgs.length != 1) {
@@ -223,21 +239,9 @@ class HashMapCollection {
         }
         throw RuntimeD4rtException("Invalid arguments for HashMap.cast");
       },
-      'map': (visitor, target, positionalArgs, namedArgs, _) {
-        if (target is HashMap && positionalArgs.length == 1) {
-          final transform = positionalArgs[0];
-          if (transform is Callable) {
-            return target.map(
-              (key, value) =>
-                  MapEntry(key, transform.call(visitor, [key, value], {})),
-            );
-          }
-          throw RuntimeD4rtException(
-            "Argument to HashMap.map must be a function.",
-          );
-        }
-        throw RuntimeD4rtException("Invalid arguments for HashMap.map");
-      },
+      // No `map` here on purpose — inherited from `MapCore` via the
+      // `HashMap -> Map` edge, like `addEntries`. The shadowing copy passed
+      // the callback's returned `MapEntry` through as the *value*.
     },
     getters: {
       'length': (visitor, target) {

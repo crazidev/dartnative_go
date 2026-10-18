@@ -1,3 +1,5 @@
+import 'dart:async';
+
 /// Common interface for types defined at runtime (interpreted or bridged).
 abstract class RuntimeType {
   /// The name of the type.
@@ -227,6 +229,50 @@ class AppliedRuntimeType implements RuntimeType {
 
   @override
   String toString() => name;
+}
+
+/// Runtime model of `FutureOr<T>` (`dart:async`).
+///
+/// A value satisfies `FutureOr<T>` when it is `T` or a `Future` (whose own
+/// type argument is unchecked — native futures carry no reified argument the
+/// interpreter can read, so any future is accepted, matching how the engine
+/// treats other coarsely-resolved wrappers). An unknown value type stays
+/// permissive, consistent with the engine's handling of unresolvable types
+/// elsewhere.
+class FutureOrRuntimeType implements RuntimeType {
+  final RuntimeType inner;
+
+  FutureOrRuntimeType(this.inner);
+
+  @override
+  String get name => 'FutureOr<${inner.name}>';
+
+  @override
+  bool isSubtypeOf(RuntimeType other, {Object? value}) {
+    if (other is FutureOrRuntimeType) {
+      return inner.isSubtypeOf(other.inner, value: value);
+    }
+    return inner.isSubtypeOf(other, value: value);
+  }
+
+  @override
+  String toString() => name;
+}
+
+/// Whether [value] is assignable to `FutureOr<inner>`.
+///
+/// Used by the operational check sites (argument, return and `is` checks)
+/// that compare a value against an already-resolved [FutureOrRuntimeType]:
+/// the lattice implementations do not model the union, so consulting them
+/// directly would reject every `T` value passed to a `FutureOr<T>` position.
+bool futureOrAcceptsValue(
+  Object? value,
+  RuntimeType? valueType,
+  RuntimeType inner,
+) {
+  if (value is Future) return true;
+  if (valueType == null) return true;
+  return valueType.isSubtypeOf(inner, value: value);
 }
 
 /// Common interface for values defined at runtime (interpreted or bridged instances).

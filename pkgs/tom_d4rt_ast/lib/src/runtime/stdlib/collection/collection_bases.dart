@@ -36,6 +36,7 @@ class CollectionBasesCollection {
   static BridgedClass get iterableBase => BridgedClass(
     nativeType: Iterable,
     name: 'IterableBase',
+    providesContract: 'Iterable',
     typeParameterCount: 1,
     isAbstract: true,
     // No isAssignable: concrete iterables are owned by Iterable/List/Set
@@ -89,6 +90,7 @@ class CollectionBasesCollection {
   static BridgedClass get iterableMixin => BridgedClass(
     nativeType: Iterable,
     name: 'IterableMixin',
+    providesContract: 'Iterable',
     typeParameterCount: 1,
     isAbstract: true,
     canBeUsedAsMixin: true,
@@ -97,6 +99,7 @@ class CollectionBasesCollection {
   static BridgedClass get listBase => BridgedClass(
     nativeType: ListBase,
     name: 'ListBase',
+    providesContract: 'List',
     typeParameterCount: 1,
     isAbstract: true,
     canBeUsedAsMixin: true,
@@ -105,6 +108,7 @@ class CollectionBasesCollection {
   static BridgedClass get listMixin => BridgedClass(
     nativeType: ListBase,
     name: 'ListMixin',
+    providesContract: 'List',
     typeParameterCount: 1,
     isAbstract: true,
     canBeUsedAsMixin: true,
@@ -113,6 +117,7 @@ class CollectionBasesCollection {
   static BridgedClass get setBase => BridgedClass(
     nativeType: SetBase,
     name: 'SetBase',
+    providesContract: 'Set',
     typeParameterCount: 1,
     isAbstract: true,
     canBeUsedAsMixin: true,
@@ -121,6 +126,7 @@ class CollectionBasesCollection {
   static BridgedClass get setMixin => BridgedClass(
     nativeType: SetBase,
     name: 'SetMixin',
+    providesContract: 'Set',
     typeParameterCount: 1,
     isAbstract: true,
     canBeUsedAsMixin: true,
@@ -129,6 +135,7 @@ class CollectionBasesCollection {
   static BridgedClass get mapBase => BridgedClass(
     nativeType: MapBase,
     name: 'MapBase',
+    providesContract: 'Map',
     typeParameterCount: 2,
     isAbstract: true,
     canBeUsedAsMixin: true,
@@ -137,6 +144,7 @@ class CollectionBasesCollection {
   static BridgedClass get mapMixin => BridgedClass(
     nativeType: MapBase,
     name: 'MapMixin',
+    providesContract: 'Map',
     typeParameterCount: 2,
     isAbstract: true,
     canBeUsedAsMixin: true,

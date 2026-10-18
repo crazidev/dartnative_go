@@ -28,7 +28,10 @@ class CompleterAsync {
         return null;
       },
       'completeError': (visitor, target, positionalArgs, namedArgs, _) {
-        D4.checkArity(positionalArgs, 'Completer.completeError', atMost: 1);
+        // `Completer.completeError(Object error, [StackTrace? stackTrace])`
+        // takes an optional positional stack trace; dio's interceptor handlers
+        // forward the caught trace here.
+        D4.checkArity(positionalArgs, 'Completer.completeError', atMost: 2);
         final error = positionalArgs[0];
         if (error == null) {
           throw RuntimeD4rtException(

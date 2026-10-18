@@ -34,6 +34,7 @@ import 'package:tom_d4rt_ast/src/runtime/stdlib/core/uri_data.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/core/stack_trace.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/core/regexp.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/core/function.dart';
+import 'package:tom_d4rt_ast/src/runtime/stdlib/core/weak_reference.dart';
 
 export 'package:tom_d4rt_ast/src/runtime/environment.dart';
 export 'package:tom_d4rt_ast/src/runtime/stdlib/core/double.dart';
@@ -86,6 +87,7 @@ class CoreStdlib {
     environment.defineBridge(DurationCore.definition);
     environment.defineBridge(UriCore.definition);
     environment.defineBridge(StopwatchCore.definition);
+    environment.defineBridge(WeakReferenceCore.definition);
     environment.defineBridge(UriDataCore.definition);
     environment.defineBridge(StackTraceCore.definition);
     environment.defineBridge(RegExpCore.definition);

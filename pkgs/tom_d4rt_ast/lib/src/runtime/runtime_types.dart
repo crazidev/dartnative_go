@@ -1,5 +1,6 @@
 import 'package:tom_d4rt_ast/runtime.dart';
 import 'bridge/bridged_types.dart' as bridge;
+import 'stdlib/sdk_mixin_helpers.dart';
 
 /// Compacts [table] into its read-only form when it is a [FrozenNameMap].
 /// Member/declaration tables are populated once during declaration wiring and
@@ -319,6 +320,21 @@ class InterpretedClass implements Callable, RuntimeType {
     return null;
   }
 
+  /// Whether this very class declares an instance field named [name] (as
+  /// opposed to inheriting it from a mixin or superclass). Used to decide
+  /// member precedence: `_fields` is flattened storage, so without knowing
+  /// which declaration owns a slot we cannot tell whether the subclass's own
+  /// getter overrides an inherited field.
+  bool declaresInstanceField(String name) {
+    for (final fieldDecl in fieldDeclarations) {
+      if (fieldDecl.isStatic) continue;
+      for (final variable in fieldDecl.fields?.variables ?? []) {
+        if ((variable.name?.name ?? '') == name) return true;
+      }
+    }
+    return false;
+  }
+
   InterpretedFunction? findInstanceGetter(String name) {
     final cached = _getterResolutionCache[name];
     if (cached != null) return cached;
@@ -387,8 +403,33 @@ class InterpretedClass implements Callable, RuntimeType {
     return null;
   }
 
-  InterpretedFunction? findStaticMethod(String name) => staticMethods[name];
-  InterpretedFunction? findStaticGetter(String name) => staticGetters[name];
+  /// Bare static references inside a method resolve against the *declaring*
+  /// class's scope, which in Dart includes statics inherited from mixins and
+  /// superclasses. `DioForNative with DioMixin` inherits `DioMixin.fetch`,
+  /// whose body calls `assureDioException` bare; that static is declared on
+  /// `DioMixin`, so the lookup has to follow the same chain. Returns the
+  /// nearest declaration, mixins first (reverse application order), then the
+  /// superclass.
+  InterpretedFunction? findStaticMethod(String name) {
+    final local = staticMethods[name];
+    if (local != null) return local;
+    for (int i = mixins.length - 1; i >= 0; i--) {
+      final mixinStatic = mixins[i].findStaticMethod(name);
+      if (mixinStatic != null) return mixinStatic;
+    }
+    return superclass?.findStaticMethod(name);
+  }
+
+  InterpretedFunction? findStaticGetter(String name) {
+    final local = staticGetters[name];
+    if (local != null) return local;
+    for (int i = mixins.length - 1; i >= 0; i--) {
+      final mixinGetter = mixins[i].findStaticGetter(name);
+      if (mixinGetter != null) return mixinGetter;
+    }
+    return superclass?.findStaticGetter(name);
+  }
+
   InterpretedFunction? findStaticSetter(String name) => staticSetters[name];
 
   // Find operator methods (supports inheritance)
@@ -632,6 +673,24 @@ class InterpretedClass implements Callable, RuntimeType {
         enclosing: klassInHierarchy.classDefinitionEnvironment,
       );
       fieldInitEnv.define('this', instance); // Define 'this' for initializers
+      // Bind this class's type parameters (as the actual arguments supplied at
+      // construction, or as placeholders carrying the declared bound) so an
+      // initializer like `Completer<T>()` resolves `T` instead of raising
+      // "Type 'T' not found". Names are matched against the instantiated
+      // class's parameters; a superclass parameter the subclass doesn't re-use
+      // falls back to a bound placeholder.
+      for (var i = 0; i < klassInHierarchy.typeParameterNames.length; i++) {
+        final paramName = klassInHierarchy.typeParameterNames[i];
+        final selfIndex = typeParameterNames.indexOf(paramName);
+        final RuntimeType resolved =
+            (selfIndex >= 0 && selfIndex < effectiveTypeArgs.length)
+            ? effectiveTypeArgs[selfIndex]
+            : TypeParameter(
+                paramName,
+                bound: klassInHierarchy.typeParameterBounds[paramName],
+              );
+        fieldInitEnv.define(paramName, resolved);
+      }
 
       try {
         visitor.environment =
@@ -699,6 +758,20 @@ class InterpretedClass implements Callable, RuntimeType {
             enclosing: mixin.classDefinitionEnvironment,
           );
           mixinFieldInitEnv.define('this', instance);
+          // Mixins on a generic class can also spell the class's type
+          // parameters in their field initializers; bind them the same way.
+          for (var i = 0; i < mixin.typeParameterNames.length; i++) {
+            final paramName = mixin.typeParameterNames[i];
+            final selfIndex = typeParameterNames.indexOf(paramName);
+            final RuntimeType resolved =
+                (selfIndex >= 0 && selfIndex < effectiveTypeArgs.length)
+                ? effectiveTypeArgs[selfIndex]
+                : TypeParameter(
+                    paramName,
+                    bound: mixin.typeParameterBounds[paramName],
+                  );
+            mixinFieldInitEnv.define(paramName, resolved);
+          }
 
           // Temporarily set visitor environment for this mixin's initializers
           final originalEnvBeforeMixin = visitor.environment;
@@ -874,24 +947,32 @@ class InterpretedClass implements Callable, RuntimeType {
   /// Returns a map of all abstract members (methods, getters, setters)
   /// inherited from superclasses.
   /// The key is the member name, the value is the abstract InterpretedFunction.
-  Map<String, InterpretedFunction> getAbstractInheritedMembers() {
+  Map<String, InterpretedFunction> getAbstractInheritedMembers({
+    String? subclassModuleUri,
+  }) {
     final abstractMembers = <String, InterpretedFunction>{};
     InterpretedClass? current = superclass;
     while (current != null) {
+      // Private members are library-scoped: a subclass in another library
+      // cannot see them, so they are not part of its contract (e.g. an SDK
+      // superclass's private abstract helper). Same-library privates stay
+      // required.
+      final sameLibrary =
+          subclassModuleUri == null || current.moduleUri == subclassModuleUri;
       // Add abstract members from the current superclass, potentially overwriting
       // less specific ones from further up the chain (though Dart disallows this scenario statically).
       current.methods.forEach((name, func) {
-        if (func.isAbstract) {
+        if (func.isAbstract && (sameLibrary || !name.startsWith('_'))) {
           abstractMembers.putIfAbsent(name, () => func);
         }
       });
       current.getters.forEach((name, func) {
-        if (func.isAbstract) {
+        if (func.isAbstract && (sameLibrary || !name.startsWith('_'))) {
           abstractMembers.putIfAbsent(name, () => func);
         }
       });
       current.setters.forEach((name, func) {
-        if (func.isAbstract) {
+        if (func.isAbstract && (sameLibrary || !name.startsWith('_'))) {
           abstractMembers.putIfAbsent(name, () => func);
         }
       });
@@ -976,11 +1057,48 @@ class InterpretedClass implements Callable, RuntimeType {
     return fieldNames;
   }
 
+  /// Returns the subset of [getInstanceFieldNames] declared without `final`.
+  ///
+  /// Only a mutable field satisfies an abstract setter; a final field
+  /// satisfies its getter but not the setter. Used by the interface-contract
+  /// check so field-backed implementations (e.g. `final start;` satisfying
+  /// `SourceLocation get start;`) are accepted exactly as the VM accepts
+  /// them — without letting a final field silence a missing setter.
+  Set<String> getInstanceMutableFieldNames() {
+    final fieldNames = <String>{};
+    InterpretedClass? current = this;
+    while (current != null) {
+      for (final fieldDecl in current.fieldDeclarations) {
+        if (!fieldDecl.isStatic && fieldDecl.fields?.isFinal != true) {
+          for (final variable in fieldDecl.fields?.variables ?? []) {
+            fieldNames.add(variable.name?.name ?? '');
+          }
+        }
+      }
+      for (final mixin in current.mixins) {
+        for (final fieldDecl in mixin.fieldDeclarations) {
+          if (!fieldDecl.isStatic && fieldDecl.fields?.isFinal != true) {
+            for (final variable in fieldDecl.fields?.variables ?? []) {
+              fieldNames.add(variable.name?.name ?? '');
+            }
+          }
+        }
+      }
+      current = current.superclass;
+    }
+    return fieldNames;
+  }
+
   /// Returns a map representing all members required by the interfaces implemented
   /// by this class and its superclasses, including those from super-interfaces.
-  /// Key: member name, Value: String indicating type ('method', 'getter', 'setter')
-  Map<String, String> getAllInterfaceMembers() {
-    final requiredMembers = <String, String>{};
+  /// Key: member name, Value: its kind plus the declaring library URI.
+  ///
+  /// The URI lets the contract check skip private (`_`-prefixed) members
+  /// declared in another library: they are invisible to the implementing
+  /// class, so Dart does not require them (e.g. `SpanScanner implements
+  /// LineScanner` need not implement `LineScanner._adjustLineAndColumn`).
+  Map<String, ({String kind, String? moduleUri})> getAllInterfaceMembers() {
+    final requiredMembers = <String, ({String kind, String? moduleUri})>{};
     final Set<InterpretedClass> visited = {}; // To avoid cycles/redundancy
     final List<InterpretedClass> queue = [];
 
@@ -1009,19 +1127,28 @@ class InterpretedClass implements Callable, RuntimeType {
         // Abstract methods from superclasses also count as required signatures
         requiredMembers.putIfAbsent(
           name,
-          () => func.isAbstract ? 'method' : 'method',
+          () => (
+            kind: func.isAbstract ? 'method' : 'method',
+            moduleUri: currentClass.moduleUri,
+          ),
         );
       });
       currentClass.getters.forEach((name, func) {
         requiredMembers.putIfAbsent(
           name,
-          () => func.isAbstract ? 'getter' : 'getter',
+          () => (
+            kind: func.isAbstract ? 'getter' : 'getter',
+            moduleUri: currentClass.moduleUri,
+          ),
         );
       });
       currentClass.setters.forEach((name, func) {
         requiredMembers.putIfAbsent(
           name,
-          () => func.isAbstract ? 'setter' : 'setter',
+          () => (
+            kind: func.isAbstract ? 'setter' : 'setter',
+            moduleUri: currentClass.moduleUri,
+          ),
         );
       });
 
@@ -1043,7 +1170,8 @@ class InterpretedClass implements Callable, RuntimeType {
     // 2. Get all abstract members inherited via `extends` (already done).
     // 3. The class needs to satisfy BOTH.
 
-    final requiredInterfaceMembers = <String, String>{};
+    final requiredInterfaceMembers =
+        <String, ({String kind, String? moduleUri})>{};
     final Set<InterpretedClass> visitedInterfaces = {};
     final List<InterpretedClass> interfaceQueue = [];
     interfaceQueue.addAll(interfaces);
@@ -1063,13 +1191,22 @@ class InterpretedClass implements Callable, RuntimeType {
 
       // Add members from the current interface
       currentInterface.methods.forEach((name, func) {
-        requiredInterfaceMembers.putIfAbsent(name, () => 'method');
+        requiredInterfaceMembers.putIfAbsent(
+          name,
+          () => (kind: 'method', moduleUri: currentInterface.moduleUri),
+        );
       });
       currentInterface.getters.forEach((name, func) {
-        requiredInterfaceMembers.putIfAbsent(name, () => 'getter');
+        requiredInterfaceMembers.putIfAbsent(
+          name,
+          () => (kind: 'getter', moduleUri: currentInterface.moduleUri),
+        );
       });
       currentInterface.setters.forEach((name, func) {
-        requiredInterfaceMembers.putIfAbsent(name, () => 'setter');
+        requiredInterfaceMembers.putIfAbsent(
+          name,
+          () => (kind: 'setter', moduleUri: currentInterface.moduleUri),
+        );
       });
 
       // Add its super-interfaces to the queue
@@ -1082,6 +1219,25 @@ class InterpretedClass implements Callable, RuntimeType {
     }
 
     return requiredInterfaceMembers;
+  }
+
+  /// Every bridged mixin applied to this class or inherited through its
+  /// superclass chain, plus bridged superclasses themselves.
+  ///
+  /// Used by the interface-contract check: an applied SDK mixin (e.g.
+  /// `ListMixin`) natively provides its interface's concrete helpers, so a
+  /// required member covered by one of these bridges' contracts counts as
+  /// implemented exactly as the VM accepts it.
+  List<BridgedClass> get inheritedBridgedMixins {
+    final result = <BridgedClass>[];
+    InterpretedClass? current = this;
+    while (current != null) {
+      result.addAll(current.bridgedMixins);
+      final bridgedSuper = current.bridgedSuperclass;
+      if (bridgedSuper != null) result.add(bridgedSuper);
+      current = current.superclass;
+    }
+    return result;
   }
 
   /// Returns a map of all concrete instance members (methods, getters, setters)
@@ -1135,6 +1291,16 @@ class InterpretedClass implements Callable, RuntimeType {
   /// interface implementation (implements), and bridged superclass chains.
   @override
   bool isSubtypeOf(RuntimeType other, {Object? value}) {
+    // A concrete class satisfies a type parameter exactly when it satisfies the
+    // parameter's bound; an unbounded `T` (implicitly `T extends Object?`)
+    // accepts anything. Without this, a generic function whose type argument is
+    // never inferred at the call site — e.g. http_parser's
+    // `wrapFormatException<T>` — rejected its own return value against the
+    // placeholder `T` ("A value of type 'MediaType' can't be returned ...").
+    if (other is TypeParameter) {
+      final bound = other.bound;
+      return bound == null || isSubtypeOf(bound, value: value);
+    }
     if (other is InterpretedClass) {
       // Check for identity (reflexive), including across hot-reload
       // generations: the same declaration is (moduleUri, name), and an
@@ -1563,8 +1729,19 @@ class InterpretedInstance implements RuntimeValue {
         return hashCode;
     }
 
-    // Check fields in the current instance first
-    if (_fields.containsKey(name)) {
+    // Check fields in the current instance first — but a field inherited from
+    // a mixin or superclass is *overridden* by this class's own getter of the
+    // same name. `_fields` is flattened storage and cannot tell which
+    // declaration owns the slot, so a mixin field would otherwise shadow the
+    // more-derived getter. That is the shape dio uses in
+    // `InterceptorsWrapper` (`__onRequest` field plus a `_onRequest` getter
+    // overriding the wrapper mixin's `_onRequest` field); reading the getter
+    // returned the mixin field's null and interceptor callbacks never fired.
+    final fieldOverriddenByOwnGetter =
+        _fields.containsKey(name) &&
+        klass.getters.containsKey(name) &&
+        !klass.declaresInstanceField(name);
+    if (_fields.containsKey(name) && !fieldOverriddenByOwnGetter) {
       final fieldValue = _fields[name];
       if (fieldValue is LateVariable) {
         // Return the value of the late variable (will initialize if needed)
@@ -1883,6 +2060,24 @@ class InterpretedInstance implements RuntimeValue {
           bridgedMixin.name,
           target: mixinTarget,
         );
+      }
+    }
+
+    // SDK mixin helpers: an applied SDK mixin (ListMixin & co.) natively
+    // provides its contract's concrete helpers, which the stub bridges
+    // deliberately do not declare. Synthesize them from the instance's own
+    // members (see SdkMixinHelpers) so `extends`/`with` classes are callable,
+    // not just loadable. Real lookups (interpreted members, bridged adapters)
+    // ran above and keep precedence; an extension with the same name loses to
+    // the mixin member here, matching Dart member-vs-extension precedence.
+    // noSuchMethod below still fires only for genuinely missing members.
+    if (visitor != null) {
+      final helper = SdkMixinHelpers.resolve(this, klass, name, visitor);
+      if (helper != null) {
+        Logger.debug(
+          "[Instance.get] Resolved '$name' via SDK mixin helper for '${klass.name}'.",
+        );
+        return helper;
       }
     }
 
@@ -2445,6 +2640,10 @@ class InterpretedEnum implements RuntimeType {
     // Declaration identity, rather than instance identity alone, keeps
     // preserved enum values type-compatible with a re-declared enum after hot
     // reload. URI qualification prevents unrelated same-named enums matching.
+    if (other is TypeParameter) {
+      final bound = other.bound;
+      return bound == null || isSubtypeOf(bound, value: value);
+    }
     return (other is InterpretedEnum && isSameEnumAs(other)) ||
         other.name == 'Object';
   }
@@ -2970,6 +3169,11 @@ class InterpretedExtensionType implements Callable, RuntimeType {
   @override
   bool isSubtypeOf(RuntimeType other, {Object? value}) {
     // Extension types are subtypes of their representation type
+    if (other is TypeParameter) {
+      final bound = other.bound;
+      if (bound == null) return true;
+      return representationType?.isSubtypeOf(bound, value: value) ?? false;
+    }
     if (other == this) return true;
     if (representationType != null) {
       return representationType!.isSubtypeOf(other, value: value);
@@ -3039,4 +3243,93 @@ class InterpretedExtensionTypeInstance implements RuntimeValue {
       "Extension type '${extensionType.name}' has no setter '$name'",
     );
   }
+}
+
+/// Native [Iterator] driving an interpreted `iterator` object through its
+/// `moveNext`/`current` members.
+///
+/// Used by [forInIterableOf] when the loop value is an interpreted iterable
+/// whose `iterator` member is itself interpreted (rather than a native
+/// iterator, e.g. the snapshot iterators synthesized by [SdkMixinHelpers]).
+class InterpretedIteratorFacade implements Iterator<Object?> {
+  final InterpreterVisitor _visitor;
+  final InterpretedInstance _iterator;
+  Object? _current;
+
+  InterpretedIteratorFacade(this._visitor, this._iterator);
+
+  @override
+  Object? get current => _current;
+
+  @override
+  bool moveNext() {
+    final moveNext = _iterator.get('moveNext', visitor: _visitor);
+    if (moveNext is! Callable) {
+      throw RuntimeD4rtException(
+        'The iterator of a for-in loop must define moveNext.',
+      );
+    }
+    final advanced = moveNext.call(_visitor, [], {});
+    if (advanced is! bool) {
+      throw RuntimeD4rtException(
+        'The moveNext of a for-in iterator must return a bool.',
+      );
+    }
+    if (advanced) _current = _iterator.get('current', visitor: _visitor);
+    return advanced;
+  }
+}
+
+/// Single-pass [Iterable] view over one [Iterator].
+///
+/// `for-in` consumes its iterable exactly once, so an adapter that hands out
+/// its iterator a single time is sufficient — and it keeps lazy/interpreted
+/// iterators lazy instead of materializing them.
+class _SinglePassIterable extends Iterable<Object?> {
+  final Iterator<Object?> _iterator;
+  bool _taken = false;
+
+  _SinglePassIterable(this._iterator);
+
+  @override
+  Iterator<Object?> get iterator {
+    if (_taken) throw StateError('Already iterated.');
+    _taken = true;
+    return _iterator;
+  }
+}
+
+/// Resolves [value] to something a for-in loop can consume.
+///
+/// Native iterables (including ones wrapped in a [BridgedInstance]) pass
+/// through; an interpreted value resolves through its `iterator` member —
+/// a native iterator is used directly, an interpreted one is driven through
+/// [InterpretedIteratorFacade]. Returns null when the value is not iterable,
+/// letting each call site raise its own established error.
+Iterable<Object?>? forInIterableOf(
+  Object? value,
+  InterpreterVisitor visitor,
+) {
+  final native = value is BridgedInstance ? value.nativeObject : value;
+  if (native is Iterable) return native.cast<Object?>();
+  if (value is InterpretedInstance) {
+    Object? iterator;
+    try {
+      iterator = value.get('iterator', visitor: visitor);
+    } on RuntimeD4rtException {
+      return null;
+    }
+    // A dynamic-element iterator conforms to Iterator<Object?> by
+    // covariance; the cast is shallow (no element walk).
+    if (iterator is Iterator) {
+      return _SinglePassIterable(iterator as Iterator<Object?>);
+    }
+    if (iterator is InterpretedInstance) {
+      return _SinglePassIterable(
+        InterpretedIteratorFacade(visitor, iterator),
+      );
+    }
+    return null;
+  }
+  return null;
 }

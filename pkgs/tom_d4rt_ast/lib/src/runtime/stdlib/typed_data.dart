@@ -16,10 +16,12 @@ import 'typed_data/float32_list.dart';
 import 'typed_data/float64_list.dart';
 import 'typed_data/typed_data.dart';
 import 'typed_data/typed_data_hierarchy.dart';
+import 'typed_data/typed_data_list.dart';
 
 class TypedDataStdlib {
   static void register(Environment environment) {
     environment.defineBridge(TypedDataTypedData.definition);
+    environment.defineBridge(TypedDataListTypedData.definition);
     environment.defineBridge(BytesBuilderTypedData.definition);
     environment.defineBridge(EndianTypedData.definition);
     environment.defineBridge(ByteBufferTypedData.definition);

@@ -50,6 +50,10 @@ class ConvertHierarchyConvert {
       // The sink half (SC9).
       'StringConversionSink': ['ChunkedConversionSink'],
       'ByteConversionSink': ['ChunkedConversionSink'],
+      // Class-typedef aliases resolve to the same hierarchy as their target.
+      'ByteConversionSinkBase': ['ByteConversionSink'],
+      'StringConversionSinkBase': ['StringConversionSink'],
+      'StringConversionSinkMixin': ['StringConversionSink'],
       'ChunkedConversionSink': ['Sink'],
       'ClosableStringSink': ['StringSink'],
 
