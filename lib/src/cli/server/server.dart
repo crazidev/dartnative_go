@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 
 import '../../runner/logger.dart';
 import '../diagnostics/asset_detector.dart';
+import '../diagnostics/icon_font_detector.dart';
 import '../packaging/ast_builder.dart';
 import 'broadcaster.dart';
 import 'dev_socket_hub.dart';
@@ -76,6 +77,16 @@ class DartGoServer {
     final assetDetector = AssetDetector(projectDir);
     final assets = assetDetector.detect();
 
+    // 2b. Detect icon-font usage (Cupertino/Material/FA/custom) so the
+    // manifest advertises only the families the guest touches and the
+    // server serves only requested `.ttf` bytes on demand.
+    IconFontReport iconFonts;
+    try {
+      iconFonts = IconFontDetector(projectDir).detect();
+    } catch (_) {
+      iconFonts = const IconFontReport();
+    }
+
     // Follow the project in the directory (default to lib/ and lib/main.dart)
     Directory codeDir = Directory('${projectDir.path}/lib');
     File mainFile = File('${projectDir.path}/lib/main.dart');
@@ -123,6 +134,7 @@ class DartGoServer {
     printBanner();
     print(validation.formatReport());
     print(assets.formatReport());
+    print(iconFonts.formatReport());
 
     final serverUrl = 'http://$hostStr:$port';
 
@@ -182,6 +194,7 @@ class DartGoServer {
         assets: assets,
         validation: validation,
         serverUrl: serverUrl,
+        iconFonts: iconFonts,
       );
     }
   }
@@ -349,6 +362,7 @@ class DartGoServer {
     required ProjectAssets assets,
     required PubspecValidationResult validation,
     required String serverUrl,
+    IconFontReport? iconFonts,
   }) async {
     final path = request.uri.path;
 
@@ -365,6 +379,16 @@ class DartGoServer {
         packageName: validation.appName,
       );
       final astFile = _resolveAstBundleFile(projectDir);
+      // Icon-font usage is re-detected per manifest fetch (cached by source
+      // fingerprint inside IconFontDetector) so newly added
+      // `CupertinoIcons.xxx` / `Icons.xxx` glyphs appear without restart.
+      IconFontReport fontsReport;
+      try {
+        fontsReport =
+            iconFonts ?? IconFontDetector(projectDir).detect();
+      } catch (_) {
+        fontsReport = const IconFontReport();
+      }
       final manifest = {
         'protocol': 'dart_go',
         'appName': validation.appName,
@@ -385,6 +409,11 @@ class DartGoServer {
         'splashUrl': assets.hasSplash ? '$serverUrl/assets/splash.png' : null,
         'splashBackgroundColor': assets.splashBackgroundColor,
         'assets': _collectProjectAssets(projectDir),
+        // On-demand icon fonts: only the families the guest touches are
+        // advertised; devices fetch each `.ttf` via its `url` once.
+        'iconFonts': fontsReport.toManifestJson(serverUrl),
+        'iconFontsHash': fontsReport.hash,
+        'fonts': fontsReport.customFonts.map((f) => f.toJson()).toList(),
         'hasAstBundle': astFile != null,
         'astUrl': astFile != null ? '$serverUrl/guest.ast' : null,
         // Tells AST-mode clients whether a bundle is still being built: the
@@ -487,6 +516,78 @@ class DartGoServer {
         ..headers.add('Cache-Control', 'no-cache')
         ..write(jsonEncode({'assets': projectAssets}))
         ..close();
+    } else if (path == '/icon-fonts.json' || path == '/fonts.json') {
+      // Subset manifest for on-demand font loading: families + used glyphs.
+      IconFontReport fontsReport;
+      try {
+        fontsReport =
+            iconFonts ?? IconFontDetector(projectDir).detect();
+      } catch (_) {
+        fontsReport = const IconFontReport();
+      }
+      request.response
+        ..headers.contentType = ContentType.json
+        ..headers.add('Access-Control-Allow-Origin', '*')
+        ..headers.add('Cache-Control', 'no-cache')
+        ..write(
+          jsonEncode({
+            'hash': fontsReport.hash,
+            'iconFonts': fontsReport.toManifestJson(serverUrl),
+            'fonts': fontsReport.customFonts.map((f) => f.toJson()).toList(),
+          }),
+        )
+        ..close();
+    } else if (path.startsWith('/fonts/')) {
+      // On-demand font bytes: only the requested family is read from disk
+      // and streamed — unrequested fonts are never touched.
+      final family = path.substring('/fonts/'.length);
+      final cleanFamily = family.split('/').first.split('?').first;
+      if (cleanFamily.isEmpty || cleanFamily.contains('..')) {
+        request.response
+          ..statusCode = HttpStatus.notFound
+          ..headers.add('Access-Control-Allow-Origin', '*')
+          ..write('Font not found')
+          ..close();
+      } else {
+        File? fontFile;
+        try {
+          fontFile = IconFontDetector(projectDir).resolveFontFile(
+            Uri.decodeComponent(cleanFamily.replaceAll('.ttf', '')),
+          );
+          // Accept both `/fonts/CupertinoIcons` and `/fonts/CupertinoIcons.ttf`.
+          fontFile ??= IconFontDetector(projectDir).resolveFontFile(
+            Uri.decodeComponent(cleanFamily),
+          );
+        } catch (_) {
+          fontFile = null;
+        }
+        if (fontFile != null && fontFile.existsSync()) {
+          final stat = fontFile.statSync();
+          final etag =
+              '"${stat.modified.millisecondsSinceEpoch}-${stat.size}"';
+          final clientEtag = request.headers
+              .value(HttpHeaders.ifNoneMatchHeader)
+              ?.trim();
+          if (clientEtag == etag) {
+            request.response.statusCode = HttpStatus.notModified;
+            request.response.headers.set(HttpHeaders.etagHeader, etag);
+            request.response.headers.set('Access-Control-Allow-Origin', '*');
+            await request.response.close();
+          } else {
+            await _serveAssetFile(request, fontFile, etag: etag);
+            print(
+              '[DevServer] [FONTS] Served $cleanFamily '
+              '(${stat.size} bytes)',
+            );
+          }
+        } else {
+          request.response
+            ..statusCode = HttpStatus.notFound
+            ..headers.add('Access-Control-Allow-Origin', '*')
+            ..write('Font not found: $cleanFamily')
+            ..close();
+        }
+      }
     } else if (path == '/assets/icon.png' || path == '/icon.png') {
       if (assets.hasIcon) {
         await _serveAssetFile(request, assets.iconFile!);

@@ -18,6 +18,52 @@ class ResolvedIcon {
   String toString() => "$fontFamily.$codePoint";
 }
 
+/// Canonical icon-font family names shared by the dev-server detector
+/// (`IconFontDetector`), the `/manifest.json` `iconFonts` entries and the
+/// on-device [IconFontManager].
+class IconFontFamilyNames {
+  static const cupertino = 'CupertinoIcons';
+  static const material = 'MaterialIcons';
+  static const materialOutlined = 'Material Symbols Outlined';
+  static const materialRounded = 'Material Symbols Rounded';
+  static const materialSharp = 'Material Symbols Sharp';
+  static const fontAwesome5 = 'FontAwesome5';
+  static const fontAwesome6 = 'FontAwesome6';
+}
+
+/// Families bundled with the host shell — always renderable, never fetched
+/// over HTTP. Everything else is served on demand via `GET /fonts/<family>`.
+const kBuiltInIconFamilies = {
+  IconFontFamilyNames.cupertino,
+  IconFontFamilyNames.material,
+  IconFontFamilyNames.materialOutlined,
+  IconFontFamilyNames.materialRounded,
+  IconFontFamilyNames.materialSharp,
+};
+
+/// True when [family] ships inside the host and needs no download.
+bool isBuiltInIconFamily(String family) =>
+    kBuiltInIconFamilies.contains(family.trim());
+
+/// Owning package for a known icon family (`cupertino_icons`,
+/// `font_awesome_flutter`, `flutter`), or null for custom families.
+String? iconFontPackageForFamily(String family) {
+  switch (family.trim()) {
+    case IconFontFamilyNames.cupertino:
+      return 'cupertino_icons';
+    case IconFontFamilyNames.fontAwesome5:
+    case IconFontFamilyNames.fontAwesome6:
+      return 'font_awesome_flutter';
+    case IconFontFamilyNames.material:
+    case IconFontFamilyNames.materialOutlined:
+    case IconFontFamilyNames.materialRounded:
+    case IconFontFamilyNames.materialSharp:
+      return 'flutter';
+    default:
+      return null;
+  }
+}
+
 /// Resolves icon references like `"CupertinoIcons.plus"`, `"FontAwesome5.gear"`,
 /// or map specs like `{ "family": "CupertinoIcons", "name": "plus" }`.
 ResolvedIcon? resolveIcon(dynamic input) {

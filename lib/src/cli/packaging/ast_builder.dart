@@ -18,6 +18,8 @@ import '../server_components/client_module_index.dart';
 import 'safe_ast_converter.dart';
 import '../server_components/server_annotation_scanner.dart';
 import '../server_components/server_annotation_source.dart';
+import '../diagnostics/icon_annotation_scanner.dart'
+    show iconFontAnnotationSources;
 import '../server_components/server_component_bundler.dart';
 
 // GZip encoder used to pre-compress module bytes during parse.
@@ -1158,6 +1160,9 @@ Future<AstBuildResult> buildGuestAstBundle(
       // Server-side @ServerComponent annotation, last so the canonical
       // sources win even if the guest declares a host path dependency.
       ...serverAnnotationSources(),
+      // @IconFont annotation for guest icon registries (same mechanism;
+      // identical server.dart bytes, so spread order is irrelevant).
+      ...iconFontAnnotationSources(),
     };
     final resolveMs = t1.elapsedMilliseconds;
 

@@ -24,3 +24,4 @@
 library;
 
 export 'src/server/server_annotation.dart';
+export 'src/server/icon_font_annotation.dart';
