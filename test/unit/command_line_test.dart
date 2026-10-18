@@ -39,6 +39,17 @@ void main() {
       expect(parsed.broadcast, isFalse);
       expect(parsed.qrCode, isFalse);
       expect(parsed.rebuildAst, isFalse);
+      expect(parsed.profile, isFalse);
+    });
+
+    test('parses --profile (AST explorer opt-in)', () {
+      final parsed = DartGoCommandLine.parse(
+        ['start', '--profile'],
+        currentDir: cwd,
+      );
+
+      expect(parsed.command, DartGoCommand.start);
+      expect(parsed.profile, isTrue);
     });
 
     test('recognizes aliases without treating their arguments as start options', () {

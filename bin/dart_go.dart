@@ -37,6 +37,7 @@ Future<void> main(List<String> args) async {
           customHost: cli.host,
           rebuildAst: cli.rebuildAst,
           verbose: cli.verbose,
+          profile: cli.profile,
         ),
       );
       ProcessSignal.sigint.watch().listen((_) {
@@ -97,6 +98,7 @@ OPTIONS FOR 'start':
       --rebuild-ast           Rebuild assets/bundles/guest.ast on Dart changes (AST hot reload; default: on)
       --no-rebuild-ast        Disable AST rebuild (source-only hot reload)
   -v, --verbose               Enable verbose step-by-step benchmark logs and diagnostic traces
+      --profile               Show the AST BUNDLE explorer in the app DevTools sheet (default: off)
       --no-broadcast          Disable local UDP discovery beacon
       --no-qrcode             Disable terminal QR code rendering
 

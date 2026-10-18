@@ -346,9 +346,14 @@ class _DevToolSheetState extends State<DevToolSheet> {
               ),
               const SizedBox(height: 16),
 
-              // AST bundle explorer (packages, modules, classes, loads)
-              AstProfilePanel(profile: widget.astProfile),
-              const SizedBox(height: 16),
+              // AST bundle explorer (packages, modules, classes, loads).
+              // Shown only when the server runs with `--profile` (the app
+              // passes a snapshot only then); an empty section would just be
+              // noise for non-profiling sessions.
+              if (widget.astProfile != null) ...[
+                AstProfilePanel(profile: widget.astProfile),
+                const SizedBox(height: 16),
+              ],
 
               // Error Display
               // Container(

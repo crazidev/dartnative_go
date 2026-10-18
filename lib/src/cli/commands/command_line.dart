@@ -19,6 +19,11 @@ class DartGoCommandLine {
   final bool qrCode;
   final bool rebuildAst;
 
+  /// `--profile`: advertises `profile: true` in the manifest so AST-mode
+  /// apps show the AST BUNDLE explorer in their DevTools sheet. Off by
+  /// default — the explorer costs an on-demand AST sizing walk per open.
+  final bool profile;
+
   const DartGoCommandLine({
     required this.command,
     required this.commandArgs,
@@ -30,6 +35,7 @@ class DartGoCommandLine {
     required this.broadcast,
     required this.qrCode,
     required this.rebuildAst,
+    required this.profile,
   });
 
   factory DartGoCommandLine.parse(List<String> args, {Directory? currentDir}) {
@@ -81,6 +87,7 @@ class DartGoCommandLine {
       broadcast: !args.contains('--no-broadcast'),
       qrCode: !args.contains('--no-qrcode'),
       rebuildAst: !args.contains('--no-rebuild-ast'),
+      profile: args.contains('--profile'),
     );
   }
 
@@ -99,6 +106,7 @@ class DartGoCommandLine {
     broadcast: true,
     qrCode: true,
     rebuildAst: true,
+    profile: false,
   );
 
   static DartGoCommandLine _help(List<String> args, Directory baseDir) =>

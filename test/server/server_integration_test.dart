@@ -94,6 +94,12 @@ void main() {
         reason: 'AST-mode clients wait for an in-flight build instead of '
             'falling back to source mode',
       );
+      expect(
+        manifest['profile'],
+        isFalse,
+        reason: 'the AST BUNDLE explorer stays hidden unless the server '
+            'starts with --profile',
+      );
       for (final key in [
         'hasBytecodeBundle',
         'bytecodeUrl',

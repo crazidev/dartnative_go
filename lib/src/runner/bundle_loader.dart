@@ -46,6 +46,12 @@ class ProjectBundle {
   /// Entry function inside [astBytes] (defaults to `main`).
   final String? astEntryPoint;
 
+  /// Dev server runs with `--profile`: the app may show the AST BUNDLE
+  /// explorer in its DevTools sheet. False for older servers and for
+  /// patch-only fast-path loads that skip the manifest (the app keeps the
+  /// last known value, so it stays enabled once seen).
+  final bool profileEnabled;
+
   /// Per-module content fingerprints for [astBytes] (module URI → FNV-1a hex),
   /// as reported by the dev server manifest. Empty when the server predates
   /// per-module fingerprints. Used to detect which modules changed on reload
@@ -82,6 +88,7 @@ class ProjectBundle {
     this.isPatch = false,
     this.astEntryPoint,
     this.astModuleFingerprints = const {},
+    this.profileEnabled = false,
     this.iconFonts = const [],
     this.iconFontsHash = '',
     this.customFonts = const [],
@@ -568,6 +575,7 @@ class BundleLoader {
           isPatch: false,
           astEntryPoint: manifest['astEntryPoint']?.toString(),
           astModuleFingerprints: moduleFingerprints,
+          profileEnabled: manifest['profile'] == true,
           iconFonts: iconFontsFrom(manifest),
           iconFontsHash: manifest['iconFontsHash']?.toString() ?? '',
           customFonts: customFontsFrom(manifest),
@@ -694,6 +702,7 @@ class BundleLoader {
             : null,
         astEntryPoint: manifest['astEntryPoint']?.toString(),
         astModuleFingerprints: _moduleFingerprintsFrom(manifest),
+        profileEnabled: manifest['profile'] == true,
         iconFonts: iconFontsFrom(manifest),
         iconFontsHash: manifest['iconFontsHash']?.toString() ?? '',
         customFonts: customFontsFrom(manifest),
@@ -784,6 +793,7 @@ class BundleLoader {
               : null,
           astEntryPoint: manifest['astEntryPoint']?.toString(),
           astModuleFingerprints: _moduleFingerprintsFrom(manifest),
+          profileEnabled: manifest['profile'] == true,
           iconFonts: iconFontsFrom(manifest),
           iconFontsHash: manifest['iconFontsHash']?.toString() ?? '',
           customFonts: customFontsFrom(manifest),
@@ -819,6 +829,7 @@ class BundleLoader {
       iconFonts: iconFontsFrom(manifest),
       iconFontsHash: manifest['iconFontsHash']?.toString() ?? '',
       customFonts: customFontsFrom(manifest),
+      profileEnabled: manifest['profile'] == true,
     );
   }
 

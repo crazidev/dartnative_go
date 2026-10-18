@@ -32,6 +32,11 @@ class DartGoServerOptions {
   final bool rebuildAst;
   final bool verbose;
 
+  /// `--profile`: advertised in the manifest as `profile: true` so AST-mode
+  /// apps show the AST BUNDLE explorer in their DevTools sheet. Off by
+  /// default — the explorer costs an on-demand AST sizing walk per open.
+  final bool profile;
+
   const DartGoServerOptions({
     required this.projectDir,
     this.startPort = 8088,
@@ -41,6 +46,7 @@ class DartGoServerOptions {
     this.customHost,
     this.rebuildAst = true,
     this.verbose = false,
+    this.profile = false,
   });
 }
 
@@ -423,6 +429,10 @@ class DartGoServer {
         // Stays true when the build failed — clients retry briefly, then fall
         // back; the build error is in this process's log.
         'astPending': options.rebuildAst && astFile == null,
+        // Only when the server runs with `--profile`: the app may open the
+        // AST BUNDLE explorer in its DevTools sheet (costs an AST sizing
+        // walk per open, so it stays hidden by default).
+        'profile': options.profile,
         'astModuleFingerprints': astFile != null
             ? moduleFingerprintsForProject(projectDir)
             : const <String, String>{},
