@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Dartscript registration for dartnative_go_ast
-// Generated: 2026-10-12T04:53:18.310654 by tom_d4rt_generator 1.26.2
+// Generated: 2026-10-17T21:06:16.495473 by tom_d4rt_generator 1.26.2
 
 /// D4rt Bridge Registration for dartnative_go_ast
 library;
@@ -16,6 +16,7 @@ import 'dartnative_splash_bridges.b.dart' as dartnative_splash_bridges;
 import 'crypto_bridges.b.dart' as crypto_bridges;
 import 'native_bottomsheet_bridges.b.dart' as native_bottomsheet_bridges;
 import 'riverpod_kit_bridges.b.dart' as riverpod_kit_bridges;
+import 'dio_bridges.b.dart' as dio_bridges;
 import 'dartnative_flutter_compat_bridges.b.dart' as dartnative_flutter_compat_bridges;
 import 'dartnative_notifications_bridges.b.dart' as dartnative_notifications_bridges;
 import 'dartnative_system_bridges.b.dart' as dartnative_system_bridges;
@@ -110,6 +111,14 @@ class DartnativeGoAstBridges {
     for (final barrel in riverpod_kit_bridges.RiverpodKitBridge.subPackageBarrels()) {
       riverpod_kit_bridges.RiverpodKitBridge.registerBridges(d4rt, barrel);
     }
+    dio_bridges.DioBridge.registerBridges(
+      d4rt,
+      'package:dio/dio.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel in dio_bridges.DioBridge.subPackageBarrels()) {
+      dio_bridges.DioBridge.registerBridges(d4rt, barrel);
+    }
     dartnative_flutter_compat_bridges.DartnativeFlutterCompatBridge.registerBridges(
       d4rt,
       'package:dartnative/flutter_compat.dart',
@@ -182,6 +191,7 @@ class DartnativeGoAstBridges {
     buffer.writeln(crypto_bridges.CryptoBridge.getImportBlock());
     buffer.writeln(native_bottomsheet_bridges.NativeBottomsheetBridge.getImportBlock());
     buffer.writeln(riverpod_kit_bridges.RiverpodKitBridge.getImportBlock());
+    buffer.writeln(dio_bridges.DioBridge.getImportBlock());
     buffer.writeln(dartnative_flutter_compat_bridges.DartnativeFlutterCompatBridge.getImportBlock());
     buffer.writeln(dartnative_notifications_bridges.DartnativeNotificationsBridge.getImportBlock());
     buffer.writeln(dartnative_system_bridges.DartnativeSystemBridge.getImportBlock());

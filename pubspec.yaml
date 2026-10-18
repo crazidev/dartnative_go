@@ -27,6 +27,11 @@ dependencies:
   dartnative_media_picker: ^1.1.0
   dartnative_background: ^1.0.0
   crypto: ^3.0.0
+  # dio is compiled into the shell (bridged) so guests get native-speed HTTP:
+  # instead of interpreting dio's request pipeline node-by-node, the
+  # `package:dio/dio.dart` import resolves to this compiled copy. See
+  # buildkit{,_ast}.yaml module `dio`.
+  dio: ^5.0.0
   riverpod_kit:
     hosted: https://dartpub.dev
     version: ^0.1.0

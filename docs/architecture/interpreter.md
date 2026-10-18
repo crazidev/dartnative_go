@@ -62,6 +62,25 @@ dependency symbols through barrels and follows Dart library semantics.
 `test/unit/collection_dependency_test.dart` covers the `equatable`/`collection`
 path end to end in AST mode.
 
+## Third-party packages compiled into the shell
+
+A pure-Dart dependency is normally bundled and interpreted (see above). Some
+are instead *bridged whole*: the package becomes a module in `buildkit.yaml` /
+`buildkit_ast.yaml`, which the generator expands into a `*_bridges.b.dart`
+registered from `dartscript.b.dart` (and its `ast/` twin) under
+`package:<pkg>/<barrel>.dart`. Adding the barrel URI to `kAstBridgedLibraries`
+(`lib/src/cli/packaging/ast_builder.dart`) then makes the bundler skip the
+package, so a guest `import 'package:dio/dio.dart'` resolves to the compiled
+host classes instead of an interpreted copy.
+
+Bridge a package only when its cost is interpretation-dominated and its value
+semantics don't matter. `dio` is the reference case: interpreting its async
+request pipeline node by node was the bottleneck, and dio's objects are never
+compared structurally. `equatable` is the counter-example — an interpreted
+subclass of a bridged abstract superclass inherits no concrete member bodies,
+so bridging it would regress its `==`/`hashCode`; it stays interpreted and is
+covered by `test/unit/collection_dependency_test.dart`.
+
 ## AST library parts
 
 `AstModuleLoader.loadLibraryUnits` follows `SPartDirective`s from a library

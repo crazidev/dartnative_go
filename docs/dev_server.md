@@ -24,25 +24,37 @@ when a step is the one failing (see [Troubleshooting](troubleshooting.md)).
    (from `dartnative_splash:` config, `dartnative: assets:`, then a list of
    conventional paths like `assets/icon.png`). Feeds `/manifest.json`,
    `/assets/icon.png`, `/assets/splash.png`.
-3. **Locate the entrypoint.** Prefers `lib/main.dart`; falls back to
+3. **Detect icon-font usage** (`IconFontDetector`). Regex-scans guest
+   `.dart` sources (comments/strings stripped, no analyzer parse) for
+   `CupertinoIcons.xxx`, `Icons.xxx`, `MaterialSymbols*.xxx`,
+   `FontAwesome*.xxx` and raw `IconData(... fontFamily: ...)` hits, plus
+   `flutter: fonts:` declarations and icon-package `.ttf` files in
+   `.dart_tool/package_config.json`. Icon registries annotated with the
+   SDK's `@staticIconProvider` or the dependency-free `@IconFont`
+   (`package:dartnative_go/server.dart`) are discovered from the parsed
+   bundle — including external packages guest regex never sees — with a
+   source pre-scan on cold start. Feeds `iconFonts`/`iconFontsHash` in
+   `/manifest.json` and serves each family's bytes on demand via
+   `/fonts/<family>.ttf` — unrequested fonts are never read from disk.
+4. **Locate the entrypoint.** Prefers `lib/main.dart`; falls back to
    `guest_app/main.dart`. If neither exists the server prints an error and
    exits non-zero.
-4. **Bind HTTP across a port range.** `NetworkHelper.bindInRange` scans from
+5. **Bind HTTP across a port range.** `NetworkHelper.bindInRange` scans from
    `--port`/`--port-range` (default `8088`–`8098`) and takes the first free
    port; if the whole range is busy it falls back to a system-assigned port.
    This is why several dev servers can run side by side on one machine.
-5. **Resolve the advertised host.** `--host` if given, otherwise the first
+6. **Resolve the advertised host.** `--host` if given, otherwise the first
    non-loopback, non-link-local IPv4 address (`NetworkHelper.getLocalIp`).
    On a machine with VPNs or multiple NICs this can pick the wrong interface —
    that's what `--host` is for.
-6. **Start the UDP broadcaster** (`DartGoBroadcaster`), unless
+7. **Start the UDP broadcaster** (`DartGoBroadcaster`), unless
    `--no-broadcast`.
-7. **Print the banner** and render the QR code (unless `--no-qrcode`).
-8. **Kick off an initial AST build** in the background when `--rebuild-ast`
+8. **Print the banner** and render the QR code (unless `--no-qrcode`).
+9. **Kick off an initial AST build** in the background when `--rebuild-ast`
    is on (the default), so `/guest.ast` exists before the first client
    connects. Failures only log a warning — source mode is unaffected.
-9. **Install the stdin listener** (the interactive `r`/`v`/`q`/`c`/`h` keys).
-10. **Start the file watchers** (Dart sources and `assets/`), then enter the
+10. **Install the stdin listener** (the interactive `r`/`v`/`q`/`c`/`h` keys).
+11. **Start the file watchers** (Dart sources and `assets/`), then enter the
     request loop.
 
 ## File watching & the reload trigger
@@ -86,6 +98,8 @@ All responses set `Access-Control-Allow-Origin: *`. Mutable routes use
 | `/assets/icon.png`, `/icon.png` | GET | The detected app icon, or a resolved asset file. |
 | `/assets/splash.png`, `/splash.png` | GET | The detected splash image (falls back to the icon). |
 | `/assets/<path>`, `/asset?path=<p>` | GET | Any project asset, resolved safely (see below). |
+| `/icon-fonts.json`, `/fonts.json` | GET | Icon-font subset manifest: `{ hash, iconFonts: [{ family, package, builtIn, hasFontFile, url, glyphCount, names, codePoints }], fonts }`. Refreshed per request (cached by source fingerprint). |
+| `/fonts/<family>[.ttf]` | GET | One icon-font's bytes, served only on request (ETag/`304` supported). 404 for built-ins without a resolvable `.ttf` and unknown families. |
 | `/breakpoints` | GET/POST | List / add active breakpoints. Adding also broadcasts the new set and a reload. |
 | `/resume` | POST | Broadcasts `resume` to continue after a breakpoint hit. |
 | `/ws` | GET (upgrade) | The WebSocket channel — see below. |
@@ -103,11 +117,20 @@ The manifest is the contract between server and device. Key fields:
 - `astPending` — rebuilds are enabled but no bundle file exists yet (the
   initial build runs in the background). AST-mode devices wait briefly for
   the build instead of falling back to source mode immediately.
+- `profile` — `true` only when the server runs with `--profile`. The device
+  shows the **AST BUNDLE** explorer in its DevTools sheet only then; off by
+  default (see [Runtime Modes → AST bundle explorer](runtime_modes.md)).
 - `astModuleFingerprints` — map of module URI → FNV-1a hex of that module's
   serialized AST. The device uses these to skip re-declaring unchanged modules
   on a hot reload (see [Hot Reload](hot_reload.md#module-reuse)).
 - `hasIcon`/`iconUrl`, `hasSplash`/`splashUrl`, `splashBackgroundColor`,
   `assets` — asset metadata for the launch experience.
+- `iconFonts`, `iconFontsHash`, `fonts` — on-demand icon fonts. `iconFonts`
+  lists only the families the guest touches, each with its used-glyph
+  subset (`names` + resolved `codePoints`) so the device never parses the
+  full 1 236-entry `CupertinoIcons` class or downloads unrequested `.ttf`
+  bytes; `iconFontsHash` lets the device skip redundant fetches across
+  reloads. `fonts` carries the raw `flutter: fonts:` declarations.
 - `supportedPlugins`, `unsupportedPlugins`, `versionMismatches` — the pubspec
   validation result, so the device can warn about plugins the shell doesn't
   have.
@@ -235,8 +258,10 @@ When `--rebuild-ast` is on, the server (and `tool/build_ast_bundle.dart`) call
   milliseconds — the "no changes" fast path you see as `guest.ast up to date
   (cache hit)`.
 - **Bridged libraries are excluded.** `kAstBridgedLibraries` lists the Flutter
-  SDK and DartNative plugin libraries that the runtime satisfies with native
-  bridges; they're never bundled.
+  SDK, the DartNative plugin set, and whole third-party packages compiled into
+  the shell (e.g. `dio` —
+  [interpreter.md](architecture/interpreter.md#third-party-packages-compiled-into-the-shell));
+  they're never bundled.
 - **FFI registrant stub.** The generated `dartnative_plugin_registrant.dart`
   loads native FFI symbols the analyzer-free interpreter can't run, so the
   bundler substitutes a no-op stub (`kRegistrantStub`) under every import

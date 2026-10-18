@@ -54,6 +54,31 @@ class InterpretedClass implements Callable, RuntimeType {
   bool isSameClassAs(InterpretedClass other) =>
       identical(this, other) ||
       declarationIdentity == other.declarationIdentity;
+
+  /// Cross-generation value equality for a class used as a `Type` value.
+  ///
+  /// The Dart VM keeps a class's `Type` object identical across a hot reload,
+  /// so `Type`-keyed containers in guest code (`get_it`/DI registries, caches
+  /// indexed by `Type`, `Expando`s, …) keep working. DartNative instead builds
+  /// a fresh [InterpretedClass] every generation (see [ClassCell]); without
+  /// this override a registration made before a reload (keyed by the old class
+  /// object) is unreachable afterwards (looked up with the new object), even
+  /// though the singleton holding the map survived.
+  ///
+  /// Uses the same [declarationIdentity] rule as [isSameClassAs], so two
+  /// same-named classes from different libraries stay distinct.
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InterpretedClass &&
+          declarationIdentity == other.declarationIdentity);
+
+  /// Only the immutable [name] feeds the hash so a class can be placed in a
+  /// hash map at any point of its lifecycle — in particular before the
+  /// declaration pass assigns [moduleUri] (which [declarationIdentity] reads).
+  /// Equal classes (same declaration) therefore always share a hash bucket.
+  @override
+  int get hashCode => name.hashCode;
   final Map<String, InterpretedFunction> constructors;
   // Map for operator methods (e.g., '+', '==', '[]', etc.)
   final Map<String, InterpretedFunction> operators;

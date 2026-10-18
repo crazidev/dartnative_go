@@ -1,4 +1,4 @@
-// Generated: 2026-10-12T04:51:14.110344 by tom_d4rt_generator 1.26.2
+// Generated: 2026-10-17T21:08:31.501816 by tom_d4rt_generator 1.26.2
 /// D4rt Bridges for dartnative_go
 library;
 
@@ -12,6 +12,7 @@ export 'src/interpreter/dartnative_splash_bridges.b.dart';
 export 'src/interpreter/crypto_bridges.b.dart';
 export 'src/interpreter/native_bottomsheet_bridges.b.dart';
 export 'src/interpreter/riverpod_kit_bridges.b.dart';
+export 'src/interpreter/dio_bridges.b.dart';
 export 'src/interpreter/dartnative_flutter_compat_bridges.b.dart';
 export 'src/interpreter/dartnative_notifications_bridges.b.dart';
 export 'src/interpreter/dartnative_system_bridges.b.dart';

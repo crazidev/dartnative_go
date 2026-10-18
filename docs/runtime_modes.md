@@ -52,12 +52,47 @@ classes, and bridged libraries. The DevTool sheet renders it as an
 device logs — so the CLI table and the on-device explorer can never disagree.
 Opening the viewer is the only thing that pays the AST sizing walk.
 
+The on-device section only appears when the dev server is started with
+`--profile` (`dart_go start --profile`): the server advertises
+`profile: true` in the manifest and the app gates the panel on it, so
+sessions that never look at the bundle pay nothing. Verbose `[PROFILE]`
+logs are unaffected — they stay gated on `--verbose` alone.
+### Profiling AST initialization
+
+`tom_d4rt_ast` has compile-time-gated setup profiling for runner initialization,
+warm-parent/stdlib and bridge registration, module-loader creation, and the
+declaration passes before guest `main()`. To collect its report, build or run
+the **host Flutter app** with:
+
+```sh
+flutter run --dart-define=D4RT_PROFILE_INIT=true
+```
+
+Then start the DartNative Go dev server with verbose logging:
+
+```sh
+dart run bin/dart_go.dart start --project=example --verbose
+```
+
+The report is emitted as `[D4rtProfiler]` device logs after each AST
+evaluation. The compile-time define belongs to the host app; the dev server's
+`--verbose` flag only enables report output and cannot enable instrumentation
+inside an already-built app. Restart/rebuild the host app after changing the
+define. Leave it unset for normal and release builds; with the default `false`
+value the compiler removes the profiler's timing instrumentation.
+
+Entries are aggregated by timing-point name and sorted longest first. Some
+spans are nested (for example environment setup includes registration work),
+so they are diagnostic breakdowns and must not be summed as exclusive time.
+This profiler stops before guest `main()`; use a CPU profiler to investigate
+work performed inside guest code.
+
 **Trade-offs / constraints:**
 
 - The bundle only contains what the bundler can statically reach and what
-  isn't natively bridged. Libraries in `kAstBridgedLibraries` (the Flutter SDK
-  and the DartNative plugin set) are excluded and satisfied by bridges at
-  runtime.
+  isn't natively bridged. Libraries in `kAstBridgedLibraries` (the Flutter SDK,
+  the DartNative plugin set, and whole third-party packages such as `dio`) are
+  excluded and satisfied by bridges at runtime.
 - The generated FFI plugin registrant is stubbed out, because native FFI
   symbols can't be interpreted.
 - It needs the dev server (or a pre-built bundle) to produce `guest.ast` —

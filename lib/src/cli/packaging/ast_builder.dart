@@ -76,6 +76,10 @@ const kAstBridgedLibraries = {
   'package:dartnative_background/src/task_manager_ffi_bindings.dart',
   'package:riverpod_kit/riverpod_kit.dart',
   'package:riverpod/riverpod.dart',
+  // Third-party pure-Dart packages compiled into the shell (see the `dio`
+  // module in buildkit{,_ast}.yaml). Guests importing them get the bridged,
+  // native-speed copy, so the bundler must not try to parse them.
+  'package:dio/dio.dart',
   'package:flutter/widgets.dart',
   'package:flutter/material.dart',
   'package:flutter/cupertino.dart',

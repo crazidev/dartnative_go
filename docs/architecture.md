@@ -96,7 +96,10 @@ framework and a fixed matrix of native plugins (`dartnative_share`,
 `dartnative_webview`, `riverpod_kit`, … — see `dart_go version`). Guests may
 use any of those plugins **at the exact versions the shell was built with**
 (`dart_go doctor` checks this) plus arbitrary *pure-Dart* packages, which the
-server ships as source zips and the interpreter executes like guest code.
+server ships as source zips and the interpreter executes like guest code. A
+handful of pure-Dart packages (e.g. `dio`) are instead compiled into the shell
+and bridged whole, so their guest imports run as native code — see
+[Interpreter and bridges](architecture/interpreter.md#third-party-packages-compiled-into-the-shell).
 
 ## Where to go next
 
