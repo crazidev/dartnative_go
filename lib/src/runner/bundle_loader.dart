@@ -27,6 +27,18 @@ class ProjectBundle {
   final List<Map<String, dynamic>> breakpoints;
   final List<String> assets;
 
+  /// On-demand icon fonts advertised by the dev server (`iconFonts` in
+  /// `/manifest.json`): one entry per used family with subset + font `url`.
+  /// Empty when the server predates icon-font detection.
+  final List<Map<String, dynamic>> iconFonts;
+
+  /// Hash over [iconFonts] + custom fonts; devices skip redundant font
+  /// fetches when unchanged across reloads.
+  final String iconFontsHash;
+
+  /// Custom `flutter: fonts:` declarations from the guest pubspec.
+  final List<Map<String, dynamic>> customFonts;
+
   /// Raw pre-compiled `AstBundle` bytes (ZIP/gzip/JSON auto-detected by
   /// `tom_d4rt_ast` on the device). Null when server has no `/guest.ast`.
   final List<int>? astBytes;
@@ -70,6 +82,9 @@ class ProjectBundle {
     this.isPatch = false,
     this.astEntryPoint,
     this.astModuleFingerprints = const {},
+    this.iconFonts = const [],
+    this.iconFontsHash = '',
+    this.customFonts = const [],
   });
 }
 
@@ -121,6 +136,30 @@ class BundleLoader {
     final out = <String, String>{};
     raw.forEach((k, v) => out[k.toString()] = v.toString());
     return out;
+  }
+
+  /// Reads `iconFonts` entries from a manifest (empty for older servers).
+  static List<Map<String, dynamic>> iconFontsFrom(
+    Map<String, dynamic>? manifest,
+  ) {
+    final raw = manifest?['iconFonts'];
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
+  /// Reads custom `fonts` declarations from a manifest.
+  static List<Map<String, dynamic>> customFontsFrom(
+    Map<String, dynamic>? manifest,
+  ) {
+    final raw = manifest?['fonts'];
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
   }
 
   /// Fetches the project manifest from `$serverUrl/manifest.json`.
@@ -529,6 +568,9 @@ class BundleLoader {
           isPatch: false,
           astEntryPoint: manifest['astEntryPoint']?.toString(),
           astModuleFingerprints: moduleFingerprints,
+          iconFonts: iconFontsFrom(manifest),
+          iconFontsHash: manifest['iconFontsHash']?.toString() ?? '',
+          customFonts: customFontsFrom(manifest),
         );
       }
     }
@@ -652,6 +694,9 @@ class BundleLoader {
             : null,
         astEntryPoint: manifest['astEntryPoint']?.toString(),
         astModuleFingerprints: _moduleFingerprintsFrom(manifest),
+        iconFonts: iconFontsFrom(manifest),
+        iconFontsHash: manifest['iconFontsHash']?.toString() ?? '',
+        customFonts: customFontsFrom(manifest),
       );
     }
 
@@ -739,6 +784,9 @@ class BundleLoader {
               : null,
           astEntryPoint: manifest['astEntryPoint']?.toString(),
           astModuleFingerprints: _moduleFingerprintsFrom(manifest),
+          iconFonts: iconFontsFrom(manifest),
+          iconFontsHash: manifest['iconFontsHash']?.toString() ?? '',
+          customFonts: customFontsFrom(manifest),
         );
       }
     } catch (_) {}
@@ -768,7 +816,75 @@ class BundleLoader {
       entrypointCode: virtualSources['main.dart'] ?? code,
       entrypointLibrary: 'main.dart',
       astBytes: fetchAst ? await fetchAstBytes(baseUrl) : null,
+      iconFonts: iconFontsFrom(manifest),
+      iconFontsHash: manifest['iconFontsHash']?.toString() ?? '',
+      customFonts: customFontsFrom(manifest),
     );
+  }
+
+  /// Best-effort fetch of the icon-font subset manifest from
+  /// `/icon-fonts.json` (hash + per-family entries). Useful on patch-only
+  /// reloads where `/manifest.json` is skipped: devices refresh fonts when
+  /// the returned hash differs from [knownHash]. Never throws.
+  Future<({String hash, List<Map<String, dynamic>> iconFonts})>
+      fetchIconFontsManifest(
+    String serverUrl, {
+    String knownHash = '',
+  }) async {
+    final baseUrl = normalizeUrl(serverUrl);
+    try {
+      final req = await _client.getUrl(Uri.parse('$baseUrl/icon-fonts.json'));
+      final res = await req.close();
+      if (res.statusCode != HttpStatus.ok) {
+        return (hash: knownHash, iconFonts: const <Map<String, dynamic>>[]);
+      }
+      final body = await res.transform(utf8.decoder).join();
+      final decoded = jsonDecode(body);
+      if (decoded is! Map) {
+        return (hash: knownHash, iconFonts: const <Map<String, dynamic>>[]);
+      }
+      final hash = decoded['hash']?.toString() ?? '';
+      final raw = decoded['iconFonts'];
+      if (raw is! List) return (hash: hash, iconFonts: const <Map<String, dynamic>>[]);
+      return (
+        hash: hash,
+        iconFonts: raw
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList(),
+      );
+    } catch (_) {
+      return (hash: knownHash, iconFonts: const <Map<String, dynamic>>[]);
+    }
+  }
+
+  /// Best-effort fetch of one font file from `/fonts/<family>.ttf`.
+  /// Returns null on 404 (built-ins resolve locally) or failure. Never throws.
+  Future<List<int>?> fetchFontBytes(
+    String serverUrl,
+    String family,
+  ) async {
+    final baseUrl = normalizeUrl(serverUrl);
+    final trimmed = family.trim();
+    if (trimmed.isEmpty || trimmed.contains('..') || trimmed.contains('/')) {
+      return null;
+    }
+    try {
+      final encoded = Uri.encodeComponent(trimmed);
+      for (final suffix in ['.ttf', '']) {
+        final req = await _client.getUrl(
+          Uri.parse('$baseUrl/fonts/$encoded$suffix'),
+        );
+        final res = await req.close();
+        if (res.statusCode != HttpStatus.ok) continue;
+        final bytes = await res.fold<List<int>>(
+          <int>[],
+          (prev, el) => prev..addAll(el),
+        );
+        if (bytes.isNotEmpty) return bytes;
+      }
+    } catch (_) {}
+    return null;
   }
 
   void close() {
