@@ -8,8 +8,7 @@ import 'package:tom_d4rt_ast/runtime.dart';
 void main() {
   test('AST runtime loads collection through equatable', () async {
     final exampleDir = Directory('example');
-    if (!File('${exampleDir.path}/.dart_tool/package_config.json')
-        .existsSync()) {
+    if (findPackageConfigFile(exampleDir) == null) {
       markTestSkipped('Resolve example dependencies before running this test.');
     }
 

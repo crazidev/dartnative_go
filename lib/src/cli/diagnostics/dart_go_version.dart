@@ -163,8 +163,14 @@ final Map<String, SupportedPlugin> kSupportedPluginsByName = {
   for (final plugin in kSupportedNativePlugins) plugin.name: plugin,
 };
 
+/// Packages that make up the DartNative Go runtime/host itself. They may carry
+/// native shell code, but they are not guest plugins and must never be
+/// reported as "unsupported native plugins".
+const kRuntimePackages = {'dartnative_go'};
+
 /// Returns whether [packageName] looks like a native DartNative plugin.
 bool isNativePlugin(String packageName) {
+  if (kRuntimePackages.contains(packageName)) return false;
   if (kSupportedPluginsByName.containsKey(packageName)) return true;
   if (packageName.startsWith('dartnative_') || packageName.startsWith('dn_')) {
     return true;

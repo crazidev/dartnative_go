@@ -26,6 +26,20 @@ import '../server_components/server_component_bundler.dart';
 // Declared final (not const) for archive 3.x / 4.x compat — see AstBundle.
 final _gzipEncoder = GZipEncoder();
 
+/// Formats a byte count as human-readable size (e.g. `100 B`, `73.2 KB`,
+/// `1.50 MB`). Shared by DevServer logs and AST tooling so bundle sizes
+/// don't render as raw byte counts.
+String formatByteSize(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  if (bytes < 1024 * 1024) {
+    return '${(bytes / 1024).toStringAsFixed(1)} KB';
+  }
+  if (bytes < 1024 * 1024 * 1024) {
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
+  }
+  return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+}
+
 /// Libraries handled by native bridges at runtime — skipped during bundling.
 ///
 /// Shared by the dev server (`server.dart --rebuild-ast`) and
@@ -383,6 +397,24 @@ _packageSourcesCache = {};
 final Map<String, ({DateTime mtime, Map<String, String> sources})>
 _pkgDirCache = {};
 
+/// Locates the nearest `.dart_tool/package_config.json` for [startDir],
+/// walking up parent directories.
+///
+/// Pub workspaces keep a single config at the workspace root; member packages
+/// (for example `example/`) have no `.dart_tool/package_config.json` of their
+/// own. Returning the ancestor config keeps pure-Dart dependency resolution
+/// working for workspace members instead of silently yielding an empty map.
+File? findPackageConfigFile(Directory startDir) {
+  var dir = startDir.absolute;
+  while (true) {
+    final candidate = File('${dir.path}/.dart_tool/package_config.json');
+    if (candidate.existsSync()) return candidate;
+    final parent = dir.parent;
+    if (parent.path == dir.path) return null;
+    dir = parent;
+  }
+}
+
 /// Discovers and loads source code for third-party and pure Dart packages
 /// listed in `.dart_tool/package_config.json`.
 ///
@@ -393,11 +425,11 @@ Map<String, String> resolvePackageSources(
   Directory projectDir, {
   String? packageName,
 }) {
-  final configFile = File('${projectDir.path}/.dart_tool/package_config.json');
-  if (!configFile.existsSync()) return const {};
+  final configFile = findPackageConfigFile(projectDir);
+  if (configFile == null) return const {};
 
   final mtime = configFile.lastModifiedSync();
-  final cacheKey = '${projectDir.path}:$packageName';
+  final cacheKey = '${configFile.path}:$packageName';
   final cached = _packageSourcesCache[cacheKey];
   if (cached != null && cached.mtime == mtime) {
     return cached.sources;
@@ -538,8 +570,8 @@ Future<String> fingerprintGuestSources(
     }
   }
   if (projectDir != null) {
-    final pkgConfig = File('${projectDir.path}/.dart_tool/package_config.json');
-    if (pkgConfig.existsSync()) files.add(pkgConfig);
+    final pkgConfig = findPackageConfigFile(projectDir);
+    if (pkgConfig != null) files.add(pkgConfig);
   }
   files.sort((a, b) => a.path.compareTo(b.path));
   for (final f in files) {
@@ -626,8 +658,8 @@ Future<void> _populateFileHashCache(
     }
   }
   if (projectDir != null) {
-    final pkgConfig = File('${projectDir.path}/.dart_tool/package_config.json');
-    if (pkgConfig.existsSync()) files.add(pkgConfig);
+    final pkgConfig = findPackageConfigFile(projectDir);
+    if (pkgConfig != null) files.add(pkgConfig);
   }
   for (final f in files) {
     final path = f.path;

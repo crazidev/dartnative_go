@@ -83,6 +83,75 @@ dependencies:
       expect(res.unsupportedNativePlugins, contains('dartnative_bluetooth'));
     });
 
+    test('hosted map constraints are read from the version key', () {
+      _writePubspec(temp, '''
+name: hosted_app
+version: 1.0.0
+dependencies:
+  riverpod_kit:
+    hosted: https://dartpub.dev
+    version: ^0.1.0
+''');
+      final res = PubspecValidator(temp).validate();
+      expect(res.isFullyCompatible, isTrue);
+      expect(res.validSupportedPlugins['riverpod_kit'], equals('^0.1.0'));
+    });
+
+    test('path plugins validate against the target package version', () {
+      final plugin = Directory('${temp.path}/plugin')..createSync();
+      File('${plugin.path}/pubspec.yaml').writeAsStringSync(
+        'name: native_bottomsheet\nversion: 0.1.0\n',
+      );
+      _writePubspec(temp, '''
+name: path_app
+version: 1.0.0
+dependencies:
+  native_bottomsheet:
+    path: plugin
+''');
+      final res = PubspecValidator(temp).validate();
+      expect(res.isFullyCompatible, isTrue);
+      expect(
+        res.validSupportedPlugins['native_bottomsheet'],
+        equals('path: plugin'),
+      );
+    });
+
+    test('path plugins outside the supported range still mismatch', () {
+      final plugin = Directory('${temp.path}/plugin')..createSync();
+      File('${plugin.path}/pubspec.yaml').writeAsStringSync(
+        'name: native_bottomsheet\nversion: 0.3.0\n',
+      );
+      _writePubspec(temp, '''
+name: path_mismatch_app
+version: 1.0.0
+dependencies:
+  native_bottomsheet:
+    path: plugin
+''');
+      final res = PubspecValidator(temp).validate();
+      expect(res.isFullyCompatible, isFalse);
+      expect(res.versionMismatches, hasLength(1));
+      expect(res.versionMismatches.first.pluginName, 'native_bottomsheet');
+      expect(
+        res.versionMismatches.first.declaredConstraint,
+        equals('path: plugin'),
+      );
+    });
+
+    test('the DartNative Go runtime is not an unsupported plugin', () {
+      _writePubspec(temp, '''
+name: runtime_app
+version: 1.0.0
+dependencies:
+  dartnative_go:
+    path: ..
+''');
+      final res = PubspecValidator(temp).validate();
+      expect(res.unsupportedNativePlugins, isEmpty);
+      expect(res.isFullyCompatible, isTrue);
+    });
+
     test('missing pubspec degrades gracefully', () {
       final res = PubspecValidator(temp).validate();
       expect(res.hasPubspec, isFalse);
@@ -98,7 +167,8 @@ dependencies:
       server = FakeDevServer(
         appName: 'Harness App',
         files: {
-          'main.dart': "import 'package:dartnative/dartnative.dart';\nWidget main() => const Text('Hello');",
+          'main.dart':
+              "import 'package:dartnative/dartnative.dart';\nWidget main() => const Text('Hello');",
           'helper.dart': "String greeting() => 'Hello';",
         },
       );
@@ -172,37 +242,41 @@ dependencies:
       expect(second, equals([10, 20, 30]));
     });
 
-    test('fetchAstBytesAwaitReady fails fast when nothing is pending',
-        () async {
-      // No bundle, not pending (--no-rebuild-ast): single attempt, no wait.
-      final sw = Stopwatch()..start();
-      final bytes = await loader.fetchAstBytesAwaitReady(
-        server.baseUrl,
-        pending: false,
-      );
-      expect(bytes, isNull);
-      expect(sw.elapsedMilliseconds, lessThan(5000));
-    });
+    test(
+      'fetchAstBytesAwaitReady fails fast when nothing is pending',
+      () async {
+        // No bundle, not pending (--no-rebuild-ast): single attempt, no wait.
+        final sw = Stopwatch()..start();
+        final bytes = await loader.fetchAstBytesAwaitReady(
+          server.baseUrl,
+          pending: false,
+        );
+        expect(bytes, isNull);
+        expect(sw.elapsedMilliseconds, lessThan(5000));
+      },
+    );
 
-    test('fetchAstBytesAwaitReady waits for a bundle that appears mid-build',
-        () async {
-      await server.stop();
-      server = FakeDevServer(appName: 'AST Pending App', astPending: true);
-      await server.start();
-      loader.clearAstCache();
+    test(
+      'fetchAstBytesAwaitReady waits for a bundle that appears mid-build',
+      () async {
+        await server.stop();
+        server = FakeDevServer(appName: 'AST Pending App', astPending: true);
+        await server.start();
+        loader.clearAstCache();
 
-      // Bundle appears 300ms in, like a background initial build finishing.
-      Future.delayed(const Duration(milliseconds: 300), () {
-        server.astBytes = [7, 8, 9];
-      });
-      final bytes = await loader.fetchAstBytesAwaitReady(
-        server.baseUrl,
-        pending: true,
-        maxAttempts: 20,
-        delay: const Duration(milliseconds: 100),
-      );
-      expect(bytes, equals([7, 8, 9]));
-    });
+        // Bundle appears 300ms in, like a background initial build finishing.
+        Future.delayed(const Duration(milliseconds: 300), () {
+          server.astBytes = [7, 8, 9];
+        });
+        final bytes = await loader.fetchAstBytesAwaitReady(
+          server.baseUrl,
+          pending: true,
+          maxAttempts: 20,
+          delay: const Duration(milliseconds: 100),
+        );
+        expect(bytes, equals([7, 8, 9]));
+      },
+    );
 
     test('fetchAstBytesAwaitReady gives up after maxAttempts', () async {
       final bytes = await loader.fetchAstBytesAwaitReady(
@@ -214,8 +288,7 @@ dependencies:
       expect(bytes, isNull);
     });
 
-    test('patch applies when base matches, advancing client lineage',
-        () async {
+    test('patch applies when base matches, advancing client lineage', () async {
       await server.stop();
       server = FakeDevServer(
         appName: 'AST Lineage App',

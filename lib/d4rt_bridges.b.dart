@@ -1,4 +1,4 @@
-// Generated: 2026-10-17T21:08:31.501816 by tom_d4rt_generator 1.26.2
+// Generated: 2026-11-01T03:40:48.473369 by tom_d4rt_generator 1.26.2
 /// D4rt Bridges for dartnative_go
 library;
 

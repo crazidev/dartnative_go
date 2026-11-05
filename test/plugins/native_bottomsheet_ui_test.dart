@@ -90,8 +90,7 @@ void main() {
     });
 
     test('source builder coerces callback result to Widget', () {
-      final path =
-          'lib/src/interpreter/native_bottomsheet_bridges.b.dart';
+      final path = 'lib/src/interpreter/native_bottomsheet_bridges.b.dart';
       expect(
         File(path).existsSync(),
         isTrue,
@@ -107,8 +106,7 @@ void main() {
     });
 
     test('AST builder coerces callback result to Widget', () {
-      final path =
-          'lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart';
+      final path = 'lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart';
       expect(
         File(path).existsSync(),
         isTrue,
@@ -173,7 +171,8 @@ void main() {
       expect(visitor, isNotNull);
 
       final builderFn = await harness.callFunction('getBuilder');
-      final adapter = src_bridges.NativeBottomsheetBridge.globalFunctions()['showBottomSheet'];
+      final adapter = src_bridges
+          .NativeBottomsheetBridge.globalFunctions()['showBottomSheet'];
       expect(adapter, isNotNull);
 
       // Drives the real adapter closure up to (and into) the native call.
@@ -219,7 +218,7 @@ void main() {
     skip: _isDeviceRun
         ? false
         : 'needs a device runtime: dn test -d <device-id> '
-            '--dart-define=DN_DEVICE_TEST=true test/plugins/native_bottomsheet_ui_test.dart',
+              '--dart-define=DN_DEVICE_TEST=true test/plugins/native_bottomsheet_ui_test.dart',
   );
 
   group('NativeBottomSheetScope and NativeBottomSheetManager', () {
@@ -227,38 +226,46 @@ void main() {
       final srcPath = 'lib/src/interpreter/native_bottomsheet_bridges.b.dart';
       expect(
         File(srcPath).readAsStringSync(),
-        contains(r'$bottomsheet_mgr.NativeBottomSheetScope(controller: p1, child:'),
+        contains(
+          r'$bottomsheet_mgr.NativeBottomSheetScope(controller: p1, child:',
+        ),
       );
-      final astPath = 'lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart';
+      final astPath =
+          'lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart';
       expect(
         File(astPath).readAsStringSync(),
-        contains(r'$bottomsheet_mgr.NativeBottomSheetScope(controller: p1, child:'),
+        contains(
+          r'$bottomsheet_mgr.NativeBottomSheetScope(controller: p1, child:',
+        ),
       );
     });
 
-    test('NativeBottomSheetScope registers and unregisters with NativeBottomSheetManager', () {
-      final initialCount = NativeBottomSheetManager.activeSheetCount;
-      final controller = DNSheetController.create(
-        sheetId: 9999,
-        detents: const [DNSheetDetent.large],
-        initialDetent: DNSheetDetent.large,
-      );
+    test(
+      'NativeBottomSheetScope registers and unregisters with NativeBottomSheetManager',
+      () {
+        final initialCount = NativeBottomSheetManager.activeSheetCount;
+        final controller = DNSheetController.create(
+          sheetId: 9999,
+          detents: const [DNSheetDetent.large],
+          initialDetent: DNSheetDetent.large,
+        );
 
-      final scope = NativeBottomSheetScope(
-        controller: controller,
-        child: const Text('test child'),
-      );
+        final scope = NativeBottomSheetScope(
+          controller: controller,
+          child: const Text('test child'),
+        );
 
-      final state = scope.createState();
-      state.initState();
+        final state = scope.createState();
+        state.initState();
 
-      expect(NativeBottomSheetManager.activeSheetCount, initialCount + 1);
-      expect(NativeBottomSheetManager.activeSheets.contains(state), isTrue);
+        expect(NativeBottomSheetManager.activeSheetCount, initialCount + 1);
+        expect(NativeBottomSheetManager.activeSheets.contains(state), isTrue);
 
-      state.dispose();
-      expect(NativeBottomSheetManager.activeSheetCount, initialCount);
-      expect(NativeBottomSheetManager.activeSheets.contains(state), isFalse);
-    });
+        state.dispose();
+        expect(NativeBottomSheetManager.activeSheetCount, initialCount);
+        expect(NativeBottomSheetManager.activeSheets.contains(state), isFalse);
+      },
+    );
 
     test('rebindAndRebuild rebinds child and proxies', () async {
       final harness = DnHarness(onLog: (_) {});
@@ -294,7 +301,10 @@ void main() {
         expect(newVisitor, isNotNull);
 
         // Notify hot reload via NativeBottomSheetManager
-        expect(() => NativeBottomSheetManager.notifyHotReload(newVisitor), returnsNormally);
+        expect(
+          () => NativeBottomSheetManager.notifyHotReload(newVisitor),
+          returnsNormally,
+        );
 
         state.dispose();
       } finally {
@@ -302,32 +312,68 @@ void main() {
       }
     });
 
-    test('SheetNativeBindings forwards text change and textFieldGetSelection', () {
+    test('SheetNativeBindings forwards the gesture contract', () {
       final fake = _FakeNativeBindings();
       final sheetBindings = SheetNativeBindings(fake, () {});
 
-      // Verify textFieldGetSelection forwarding
-      final sel = sheetBindings.textFieldGetSelection(42);
-      expect(sel.start, equals(0));
-      expect(sel.end, equals(0));
-      expect(sel.composingStart, equals(-1));
-      expect(sel.composingEnd, equals(-1));
+      // Regression: these members used to be reached through
+      // `noSuchMethod`, which called `Object.noSuchMethod` on the inner
+      // bindings instead of dispatching the real implementation. Mounting a
+      // `GestureDetector` inside a sheet then threw:
+      //   NoSuchMethodError: Class 'SheetNativeBindings' has no instance
+      //   getter 'supportsTapEvents'.
+      expect(sheetBindings.supportsTapEvents, isTrue);
+      expect(sheetBindings.supportsAlignPlacement, isTrue);
+      expect(
+        sheetBindings.scrollQuietFor,
+        const Duration(milliseconds: 12),
+      );
 
-      // Verify textFieldSetSelection forwarding
-      sheetBindings.textFieldSetSelection(42, 2, 5);
-      expect(fake.lastSetSelection, equals((viewId: 42, start: 2, end: 5)));
-
-      // Verify text change callback registration and invocation
-      String? changedVal;
-      final cbId = sheetBindings.registerTextChangeCallback((val) {
-        changedVal = val;
-      });
-      expect(fake.callbacks.containsKey(cbId), isTrue);
-
-      final textCb = fake.callbacks[cbId] as void Function(String);
-      textCb('hello world');
-      expect(changedVal, equals('hello world'));
+      var taps = 0;
+      final id = sheetBindings.registerTapEventCallback(
+        (kind, x, y, width, height) => taps++,
+      );
+      expect(fake.callbacks[id], isNotNull);
+      (fake.callbacks[id]
+          as void Function(int, double, double, double, double))(
+        0,
+        1,
+        2,
+        3,
+        4,
+      );
+      expect(taps, equals(1));
     });
+
+    test(
+      'SheetNativeBindings forwards text change and textFieldGetSelection',
+      () {
+        final fake = _FakeNativeBindings();
+        final sheetBindings = SheetNativeBindings(fake, () {});
+
+        // Verify textFieldGetSelection forwarding
+        final sel = sheetBindings.textFieldGetSelection(42);
+        expect(sel.start, equals(0));
+        expect(sel.end, equals(0));
+        expect(sel.composingStart, equals(-1));
+        expect(sel.composingEnd, equals(-1));
+
+        // Verify textFieldSetSelection forwarding
+        sheetBindings.textFieldSetSelection(42, 2, 5);
+        expect(fake.lastSetSelection, equals((viewId: 42, start: 2, end: 5)));
+
+        // Verify text change callback registration and invocation
+        String? changedVal;
+        final cbId = sheetBindings.registerTextChangeCallback((val) {
+          changedVal = val;
+        });
+        expect(fake.callbacks.containsKey(cbId), isTrue);
+
+        final textCb = fake.callbacks[cbId] as void Function(String);
+        textCb('hello world');
+        expect(changedVal, equals('hello world'));
+      },
+    );
   });
 }
 
@@ -337,7 +383,25 @@ class _FakeNativeBindings implements NativeBindings {
   ({int viewId, int start, int end})? lastSetSelection;
 
   @override
-  void applyMutations(List<ViewMutation> mutations) {}
+  void applyMutations(List<ViewMutation> mutations, {bool layout = true}) {}
+
+  @override
+  bool get supportsTapEvents => true;
+
+  @override
+  bool get supportsAlignPlacement => true;
+
+  @override
+  Duration get scrollQuietFor => const Duration(milliseconds: 12);
+
+  @override
+  int registerTapEventCallback(
+    void Function(int, double, double, double, double) callback,
+  ) {
+    final id = _nextCb++;
+    callbacks[id] = callback;
+    return id;
+  }
 
   @override
   int registerTextChangeCallback(void Function(String) callback) {
@@ -361,7 +425,8 @@ class _FakeNativeBindings implements NativeBindings {
   }
 
   @override
-  ({int composingEnd, int composingStart, int end, int start}) textFieldGetSelection(int viewId) {
+  ({int composingEnd, int composingStart, int end, int start})
+  textFieldGetSelection(int viewId) {
     return (composingEnd: -1, composingStart: -1, end: 0, start: 0);
   }
 
@@ -373,4 +438,3 @@ class _FakeNativeBindings implements NativeBindings {
   @override
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
-
