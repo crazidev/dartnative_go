@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opencode.ai/v2/config.json",
+  "mcp": {
+    "dartnative": {
+      "type": "local",
+      "command": [
+        "/Users/mac/Dev/projects/dartnative_go/.dart_tool/dartnative_mcp"
+      ],
+      "enabled": true
+    }
+  }
+}
