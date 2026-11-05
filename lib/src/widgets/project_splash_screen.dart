@@ -59,7 +59,7 @@ class ProjectSplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       key: const ValueKey('project_splash_screen'),
-      backgroundColor: backgroundColor,
+      // backgroundColor: backgroundColor,
       body: Stack(
         children: [
           Center(
@@ -67,13 +67,11 @@ class ProjectSplashScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _buildLogo(),
-                const SizedBox(height: 10),
                 Text(
                   appName,
                   style: const TextStyle(
-                    fontSize: 24,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
                   ),
                 ),
               ],
@@ -96,7 +94,6 @@ class ProjectSplashScreen extends StatelessWidget {
                           'Downloading packages ($downloadedCount / $downloadTotal)',
                           style: const TextStyle(
                             fontSize: 12,
-                            color: Colors.white70,
                           ),
                         ),
                       ),
@@ -104,7 +101,7 @@ class ProjectSplashScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: downloadProgress,
-                        backgroundColor: Colors.white24,
+                        // backgroundColor: Colors.white24,
                         valueColor: const AlwaysStoppedAnimation<Color>(
                           Colors.blue,
                         ),
@@ -114,7 +111,6 @@ class ProjectSplashScreen extends StatelessWidget {
                     const SizedBox(height: 16),
                   ] else ...[
                     const CircularProgressIndicator(
-                      color: Colors.white,
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -123,7 +119,7 @@ class ProjectSplashScreen extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 14,
-                      color: Colors.white70,
+                      // color: Colors.white70,
                     ),
                   ),
                 ],
