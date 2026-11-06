@@ -100,11 +100,26 @@ class AstProfileSnapshot {
   final DateTime capturedAt;
   final bool isHotReload;
   final int moduleCount;
+
+  /// Total AST JSON bytes across the bundle.
+  ///
+  /// Zero when [hasSizeMetadata] is false and the snapshot was built without
+  /// allowing the `jsonEncode` fallback walk.
   final int totalAstBytes;
+
+  /// Total bundled Dart source bytes (zero when sizes were unavailable).
   final int totalSourceBytes;
   final bool hasSources;
   final int totalClasses;
   final double? mainMs;
+
+  /// Whether per-module / per-class byte sizes are real.
+  ///
+  /// True when the bundle carries build-time size metadata, or when the
+  /// snapshot was built with `allowSerialization: true` and the fallback walk
+  /// ran. False means the `AST=` figures below are `0` and must not be
+  /// reported as sizes.
+  final bool hasSizeMetadata;
 
   /// Packages sorted by AST bytes, descending.
   final List<AstPackageProfile> packages;
@@ -130,6 +145,7 @@ class AstProfileSnapshot {
     required this.hasSources,
     required this.totalClasses,
     required this.mainMs,
+    required this.hasSizeMetadata,
     required this.packages,
     required this.modules,
     required this.slowestModules,
@@ -150,8 +166,15 @@ String astPackageOf(String uri) {
 }
 
 /// Builds an [AstProfileSnapshot] from a decoded bundle and the timing maps
-/// the runner retains per evaluation. Sizing walks the AST via `jsonEncode`
-/// — call only on demand (viewer open, verbose log), not per evaluation.
+/// the runner retains per evaluation.
+///
+/// When the bundle carries build-time size metadata
+/// ([ast.AstBundle.moduleAstBytes] / [ast.AstBundle.classAstBytes] /
+/// [ast.AstBundle.sourceBytes]) sizing is free and this is safe to call on the
+/// launch path. Bundles produced before that metadata existed fall back to
+/// serializing AST nodes via `jsonEncode` — pass `allowSerialization: false`
+/// (e.g. from the launch-time verbose log) to skip that walk entirely; sizes
+/// then report as unavailable rather than paying seconds of JSON encoding.
 AstProfileSnapshot buildAstProfile({
   required ast.AstBundle bundle,
   required Map<String, int> moduleLoadMicros,
@@ -160,30 +183,55 @@ AstProfileSnapshot buildAstProfile({
   required Map<String, int> bridgedSymbols,
   required int? mainMicros,
   required bool isHotReload,
+  bool allowSerialization = true,
 }) {
   final modules = <AstModuleProfile>[];
   final classProfiles = <AstClassProfile>[];
+  final precomputedModuleSizes = bundle.moduleAstBytes;
+  final precomputedClassSizes = bundle.classAstBytes;
+  final precomputedSourceSizes = bundle.sourceBytes;
   var totalAstBytes = 0;
   var totalSourceBytes = 0;
   var totalClasses = 0;
+  var sizesComplete = true;
+
+  /// Size for [uri], from metadata when present, else the JSON walk — unless
+  /// the caller forbade serialization, in which case sizes stay unknown.
+  int? sizeOf(String uri, int Function() walk) {
+    final known = precomputedModuleSizes?[uri];
+    if (known != null) return known;
+    if (!allowSerialization) return null;
+    return walk();
+  }
 
   for (final entry in bundle.modules.entries) {
     final uri = entry.key;
     final unit = entry.value;
-    final astBytes = utf8.encode(jsonEncode(unit.toJson())).length;
-    totalAstBytes += astBytes;
+    final astBytes = sizeOf(uri, () => utf8.encode(jsonEncode(unit.toJson())).length);
+    if (astBytes == null) sizesComplete = false;
+    totalAstBytes += astBytes ?? 0;
     final source = bundle.sources?[uri];
-    final sourceBytes = source == null ? null : utf8.encode(source).length;
+    final sourceBytes = source == null
+        ? null
+        : (precomputedSourceSizes?[uri] ??
+              (allowSerialization ? utf8.encode(source).length : null));
+    if (sourceBytes == null && source != null) sizesComplete = false;
     if (sourceBytes != null) totalSourceBytes += sourceBytes;
     final classes = unit.declarations.whereType<SClassDeclaration>().toList();
     totalClasses += classes.length;
+    final knownClassSizes = precomputedClassSizes?[uri];
     for (final declaration in classes) {
       final className = declaration.name?.name ?? '(unnamed)';
+      final classBytes = knownClassSizes?[className] ??
+          (allowSerialization
+              ? utf8.encode(jsonEncode(declaration.toJson())).length
+              : null);
+      if (classBytes == null) sizesComplete = false;
       classProfiles.add(
         AstClassProfile(
           uri: uri,
           name: className,
-          astBytes: utf8.encode(jsonEncode(declaration.toJson())).length,
+          astBytes: classBytes ?? 0,
         ),
       );
     }
@@ -192,7 +240,7 @@ AstProfileSnapshot buildAstProfile({
       AstModuleProfile(
         uri: uri,
         package: astPackageOf(uri),
-        astBytes: astBytes,
+        astBytes: astBytes ?? 0,
         sourceBytes: sourceBytes,
         classCount: classes.length,
         loadMicros: loadMicros,
@@ -253,6 +301,7 @@ AstProfileSnapshot buildAstProfile({
     hasSources: bundle.sources != null,
     totalClasses: totalClasses,
     mainMs: mainMicros == null ? null : mainMicros / 1000,
+    hasSizeMetadata: sizesComplete,
     packages: packages,
     modules: modules,
     slowestModules: slowest,

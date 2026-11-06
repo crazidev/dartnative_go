@@ -62,6 +62,20 @@ abstract final class AstBundleFormat {
   /// Key for the optional source code map.
   static const String keySources = 'sources';
 
+  /// Key for the optional per-module AST byte-size map (module URI → bytes).
+  ///
+  /// Written once by the bundler so diagnostics can report module sizes
+  /// without re-serializing the decoded AST on the device.
+  static const String keyModuleSizes = 'moduleSizes';
+
+  /// Key for the optional per-class AST byte-size map
+  /// (module URI → class name → bytes).
+  static const String keyClassSizes = 'classSizes';
+
+  /// Key for the optional per-module Dart source byte-size map
+  /// (module URI → bytes).
+  static const String keySourceSizes = 'sourceSizes';
+
   /// File extension suffix for Dart source entries within the archive.
   static const String sourceDartSuffix = '.src.dart';
 
@@ -111,11 +125,30 @@ class AstBundleManifest {
   /// compiled AST modules. This is opt-in and `null` by default.
   final Map<String, String>? sourceFiles;
 
+  /// Optional per-module AST JSON size in bytes, keyed by module URI.
+  ///
+  /// Emitted by the bundler at build time so hosts can report module sizes
+  /// (verbose profiling, DevTools AST panel) without serializing every decoded
+  /// module back to JSON. `null` for bundles produced before this field
+  /// existed; readers must fall back to on-demand serialization.
+  final Map<String, int>? moduleSizes;
+
+  /// Optional per-class AST JSON size in bytes, keyed by module URI and then
+  /// class name. See [moduleSizes] for why this is recorded.
+  final Map<String, Map<String, int>>? classSizes;
+
+  /// Optional per-module Dart source size in bytes, keyed by module URI.
+  /// See [moduleSizes].
+  final Map<String, int>? sourceSizes;
+
   const AstBundleManifest({
     required this.version,
     required this.entryPoint,
     required this.files,
     this.sourceFiles,
+    this.moduleSizes,
+    this.classSizes,
+    this.sourceSizes,
   });
 
   /// Serializes this manifest to a JSON-compatible map.
@@ -124,6 +157,10 @@ class AstBundleManifest {
     AstBundleFormat.keyEntryPoint: entryPoint,
     AstBundleFormat.keyFiles: files,
     if (sourceFiles != null) AstBundleFormat.keySources: sourceFiles,
+    if (moduleSizes != null)
+      AstBundleFormat.keyModuleSizes: moduleSizes,
+    if (classSizes != null) AstBundleFormat.keyClassSizes: classSizes,
+    if (sourceSizes != null) AstBundleFormat.keySourceSizes: sourceSizes,
   };
 
   /// Deserializes a manifest from a JSON map.
@@ -167,7 +204,41 @@ class AstBundleManifest {
       entryPoint: entryPoint,
       files: filesJson.map((k, v) => MapEntry(k, v.toString())),
       sourceFiles: sourceFiles,
+      moduleSizes: _intMap(json[AstBundleFormat.keyModuleSizes]),
+      classSizes: _nestedIntMap(json[AstBundleFormat.keyClassSizes]),
+      sourceSizes: _intMap(json[AstBundleFormat.keySourceSizes]),
     );
+  }
+
+  /// Parses an optional `Map<String, int>` from bundle JSON.
+  ///
+  /// Malformed entries are skipped rather than failing the whole bundle: sizes
+  /// are diagnostics-only metadata and must never break loading.
+  static Map<String, int>? _intMap(Object? value) {
+    if (value is! Map) return null;
+    final out = <String, int>{};
+    for (final entry in value.entries) {
+      final key = entry.key;
+      final raw = entry.value;
+      if (key is String && raw is num) {
+        out[key] = raw.toInt();
+      }
+    }
+    return out.isEmpty ? null : out;
+  }
+
+  /// Parses an optional `Map<String, Map<String, int>>` from bundle JSON.
+  static Map<String, Map<String, int>>? _nestedIntMap(Object? value) {
+    if (value is! Map) return null;
+    final out = <String, Map<String, int>>{};
+    for (final entry in value.entries) {
+      final key = entry.key;
+      final nested = _intMap(entry.value);
+      if (key is String && nested != null) {
+        out[key] = nested;
+      }
+    }
+    return out.isEmpty ? null : out;
   }
 
   @override
@@ -225,10 +296,28 @@ class AstBundle {
   /// and disabled by default (`null`).
   final Map<String, String>? sources;
 
+  /// Optional per-module AST JSON size in bytes, keyed by URI.
+  ///
+  /// Recorded by the bundler at build time (see [AstBundleManifest.moduleSizes])
+  /// so diagnostics can report sizes without re-serializing decoded modules.
+  /// `null` for bundles that predate the field.
+  final Map<String, int>? moduleAstBytes;
+
+  /// Optional per-class AST JSON size in bytes, keyed by module URI and then
+  /// class name. See [moduleAstBytes].
+  final Map<String, Map<String, int>>? classAstBytes;
+
+  /// Optional per-module Dart source size in bytes, keyed by URI.
+  /// See [moduleAstBytes].
+  final Map<String, int>? sourceBytes;
+
   /// Creates an [AstBundle] with the given entry point and modules.
   ///
   /// Optionally includes [sources] — a map from module URI to Dart source
   /// code. When `null` (the default), no source is bundled.
+  ///
+  /// [moduleAstBytes] / [classAstBytes] / [sourceBytes] are diagnostics-only
+  /// size metadata; when `null` they are omitted from serialization.
   ///
   /// Throws [ArgumentD4rtException] if [entryPointUri] is not present
   /// in [modules].
@@ -236,6 +325,9 @@ class AstBundle {
     required this.entryPointUri,
     required this.modules,
     this.sources,
+    this.moduleAstBytes,
+    this.classAstBytes,
+    this.sourceBytes,
   }) {
     if (!modules.containsKey(entryPointUri)) {
       throw ArgumentD4rtException(
@@ -265,10 +357,36 @@ class AstBundle {
         mergedSources.addAll(patch.sources!);
       }
     }
+    Map<String, int>? mergedModuleSizes;
+    if (moduleAstBytes != null || patch.moduleAstBytes != null) {
+      mergedModuleSizes = Map<String, int>.of(moduleAstBytes ?? const {});
+      if (patch.moduleAstBytes != null) {
+        mergedModuleSizes.addAll(patch.moduleAstBytes!);
+      }
+    }
+    Map<String, Map<String, int>>? mergedClassSizes;
+    if (classAstBytes != null || patch.classAstBytes != null) {
+      mergedClassSizes = Map<String, Map<String, int>>.of(
+        classAstBytes ?? const {},
+      );
+      if (patch.classAstBytes != null) {
+        mergedClassSizes.addAll(patch.classAstBytes!);
+      }
+    }
+    Map<String, int>? mergedSourceSizes;
+    if (sourceBytes != null || patch.sourceBytes != null) {
+      mergedSourceSizes = Map<String, int>.of(sourceBytes ?? const {});
+      if (patch.sourceBytes != null) {
+        mergedSourceSizes.addAll(patch.sourceBytes!);
+      }
+    }
     return AstBundle(
       entryPointUri: entryPointUri,
       modules: merged,
       sources: mergedSources,
+      moduleAstBytes: mergedModuleSizes,
+      classAstBytes: mergedClassSizes,
+      sourceBytes: mergedSourceSizes,
     );
   }
 
@@ -288,6 +406,10 @@ class AstBundle {
       (uri, cu) => MapEntry(uri, cu.toJson()),
     ),
     if (sources != null) AstBundleFormat.keySources: sources,
+    if (moduleAstBytes != null)
+      AstBundleFormat.keyModuleSizes: moduleAstBytes,
+    if (classAstBytes != null) AstBundleFormat.keyClassSizes: classAstBytes,
+    if (sourceBytes != null) AstBundleFormat.keySourceSizes: sourceBytes,
   };
 
   /// Deserializes a bundle from a JSON map.
@@ -334,6 +456,15 @@ class AstBundle {
       entryPointUri: entryPointUri,
       modules: modules,
       sources: sources,
+      moduleAstBytes: AstBundleManifest._intMap(
+        json[AstBundleFormat.keyModuleSizes],
+      ),
+      classAstBytes: AstBundleManifest._nestedIntMap(
+        json[AstBundleFormat.keyClassSizes],
+      ),
+      sourceBytes: AstBundleManifest._intMap(
+        json[AstBundleFormat.keySourceSizes],
+      ),
     );
   }
 
@@ -401,10 +532,21 @@ class AstBundle {
   /// The method also **populates** [precompressedModules] with the newly
   /// compressed bytes for any module it had to encode, so the caller can
   /// cache and reuse them on the next rebuild.
+  ///
+  /// [moduleAstBytes] / [classAstBytes] are optional diagnostics caches: pass
+  /// the maps the caller keeps across rebuilds and the method reuses the
+  /// recorded sizes for unchanged modules, records sizes for newly encoded
+  /// ones, and writes the result into `manifest.json`. This lets devices show
+  /// AST sizes without re-serializing every decoded module.
   List<int> toZip({
     Map<String, List<int>>? precompressedModules,
+    Map<String, int>? moduleAstBytes,
+    Map<String, Map<String, int>>? classAstBytes,
   }) {
     final archive = Archive();
+    final moduleSizes = <String, int>{};
+    final classSizes = <String, Map<String, int>>{};
+    final sourceSizes = <String, int>{};
 
     // Assign sequential file names to each module
     final fileToUri = <String, String>{};
@@ -427,21 +569,13 @@ class AstBundle {
         sourceFileToUri[srcFileName] = uri;
         srcIndex++;
       }
+      // Record source sizes up front: the manifest is serialized before the
+      // source entries are written, and diagnostics should never re-encode
+      // bundled source text on the device.
+      for (final entry in sources!.entries) {
+        sourceSizes[entry.key] = utf8.encode(entry.value).length;
+      }
     }
-
-    // Write manifest (uncompressed, human-readable)
-    final manifest = AstBundleManifest(
-      version: AstBundleFormat.version,
-      entryPoint: entryPointUri,
-      files: fileToUri,
-      sourceFiles: sourceFileToUri,
-    );
-    final manifestJson = const JsonEncoder.withIndent(
-      '  ',
-    ).convert(manifest.toJson());
-    archive.addFile(
-      ArchiveFile.string(AstBundleFormat.manifestFileName, manifestJson),
-    );
 
     // Write each module as gzip-compressed JSON.
     // Hot-reload fast-path: if the caller supplied pre-compressed bytes for
@@ -456,16 +590,35 @@ class AstBundle {
       if (cached != null) {
         // Unchanged module — reuse cached compressed bytes.
         compressed = cached;
+        final cachedSize = moduleAstBytes?[uri];
+        if (cachedSize != null) moduleSizes[uri] = cachedSize;
+        final cachedClasses = classAstBytes?[uri];
+        if (cachedClasses != null) classSizes[uri] = cachedClasses;
       } else {
         // New or changed module — encode + compress, then populate cache.
         final moduleJson = jsonEncode(entry.value.toJson());
+        final moduleBytes = utf8.encode(moduleJson);
         // See [toBytes]: `encode` + [_requireBytes] compiles against archive
         // 3.x (DartNative AOT platform) and 4.x (host) alike.
         compressed = _requireBytes(
-          _gzipEncoder.encode(utf8.encode(moduleJson)),
+          _gzipEncoder.encode(moduleBytes),
           'gzip-encode module "$uri"',
         );
         precompressedModules?[uri] = compressed;
+        moduleSizes[uri] = moduleBytes.length;
+        moduleAstBytes?[uri] = moduleBytes.length;
+        if (classAstBytes != null) {
+          final sizes = <String, int>{};
+          for (final declaration in entry.value.declarations) {
+            if (declaration is! SClassDeclaration) continue;
+            final className = declaration.name?.name ?? '(unnamed)';
+            sizes[className] = utf8
+                .encode(jsonEncode(declaration.toJson()))
+                .length;
+          }
+          classAstBytes[uri] = sizes;
+          classSizes[uri] = sizes;
+        }
       }
 
       // Use noCompress: content is already gzip-compressed.
@@ -473,6 +626,24 @@ class AstBundle {
         ArchiveFile.noCompress(fileName, compressed.length, compressed),
       );
     }
+
+    // Write manifest (uncompressed, human-readable) after the modules so the
+    // per-module size metadata recorded above is available.
+    final manifest = AstBundleManifest(
+      version: AstBundleFormat.version,
+      entryPoint: entryPointUri,
+      files: fileToUri,
+      sourceFiles: sourceFileToUri,
+      moduleSizes: moduleSizes.isEmpty ? null : moduleSizes,
+      classSizes: classSizes.isEmpty ? null : classSizes,
+      sourceSizes: sourceSizes.isEmpty ? null : sourceSizes,
+    );
+    final manifestJson = const JsonEncoder.withIndent(
+      '  ',
+    ).convert(manifest.toJson());
+    archive.addFile(
+      ArchiveFile.string(AstBundleFormat.manifestFileName, manifestJson),
+    );
 
     // Write source files (plain text, uncompressed for readability)
     if (sources != null && sourceFileToUri != null) {
@@ -483,7 +654,19 @@ class AstBundle {
       for (final entry in sources!.entries) {
         final srcFileName = uriToSrcFileName[entry.key];
         if (srcFileName != null) {
+          sourceSizes[entry.key] = utf8.encode(entry.value).length;
           archive.addFile(ArchiveFile.string(srcFileName, entry.value));
+        }
+      }
+    }
+
+    // Record source sizes up front: the manifest is serialized before the
+    // source entries are written, and diagnostics should never re-encode
+    // bundled source text on the device.
+    if (sources != null && sourceFileToUri != null) {
+      for (final entry in sources!.entries) {
+        if (sourceFileToUri.containsKey(entry.key)) {
+          sourceSizes[entry.key] = utf8.encode(entry.value).length;
         }
       }
     }
@@ -563,6 +746,9 @@ class AstBundle {
       entryPointUri: manifest.entryPoint,
       modules: modules,
       sources: sources,
+      moduleAstBytes: manifest.moduleSizes,
+      classAstBytes: manifest.classSizes,
+      sourceBytes: manifest.sourceSizes,
     );
   }
 
@@ -575,9 +761,22 @@ class AstBundle {
   /// Creates parent directories if they don't exist.
   ///
   /// Pass [precompressedModules] to enable the incremental hot-reload
-  /// fast-path — see [toZip] for details.
-  void saveToFile(String path, {Map<String, List<int>>? precompressedModules}) {
-    writeFileAsBytesSync(path, toZip(precompressedModules: precompressedModules));
+  /// fast-path, and [moduleAstBytes] / [classAstBytes] to carry recorded size
+  /// metadata across rebuilds — see [toZip] for details.
+  void saveToFile(
+    String path, {
+    Map<String, List<int>>? precompressedModules,
+    Map<String, int>? moduleAstBytes,
+    Map<String, Map<String, int>>? classAstBytes,
+  }) {
+    writeFileAsBytesSync(
+      path,
+      toZip(
+        precompressedModules: precompressedModules,
+        moduleAstBytes: moduleAstBytes,
+        classAstBytes: classAstBytes,
+      ),
+    );
   }
 
   /// Loads a bundle from a file.

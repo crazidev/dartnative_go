@@ -389,22 +389,6 @@ class AstInterpreterRunner {
     final execMs = execSw.elapsedMilliseconds;
     _evaluationCount++;
 
-    DartGoLogger.bench(
-      'AstInterpreter',
-      'AST evaluate (${isHotReload ? "reload" : "initial"})',
-      totalSw.elapsedMilliseconds,
-      {
-        'init': initMs,
-        'decode': decodeMs,
-        'exec': execMs,
-        'core_runner': reusedCoreRunner ? 'reused' : 'new',
-        'decode_cache': _lastDecodeWasCacheHit ? 'hit' : 'miss',
-        'decl_cells': _declarationRegistry.cellCount,
-        'var_cells': _declarationRegistry.variableCellCount,
-        'decl_swaps': _declarationRegistry.swaps,
-      },
-    );
-
     String formatBytes(int bytes) =>
         bytes >= 1024 ? '${(bytes / 1024).toStringAsFixed(1)}KiB' : '${bytes}B';
 
@@ -419,17 +403,18 @@ class AstInterpreterRunner {
     _profileDirty = true;
 
     void logExecutionProfile(AstProfileSnapshot profile) {
+      final sized = profile.hasSizeMetadata;
       DartGoLogger.debug(
         '[PROFILE] bundle: modules=${profile.moduleCount}, '
-        'AST=${formatBytes(profile.totalAstBytes)}, '
-        'source=${profile.hasSources ? formatBytes(profile.totalSourceBytes) : 'not bundled'}, '
+        'AST=${sized ? formatBytes(profile.totalAstBytes) : 'sizes unavailable (rebuild guest.ast)'}, '
+        'source=${!profile.hasSources ? 'not bundled' : sized ? formatBytes(profile.totalSourceBytes) : 'sizes unavailable'}, '
         'classes=${profile.totalClasses}, mainCallSync=${profile.mainMs == null ? 'n/a' : '${profile.mainMs!.toStringAsFixed(1)}ms'}',
         tag: 'AstInterpreter',
       );
 
       for (final module in profile.modules.take(10)) {
         DartGoLogger.debug(
-          '[PROFILE] module ${module.uri}: AST=${formatBytes(module.astBytes)}, '
+          '[PROFILE] module ${module.uri}: AST=${sized ? formatBytes(module.astBytes) : '?'}, '
           'source=${module.sourceBytes == null ? 'n/a' : formatBytes(module.sourceBytes!)} '
           'classes=${module.classCount}, '
           'loadTotal=${module.loadMicros == null ? 'not loaded' : '${(module.loadMicros! / 1000).toStringAsFixed(1)}ms inclusive'}, '
@@ -445,14 +430,14 @@ class AstInterpreterRunner {
           '[PROFILE] slow module ${slow.uri}: '
           'loadTotal=${(elapsedMicros / 1000).toStringAsFixed(1)}ms inclusive, '
           'avg=${(elapsedMicros / loads / 1000).toStringAsFixed(1)}ms across $loads loads, '
-          'AST=${formatBytes(slow.astBytes)}',
+          'AST=${sized ? formatBytes(slow.astBytes) : '?'}',
           tag: 'AstInterpreter',
         );
       }
 
       for (final clazz in profile.largestClasses.take(10)) {
         DartGoLogger.debug(
-          '[PROFILE] class ${clazz.uri}::${clazz.name}: AST=${formatBytes(clazz.astBytes)}',
+          '[PROFILE] class ${clazz.uri}::${clazz.name}: AST=${sized ? formatBytes(clazz.astBytes) : '?'}',
           tag: 'AstInterpreter',
         );
       }
@@ -466,7 +451,15 @@ class AstInterpreterRunner {
       }
     }
 
+    // Profile the launch itself. This is timed (and reported in the bench line)
+    // because it used to be invisible: it runs after `exec` and could cost more
+    // than decode + execute together when it serialized the bundle.
+    var profileMs = 0;
     if (profileExecution) {
+      final profileSw = Stopwatch()..start();
+      // Launch-path logging must never serialize the bundle: sizes come from
+      // the manifest when present, and are simply reported as unavailable for
+      // older bundles instead of costing seconds of `jsonEncode` on device.
       logExecutionProfile(
         buildAstProfile(
           bundle: bundle,
@@ -476,9 +469,30 @@ class AstInterpreterRunner {
           bridgedSymbols: bridgedSymbols,
           mainMicros: mainMicros,
           isHotReload: isHotReload,
+          allowSerialization: false,
         ),
       );
+      profileMs = profileSw.elapsedMilliseconds;
     }
+
+    DartGoLogger.bench(
+      'AstInterpreter',
+      'AST evaluate (${isHotReload ? "reload" : "initial"})',
+      totalSw.elapsedMilliseconds,
+      {
+        'init': initMs,
+        'decode': decodeMs,
+        'exec': execMs,
+        'profile': profileMs,
+        'core_runner': reusedCoreRunner ? 'reused' : 'new',
+        'decode_cache': _lastDecodeWasCacheHit ? 'hit' : 'miss',
+        // Counts, not durations: string values keep the logger from
+        // appending an `ms` unit to them.
+        'decl_cells': '${_declarationRegistry.cellCount} cells',
+        'var_cells': '${_declarationRegistry.variableCellCount} cells',
+        'decl_swaps': _declarationRegistry.swaps,
+      },
+    );
 
     if (T == Widget || T == dynamic) {
       final captured = _capturedApp;

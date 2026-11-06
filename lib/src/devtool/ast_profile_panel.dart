@@ -73,7 +73,8 @@ class AstProfilePanel extends StatelessWidget {
             )
           else ...[
             Text(
-              '${snapshot.moduleCount} modules · ${_bytes(snapshot.totalAstBytes)} AST · '
+              '${snapshot.moduleCount} modules · '
+              '${snapshot.hasSizeMetadata ? '${_bytes(snapshot.totalAstBytes)} AST · ' : ''}'
               '${snapshot.totalClasses} classes'
               '${snapshot.mainMs == null ? '' : ' · main ${snapshot.mainMs!.toStringAsFixed(1)}ms'}',
               style: _valueStyle,
@@ -90,7 +91,7 @@ class AstProfilePanel extends StatelessWidget {
                       child: Text(pkg.package, style: _valueStyle),
                     ),
                     Text(
-                      '${pkg.modules} mod · ${_bytes(pkg.astBytes)}',
+                      '${pkg.modules} mod${snapshot.hasSizeMetadata ? ' · ${_bytes(pkg.astBytes)}' : ''}',
                       style: _dimStyle,
                     ),
                   ],
@@ -112,7 +113,7 @@ class AstProfilePanel extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      '${_bytes(module.astBytes)} · ${module.classCount} classes'
+                      '${snapshot.hasSizeMetadata ? '${_bytes(module.astBytes)} · ' : ''}${module.classCount} classes'
                       '${module.loadMicros == null ? '' : ' · ${(module.loadMicros! / 1000).toStringAsFixed(1)}ms'}',
                       style: _dimStyle,
                     ),
@@ -161,7 +162,10 @@ class AstProfilePanel extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Text(_bytes(clazz.astBytes), style: _dimStyle),
+                      Text(
+                        snapshot.hasSizeMetadata ? _bytes(clazz.astBytes) : '?',
+                        style: _dimStyle,
+                      ),
                     ],
                   ),
                 ),

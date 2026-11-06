@@ -209,6 +209,18 @@ _moduleAstCache = {};
 /// when a module is re-parsed so stale bytes are evicted automatically.
 final Map<String, List<int>> _compressedBytesCache = {};
 
+/// Process-lifetime cache of per-module AST JSON sizes (module URI → bytes).
+///
+/// Recorded while a module is serialized anyway (parse / fingerprint), then
+/// written into the bundle manifest so devices can report AST sizes without
+/// re-serializing every decoded module at launch. See
+/// [AstBundle.toZip]'s `moduleAstBytes` parameter.
+final Map<String, int> _moduleAstBytesCache = {};
+
+/// Process-lifetime cache of per-class AST JSON sizes
+/// (module URI → class name → bytes). See [_moduleAstBytesCache].
+final Map<String, Map<String, int>> _classAstBytesCache = {};
+
 /// Process-lifetime source-file cache: absolute file path → (mtime, source).
 ///
 /// Used by [IncrementalAstBundler._resolveFromFileSystem] to skip disk reads
@@ -850,18 +862,32 @@ class IncrementalAstBundler {
 
     final unit = converter.convertCompilationUnit(parseResult.unit);
     final moduleJson = jsonEncode(unit.toJson());
+    final moduleBytes = utf8.encode(moduleJson);
     final fp = (_Fnv1a64()..addString(moduleJson)).hex;
 
     // Pre-compress now so the upcoming toZip() call can stitch these bytes
     // in without re-encoding. Archive 3.x encode() returns nullable; archive
     // 4.x returns non-nullable List<int>. The null-check and fallback below
     // are intentional cross-version compatibility shims (see ignore_for_file).
-    final compressed = _gzipEncoder.encode(utf8.encode(moduleJson));
+    final compressed = _gzipEncoder.encode(moduleBytes);
     if (compressed != null) {
       _compressedBytesCache[uri] = compressed;
     } else {
       _compressedBytesCache.remove(uri);
     }
+
+    // Record AST sizes while the JSON is already in hand: the device profile
+    // then reads them from the manifest instead of re-serializing every
+    // decoded module at launch (a multi-second cost on device).
+    final classBytes = <String, int>{};
+    for (final declaration in unit.declarations) {
+      if (declaration is! SClassDeclaration) continue;
+      final className = declaration.name?.name ?? '(unnamed)';
+      classBytes[className] =
+          utf8.encode(jsonEncode(declaration.toJson())).length;
+    }
+    _moduleAstBytesCache[uri] = moduleBytes.length;
+    _classAstBytesCache[uri] = classBytes;
 
     _moduleAstCache[uri] = (
       sourceHash: hash,
@@ -1182,6 +1208,8 @@ Future<AstBuildResult> buildGuestAstBundle(
     _fileSourceCache.clear();
     _moduleAstCache.clear();
     _compressedBytesCache.clear();
+    _moduleAstBytesCache.clear();
+    _classAstBytesCache.clear();
   }
 
   try {
@@ -1238,6 +1266,8 @@ Future<AstBuildResult> buildGuestAstBundle(
           // _getOrParse always re-reads and re-compresses this file.
           _fileSourceCache.remove(canonicalPath);
           _compressedBytesCache.remove(uri);
+          _moduleAstBytesCache.remove(uri);
+          _classAstBytesCache.remove(uri);
         }
       }
 
@@ -1397,9 +1427,21 @@ Future<AstBuildResult> buildGuestAstBundle(
         final patchEntry = patchModules.containsKey(bundle.entryPointUri)
             ? bundle.entryPointUri
             : patchModules.keys.first;
+        // Carry the recorded sizes for the patched modules so the device's
+        // `applyPatch` refreshes its size metadata along with the AST.
+        final patchModuleSizes = <String, int>{};
+        final patchClassSizes = <String, Map<String, int>>{};
+        for (final uri in patchModules.keys) {
+          final moduleBytes = _moduleAstBytesCache[uri];
+          if (moduleBytes != null) patchModuleSizes[uri] = moduleBytes;
+          final classBytes = _classAstBytesCache[uri];
+          if (classBytes != null) patchClassSizes[uri] = classBytes;
+        }
         patchBundle = AstBundle(
           entryPointUri: patchEntry,
           modules: patchModules,
+          moduleAstBytes: patchModuleSizes.isEmpty ? null : patchModuleSizes,
+          classAstBytes: patchClassSizes.isEmpty ? null : patchClassSizes,
         );
         try {
           patchBytes = patchBundle.toBytes();
@@ -1410,11 +1452,20 @@ Future<AstBuildResult> buildGuestAstBundle(
       // Uses the precompressed cache so the background ZIP is still fast.
       final outFilePath = outFile.path;
       final cachedBytes = Map<String, List<int>>.of(_compressedBytesCache);
+      final cachedModuleSizes = Map<String, int>.of(_moduleAstBytesCache);
+      final cachedClassSizes = Map<String, Map<String, int>>.of(
+        _classAstBytesCache,
+      );
       final writtenFingerprint = fp;
       Future(() async {
         try {
           await outFile.parent.create(recursive: true);
-          bundle.saveToFile(outFilePath, precompressedModules: cachedBytes);
+          bundle.saveToFile(
+            outFilePath,
+            precompressedModules: cachedBytes,
+            moduleAstBytes: cachedModuleSizes,
+            classAstBytes: cachedClassSizes,
+          );
           // Record only on success: the fingerprint must describe the bytes
           // actually on disk, which clients use as their patch base.
           _fileSourceFingerprints[outFilePath] = writtenFingerprint;
@@ -1431,6 +1482,8 @@ Future<AstBuildResult> buildGuestAstBundle(
       bundle.saveToFile(
         outFile.path,
         precompressedModules: _compressedBytesCache,
+        moduleAstBytes: _moduleAstBytesCache,
+        classAstBytes: _classAstBytesCache,
       );
       _fileSourceFingerprints[outFile.path] = fp;
       size = outFile.lengthSync();

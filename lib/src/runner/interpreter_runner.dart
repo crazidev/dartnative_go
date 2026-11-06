@@ -6,7 +6,6 @@ import 'package:tom_d4rt_ast/runtime.dart' as ast_runtime;
 import '../interpreter/asset_bridge.dart';
 import '../interpreter/auto_import_parser.dart';
 import '../interpreter/d4rt_flutter_application.dart';
-import '../interpreter/dartscript.b.dart';
 import '../interpreter/debug_controller.dart';
 import '../interpreter/dn_bridge.dart';
 import '../interpreter/server_component_source_bridge.dart';
@@ -18,7 +17,13 @@ import 'runtime_mode.dart';
 
 /// Manages dynamic execution of DartNative guest apps using tom_d4rt or tom_d4rt_ast.
 class InterpreterRunner {
-  late D4rt _interpreter;
+  /// The analyzer-based interpreter.
+  ///
+  /// Built eagerly in source mode. In AST mode it is **deferred**: a full
+  /// bridge surface for an engine that will not run the guest is wasted launch
+  /// time, so it is only created when something actually needs it (the
+  /// [interpreter] getter, source-mode evaluation, host fakes in tests).
+  D4rt? _interpreter;
   final DebugController _debugController = DebugController();
 
   Widget? _capturedApp;
@@ -39,11 +44,13 @@ class InterpreterRunner {
   AstInterpreterRunner? _astRunner;
   ServerComponentLoader? _sourceComponentLoader;
   DebugController get debugController => _debugController;
-  D4rt get interpreter => _interpreter;
+
+  /// The source-mode interpreter, created on first use (see [_interpreter]).
+  D4rt get interpreter => _interpreter ??= _buildSourceInterpreter();
   RuntimeMode get runtimeMode => runtimeModeFromBool(useAst);
   AstInterpreterRunner? get astRunner => _astRunner;
   Object? get activeVisitor =>
-      useAst ? _astRunner?.visitor : _interpreter.visitor;
+      useAst ? _astRunner?.visitor : _interpreter?.visitor;
 
   /// Extra listener for guest failures outside evaluation (builds,
   /// lifecycle methods, bridge callbacks). The AST runner always logs these
@@ -62,36 +69,55 @@ class InterpreterRunner {
   }
 
   /// Initializes a fresh interpreter session with all registered bridges and runtime hooks.
+  ///
+  /// In AST mode the source interpreter is not built here — see [_interpreter].
+  /// Server-scoped values (asset resolver URL, log sink) are still refreshed so
+  /// a URL change reaches whichever engine ends up running.
   void initInterpreter() {
     _capturedApp = null;
-    _interpreter = D4rt();
-    _debugController.activeInterpreter = _interpreter;
+    _debugController.onLog = onLog;
+    AssetResolver.activeServerUrl = currentServerUrl;
+
+    try {
+      _interpreter?.dispose();
+    } catch (_) {}
+    _interpreter = null;
+    _debugController.activeInterpreter = null;
+
+    if (useAst) return;
+
+    _debugController.activeInterpreter = interpreter;
+  }
+
+  /// Builds the analyzer-based interpreter and registers the full bridge
+  /// surface on it. Called at most once per [initInterpreter] generation.
+  D4rt _buildSourceInterpreter() {
+    final interpreter = D4rt();
+    _debugController.activeInterpreter = interpreter;
     _debugController.onLog = onLog;
 
     // Grant permissions so guest apps can load dart:io and network resources
-    _interpreter.grant(FilesystemPermission.any);
-    _interpreter.grant(NetworkPermission.any);
-    _interpreter.grant(ProcessRunPermission.any);
-    _interpreter.grant(IsolatePermission.any);
-    _interpreter.grant(DangerousPermission.any);
+    interpreter.grant(FilesystemPermission.any);
+    interpreter.grant(NetworkPermission.any);
+    interpreter.grant(ProcessRunPermission.any);
+    interpreter.grant(IsolatePermission.any);
+    interpreter.grant(DangerousPermission.any);
 
-    // 1. Core DartNative framework bridges + proxies
-    registerDartNativeBridges(_interpreter, onLog: onLog);
+    // 1. Core DartNative framework bridges + proxies. This already registers
+    // the full generated surface (DartnativeGoBridges) via
+    // registerDartNativeBridges — registering it a second time here only
+    // duplicated work.
+    registerDartNativeBridges(interpreter, onLog: onLog);
     registerAssetAwareBridges(
-      _interpreter,
+      interpreter,
       serverUrlProvider: () => currentServerUrl,
     );
     AssetResolver.activeServerUrl = currentServerUrl;
 
-    // 2. Full generated bridge surface (plugins, riverpod, etc.)
-    try {
-      DartnativeGoBridges.register(_interpreter);
-    } catch (_) {}
-
     // 2b. Host ServerComponentView (`package:dartnative_go/server_component.dart`).
     // Components are AST bundles, so they mount through the embedded AST runner.
     registerSourceServerComponentBridge(
-      _interpreter,
+      interpreter,
       loaderProvider: () => _sourceComponentLoader ??= ServerComponentLoader(
         serverUrl: currentServerUrl ?? '',
         serverUrlProvider: () => currentServerUrl ?? '',
@@ -123,7 +149,7 @@ class InterpreterRunner {
       'package:flutter/widgets.dart',
       'package:flutter/material.dart',
     ]) {
-      _interpreter.registertopLevelFunction(
+      interpreter.registertopLevelFunction(
         'runApp',
         captureRunApp,
         lib,
@@ -133,7 +159,7 @@ class InterpreterRunner {
 
     // 4. Intercept registerNativeBindings so guest app calling DartNativePluginRegistrant.registerAll()
     // does not fail or attempt to re-register native host bindings
-    _interpreter.registertopLevelFunction(
+    interpreter.registertopLevelFunction(
       'registerNativeBindings',
       (visitor, positional, named, typeArgs) {
         return null;
@@ -141,7 +167,7 @@ class InterpreterRunner {
       'package:dartnative/dartnative.dart',
       signature: 'void registerNativeBindings(dynamic bindings)',
     );
-    _interpreter.registertopLevelFunction(
+    interpreter.registertopLevelFunction(
       'registerNativeBindings',
       (visitor, positional, named, typeArgs) {
         return null;
@@ -151,7 +177,7 @@ class InterpreterRunner {
     );
 
     // 4. Intercept exitToLauncher()
-    _interpreter.registertopLevelFunction(
+    interpreter.registertopLevelFunction(
       'exitToLauncher',
       (visitor, positional, named, typeArgs) {
         onExit?.call();
@@ -163,7 +189,7 @@ class InterpreterRunner {
 
     // 4b. Register unawaited() from dart:async
     void registerUnawaited(String library) {
-      _interpreter.registertopLevelFunction(
+      interpreter.registertopLevelFunction(
         'unawaited',
         (visitor, positional, named, typeArgs) {
           final arg = positional.isNotEmpty ? positional[0] : null;
@@ -187,7 +213,7 @@ class InterpreterRunner {
     }
 
     // 5. Debugger and Breakpoint hooks
-    _interpreter.registertopLevelFunction(
+    interpreter.registertopLevelFunction(
       'debugger',
       (visitor, positional, named, typeArgs) {
         final message = positional.isNotEmpty ? positional[0]?.toString() : null;
@@ -197,7 +223,7 @@ class InterpreterRunner {
       signature: 'Future<void> debugger([String? message])',
     );
 
-    _interpreter.registertopLevelFunction(
+    interpreter.registertopLevelFunction(
       'breakpoint',
       (visitor, positional, named, typeArgs) {
         final message = positional.isNotEmpty ? positional[0]?.toString() : null;
@@ -207,7 +233,7 @@ class InterpreterRunner {
       signature: 'Future<void> breakpoint([String? message])',
     );
 
-    _interpreter.registertopLevelFunction(
+    interpreter.registertopLevelFunction(
       '__debugBreakpoint',
       (visitor, positional, named, typeArgs) {
         final file = positional.isNotEmpty ? positional[0]?.toString() ?? '<unknown>' : '<unknown>';
@@ -221,7 +247,7 @@ class InterpreterRunner {
     );
 
     // 6. D4rtFlutterApplication wrapper hook
-    _interpreter.registertopLevelFunction(
+    interpreter.registertopLevelFunction(
       'D4rtFlutterApplication',
       (visitor, positional, named, typeArgs) {
         final rootWidget = unwrap<Widget>(named['root'], visitor: visitor);
@@ -242,10 +268,12 @@ class InterpreterRunner {
       signature:
           'D4rtFlutterApplication({required Widget root, Function? onMount, Function? onUnmount})',
     );
+
+    return interpreter;
   }
 
   void _snapshotState([String? currentLibrary]) {
-    final visitor = _interpreter.visitor;
+    final visitor = _interpreter?.visitor;
     if (visitor == null) return;
 
     _moduleTopLevelSnapshots.clear();
@@ -339,7 +367,7 @@ class InterpreterRunner {
   }
 
   void _restoreState() {
-    final visitor = _interpreter.visitor;
+    final visitor = _interpreter?.visitor;
     if (visitor == null) return;
 
     void restoreEnvFrom(
@@ -409,12 +437,13 @@ class InterpreterRunner {
     bool isHotReload = false,
   }) async {
     final totalSw = Stopwatch()..start();
+    final interpreter = this.interpreter;
     int snapMs = 0;
     if (isHotReload) {
       final snapSw = Stopwatch()..start();
       _snapshotState(library);
       try {
-        _interpreter.dispose();
+        interpreter.dispose();
       } catch (_) {}
       snapMs = snapSw.elapsedMilliseconds;
     }
@@ -430,7 +459,7 @@ class InterpreterRunner {
 
     final execSw = Stopwatch()..start();
     Object? rawResult = runZoned(
-      () => _interpreter.execute(
+      () => interpreter.execute(
         source: processedScript,
         name: 'main',
         library: library,
@@ -456,7 +485,7 @@ class InterpreterRunner {
     }
 
     Widget? resolvedWidget = _capturedApp ??
-        unwrap<Widget>(rawResult, visitor: _interpreter.visitor);
+        unwrap<Widget>(rawResult, visitor: interpreter.visitor);
 
     if (resolvedWidget == null) {
       throw StateError(
@@ -577,8 +606,9 @@ class InterpreterRunner {
     _activeApplication = null;
     _capturedApp = null;
     try {
-      _interpreter.dispose();
+      _interpreter?.dispose();
     } catch (_) {}
+    _interpreter = null;
     _astRunner?.dispose();
     _astRunner = null;
     try {
