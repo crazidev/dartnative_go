@@ -4,6 +4,12 @@
 /// sheet's own DNTree. On reload the host rebinds the sheet's proxies to the new
 /// generation: the visitor must advance, state fields must survive, and the next
 /// build must run the edited code.
+///
+/// Each test runs full analyzer builds plus a reload evaluation and a sheet
+/// rebind. That is well under the default 30 s budget on an idle host but
+/// exceeds it when the suite runs in parallel with the rest of `test/`; the
+/// guest behavior under test has no such limit.
+@Timeout(Duration(seconds: 120))
 library;
 
 import 'dart:io';

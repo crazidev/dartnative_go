@@ -392,5 +392,8 @@ class CounterScreen extends ConsumerWidget {
         } catch (_) {}
       }
     }
-  });
+    // Builds and evaluates the fixture in both engines, twice each. Comfortably
+    // inside the default 30 s budget on an idle host, but not when the rest of
+    // `test/` runs alongside it; the behavior under test has no such limit.
+  }, timeout: const Timeout(Duration(seconds: 120)));
 }

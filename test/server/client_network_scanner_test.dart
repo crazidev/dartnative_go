@@ -98,7 +98,10 @@ void main() {
     late DartGoNetworkScanner scanner;
 
     setUpAll(() async {
-      server = await HttpServer.bind(InternetAddress.loopbackIPv4, 8090);
+      // Ephemeral port: a fixed one (8090) collides with `server_integration`
+      // and with any live dev server when the whole suite runs in parallel.
+      server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      final port = server.port;
       server.listen((req) {
         if (req.uri.path == '/manifest.json') {
           req.response
@@ -107,7 +110,7 @@ void main() {
               'protocol': 'dart_go',
               'appName': 'Mock Live Dev Server',
               'appVersion': '0.1.0',
-              'serverUrl': 'http://127.0.0.1:8090',
+              'serverUrl': 'http://127.0.0.1:$port',
             }))
             ..close();
         } else {
@@ -116,7 +119,7 @@ void main() {
             ..close();
         }
       });
-      scanner = DartGoNetworkScanner(startPort: 8088, endPort: 8092);
+      scanner = DartGoNetworkScanner(startPort: port, endPort: port);
     });
 
     tearDownAll(() async {
