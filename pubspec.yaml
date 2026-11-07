@@ -3,11 +3,12 @@ description: "A new DartNative project."
 publish_to: "none"
 version: 0.1.0+1
 
+workspace:
+  - example
+
 environment:
   sdk: ^3.9.0-0
 
-# Plain version deps: `dn pub get` resolves DartNative packages from your
-# installed SDK (closed resolution) — no registry setup, works offline.
 dependencies:
   dartnative: ^1.0.0
   dartnative_ios: ^1.0.0
@@ -27,10 +28,6 @@ dependencies:
   dartnative_media_picker: ^1.1.0
   dartnative_background: ^1.0.0
   crypto: ^3.0.0
-  # dio is compiled into the shell (bridged) so guests get native-speed HTTP:
-  # instead of interpreting dio's request pipeline node-by-node, the
-  # `package:dio/dio.dart` import resolves to this compiled copy. See
-  # buildkit{,_ast}.yaml module `dio`.
   dio: ^5.0.0
   riverpod_kit:
     hosted: https://dartpub.dev
@@ -47,27 +44,20 @@ dependencies:
 
 dev_dependencies:
   lints: ^6.0.0
-  # Pinned exact: dartnative_splash 1.0.1 (SDK) needs image 4.3.0, and the
-  # SDK itself is built with archive 3.6.1 which newer image 4.x releases
-  # no longer accept. `dn pub get` fails otherwise.
   image: 4.3.0
   tom_d4rt_generator: any
   tom_ast_generator: any
   tom_d4rt_exec: any
 
 dartnative:
+  config:
+    # Use the CLI LLDB path instead of Xcode automation on physical iOS
+    # devices (Xcode 26+). Overrides the global
+    # `dn config --no-enable-lldb-debugging` setting for this project.
+    # enable-lldb-debugging: true
   assets:
     - assets/dn-logo.png
 
-# Vendored fork of tom_d4rt_ast 0.65.0 (see pkgs/tom_d4rt_ast/pubspec.yaml):
-# DartNative's patched AOT platform embeds the `package:archive` 3.x API
-# (non-const GZip codecs, nullable ZipEncoder.encode), which the pub.dev
-# release (written for archive ^4.0.9) does not compile against, breaking
-# every iOS release build at `Target kernel_snapshot_program`. The fork is
-# patched to compile against both archive 3.x (device) and 4.x (host).
 dependency_overrides:
   tom_d4rt_ast:
     path: pkgs/tom_d4rt_ast
-
-# Branded launch splash + app icon: add the dartnative_splash plugin from
-# dartpub.dev, then see tool/generate_app_assets.dart.
