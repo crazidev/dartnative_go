@@ -93,6 +93,33 @@ void _applyBridgePostFixes() {
   _patchFlutterCompatBridges(
     File('lib/src/interpreter/ast/dartnative_flutter_compat_bridges.b.dart'),
   );
+
+  _patchDioBridges(File('lib/src/interpreter/dio_bridges.b.dart'));
+  _patchDioBridges(File('lib/src/interpreter/ast/dio_bridges.b.dart'));
+}
+
+/// dio's `FormData.fromMap` defaults `boundaryName` to the private top-level
+/// const `_boundaryName`, which the generator cannot reference from the bridge
+/// library. It therefore emits a mandatory-argument stub that throws whenever
+/// the caller omits the parameter. Inline the literal default instead.
+/// DN-PATCH.
+void _patchDioBridges(File file) {
+  if (!file.existsSync()) return;
+  var content = file.readAsStringSync();
+  content = content.replaceAllMapped(
+    RegExp(
+      r"// TODO: Non-wrappable default: _boundaryName\n\s*"
+      r"final boundaryName = D4\.getRequiredArgTodoDefault<String>"
+      r"\(positional, 3, 'boundaryName', 'FormData', '_boundaryName'\);",
+    ),
+    (m) =>
+        "// DN-PATCH: dio's `_boundaryName` is a private top-level const, so the\n"
+        '        // generator cannot reference it. Inline its literal value instead of\n'
+        '        // forcing every call site to pass `boundaryName` explicitly.\n'
+        "        final boundaryName = D4.getOptionalArgWithDefault<String>("
+        "positional, 3, 'boundaryName', '--dio-boundary');",
+  );
+  file.writeAsStringSync(content);
 }
 
 void _patchFlutterCompatBridges(File file) {
