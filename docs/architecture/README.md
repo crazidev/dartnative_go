@@ -7,13 +7,13 @@ Cross-cutting depth (reload internals, bridge details) stays in the root
 
 | Feature | Owns | Page |
 | :--- | :--- | :--- |
-| CLI | `bin/dart_go.dart`, `lib/src/cli/{command_line,pubspec_validator,asset_detector,dart_go_version,qr_code}.dart` | [cli.md](cli.md) |
-| Dev server and bundling | `lib/src/cli/{server,ast_builder,safe_ast_converter,dep_packager,broadcaster}.dart` | [dev-server.md](dev-server.md) |
+| CLI | `bin/dart_go.dart`, `lib/src/cli/{commands,diagnostics}/` | [cli.md](cli.md) |
+| Dev server and bundling | `lib/src/cli/{server,packaging}/` | [dev-server.md](dev-server.md) |
 | Runner (device side) | `lib/src/runner/` (except `ui_*`, `icon_registry`) | [runner.md](runner.md) |
 | Interpreter and bridges | `lib/src/interpreter/`, generated `*.b.dart` | [interpreter.md](interpreter.md) |
-| Server components | `lib/server*.dart`, `lib/src/server/`, `lib/src/cli/server_*`, `client_module_index.dart` | [server-components.md](server-components.md) |
-| Debugging | `lib/src/{dap,debug,mcp}/`, `interpreter/debug_controller.dart` | [debugging.md](debugging.md) |
-| Host UI | `lib/main.dart`, `lib/src/{launcher,widgets,devtool,theme,client}/` | [host-ui.md](host-ui.md) |
+| Server components | `lib/server*.dart`, `lib/src/server/`, `lib/src/cli/server_components/`, `lib/src/widgets/server_component_*` | [server-components.md](server-components.md) |
+| Debugging | `lib/src/{dap,debug}/`, `interpreter/debug_controller.dart` | [debugging.md](debugging.md) |
+| Host UI | `lib/main.dart`, `lib/src/{launcher,preview,widgets,devtool,theme,client}/` | [host-ui.md](host-ui.md) |
 | UI automation and tests | `lib/src/runner/{ui_probe,ui_tree_json,icon_registry}.dart`, `test/` | [testing.md](testing.md) |
 
 ## Rules that apply everywhere

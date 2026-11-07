@@ -7,11 +7,16 @@ Entry point for everything the developer types: `dart_go`.
 | File | Role |
 | :--- | :--- |
 | `bin/dart_go.dart` | Dispatches a parsed command; prints help, version, doctor output. |
-| `lib/src/cli/command_line.dart` | Pure argument parsing -> `DartGoCommandLine` (no I/O, unit-testable). |
-| `lib/src/cli/pubspec_validator.dart` | Checks `pubspec.yaml` plugins against the supported matrix. |
-| `lib/src/cli/dart_go_version.dart` | CLI/runtime versions and `kSupportedNativePlugins`. |
-| `lib/src/cli/asset_detector.dart` | Finds app icon and splash from pubspec config or common paths. |
-| `lib/src/cli/qr_code.dart` | Terminal QR rendering. |
+| `lib/src/cli/commands/command_line.dart` | Pure argument parsing -> `DartGoCommandLine` (no I/O, unit-testable). |
+| `lib/src/cli/diagnostics/pubspec_validator.dart` | Checks `pubspec.yaml` plugins against the supported matrix. |
+| `lib/src/cli/diagnostics/dart_go_version.dart` | CLI/runtime versions and `kSupportedNativePlugins`. |
+| `lib/src/cli/diagnostics/asset_detector.dart` | Finds app icon and splash from pubspec config or common paths. |
+| `lib/src/cli/diagnostics/icon_font_detector.dart` | Detects the icon families/glyphs the guest actually uses, for on-demand font serving. |
+| `lib/src/cli/server/qr_code.dart` | Terminal QR rendering. |
+
+Sub-packages: `commands/` (parsing), `diagnostics/` (validation, versions,
+assets, icon fonts), `packaging/` (AST build, dependency ZIPs),
+`server/` (dev server), `server_components/` (delta bundler).
 
 ## Flow
 
