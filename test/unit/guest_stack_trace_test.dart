@@ -1,7 +1,6 @@
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:test/test.dart';
 import 'package:tom_ast_generator/tom_ast_generator.dart';
-import 'package:tom_ast_model/tom_ast_model.dart';
 import 'package:tom_d4rt_ast/d4rt.dart';
 import 'package:tom_d4rt_ast/runtime.dart';
 
@@ -25,7 +24,7 @@ void main() {
 
       final parseResult = parseString(content: source);
       final converter = AstConverter();
-      final unit = converter.convertCompilationUnit(parseResult.unit) as SCompilationUnit;
+      final unit = converter.convertCompilationUnit(parseResult.unit);
       final moduleUri = 'package:sample/main.dart';
       final bundle = AstBundle(
         entryPointUri: moduleUri,

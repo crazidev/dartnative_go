@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 5 files
-// Generated: 2026-11-01T03:49:21.478736 by tom_d4rt_generator 1.26.2
+// Generated: 2026-11-06T23:50:03.684415 by tom_d4rt_generator 1.26.2
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -9,11 +9,16 @@ import 'package:tom_d4rt_ast/runtime.dart';
 import 'dart:async';
 
 import 'package:dartnative/src/core.dart' as $dartnative_1;
-import 'package:dartnative_media_picker/src/gallery.dart' as $dartnative_media_picker_1;
-import 'package:dartnative_media_picker/src/gallery_ffi_bindings.dart' as $dartnative_media_picker_2;
-import 'package:dartnative_media_picker/src/gallery_thumb.dart' as $dartnative_media_picker_3;
-import 'package:dartnative_media_picker/src/media_picker.dart' as $dartnative_media_picker_4;
-import 'package:dartnative_media_picker/src/media_picker_ffi_bindings.dart' as $dartnative_media_picker_5;
+import 'package:dartnative_media_picker/src/gallery.dart'
+    as $dartnative_media_picker_1;
+import 'package:dartnative_media_picker/src/gallery_ffi_bindings.dart'
+    as $dartnative_media_picker_2;
+import 'package:dartnative_media_picker/src/gallery_thumb.dart'
+    as $dartnative_media_picker_3;
+import 'package:dartnative_media_picker/src/media_picker.dart'
+    as $dartnative_media_picker_4;
+import 'package:dartnative_media_picker/src/media_picker_ffi_bindings.dart'
+    as $dartnative_media_picker_5;
 
 /// Bridge class for dartnative_media_picker module.
 class DartnativeMediaPickerBridge {
@@ -58,7 +63,8 @@ class DartnativeMediaPickerBridge {
   static Map<String, Type> bridgeClassTypes() {
     return {
       'MediaFile': $dartnative_media_picker_4.MediaFile,
-      'MediaPickerFFIBindings': $dartnative_media_picker_5.MediaPickerFFIBindings,
+      'MediaPickerFFIBindings':
+          $dartnative_media_picker_5.MediaPickerFFIBindings,
       'MediaGalleryException': $dartnative_media_picker_2.MediaGalleryException,
       'MediaAlbum': $dartnative_media_picker_1.MediaAlbum,
       'MediaAsset': $dartnative_media_picker_1.MediaAsset,
@@ -75,8 +81,10 @@ class DartnativeMediaPickerBridge {
   static Map<String, String> classSourceUris() {
     return {
       'MediaFile': 'package:dartnative_media_picker/src/media_picker.dart',
-      'MediaPickerFFIBindings': 'package:dartnative_media_picker/src/media_picker_ffi_bindings.dart',
-      'MediaGalleryException': 'package:dartnative_media_picker/src/gallery_ffi_bindings.dart',
+      'MediaPickerFFIBindings':
+          'package:dartnative_media_picker/src/media_picker_ffi_bindings.dart',
+      'MediaGalleryException':
+          'package:dartnative_media_picker/src/gallery_ffi_bindings.dart',
       'MediaAlbum': 'package:dartnative_media_picker/src/gallery.dart',
       'MediaAsset': 'package:dartnative_media_picker/src/gallery.dart',
       'GalleryFile': 'package:dartnative_media_picker/src/gallery.dart',
@@ -105,8 +113,7 @@ class DartnativeMediaPickerBridge {
   /// are registered so that code using the alias name can resolve to the
   /// bridged class under its canonical name.
   static Map<String, String> classAliases() {
-    return {
-    };
+    return {};
   }
 
   /// Returns the list of function typedef names declared in this library.
@@ -143,7 +150,8 @@ class DartnativeMediaPickerBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> enumSourceUris() {
     return {
-      'MediaPickerType': 'package:dartnative_media_picker/src/media_picker.dart',
+      'MediaPickerType':
+          'package:dartnative_media_picker/src/media_picker.dart',
       'GalleryPermission': 'package:dartnative_media_picker/src/gallery.dart',
       'GalleryMediaType': 'package:dartnative_media_picker/src/gallery.dart',
     };
@@ -151,29 +159,68 @@ class DartnativeMediaPickerBridge {
 
   /// Returns all bridged extension definitions.
   static List<BridgedExtensionDefinition> bridgedExtensions() {
-    return [
-    ];
+    return [];
   }
 
   /// Returns a map of extension identifiers to their canonical source URIs.
   static Map<String, String> extensionSourceUris() {
-    return {
-    };
+    return {};
   }
 
   /// GEN-107: Library re-exports declared by the bridged source
   /// libraries. Each tuple mirrors a Dart `export '…'` directive.
   /// Consumed by `registerBridges` via `D4rt.registerLibraryReExport`
   /// (mirrored on `D4rtRunner` in tom_d4rt_ast).
-  static List<({String source, String target, Set<String>? show, Set<String>? hide})>
+  static List<
+    ({String source, String target, Set<String>? show, Set<String>? hide})
+  >
   bridgeReExports() {
     return [
-      (source: 'package:dartnative_media_picker/dartnative_media_picker.dart', target: 'package:dartnative_media_picker/src/media_picker.dart', show: {'MediaPickerType', 'MediaFile', 'showMediaPicker'}, hide: null),
-      (source: 'package:dartnative_media_picker/dartnative_media_picker.dart', target: 'package:dartnative_media_picker/src/media_picker_ffi_bindings.dart', show: {'MediaPickerFFIBindings'}, hide: null),
-      (source: 'package:dartnative_media_picker/gallery.dart', target: 'package:dartnative_media_picker/src/gallery.dart', show: {'GalleryFile', 'GalleryMediaType', 'GalleryPermission', 'MediaAlbum', 'MediaAsset', 'MediaGallery', 'MediaGalleryException'}, hide: null),
-      (source: 'package:dartnative_media_picker/gallery.dart', target: 'package:dartnative_media_picker/src/gallery_ffi_bindings.dart', show: {'MediaGalleryFFIBindings'}, hide: null),
-      (source: 'package:dartnative_media_picker/gallery.dart', target: 'package:dartnative_media_picker/src/gallery_thumb.dart', show: {'GalleryThumb'}, hide: null),
-      (source: 'package:dartnative_media_picker/src/gallery.dart', target: 'package:dartnative_media_picker/src/gallery_ffi_bindings.dart', show: {'MediaGalleryException'}, hide: null),
+      (
+        source: 'package:dartnative_media_picker/dartnative_media_picker.dart',
+        target: 'package:dartnative_media_picker/src/media_picker.dart',
+        show: {'MediaPickerType', 'MediaFile', 'showMediaPicker'},
+        hide: null,
+      ),
+      (
+        source: 'package:dartnative_media_picker/dartnative_media_picker.dart',
+        target:
+            'package:dartnative_media_picker/src/media_picker_ffi_bindings.dart',
+        show: {'MediaPickerFFIBindings'},
+        hide: null,
+      ),
+      (
+        source: 'package:dartnative_media_picker/gallery.dart',
+        target: 'package:dartnative_media_picker/src/gallery.dart',
+        show: {
+          'GalleryFile',
+          'GalleryMediaType',
+          'GalleryPermission',
+          'MediaAlbum',
+          'MediaAsset',
+          'MediaGallery',
+          'MediaGalleryException',
+        },
+        hide: null,
+      ),
+      (
+        source: 'package:dartnative_media_picker/gallery.dart',
+        target: 'package:dartnative_media_picker/src/gallery_ffi_bindings.dart',
+        show: {'MediaGalleryFFIBindings'},
+        hide: null,
+      ),
+      (
+        source: 'package:dartnative_media_picker/gallery.dart',
+        target: 'package:dartnative_media_picker/src/gallery_thumb.dart',
+        show: {'GalleryThumb'},
+        hide: null,
+      ),
+      (
+        source: 'package:dartnative_media_picker/src/gallery.dart',
+        target: 'package:dartnative_media_picker/src/gallery_ffi_bindings.dart',
+        show: {'MediaGalleryException'},
+        hide: null,
+      ),
     ];
   }
 
@@ -207,7 +254,11 @@ class DartnativeMediaPickerBridge {
     final enums = bridgedEnums();
     final enumSources = enumSourceUris();
     for (final enumDef in enums) {
-      interpreter.registerBridgedEnum(enumDef, importPath, sourceUri: enumSources[enumDef.name]);
+      interpreter.registerBridgedEnum(
+        enumDef,
+        importPath,
+        sourceUri: enumSources[enumDef.name],
+      );
     }
 
     // Register global functions with source URIs for deduplication
@@ -215,7 +266,13 @@ class DartnativeMediaPickerBridge {
     final funcSources = globalFunctionSourceUris();
     final funcSigs = globalFunctionSignatures();
     for (final entry in funcs.entries) {
-      interpreter.registertopLevelFunction(entry.key, entry.value, importPath, sourceUri: funcSources[entry.key], signature: funcSigs[entry.key]);
+      interpreter.registertopLevelFunction(
+        entry.key,
+        entry.value,
+        importPath,
+        sourceUri: funcSources[entry.key],
+        signature: funcSigs[entry.key],
+      );
     }
 
     // Register function typedefs for type resolution
@@ -226,7 +283,12 @@ class DartnativeMediaPickerBridge {
 
     // GEN-107: Register library re-exports
     for (final r in bridgeReExports()) {
-      interpreter.registerLibraryReExport(r.source, r.target, show: r.show, hide: r.hide);
+      interpreter.registerLibraryReExport(
+        r.source,
+        r.target,
+        show: r.show,
+        hide: r.hide,
+      );
     }
   }
 
@@ -234,9 +296,21 @@ class DartnativeMediaPickerBridge {
   static Map<String, NativeFunctionImpl> globalFunctions() {
     return {
       'showMediaPicker': (visitor, positional, named, typeArgs) {
-        final type = D4.getNamedArgWithDefault<$dartnative_media_picker_4.MediaPickerType>(named, 'type', $dartnative_media_picker_4.MediaPickerType.images);
-        final maxSelection = D4.getNamedArgWithDefault<int>(named, 'maxSelection', 1);
-        return $dartnative_media_picker_4.showMediaPicker(type: type, maxSelection: maxSelection);
+        final type = D4
+            .getNamedArgWithDefault<$dartnative_media_picker_4.MediaPickerType>(
+              named,
+              'type',
+              $dartnative_media_picker_4.MediaPickerType.images,
+            );
+        final maxSelection = D4.getNamedArgWithDefault<int>(
+          named,
+          'maxSelection',
+          1,
+        );
+        return $dartnative_media_picker_4.showMediaPicker(
+          type: type,
+          maxSelection: maxSelection,
+        );
       },
     };
   }
@@ -247,14 +321,16 @@ class DartnativeMediaPickerBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> globalFunctionSourceUris() {
     return {
-      'showMediaPicker': 'package:dartnative_media_picker/src/media_picker.dart',
+      'showMediaPicker':
+          'package:dartnative_media_picker/src/media_picker.dart',
     };
   }
 
   /// Returns a map of global function names to their display signatures.
   static Map<String, String> globalFunctionSignatures() {
     return {
-      'showMediaPicker': 'Future<List<MediaFile>> showMediaPicker({MediaPickerType type = MediaPickerType.images, int maxSelection = 1})',
+      'showMediaPicker':
+          'Future<List<MediaFile>> showMediaPicker({MediaPickerType type = MediaPickerType.images, int maxSelection = 1})',
     };
   }
 
@@ -279,7 +355,9 @@ class DartnativeMediaPickerBridge {
   /// bridged classes available to scripts.
   static String getImportBlock() {
     final imports = StringBuffer();
-    imports.writeln("import 'package:dartnative_media_picker/dartnative_media_picker.dart';");
+    imports.writeln(
+      "import 'package:dartnative_media_picker/dartnative_media_picker.dart';",
+    );
     imports.writeln("import 'package:dartnative_media_picker/gallery.dart';");
     return imports.toString();
   }
@@ -300,7 +378,6 @@ class DartnativeMediaPickerBridge {
     'GalleryPermission',
     'GalleryMediaType',
   ];
-
 }
 
 // =============================================================================
@@ -317,17 +394,39 @@ BridgedClass _createMediaFileBridge() {
         final path = D4.getRequiredNamedArg<String>(named, 'path', 'MediaFile');
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'MediaFile');
         final type = D4.getRequiredNamedArg<String>(named, 'type', 'MediaFile');
-        return $dartnative_media_picker_4.MediaFile(path: path, name: name, type: type);
+        return $dartnative_media_picker_4.MediaFile(
+          path: path,
+          name: name,
+          type: type,
+        );
       },
     },
     getters: {
-      'path': (visitor, target) => D4.validateTarget<$dartnative_media_picker_4.MediaFile>(target, 'MediaFile').path,
-      'name': (visitor, target) => D4.validateTarget<$dartnative_media_picker_4.MediaFile>(target, 'MediaFile').name,
-      'type': (visitor, target) => D4.validateTarget<$dartnative_media_picker_4.MediaFile>(target, 'MediaFile').type,
+      'path': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_4.MediaFile>(
+            target,
+            'MediaFile',
+          )
+          .path,
+      'name': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_4.MediaFile>(
+            target,
+            'MediaFile',
+          )
+          .name,
+      'type': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_4.MediaFile>(
+            target,
+            'MediaFile',
+          )
+          .type,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_media_picker_4.MediaFile>(target, 'MediaFile');
+        final t = D4.validateTarget<$dartnative_media_picker_4.MediaFile>(
+          target,
+          'MediaFile',
+        );
         return t.toString();
       },
     },
@@ -354,19 +453,28 @@ BridgedClass _createMediaPickerFFIBindingsBridge() {
     nativeType: $dartnative_media_picker_5.MediaPickerFFIBindings,
     name: 'MediaPickerFFIBindings',
     isAssignable: (v) => v is $dartnative_media_picker_5.MediaPickerFFIBindings,
-    constructors: {
-    },
+    constructors: {},
     methods: {
       'show': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_media_picker_5.MediaPickerFFIBindings>(target, 'MediaPickerFFIBindings');
+        final t = D4
+            .validateTarget<$dartnative_media_picker_5.MediaPickerFFIBindings>(
+              target,
+              'MediaPickerFFIBindings',
+            );
         D4.requireMinArgs(positional, 2, 'show');
         final type = D4.getRequiredArg<int>(positional, 0, 'type', 'show');
-        final maxSelection = D4.getRequiredArg<int>(positional, 1, 'maxSelection', 'show');
+        final maxSelection = D4.getRequiredArg<int>(
+          positional,
+          1,
+          'maxSelection',
+          'show',
+        );
         return t.show(type, maxSelection);
       },
     },
     staticGetters: {
-      'instance': (visitor) => $dartnative_media_picker_5.MediaPickerFFIBindings.instance,
+      'instance': (visitor) =>
+          $dartnative_media_picker_5.MediaPickerFFIBindings.instance,
     },
     staticMethods: {
       'loadSymbols': (visitor, positional, named, typeArgs) {
@@ -398,16 +506,30 @@ BridgedClass _createMediaGalleryExceptionBridge() {
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'MediaGalleryException');
-        final message = D4.getRequiredArg<String>(positional, 0, 'message', 'MediaGalleryException');
+        final message = D4.getRequiredArg<String>(
+          positional,
+          0,
+          'message',
+          'MediaGalleryException',
+        );
         return $dartnative_media_picker_2.MediaGalleryException(message);
       },
     },
     getters: {
-      'message': (visitor, target) => D4.validateTarget<$dartnative_media_picker_2.MediaGalleryException>(target, 'MediaGalleryException').message,
+      'message': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_2.MediaGalleryException>(
+            target,
+            'MediaGalleryException',
+          )
+          .message,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_media_picker_2.MediaGalleryException>(target, 'MediaGalleryException');
+        final t = D4
+            .validateTarget<$dartnative_media_picker_2.MediaGalleryException>(
+              target,
+              'MediaGalleryException',
+            );
         return t.toString();
       },
     },
@@ -435,21 +557,57 @@ BridgedClass _createMediaAlbumBridge() {
     constructors: {
       '': (visitor, positional, named) {
         final id = D4.getRequiredNamedArg<String>(named, 'id', 'MediaAlbum');
-        final name = D4.getRequiredNamedArg<String>(named, 'name', 'MediaAlbum');
+        final name = D4.getRequiredNamedArg<String>(
+          named,
+          'name',
+          'MediaAlbum',
+        );
         final count = D4.getRequiredNamedArg<int>(named, 'count', 'MediaAlbum');
-        final isAll = D4.getRequiredNamedArg<bool>(named, 'isAll', 'MediaAlbum');
-        return $dartnative_media_picker_1.MediaAlbum(id: id, name: name, count: count, isAll: isAll);
+        final isAll = D4.getRequiredNamedArg<bool>(
+          named,
+          'isAll',
+          'MediaAlbum',
+        );
+        return $dartnative_media_picker_1.MediaAlbum(
+          id: id,
+          name: name,
+          count: count,
+          isAll: isAll,
+        );
       },
     },
     getters: {
-      'id': (visitor, target) => D4.validateTarget<$dartnative_media_picker_1.MediaAlbum>(target, 'MediaAlbum').id,
-      'name': (visitor, target) => D4.validateTarget<$dartnative_media_picker_1.MediaAlbum>(target, 'MediaAlbum').name,
-      'count': (visitor, target) => D4.validateTarget<$dartnative_media_picker_1.MediaAlbum>(target, 'MediaAlbum').count,
-      'isAll': (visitor, target) => D4.validateTarget<$dartnative_media_picker_1.MediaAlbum>(target, 'MediaAlbum').isAll,
+      'id': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_1.MediaAlbum>(
+            target,
+            'MediaAlbum',
+          )
+          .id,
+      'name': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_1.MediaAlbum>(
+            target,
+            'MediaAlbum',
+          )
+          .name,
+      'count': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_1.MediaAlbum>(
+            target,
+            'MediaAlbum',
+          )
+          .count,
+      'isAll': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_1.MediaAlbum>(
+            target,
+            'MediaAlbum',
+          )
+          .isAll,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_media_picker_1.MediaAlbum>(target, 'MediaAlbum');
+        final t = D4.validateTarget<$dartnative_media_picker_1.MediaAlbum>(
+          target,
+          'MediaAlbum',
+        );
         return t.toString();
       },
     },
@@ -481,26 +639,88 @@ BridgedClass _createMediaAssetBridge() {
       '': (visitor, positional, named) {
         final id = D4.getRequiredNamedArg<String>(named, 'id', 'MediaAsset');
         final uri = D4.getRequiredNamedArg<String>(named, 'uri', 'MediaAsset');
-        final isVideo = D4.getRequiredNamedArg<bool>(named, 'isVideo', 'MediaAsset');
+        final isVideo = D4.getRequiredNamedArg<bool>(
+          named,
+          'isVideo',
+          'MediaAsset',
+        );
         final width = D4.getRequiredNamedArg<int>(named, 'width', 'MediaAsset');
-        final height = D4.getRequiredNamedArg<int>(named, 'height', 'MediaAsset');
-        final duration = D4.getRequiredNamedArg<Duration>(named, 'duration', 'MediaAsset');
-        final createdAt = D4.getRequiredNamedArg<DateTime>(named, 'createdAt', 'MediaAsset');
-        return $dartnative_media_picker_1.MediaAsset(id: id, uri: uri, isVideo: isVideo, width: width, height: height, duration: duration, createdAt: createdAt);
+        final height = D4.getRequiredNamedArg<int>(
+          named,
+          'height',
+          'MediaAsset',
+        );
+        final duration = D4.getRequiredNamedArg<Duration>(
+          named,
+          'duration',
+          'MediaAsset',
+        );
+        final createdAt = D4.getRequiredNamedArg<DateTime>(
+          named,
+          'createdAt',
+          'MediaAsset',
+        );
+        return $dartnative_media_picker_1.MediaAsset(
+          id: id,
+          uri: uri,
+          isVideo: isVideo,
+          width: width,
+          height: height,
+          duration: duration,
+          createdAt: createdAt,
+        );
       },
     },
     getters: {
-      'id': (visitor, target) => D4.validateTarget<$dartnative_media_picker_1.MediaAsset>(target, 'MediaAsset').id,
-      'uri': (visitor, target) => D4.validateTarget<$dartnative_media_picker_1.MediaAsset>(target, 'MediaAsset').uri,
-      'isVideo': (visitor, target) => D4.validateTarget<$dartnative_media_picker_1.MediaAsset>(target, 'MediaAsset').isVideo,
-      'width': (visitor, target) => D4.validateTarget<$dartnative_media_picker_1.MediaAsset>(target, 'MediaAsset').width,
-      'height': (visitor, target) => D4.validateTarget<$dartnative_media_picker_1.MediaAsset>(target, 'MediaAsset').height,
-      'duration': (visitor, target) => D4.validateTarget<$dartnative_media_picker_1.MediaAsset>(target, 'MediaAsset').duration,
-      'createdAt': (visitor, target) => D4.validateTarget<$dartnative_media_picker_1.MediaAsset>(target, 'MediaAsset').createdAt,
+      'id': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_1.MediaAsset>(
+            target,
+            'MediaAsset',
+          )
+          .id,
+      'uri': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_1.MediaAsset>(
+            target,
+            'MediaAsset',
+          )
+          .uri,
+      'isVideo': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_1.MediaAsset>(
+            target,
+            'MediaAsset',
+          )
+          .isVideo,
+      'width': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_1.MediaAsset>(
+            target,
+            'MediaAsset',
+          )
+          .width,
+      'height': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_1.MediaAsset>(
+            target,
+            'MediaAsset',
+          )
+          .height,
+      'duration': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_1.MediaAsset>(
+            target,
+            'MediaAsset',
+          )
+          .duration,
+      'createdAt': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_1.MediaAsset>(
+            target,
+            'MediaAsset',
+          )
+          .createdAt,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_media_picker_1.MediaAsset>(target, 'MediaAsset');
+        final t = D4.validateTarget<$dartnative_media_picker_1.MediaAsset>(
+          target,
+          'MediaAsset',
+        );
         return t.toString();
       },
     },
@@ -533,16 +753,47 @@ BridgedClass _createGalleryFileBridge() {
     isAssignable: (v) => v is $dartnative_media_picker_1.GalleryFile,
     constructors: {
       '': (visitor, positional, named) {
-        final path = D4.getRequiredNamedArg<String>(named, 'path', 'GalleryFile');
-        final name = D4.getRequiredNamedArg<String>(named, 'name', 'GalleryFile');
-        final isVideo = D4.getRequiredNamedArg<bool>(named, 'isVideo', 'GalleryFile');
-        return $dartnative_media_picker_1.GalleryFile(path: path, name: name, isVideo: isVideo);
+        final path = D4.getRequiredNamedArg<String>(
+          named,
+          'path',
+          'GalleryFile',
+        );
+        final name = D4.getRequiredNamedArg<String>(
+          named,
+          'name',
+          'GalleryFile',
+        );
+        final isVideo = D4.getRequiredNamedArg<bool>(
+          named,
+          'isVideo',
+          'GalleryFile',
+        );
+        return $dartnative_media_picker_1.GalleryFile(
+          path: path,
+          name: name,
+          isVideo: isVideo,
+        );
       },
     },
     getters: {
-      'path': (visitor, target) => D4.validateTarget<$dartnative_media_picker_1.GalleryFile>(target, 'GalleryFile').path,
-      'name': (visitor, target) => D4.validateTarget<$dartnative_media_picker_1.GalleryFile>(target, 'GalleryFile').name,
-      'isVideo': (visitor, target) => D4.validateTarget<$dartnative_media_picker_1.GalleryFile>(target, 'GalleryFile').isVideo,
+      'path': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_1.GalleryFile>(
+            target,
+            'GalleryFile',
+          )
+          .path,
+      'name': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_1.GalleryFile>(
+            target,
+            'GalleryFile',
+          )
+          .name,
+      'isVideo': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_1.GalleryFile>(
+            target,
+            'GalleryFile',
+          )
+          .isVideo,
     },
     constructorSignatures: {
       '': 'const GalleryFile({required String path, required String name, required bool isVideo})',
@@ -565,85 +816,164 @@ BridgedClass _createMediaGalleryBridge() {
     name: 'MediaGallery',
     isAssignable: (v) => v is $dartnative_media_picker_1.MediaGallery,
     isAbstract: true,
-    constructors: {
-    },
+    constructors: {},
     staticGetters: {
-      'allAlbumId': (visitor) => $dartnative_media_picker_1.MediaGallery.allAlbumId,
+      'allAlbumId': (visitor) =>
+          $dartnative_media_picker_1.MediaGallery.allAlbumId,
       'changes': (visitor) => $dartnative_media_picker_1.MediaGallery.changes,
     },
     staticMethods: {
       'permission': (visitor, positional, named, typeArgs) {
-        final request = D4.getNamedArgWithDefault<bool>(named, 'request', false);
-        return $dartnative_media_picker_1.MediaGallery.permission(request: request);
+        final request = D4.getNamedArgWithDefault<bool>(
+          named,
+          'request',
+          false,
+        );
+        return $dartnative_media_picker_1.MediaGallery.permission(
+          request: request,
+        );
       },
       'albums': (visitor, positional, named, typeArgs) {
-        final type = D4.getNamedArgWithDefault<$dartnative_media_picker_1.GalleryMediaType>(named, 'type', $dartnative_media_picker_1.GalleryMediaType.images);
+        final type = D4
+            .getNamedArgWithDefault<
+              $dartnative_media_picker_1.GalleryMediaType
+            >(
+              named,
+              'type',
+              $dartnative_media_picker_1.GalleryMediaType.images,
+            );
         return $dartnative_media_picker_1.MediaGallery.albums(type: type);
       },
       'assets': (visitor, positional, named, typeArgs) {
-        final type = D4.getNamedArgWithDefault<$dartnative_media_picker_1.GalleryMediaType>(named, 'type', $dartnative_media_picker_1.GalleryMediaType.images);
+        final type = D4
+            .getNamedArgWithDefault<
+              $dartnative_media_picker_1.GalleryMediaType
+            >(
+              named,
+              'type',
+              $dartnative_media_picker_1.GalleryMediaType.images,
+            );
         final offset = D4.getNamedArgWithDefault<int>(named, 'offset', 0);
         final limit = D4.getNamedArgWithDefault<int>(named, 'limit', 80);
         final order = named.containsKey('order') && named['order'] != null
-            ? D4.coerceList<$dartnative_media_picker_1.GalleryOrder>(named['order'], 'order')
+            ? D4.coerceList<$dartnative_media_picker_1.GalleryOrder>(
+                named['order'],
+                'order',
+              )
             : const <$dartnative_media_picker_1.GalleryOrder>[];
         if (!named.containsKey('albumId')) {
-          return $dartnative_media_picker_1.MediaGallery.assets(type: type, offset: offset, limit: limit, order: order);
+          return $dartnative_media_picker_1.MediaGallery.assets(
+            type: type,
+            offset: offset,
+            limit: limit,
+            order: order,
+          );
         }
         if (named.containsKey('albumId')) {
-          final albumId = D4.getRequiredNamedArg<String>(named, 'albumId', 'assets');
-          return $dartnative_media_picker_1.MediaGallery.assets(type: type, offset: offset, limit: limit, order: order, albumId: albumId);
+          final albumId = D4.getRequiredNamedArg<String>(
+            named,
+            'albumId',
+            'assets',
+          );
+          return $dartnative_media_picker_1.MediaGallery.assets(
+            type: type,
+            offset: offset,
+            limit: limit,
+            order: order,
+            albumId: albumId,
+          );
         }
-        throw StateError('Unreachable: all named parameter combinations should be covered');
+        throw StateError(
+          'Unreachable: all named parameter combinations should be covered',
+        );
       },
       'preheat': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'preheat');
         if (positional.isEmpty) {
-          throw ArgumentError('preheat: Missing required argument "assetIds" at position 0');
+          throw ArgumentError(
+            'preheat: Missing required argument "assetIds" at position 0',
+          );
         }
         final assetIds = D4.coerceList<String>(positional[0], 'assetIds');
         final size = D4.getNamedArgWithDefault<int>(named, 'size', 200);
-        return $dartnative_media_picker_1.MediaGallery.preheat(assetIds, size: size);
+        return $dartnative_media_picker_1.MediaGallery.preheat(
+          assetIds,
+          size: size,
+        );
       },
       'cancelPreheat': (visitor, positional, named, typeArgs) {
         return $dartnative_media_picker_1.MediaGallery.cancelPreheat();
       },
       'thumbnail': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'thumbnail');
-        final assetId = D4.getRequiredArg<String>(positional, 0, 'assetId', 'thumbnail');
+        final assetId = D4.getRequiredArg<String>(
+          positional,
+          0,
+          'assetId',
+          'thumbnail',
+        );
         final width = D4.getNamedArgWithDefault<int>(named, 'width', 256);
         final height = D4.getNamedArgWithDefault<int>(named, 'height', 256);
-        return $dartnative_media_picker_1.MediaGallery.thumbnail(assetId, width: width, height: height);
+        return $dartnative_media_picker_1.MediaGallery.thumbnail(
+          assetId,
+          width: width,
+          height: height,
+        );
       },
       'save': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'save');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'save');
-        final isVideo = D4.getNamedArgWithDefault<bool>(named, 'isVideo', false);
-        final albumName = D4.getNamedArgWithDefault<String>(named, 'albumName', '');
-        return $dartnative_media_picker_1.MediaGallery.save(path, isVideo: isVideo, albumName: albumName);
+        final isVideo = D4.getNamedArgWithDefault<bool>(
+          named,
+          'isVideo',
+          false,
+        );
+        final albumName = D4.getNamedArgWithDefault<String>(
+          named,
+          'albumName',
+          '',
+        );
+        return $dartnative_media_picker_1.MediaGallery.save(
+          path,
+          isVideo: isVideo,
+          albumName: albumName,
+        );
       },
       'delete': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'delete');
         if (positional.isEmpty) {
-          throw ArgumentError('delete: Missing required argument "assetIds" at position 0');
+          throw ArgumentError(
+            'delete: Missing required argument "assetIds" at position 0',
+          );
         }
         final assetIds = D4.coerceList<String>(positional[0], 'assetIds');
         return $dartnative_media_picker_1.MediaGallery.delete(assetIds);
       },
       'file': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'file');
-        final assetId = D4.getRequiredArg<String>(positional, 0, 'assetId', 'file');
+        final assetId = D4.getRequiredArg<String>(
+          positional,
+          0,
+          'assetId',
+          'file',
+        );
         return $dartnative_media_picker_1.MediaGallery.file(assetId);
       },
     },
     staticMethodSignatures: {
-      'permission': 'Future<GalleryPermission> permission({bool request = false})',
-      'albums': 'Future<List<MediaAlbum>> albums({GalleryMediaType type = GalleryMediaType.images})',
-      'assets': 'Future<List<MediaAsset>> assets({String albumId = allAlbumId, GalleryMediaType type = GalleryMediaType.images, int offset = 0, int limit = 80, List<GalleryOrder> order = const []})',
-      'preheat': 'Future<void> preheat(List<String> assetIds, {int size = 200})',
+      'permission':
+          'Future<GalleryPermission> permission({bool request = false})',
+      'albums':
+          'Future<List<MediaAlbum>> albums({GalleryMediaType type = GalleryMediaType.images})',
+      'assets':
+          'Future<List<MediaAsset>> assets({String albumId = allAlbumId, GalleryMediaType type = GalleryMediaType.images, int offset = 0, int limit = 80, List<GalleryOrder> order = const []})',
+      'preheat':
+          'Future<void> preheat(List<String> assetIds, {int size = 200})',
       'cancelPreheat': 'Future<void> cancelPreheat()',
-      'thumbnail': 'Future<String> thumbnail(String assetId, {int width = 256, int height = 256})',
-      'save': 'Future<String> save(String path, {bool isVideo = false, String albumName = \'\'})',
+      'thumbnail':
+          'Future<String> thumbnail(String assetId, {int width = 256, int height = 256})',
+      'save':
+          'Future<String> save(String path, {bool isVideo = false, String albumName = \'\'})',
       'delete': 'Future<List<String>> delete(List<String> assetIds)',
       'file': 'Future<GalleryFile> file(String assetId)',
     },
@@ -667,21 +997,52 @@ BridgedClass _createGalleryThumbBridge() {
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_1.Key?>(named, 'key');
-        final assetId = D4.getRequiredNamedArg<String>(named, 'assetId', 'GalleryThumb');
+        final assetId = D4.getRequiredNamedArg<String>(
+          named,
+          'assetId',
+          'GalleryThumb',
+        );
         final size = D4.getNamedArgWithDefault<int>(named, 'size', 240);
-        return $dartnative_media_picker_3.GalleryThumb(key: key, assetId: assetId, size: size);
+        return $dartnative_media_picker_3.GalleryThumb(
+          key: key,
+          assetId: assetId,
+          size: size,
+        );
       },
     },
     getters: {
-      'assetId': (visitor, target) => D4.validateTarget<$dartnative_media_picker_3.GalleryThumb>(target, 'GalleryThumb').assetId,
-      'size': (visitor, target) => D4.validateTarget<$dartnative_media_picker_3.GalleryThumb>(target, 'GalleryThumb').size,
-      'key': (visitor, target) => D4.validateTarget<$dartnative_media_picker_3.GalleryThumb>(target, 'GalleryThumb').key,
+      'assetId': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_3.GalleryThumb>(
+            target,
+            'GalleryThumb',
+          )
+          .assetId,
+      'size': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_3.GalleryThumb>(
+            target,
+            'GalleryThumb',
+          )
+          .size,
+      'key': (visitor, target) => D4
+          .validateTarget<$dartnative_media_picker_3.GalleryThumb>(
+            target,
+            'GalleryThumb',
+          )
+          .key,
     },
     methods: {
       'build': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_media_picker_3.GalleryThumb>(target, 'GalleryThumb');
+        final t = D4.validateTarget<$dartnative_media_picker_3.GalleryThumb>(
+          target,
+          'GalleryThumb',
+        );
         D4.requireMinArgs(positional, 1, 'build');
-        final context = D4.getRequiredArg<$dartnative_1.BuildContext>(positional, 0, 'context', 'build');
+        final context = D4.getRequiredArg<$dartnative_1.BuildContext>(
+          positional,
+          0,
+          'context',
+          'build',
+        );
         return (t as dynamic).build(context);
       },
     },
@@ -698,4 +1059,3 @@ BridgedClass _createGalleryThumbBridge() {
     },
   );
 }
-

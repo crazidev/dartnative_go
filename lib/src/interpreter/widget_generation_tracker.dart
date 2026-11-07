@@ -4,9 +4,30 @@
 class WidgetGenerationTracker {
   static final Map<String, int> _classGenerations = {};
   static final Map<String, String> _classToFile = {};
+  static final Set<MountedWidgetReloadListener> _mountedWidgetReloadListeners =
+      {};
+
+  static void registerMountedWidget(MountedWidgetReloadListener listener) {
+    _mountedWidgetReloadListeners.add(listener);
+  }
+
+  static void unregisterMountedWidget(MountedWidgetReloadListener listener) {
+    _mountedWidgetReloadListeners.remove(listener);
+  }
+
+  /// Rebinds mounted guest State proxies and schedules their build methods.
+  ///
+  /// Pushed Navigator routes are not rebuilt when only the root app widget is
+  /// replaced, so they need an explicit reload notification.
+  static void notifyMountedWidgets(Object? visitor) {
+    for (final listener in List.of(_mountedWidgetReloadListeners)) {
+      listener(visitor);
+    }
+  }
 
   /// Retrieves the current generation counter for a given widget class name.
-  static int getGeneration(String className) => _classGenerations[className] ?? 0;
+  static int getGeneration(String className) =>
+      _classGenerations[className] ?? 0;
 
   /// Registers and maps class definitions from multi-file sources.
   static void registerSources(Map<String, String> sources) {
@@ -56,11 +77,14 @@ class WidgetGenerationTracker {
     }
 
     _classToFile.forEach((className, filePath) {
-      final isMatch = normalizedChanged.contains(filePath) ||
-          normalizedChanged.any((cp) =>
-              cp.endsWith('/$filePath') ||
-              filePath.endsWith('/$cp') ||
-              cp == filePath);
+      final isMatch =
+          normalizedChanged.contains(filePath) ||
+          normalizedChanged.any(
+            (cp) =>
+                cp.endsWith('/$filePath') ||
+                filePath.endsWith('/$cp') ||
+                cp == filePath,
+          );
       if (isMatch) {
         _classGenerations[className] = (_classGenerations[className] ?? 0) + 1;
         bumpedClasses.add(className);
@@ -95,3 +119,5 @@ class WidgetGenerationTracker {
     _classToFile.clear();
   }
 }
+
+typedef MountedWidgetReloadListener = void Function(Object? visitor);

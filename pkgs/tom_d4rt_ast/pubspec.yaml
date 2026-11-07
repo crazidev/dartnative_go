@@ -63,7 +63,7 @@ dependencies:
   # version (3.6.1, the API embedded in the AOT platform), and image 4.3.0
   # (pinned by dartnative_splash 1.0.1) needs archive ^3.6.1. The patched
   # runtime files above compile against both the 3.x and 4.x APIs.
-  archive: '>=3.6.1 <4.5.1'
+  archive: ">=3.6.1 <4.5.1"
   # Upper-bounded deliberately: this package interprets `SAstNode` trees, so a
   # breaking change to the model is a breaking change here. An open constraint
   # would let pub pair an interpreter with a model it cannot read.

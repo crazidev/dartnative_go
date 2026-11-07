@@ -1,15 +1,17 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 3 files
-// Generated: 2026-11-01T03:38:35.117307 by tom_d4rt_generator 1.26.2
+// Generated: 2026-11-06T23:46:56.062288 by tom_d4rt_generator 1.26.2
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
 
-import 'package:dartnative_splash/src/android_generator.dart' as $dartnative_splash_1;
+import 'package:dartnative_splash/src/android_generator.dart'
+    as $dartnative_splash_1;
 import 'package:dartnative_splash/src/config.dart' as $dartnative_splash_2;
-import 'package:dartnative_splash/src/ios_generator.dart' as $dartnative_splash_3;
+import 'package:dartnative_splash/src/ios_generator.dart'
+    as $dartnative_splash_3;
 
 /// Bridge class for dartnative_splash module.
 class DartnativeSplashBridge {
@@ -57,7 +59,8 @@ class DartnativeSplashBridge {
     return {
       'SplashConfig': 'package:dartnative_splash/src/config.dart',
       'IosGenerator': 'package:dartnative_splash/src/ios_generator.dart',
-      'AndroidGenerator': 'package:dartnative_splash/src/android_generator.dart',
+      'AndroidGenerator':
+          'package:dartnative_splash/src/android_generator.dart',
     };
   }
 
@@ -69,8 +72,7 @@ class DartnativeSplashBridge {
   /// ancestors and the interface-proxy supertype walk resolves up the
   /// chain.
   static Map<String, List<String>> classSupertypes() {
-    return {
-    };
+    return {};
   }
 
   /// Returns a map of type alias names to their target class names.
@@ -79,8 +81,7 @@ class DartnativeSplashBridge {
   /// are registered so that code using the alias name can resolve to the
   /// bridged class under its canonical name.
   static Map<String, String> classAliases() {
-    return {
-    };
+    return {};
   }
 
   /// Returns the list of function typedef names declared in this library.
@@ -88,14 +89,12 @@ class DartnativeSplashBridge {
   /// Function typedefs like `typedef VoidCallback = void Function()` are
   /// registered so that they can be used as type arguments in D4rt scripts.
   static List<String> functionTypedefs() {
-    return [
-    ];
+    return [];
   }
 
   /// Returns all bridged enum definitions.
   static List<BridgedEnumDefinition> bridgedEnums() {
-    return [
-    ];
+    return [];
   }
 
   /// Returns a map of enum names to their canonical source URIs.
@@ -103,32 +102,46 @@ class DartnativeSplashBridge {
   /// Used for deduplication when the same enum is exported through
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> enumSourceUris() {
-    return {
-    };
+    return {};
   }
 
   /// Returns all bridged extension definitions.
   static List<BridgedExtensionDefinition> bridgedExtensions() {
-    return [
-    ];
+    return [];
   }
 
   /// Returns a map of extension identifiers to their canonical source URIs.
   static Map<String, String> extensionSourceUris() {
-    return {
-    };
+    return {};
   }
 
   /// GEN-107: Library re-exports declared by the bridged source
   /// libraries. Each tuple mirrors a Dart `export '…'` directive.
   /// Consumed by `registerBridges` via `D4rt.registerLibraryReExport`
   /// (mirrored on `D4rtRunner` in tom_d4rt_ast).
-  static List<({String source, String target, Set<String>? show, Set<String>? hide})>
+  static List<
+    ({String source, String target, Set<String>? show, Set<String>? hide})
+  >
   bridgeReExports() {
     return [
-      (source: 'package:dartnative_splash/dartnative_splash.dart', target: 'package:dartnative_splash/src/config.dart', show: {'SplashConfig'}, hide: null),
-      (source: 'package:dartnative_splash/dartnative_splash.dart', target: 'package:dartnative_splash/src/ios_generator.dart', show: {'IosGenerator'}, hide: null),
-      (source: 'package:dartnative_splash/dartnative_splash.dart', target: 'package:dartnative_splash/src/android_generator.dart', show: {'AndroidGenerator'}, hide: null),
+      (
+        source: 'package:dartnative_splash/dartnative_splash.dart',
+        target: 'package:dartnative_splash/src/config.dart',
+        show: {'SplashConfig'},
+        hide: null,
+      ),
+      (
+        source: 'package:dartnative_splash/dartnative_splash.dart',
+        target: 'package:dartnative_splash/src/ios_generator.dart',
+        show: {'IosGenerator'},
+        hide: null,
+      ),
+      (
+        source: 'package:dartnative_splash/dartnative_splash.dart',
+        target: 'package:dartnative_splash/src/android_generator.dart',
+        show: {'AndroidGenerator'},
+        hide: null,
+      ),
     ];
   }
 
@@ -160,7 +173,12 @@ class DartnativeSplashBridge {
 
     // GEN-107: Register library re-exports
     for (final r in bridgeReExports()) {
-      interpreter.registerLibraryReExport(r.source, r.target, show: r.show, hide: r.hide);
+      interpreter.registerLibraryReExport(
+        r.source,
+        r.target,
+        show: r.show,
+        hide: r.hide,
+      );
     }
   }
 
@@ -209,7 +227,6 @@ class DartnativeSplashBridge {
   static List<String> subPackageBarrels() {
     return [];
   }
-
 }
 
 // =============================================================================
@@ -223,34 +240,110 @@ BridgedClass _createSplashConfigBridge() {
     isAssignable: (v) => v is $dartnative_splash_2.SplashConfig,
     constructors: {
       '': (visitor, positional, named) {
-        final backgroundColor = D4.getRequiredNamedArg<String>(named, 'backgroundColor', 'SplashConfig');
-        final image = D4.getRequiredNamedArg<String>(named, 'image', 'SplashConfig');
-        final darkBackgroundColor = D4.getOptionalNamedArg<String?>(named, 'darkBackgroundColor');
+        final backgroundColor = D4.getRequiredNamedArg<String>(
+          named,
+          'backgroundColor',
+          'SplashConfig',
+        );
+        final image = D4.getRequiredNamedArg<String>(
+          named,
+          'image',
+          'SplashConfig',
+        );
+        final darkBackgroundColor = D4.getOptionalNamedArg<String?>(
+          named,
+          'darkBackgroundColor',
+        );
         final darkImage = D4.getOptionalNamedArg<String?>(named, 'darkImage');
-        final generateIos = D4.getNamedArgWithDefault<bool>(named, 'generateIos', true);
-        final generateAndroid = D4.getNamedArgWithDefault<bool>(named, 'generateAndroid', true);
-        return $dartnative_splash_2.SplashConfig(backgroundColor: backgroundColor, image: image, darkBackgroundColor: darkBackgroundColor, darkImage: darkImage, generateIos: generateIos, generateAndroid: generateAndroid);
+        final generateIos = D4.getNamedArgWithDefault<bool>(
+          named,
+          'generateIos',
+          true,
+        );
+        final generateAndroid = D4.getNamedArgWithDefault<bool>(
+          named,
+          'generateAndroid',
+          true,
+        );
+        return $dartnative_splash_2.SplashConfig(
+          backgroundColor: backgroundColor,
+          image: image,
+          darkBackgroundColor: darkBackgroundColor,
+          darkImage: darkImage,
+          generateIos: generateIos,
+          generateAndroid: generateAndroid,
+        );
       },
       'fromPubspec': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'SplashConfig');
-        final pubspecPath = D4.getRequiredArg<String>(positional, 0, 'pubspecPath', 'SplashConfig');
+        final pubspecPath = D4.getRequiredArg<String>(
+          positional,
+          0,
+          'pubspecPath',
+          'SplashConfig',
+        );
         return $dartnative_splash_2.SplashConfig.fromPubspec(pubspecPath);
       },
     },
     getters: {
-      'backgroundColor': (visitor, target) => D4.validateTarget<$dartnative_splash_2.SplashConfig>(target, 'SplashConfig').backgroundColor,
-      'image': (visitor, target) => D4.validateTarget<$dartnative_splash_2.SplashConfig>(target, 'SplashConfig').image,
-      'darkBackgroundColor': (visitor, target) => D4.validateTarget<$dartnative_splash_2.SplashConfig>(target, 'SplashConfig').darkBackgroundColor,
-      'darkImage': (visitor, target) => D4.validateTarget<$dartnative_splash_2.SplashConfig>(target, 'SplashConfig').darkImage,
-      'generateIos': (visitor, target) => D4.validateTarget<$dartnative_splash_2.SplashConfig>(target, 'SplashConfig').generateIos,
-      'generateAndroid': (visitor, target) => D4.validateTarget<$dartnative_splash_2.SplashConfig>(target, 'SplashConfig').generateAndroid,
-      'effectiveDarkBackgroundColor': (visitor, target) => D4.validateTarget<$dartnative_splash_2.SplashConfig>(target, 'SplashConfig').effectiveDarkBackgroundColor,
-      'effectiveDarkImage': (visitor, target) => D4.validateTarget<$dartnative_splash_2.SplashConfig>(target, 'SplashConfig').effectiveDarkImage,
+      'backgroundColor': (visitor, target) => D4
+          .validateTarget<$dartnative_splash_2.SplashConfig>(
+            target,
+            'SplashConfig',
+          )
+          .backgroundColor,
+      'image': (visitor, target) => D4
+          .validateTarget<$dartnative_splash_2.SplashConfig>(
+            target,
+            'SplashConfig',
+          )
+          .image,
+      'darkBackgroundColor': (visitor, target) => D4
+          .validateTarget<$dartnative_splash_2.SplashConfig>(
+            target,
+            'SplashConfig',
+          )
+          .darkBackgroundColor,
+      'darkImage': (visitor, target) => D4
+          .validateTarget<$dartnative_splash_2.SplashConfig>(
+            target,
+            'SplashConfig',
+          )
+          .darkImage,
+      'generateIos': (visitor, target) => D4
+          .validateTarget<$dartnative_splash_2.SplashConfig>(
+            target,
+            'SplashConfig',
+          )
+          .generateIos,
+      'generateAndroid': (visitor, target) => D4
+          .validateTarget<$dartnative_splash_2.SplashConfig>(
+            target,
+            'SplashConfig',
+          )
+          .generateAndroid,
+      'effectiveDarkBackgroundColor': (visitor, target) => D4
+          .validateTarget<$dartnative_splash_2.SplashConfig>(
+            target,
+            'SplashConfig',
+          )
+          .effectiveDarkBackgroundColor,
+      'effectiveDarkImage': (visitor, target) => D4
+          .validateTarget<$dartnative_splash_2.SplashConfig>(
+            target,
+            'SplashConfig',
+          )
+          .effectiveDarkImage,
     },
     staticMethods: {
       'parseColor': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'parseColor');
-        final hex = D4.getRequiredArg<String>(positional, 0, 'hex', 'parseColor');
+        final hex = D4.getRequiredArg<String>(
+          positional,
+          0,
+          'hex',
+          'parseColor',
+        );
         return $dartnative_splash_2.SplashConfig.parseColor(hex);
       },
     },
@@ -286,16 +379,29 @@ BridgedClass _createIosGeneratorBridge() {
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'IosGenerator');
-        final config = D4.getRequiredArg<$dartnative_splash_2.SplashConfig>(positional, 0, 'config', 'IosGenerator');
+        final config = D4.getRequiredArg<$dartnative_splash_2.SplashConfig>(
+          positional,
+          0,
+          'config',
+          'IosGenerator',
+        );
         return $dartnative_splash_3.IosGenerator(config);
       },
     },
     getters: {
-      'config': (visitor, target) => D4.validateTarget<$dartnative_splash_3.IosGenerator>(target, 'IosGenerator').config,
+      'config': (visitor, target) => D4
+          .validateTarget<$dartnative_splash_3.IosGenerator>(
+            target,
+            'IosGenerator',
+          )
+          .config,
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_splash_3.IosGenerator>(target, 'IosGenerator');
+        final t = D4.validateTarget<$dartnative_splash_3.IosGenerator>(
+          target,
+          'IosGenerator',
+        );
         t.generate();
         return null;
       },
@@ -324,16 +430,29 @@ BridgedClass _createAndroidGeneratorBridge() {
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'AndroidGenerator');
-        final config = D4.getRequiredArg<$dartnative_splash_2.SplashConfig>(positional, 0, 'config', 'AndroidGenerator');
+        final config = D4.getRequiredArg<$dartnative_splash_2.SplashConfig>(
+          positional,
+          0,
+          'config',
+          'AndroidGenerator',
+        );
         return $dartnative_splash_1.AndroidGenerator(config);
       },
     },
     getters: {
-      'config': (visitor, target) => D4.validateTarget<$dartnative_splash_1.AndroidGenerator>(target, 'AndroidGenerator').config,
+      'config': (visitor, target) => D4
+          .validateTarget<$dartnative_splash_1.AndroidGenerator>(
+            target,
+            'AndroidGenerator',
+          )
+          .config,
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_splash_1.AndroidGenerator>(target, 'AndroidGenerator');
+        final t = D4.validateTarget<$dartnative_splash_1.AndroidGenerator>(
+          target,
+          'AndroidGenerator',
+        );
         t.generate();
         return null;
       },
@@ -349,4 +468,3 @@ BridgedClass _createAndroidGeneratorBridge() {
     },
   );
 }
-

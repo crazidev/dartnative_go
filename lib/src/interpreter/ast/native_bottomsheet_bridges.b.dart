@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 6 files
-// Generated: 2026-11-01T03:47:33.996274 by tom_d4rt_generator 1.26.2
+// Generated: 2026-11-06T23:49:27.493982 by tom_d4rt_generator 1.26.2
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -10,12 +10,18 @@ import 'package:tom_d4rt_ast/runtime.dart';
 import 'package:dartnative/src/core.dart' as $dartnative_1;
 import 'package:dartnative/src/painting.dart' as $dartnative_2;
 import 'package:dartnative/dartnative.dart' as $flutter_widgets;
-import 'package:dartnative_go/src/runner/native_bottomsheet_manager.dart' as $bottomsheet_mgr;
-import 'package:native_bottomsheet/src/ffi_bindings.dart' as $native_bottomsheet_1;
-import 'package:native_bottomsheet/src/sheet_controller.dart' as $native_bottomsheet_2;
-import 'package:native_bottomsheet/src/sheet_detent.dart' as $native_bottomsheet_3;
-import 'package:native_bottomsheet/src/sheet_platform_config.dart' as $native_bottomsheet_4;
-import 'package:native_bottomsheet/src/show_bottom_sheet.dart' as $native_bottomsheet_5;
+import 'package:dartnative_go/src/runner/native_bottomsheet_manager.dart'
+    as $bottomsheet_mgr;
+import 'package:native_bottomsheet/src/ffi_bindings.dart'
+    as $native_bottomsheet_1;
+import 'package:native_bottomsheet/src/sheet_controller.dart'
+    as $native_bottomsheet_2;
+import 'package:native_bottomsheet/src/sheet_detent.dart'
+    as $native_bottomsheet_3;
+import 'package:native_bottomsheet/src/sheet_platform_config.dart'
+    as $native_bottomsheet_4;
+import 'package:native_bottomsheet/src/show_bottom_sheet.dart'
+    as $native_bottomsheet_5;
 
 /// Bridge class for native_bottomsheet module.
 class NativeBottomsheetBridge {
@@ -74,11 +80,16 @@ class NativeBottomsheetBridge {
   static Map<String, String> classSourceUris() {
     return {
       'DNSheetDetent': 'package:native_bottomsheet/src/sheet_detent.dart',
-      'DNSheetController': 'package:native_bottomsheet/src/sheet_controller.dart',
-      'DNSheetIOSConfig': 'package:native_bottomsheet/src/sheet_platform_config.dart',
-      'DNSheetAndroidConfig': 'package:native_bottomsheet/src/sheet_platform_config.dart',
-      'DNSheetPlatformConfig': 'package:native_bottomsheet/src/sheet_platform_config.dart',
-      'BottomSheetFFIBindings': 'package:native_bottomsheet/src/ffi_bindings.dart',
+      'DNSheetController':
+          'package:native_bottomsheet/src/sheet_controller.dart',
+      'DNSheetIOSConfig':
+          'package:native_bottomsheet/src/sheet_platform_config.dart',
+      'DNSheetAndroidConfig':
+          'package:native_bottomsheet/src/sheet_platform_config.dart',
+      'DNSheetPlatformConfig':
+          'package:native_bottomsheet/src/sheet_platform_config.dart',
+      'BottomSheetFFIBindings':
+          'package:native_bottomsheet/src/ffi_bindings.dart',
       'Color': 'package:dartnative/src/painting.dart',
     };
   }
@@ -91,8 +102,7 @@ class NativeBottomsheetBridge {
   /// ancestors and the interface-proxy supertype walk resolves up the
   /// chain.
   static Map<String, List<String>> classSupertypes() {
-    return {
-    };
+    return {};
   }
 
   /// Returns a map of type alias names to their target class names.
@@ -101,8 +111,7 @@ class NativeBottomsheetBridge {
   /// are registered so that code using the alias name can resolve to the
   /// bridged class under its canonical name.
   static Map<String, String> classAliases() {
-    return {
-    };
+    return {};
   }
 
   /// Returns the list of function typedef names declared in this library.
@@ -110,8 +119,7 @@ class NativeBottomsheetBridge {
   /// Function typedefs like `typedef VoidCallback = void Function()` are
   /// registered so that they can be used as type arguments in D4rt scripts.
   static List<String> functionTypedefs() {
-    return [
-    ];
+    return [];
   }
 
   /// Returns all bridged enum definitions.
@@ -130,34 +138,60 @@ class NativeBottomsheetBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> enumSourceUris() {
     return {
-      'DNSecureFlagPolicy': 'package:native_bottomsheet/src/sheet_platform_config.dart',
+      'DNSecureFlagPolicy':
+          'package:native_bottomsheet/src/sheet_platform_config.dart',
     };
   }
 
   /// Returns all bridged extension definitions.
   static List<BridgedExtensionDefinition> bridgedExtensions() {
-    return [
-    ];
+    return [];
   }
 
   /// Returns a map of extension identifiers to their canonical source URIs.
   static Map<String, String> extensionSourceUris() {
-    return {
-    };
+    return {};
   }
 
   /// GEN-107: Library re-exports declared by the bridged source
   /// libraries. Each tuple mirrors a Dart `export '…'` directive.
   /// Consumed by `registerBridges` via `D4rt.registerLibraryReExport`
   /// (mirrored on `D4rtRunner` in tom_d4rt_ast).
-  static List<({String source, String target, Set<String>? show, Set<String>? hide})>
+  static List<
+    ({String source, String target, Set<String>? show, Set<String>? hide})
+  >
   bridgeReExports() {
     return [
-      (source: 'package:native_bottomsheet/native_bottomsheet.dart', target: 'package:native_bottomsheet/src/sheet_detent.dart', show: null, hide: null),
-      (source: 'package:native_bottomsheet/native_bottomsheet.dart', target: 'package:native_bottomsheet/src/sheet_controller.dart', show: null, hide: null),
-      (source: 'package:native_bottomsheet/native_bottomsheet.dart', target: 'package:native_bottomsheet/src/sheet_platform_config.dart', show: null, hide: null),
-      (source: 'package:native_bottomsheet/native_bottomsheet.dart', target: 'package:native_bottomsheet/src/show_bottom_sheet.dart', show: null, hide: null),
-      (source: 'package:native_bottomsheet/native_bottomsheet.dart', target: 'package:native_bottomsheet/src/ffi_bindings.dart', show: {'BottomSheetFFIBindings'}, hide: null),
+      (
+        source: 'package:native_bottomsheet/native_bottomsheet.dart',
+        target: 'package:native_bottomsheet/src/sheet_detent.dart',
+        show: null,
+        hide: null,
+      ),
+      (
+        source: 'package:native_bottomsheet/native_bottomsheet.dart',
+        target: 'package:native_bottomsheet/src/sheet_controller.dart',
+        show: null,
+        hide: null,
+      ),
+      (
+        source: 'package:native_bottomsheet/native_bottomsheet.dart',
+        target: 'package:native_bottomsheet/src/sheet_platform_config.dart',
+        show: null,
+        hide: null,
+      ),
+      (
+        source: 'package:native_bottomsheet/native_bottomsheet.dart',
+        target: 'package:native_bottomsheet/src/show_bottom_sheet.dart',
+        show: null,
+        hide: null,
+      ),
+      (
+        source: 'package:native_bottomsheet/native_bottomsheet.dart',
+        target: 'package:native_bottomsheet/src/ffi_bindings.dart',
+        show: {'BottomSheetFFIBindings'},
+        hide: null,
+      ),
     ];
   }
 
@@ -191,7 +225,11 @@ class NativeBottomsheetBridge {
     final enums = bridgedEnums();
     final enumSources = enumSourceUris();
     for (final enumDef in enums) {
-      interpreter.registerBridgedEnum(enumDef, importPath, sourceUri: enumSources[enumDef.name]);
+      interpreter.registerBridgedEnum(
+        enumDef,
+        importPath,
+        sourceUri: enumSources[enumDef.name],
+      );
     }
 
     // Register global functions with source URIs for deduplication
@@ -199,12 +237,23 @@ class NativeBottomsheetBridge {
     final funcSources = globalFunctionSourceUris();
     final funcSigs = globalFunctionSignatures();
     for (final entry in funcs.entries) {
-      interpreter.registertopLevelFunction(entry.key, entry.value, importPath, sourceUri: funcSources[entry.key], signature: funcSigs[entry.key]);
+      interpreter.registertopLevelFunction(
+        entry.key,
+        entry.value,
+        importPath,
+        sourceUri: funcSources[entry.key],
+        signature: funcSigs[entry.key],
+      );
     }
 
     // GEN-107: Register library re-exports
     for (final r in bridgeReExports()) {
-      interpreter.registerLibraryReExport(r.source, r.target, show: r.show, hide: r.hide);
+      interpreter.registerLibraryReExport(
+        r.source,
+        r.target,
+        show: r.show,
+        hide: r.hide,
+      );
     }
   }
 
@@ -213,38 +262,148 @@ class NativeBottomsheetBridge {
     return {
       'showBottomSheet': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'showBottomSheet');
-        final context = D4.getRequiredArg<dynamic>(positional, 0, 'context', 'showBottomSheet');
+        final context = D4.getRequiredArg<dynamic>(
+          positional,
+          0,
+          'context',
+          'showBottomSheet',
+        );
         final builderRaw = named['builder'];
         if (builderRaw == null) {
-          throw ArgumentError('showBottomSheet: Missing required named argument "builder"');
+          throw ArgumentError(
+            'showBottomSheet: Missing required named argument "builder"',
+          );
         }
-        final dynamic builder = (dynamic p0, $native_bottomsheet_2.DNSheetController p1) { return $bottomsheet_mgr.NativeBottomSheetScope(controller: p1, child: D4.extractBridgedArg<$flutter_widgets.Widget>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]), 'builder', visitor)); };
-        final initialDetent = D4.getOptionalNamedArg<$native_bottomsheet_3.DNSheetDetent?>(named, 'initialDetent');
-        final showGrabber = D4.getNamedArgWithDefault<bool>(named, 'showGrabber', true);
-        final cornerRadius = D4.getOptionalNamedArg<double?>(named, 'cornerRadius');
-        final scrimOpacity = D4.getOptionalNamedArg<double?>(named, 'scrimOpacity');
-        final backgroundColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(named, 'backgroundColor');
-        final adaptToContainerBackground = D4.getNamedArgWithDefault<bool>(named, 'adaptToContainerBackground', true);
-        final isDismissable = D4.getNamedArgWithDefault<bool>(named, 'isDismissable', true);
-        final scrollExpandsSheet = D4.getNamedArgWithDefault<bool>(named, 'scrollExpandsSheet', true);
-        final routerEnabled = D4.getNamedArgWithDefault<bool>(named, 'routerEnabled', false);
+        final dynamic builder =
+            (dynamic p0, $native_bottomsheet_2.DNSheetController p1) {
+              return $bottomsheet_mgr.NativeBottomSheetScope(
+                controller: p1,
+                child: D4.extractBridgedArg<$flutter_widgets.Widget>(
+                  D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]),
+                  'builder',
+                  visitor,
+                ),
+              );
+            };
+        final initialDetent = D4
+            .getOptionalNamedArg<$native_bottomsheet_3.DNSheetDetent?>(
+              named,
+              'initialDetent',
+            );
+        final showGrabber = D4.getNamedArgWithDefault<bool>(
+          named,
+          'showGrabber',
+          true,
+        );
+        final cornerRadius = D4.getOptionalNamedArg<double?>(
+          named,
+          'cornerRadius',
+        );
+        final scrimOpacity = D4.getOptionalNamedArg<double?>(
+          named,
+          'scrimOpacity',
+        );
+        final backgroundColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(
+          named,
+          'backgroundColor',
+        );
+        final adaptToContainerBackground = D4.getNamedArgWithDefault<bool>(
+          named,
+          'adaptToContainerBackground',
+          true,
+        );
+        final isDismissable = D4.getNamedArgWithDefault<bool>(
+          named,
+          'isDismissable',
+          true,
+        );
+        final scrollExpandsSheet = D4.getNamedArgWithDefault<bool>(
+          named,
+          'scrollExpandsSheet',
+          true,
+        );
+        final routerEnabled = D4.getNamedArgWithDefault<bool>(
+          named,
+          'routerEnabled',
+          false,
+        );
         final onDetentChangedRaw = named['onDetentChanged'];
-        final onDetentChanged = onDetentChangedRaw == null ? null : ($native_bottomsheet_3.DNSheetDetent p0) { D4.callInterpreterCallback(visitor!, onDetentChangedRaw, [p0]); };
+        final onDetentChanged = onDetentChangedRaw == null
+            ? null
+            : ($native_bottomsheet_3.DNSheetDetent p0) {
+                D4.callInterpreterCallback(visitor!, onDetentChangedRaw, [p0]);
+              };
         final onPresentedRaw = named['onPresented'];
-        final onPresented = onPresentedRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onPresentedRaw, []); };
+        final onPresented = onPresentedRaw == null
+            ? null
+            : () {
+                D4.callInterpreterCallback(visitor!, onPresentedRaw, []);
+              };
         final onDismissedRaw = named['onDismissed'];
-        final onDismissed = onDismissedRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onDismissedRaw, []); };
+        final onDismissed = onDismissedRaw == null
+            ? null
+            : () {
+                D4.callInterpreterCallback(visitor!, onDismissedRaw, []);
+              };
         final onDismissAttemptedRaw = named['onDismissAttempted'];
-        final onDismissAttempted = onDismissAttemptedRaw == null ? null : () { D4.callInterpreterCallback(visitor!, onDismissAttemptedRaw, []); };
-        final platformConfig = D4.getOptionalNamedArg<$native_bottomsheet_4.DNSheetPlatformConfig?>(named, 'platformConfig');
+        final onDismissAttempted = onDismissAttemptedRaw == null
+            ? null
+            : () {
+                D4.callInterpreterCallback(visitor!, onDismissAttemptedRaw, []);
+              };
+        final platformConfig = D4
+            .getOptionalNamedArg<$native_bottomsheet_4.DNSheetPlatformConfig?>(
+              named,
+              'platformConfig',
+            );
         if (!named.containsKey('detents')) {
-          return $native_bottomsheet_5.showBottomSheet(context, builder: builder, initialDetent: initialDetent, showGrabber: showGrabber, cornerRadius: cornerRadius, scrimOpacity: scrimOpacity, backgroundColor: backgroundColor, adaptToContainerBackground: adaptToContainerBackground, isDismissable: isDismissable, scrollExpandsSheet: scrollExpandsSheet, routerEnabled: routerEnabled, onDetentChanged: onDetentChanged, onPresented: onPresented, onDismissed: onDismissed, onDismissAttempted: onDismissAttempted, platformConfig: platformConfig);
+          return $native_bottomsheet_5.showBottomSheet(
+            context,
+            builder: builder,
+            initialDetent: initialDetent,
+            showGrabber: showGrabber,
+            cornerRadius: cornerRadius,
+            scrimOpacity: scrimOpacity,
+            backgroundColor: backgroundColor,
+            adaptToContainerBackground: adaptToContainerBackground,
+            isDismissable: isDismissable,
+            scrollExpandsSheet: scrollExpandsSheet,
+            routerEnabled: routerEnabled,
+            onDetentChanged: onDetentChanged,
+            onPresented: onPresented,
+            onDismissed: onDismissed,
+            onDismissAttempted: onDismissAttempted,
+            platformConfig: platformConfig,
+          );
         }
         if (named.containsKey('detents')) {
-          final detents = D4.coerceList<$native_bottomsheet_3.DNSheetDetent>(named['detents'], 'detents');
-          return $native_bottomsheet_5.showBottomSheet(context, builder: builder, initialDetent: initialDetent, showGrabber: showGrabber, cornerRadius: cornerRadius, scrimOpacity: scrimOpacity, backgroundColor: backgroundColor, adaptToContainerBackground: adaptToContainerBackground, isDismissable: isDismissable, scrollExpandsSheet: scrollExpandsSheet, routerEnabled: routerEnabled, onDetentChanged: onDetentChanged, onPresented: onPresented, onDismissed: onDismissed, onDismissAttempted: onDismissAttempted, platformConfig: platformConfig, detents: detents);
+          final detents = D4.coerceList<$native_bottomsheet_3.DNSheetDetent>(
+            named['detents'],
+            'detents',
+          );
+          return $native_bottomsheet_5.showBottomSheet(
+            context,
+            builder: builder,
+            initialDetent: initialDetent,
+            showGrabber: showGrabber,
+            cornerRadius: cornerRadius,
+            scrimOpacity: scrimOpacity,
+            backgroundColor: backgroundColor,
+            adaptToContainerBackground: adaptToContainerBackground,
+            isDismissable: isDismissable,
+            scrollExpandsSheet: scrollExpandsSheet,
+            routerEnabled: routerEnabled,
+            onDetentChanged: onDetentChanged,
+            onPresented: onPresented,
+            onDismissed: onDismissed,
+            onDismissAttempted: onDismissAttempted,
+            platformConfig: platformConfig,
+            detents: detents,
+          );
         }
-        throw StateError('Unreachable: all named parameter combinations should be covered');
+        throw StateError(
+          'Unreachable: all named parameter combinations should be covered',
+        );
       },
     };
   }
@@ -255,14 +414,16 @@ class NativeBottomsheetBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> globalFunctionSourceUris() {
     return {
-      'showBottomSheet': 'package:native_bottomsheet/src/show_bottom_sheet.dart',
+      'showBottomSheet':
+          'package:native_bottomsheet/src/show_bottom_sheet.dart',
     };
   }
 
   /// Returns a map of global function names to their display signatures.
   static Map<String, String> globalFunctionSignatures() {
     return {
-      'showBottomSheet': 'DNSheetController showBottomSheet(dynamic context, {required Widget Function(dynamic context, DNSheetController controller) builder, List<DNSheetDetent> detents = const [DNSheetDetent.large], DNSheetDetent? initialDetent, bool showGrabber = true, double? cornerRadius, double? scrimOpacity, Color? backgroundColor, bool adaptToContainerBackground = true, bool isDismissable = true, bool scrollExpandsSheet = true, bool routerEnabled = false, void Function(DNSheetDetent detent)? onDetentChanged, void Function()? onPresented, void Function()? onDismissed, void Function()? onDismissAttempted, DNSheetPlatformConfig? platformConfig})',
+      'showBottomSheet':
+          'DNSheetController showBottomSheet(dynamic context, {required Widget Function(dynamic context, DNSheetController controller) builder, List<DNSheetDetent> detents = const [DNSheetDetent.large], DNSheetDetent? initialDetent, bool showGrabber = true, double? cornerRadius, double? scrimOpacity, Color? backgroundColor, bool adaptToContainerBackground = true, bool isDismissable = true, bool scrollExpandsSheet = true, bool routerEnabled = false, void Function(DNSheetDetent detent)? onDetentChanged, void Function()? onPresented, void Function()? onDismissed, void Function()? onDismissAttempted, DNSheetPlatformConfig? platformConfig})',
     };
   }
 
@@ -288,7 +449,9 @@ class NativeBottomsheetBridge {
   /// bridged classes available to scripts.
   static String getImportBlock() {
     final imports = StringBuffer();
-    imports.writeln("import 'package:native_bottomsheet/native_bottomsheet.dart';");
+    imports.writeln(
+      "import 'package:native_bottomsheet/native_bottomsheet.dart';",
+    );
     imports.writeln("import 'package:dartnative/dartnative.dart';");
     return imports.toString();
   }
@@ -309,7 +472,6 @@ class NativeBottomsheetBridge {
   static List<String> get enumNames => [
     'DNSecureFlagPolicy',
   ];
-
 }
 
 // =============================================================================
@@ -324,21 +486,39 @@ BridgedClass _createDNSheetDetentBridge() {
     constructors: {
       'fraction': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'DNSheetDetent');
-        final fraction = D4.getRequiredArg<double>(positional, 0, 'fraction', 'DNSheetDetent');
+        final fraction = D4.getRequiredArg<double>(
+          positional,
+          0,
+          'fraction',
+          'DNSheetDetent',
+        );
         return $native_bottomsheet_3.DNSheetDetent.fraction(fraction);
       },
       'pixels': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'DNSheetDetent');
-        final height = D4.getRequiredArg<double>(positional, 0, 'height', 'DNSheetDetent');
+        final height = D4.getRequiredArg<double>(
+          positional,
+          0,
+          'height',
+          'DNSheetDetent',
+        );
         return $native_bottomsheet_3.DNSheetDetent.pixels(height);
       },
     },
     getters: {
-      'label': (visitor, target) => D4.validateTarget<$native_bottomsheet_3.DNSheetDetent>(target, 'DNSheetDetent').label,
+      'label': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_3.DNSheetDetent>(
+            target,
+            'DNSheetDetent',
+          )
+          .label,
     },
     methods: {
       'toJson': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_3.DNSheetDetent>(target, 'DNSheetDetent');
+        final t = D4.validateTarget<$native_bottomsheet_3.DNSheetDetent>(
+          target,
+          'DNSheetDetent',
+        );
         return t.toJson();
       },
     },
@@ -376,173 +556,331 @@ BridgedClass _createDNSheetControllerBridge() {
     isAssignable: (v) => v is $native_bottomsheet_2.DNSheetController,
     constructors: {
       'create': (visitor, positional, named) {
-        final sheetId = D4.getRequiredNamedArg<int>(named, 'sheetId', 'DNSheetController');
+        final sheetId = D4.getRequiredNamedArg<int>(
+          named,
+          'sheetId',
+          'DNSheetController',
+        );
         if (!named.containsKey('detents') || named['detents'] == null) {
-          throw ArgumentError('DNSheetController: Missing required named argument "detents"');
+          throw ArgumentError(
+            'DNSheetController: Missing required named argument "detents"',
+          );
         }
-        final detents = D4.coerceList<$native_bottomsheet_3.DNSheetDetent>(named['detents'], 'detents');
-        final initialDetent = D4.getOptionalNamedArg<$native_bottomsheet_3.DNSheetDetent?>(named, 'initialDetent');
-        return $native_bottomsheet_2.DNSheetController.create(sheetId: sheetId, detents: detents, initialDetent: initialDetent);
+        final detents = D4.coerceList<$native_bottomsheet_3.DNSheetDetent>(
+          named['detents'],
+          'detents',
+        );
+        final initialDetent = D4
+            .getOptionalNamedArg<$native_bottomsheet_3.DNSheetDetent?>(
+              named,
+              'initialDetent',
+            );
+        return $native_bottomsheet_2.DNSheetController.create(
+          sheetId: sheetId,
+          detents: detents,
+          initialDetent: initialDetent,
+        );
       },
     },
     getters: {
-      'sheetId': (visitor, target) => D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController').sheetId,
-      'currentDetent': (visitor, target) => D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController').currentDetent,
-      'detents': (visitor, target) => D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController').detents,
-      'isVisible': (visitor, target) => D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController').isVisible,
-      'isPresented': (visitor, target) => D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController').isPresented,
+      'sheetId': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_2.DNSheetController>(
+            target,
+            'DNSheetController',
+          )
+          .sheetId,
+      'currentDetent': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_2.DNSheetController>(
+            target,
+            'DNSheetController',
+          )
+          .currentDetent,
+      'detents': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_2.DNSheetController>(
+            target,
+            'DNSheetController',
+          )
+          .detents,
+      'isVisible': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_2.DNSheetController>(
+            target,
+            'DNSheetController',
+          )
+          .isVisible,
+      'isPresented': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_2.DNSheetController>(
+            target,
+            'DNSheetController',
+          )
+          .isPresented,
     },
     methods: {
       'addPresentedListener': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController');
+        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(
+          target,
+          'DNSheetController',
+        );
         D4.requireMinArgs(positional, 1, 'addPresentedListener');
         if (positional.isEmpty) {
-          throw ArgumentError('addPresentedListener: Missing required argument "listener" at position 0');
+          throw ArgumentError(
+            'addPresentedListener: Missing required argument "listener" at position 0',
+          );
         }
         final listenerRaw = positional[0];
-        t.addPresentedListener(() { D4.callInterpreterCallback(visitor!, listenerRaw, []); });
+        t.addPresentedListener(() {
+          D4.callInterpreterCallback(visitor!, listenerRaw, []);
+        });
         return null;
       },
       'removePresentedListener': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController');
+        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(
+          target,
+          'DNSheetController',
+        );
         D4.requireMinArgs(positional, 1, 'removePresentedListener');
         if (positional.isEmpty) {
-          throw ArgumentError('removePresentedListener: Missing required argument "listener" at position 0');
+          throw ArgumentError(
+            'removePresentedListener: Missing required argument "listener" at position 0',
+          );
         }
         final listenerRaw = positional[0];
-        t.removePresentedListener(() { D4.callInterpreterCallback(visitor!, listenerRaw, []); });
+        t.removePresentedListener(() {
+          D4.callInterpreterCallback(visitor!, listenerRaw, []);
+        });
         return null;
       },
       'addDetentListener': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController');
+        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(
+          target,
+          'DNSheetController',
+        );
         D4.requireMinArgs(positional, 1, 'addDetentListener');
         if (positional.isEmpty) {
-          throw ArgumentError('addDetentListener: Missing required argument "listener" at position 0');
+          throw ArgumentError(
+            'addDetentListener: Missing required argument "listener" at position 0',
+          );
         }
         final listenerRaw = positional[0];
-        t.addDetentListener(($native_bottomsheet_3.DNSheetDetent p0) { D4.callInterpreterCallback(visitor!, listenerRaw, [p0]); });
+        t.addDetentListener(($native_bottomsheet_3.DNSheetDetent p0) {
+          D4.callInterpreterCallback(visitor!, listenerRaw, [p0]);
+        });
         return null;
       },
       'removeDetentListener': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController');
+        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(
+          target,
+          'DNSheetController',
+        );
         D4.requireMinArgs(positional, 1, 'removeDetentListener');
         if (positional.isEmpty) {
-          throw ArgumentError('removeDetentListener: Missing required argument "listener" at position 0');
+          throw ArgumentError(
+            'removeDetentListener: Missing required argument "listener" at position 0',
+          );
         }
         final listenerRaw = positional[0];
-        t.removeDetentListener(($native_bottomsheet_3.DNSheetDetent p0) { D4.callInterpreterCallback(visitor!, listenerRaw, [p0]); });
+        t.removeDetentListener(($native_bottomsheet_3.DNSheetDetent p0) {
+          D4.callInterpreterCallback(visitor!, listenerRaw, [p0]);
+        });
         return null;
       },
       'addPushListener': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController');
+        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(
+          target,
+          'DNSheetController',
+        );
         D4.requireMinArgs(positional, 1, 'addPushListener');
         if (positional.isEmpty) {
-          throw ArgumentError('addPushListener: Missing required argument "listener" at position 0');
+          throw ArgumentError(
+            'addPushListener: Missing required argument "listener" at position 0',
+          );
         }
         final listenerRaw = positional[0];
-        t.addPushListener((Object p0) { D4.callInterpreterCallback(visitor!, listenerRaw, [p0]); });
+        t.addPushListener((Object p0) {
+          D4.callInterpreterCallback(visitor!, listenerRaw, [p0]);
+        });
         return null;
       },
       'removePushListener': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController');
+        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(
+          target,
+          'DNSheetController',
+        );
         D4.requireMinArgs(positional, 1, 'removePushListener');
         if (positional.isEmpty) {
-          throw ArgumentError('removePushListener: Missing required argument "listener" at position 0');
+          throw ArgumentError(
+            'removePushListener: Missing required argument "listener" at position 0',
+          );
         }
         final listenerRaw = positional[0];
-        t.removePushListener((Object p0) { D4.callInterpreterCallback(visitor!, listenerRaw, [p0]); });
+        t.removePushListener((Object p0) {
+          D4.callInterpreterCallback(visitor!, listenerRaw, [p0]);
+        });
         return null;
       },
       'addPopListener': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController');
+        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(
+          target,
+          'DNSheetController',
+        );
         D4.requireMinArgs(positional, 1, 'addPopListener');
         if (positional.isEmpty) {
-          throw ArgumentError('addPopListener: Missing required argument "listener" at position 0');
+          throw ArgumentError(
+            'addPopListener: Missing required argument "listener" at position 0',
+          );
         }
         final listenerRaw = positional[0];
-        t.addPopListener(() { D4.callInterpreterCallback(visitor!, listenerRaw, []); });
+        t.addPopListener(() {
+          D4.callInterpreterCallback(visitor!, listenerRaw, []);
+        });
         return null;
       },
       'removePopListener': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController');
+        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(
+          target,
+          'DNSheetController',
+        );
         D4.requireMinArgs(positional, 1, 'removePopListener');
         if (positional.isEmpty) {
-          throw ArgumentError('removePopListener: Missing required argument "listener" at position 0');
+          throw ArgumentError(
+            'removePopListener: Missing required argument "listener" at position 0',
+          );
         }
         final listenerRaw = positional[0];
-        t.removePopListener(() { D4.callInterpreterCallback(visitor!, listenerRaw, []); });
+        t.removePopListener(() {
+          D4.callInterpreterCallback(visitor!, listenerRaw, []);
+        });
         return null;
       },
       'snapTo': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController');
+        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(
+          target,
+          'DNSheetController',
+        );
         D4.requireMinArgs(positional, 1, 'snapTo');
-        final detent = D4.getRequiredArg<$native_bottomsheet_3.DNSheetDetent>(positional, 0, 'detent', 'snapTo');
-        final animated = D4.getNamedArgWithDefault<bool>(named, 'animated', true);
+        final detent = D4.getRequiredArg<$native_bottomsheet_3.DNSheetDetent>(
+          positional,
+          0,
+          'detent',
+          'snapTo',
+        );
+        final animated = D4.getNamedArgWithDefault<bool>(
+          named,
+          'animated',
+          true,
+        );
         t.snapTo(detent, animated: animated);
         return null;
       },
       'dismiss': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController');
-        final animated = D4.getNamedArgWithDefault<bool>(named, 'animated', true);
+        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(
+          target,
+          'DNSheetController',
+        );
+        final animated = D4.getNamedArgWithDefault<bool>(
+          named,
+          'animated',
+          true,
+        );
         t.dismiss(animated: animated);
         return null;
       },
       'invalidateDetents': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController');
+        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(
+          target,
+          'DNSheetController',
+        );
         t.invalidateDetents();
         return null;
       },
       'animateChanges': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController');
+        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(
+          target,
+          'DNSheetController',
+        );
         D4.requireMinArgs(positional, 1, 'animateChanges');
         if (positional.isEmpty) {
-          throw ArgumentError('animateChanges: Missing required argument "block" at position 0');
+          throw ArgumentError(
+            'animateChanges: Missing required argument "block" at position 0',
+          );
         }
         final blockRaw = positional[0];
-        t.animateChanges(() { D4.callInterpreterCallback(visitor!, blockRaw, []); });
+        t.animateChanges(() {
+          D4.callInterpreterCallback(visitor!, blockRaw, []);
+        });
         return null;
       },
       'push': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController');
+        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(
+          target,
+          'DNSheetController',
+        );
         D4.requireMinArgs(positional, 1, 'push');
         final page = D4.getRequiredArg<Object>(positional, 0, 'page', 'push');
-        final expandsTo = D4.getOptionalNamedArg<$native_bottomsheet_3.DNSheetDetent?>(named, 'expandsTo');
+        final expandsTo = D4
+            .getOptionalNamedArg<$native_bottomsheet_3.DNSheetDetent?>(
+              named,
+              'expandsTo',
+            );
         t.push(page, expandsTo: expandsTo);
         return null;
       },
       'pop': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController');
+        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(
+          target,
+          'DNSheetController',
+        );
         t.pop();
         return null;
       },
       'updateDetent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController');
+        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(
+          target,
+          'DNSheetController',
+        );
         D4.requireMinArgs(positional, 1, 'updateDetent');
-        final detent = D4.getRequiredArg<$native_bottomsheet_3.DNSheetDetent>(positional, 0, 'detent', 'updateDetent');
+        final detent = D4.getRequiredArg<$native_bottomsheet_3.DNSheetDetent>(
+          positional,
+          0,
+          'detent',
+          'updateDetent',
+        );
         t.updateDetent(detent);
         return null;
       },
       'markPresented': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController');
+        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(
+          target,
+          'DNSheetController',
+        );
         t.markPresented();
         return null;
       },
       'markDismissed': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(target, 'DNSheetController');
+        final t = D4.validateTarget<$native_bottomsheet_2.DNSheetController>(
+          target,
+          'DNSheetController',
+        );
         t.markDismissed();
         return null;
       },
     },
     constructorSignatures: {
-      'create': 'DNSheetController.create({required int sheetId, required List<DNSheetDetent> detents, DNSheetDetent? initialDetent})',
+      'create':
+          'DNSheetController.create({required int sheetId, required List<DNSheetDetent> detents, DNSheetDetent? initialDetent})',
     },
     methodSignatures: {
-      'addPresentedListener': 'void addPresentedListener(void Function() listener)',
-      'removePresentedListener': 'void removePresentedListener(void Function() listener)',
-      'addDetentListener': 'void addDetentListener(void Function(DNSheetDetent detent) listener)',
-      'removeDetentListener': 'void removeDetentListener(void Function(DNSheetDetent detent) listener)',
-      'addPushListener': 'void addPushListener(void Function(Object page) listener)',
-      'removePushListener': 'void removePushListener(void Function(Object page) listener)',
+      'addPresentedListener':
+          'void addPresentedListener(void Function() listener)',
+      'removePresentedListener':
+          'void removePresentedListener(void Function() listener)',
+      'addDetentListener':
+          'void addDetentListener(void Function(DNSheetDetent detent) listener)',
+      'removeDetentListener':
+          'void removeDetentListener(void Function(DNSheetDetent detent) listener)',
+      'addPushListener':
+          'void addPushListener(void Function(Object page) listener)',
+      'removePushListener':
+          'void removePushListener(void Function(Object page) listener)',
       'addPopListener': 'void addPopListener(void Function() listener)',
       'removePopListener': 'void removePopListener(void Function() listener)',
       'snapTo': 'void snapTo(DNSheetDetent detent, {bool animated = true})',
@@ -576,27 +914,78 @@ BridgedClass _createDNSheetIOSConfigBridge() {
     isAssignable: (v) => v is $native_bottomsheet_4.DNSheetIOSConfig,
     constructors: {
       '': (visitor, positional, named) {
-        final largestUndimmedDetent = D4.getOptionalNamedArg<$native_bottomsheet_3.DNSheetDetent?>(named, 'largestUndimmedDetent');
-        final edgeAttachedInCompactHeight = D4.getNamedArgWithDefault<bool>(named, 'edgeAttachedInCompactHeight', false);
-        final widthFollowsContentSizeWhenEdgeAttached = D4.getNamedArgWithDefault<bool>(named, 'widthFollowsContentSizeWhenEdgeAttached', false);
-        final prefersPageSizing = D4.getNamedArgWithDefault<bool>(named, 'prefersPageSizing', true);
-        return $native_bottomsheet_4.DNSheetIOSConfig(largestUndimmedDetent: largestUndimmedDetent, edgeAttachedInCompactHeight: edgeAttachedInCompactHeight, widthFollowsContentSizeWhenEdgeAttached: widthFollowsContentSizeWhenEdgeAttached, prefersPageSizing: prefersPageSizing);
+        final largestUndimmedDetent = D4
+            .getOptionalNamedArg<$native_bottomsheet_3.DNSheetDetent?>(
+              named,
+              'largestUndimmedDetent',
+            );
+        final edgeAttachedInCompactHeight = D4.getNamedArgWithDefault<bool>(
+          named,
+          'edgeAttachedInCompactHeight',
+          false,
+        );
+        final widthFollowsContentSizeWhenEdgeAttached = D4
+            .getNamedArgWithDefault<bool>(
+              named,
+              'widthFollowsContentSizeWhenEdgeAttached',
+              false,
+            );
+        final prefersPageSizing = D4.getNamedArgWithDefault<bool>(
+          named,
+          'prefersPageSizing',
+          true,
+        );
+        return $native_bottomsheet_4.DNSheetIOSConfig(
+          largestUndimmedDetent: largestUndimmedDetent,
+          edgeAttachedInCompactHeight: edgeAttachedInCompactHeight,
+          widthFollowsContentSizeWhenEdgeAttached:
+              widthFollowsContentSizeWhenEdgeAttached,
+          prefersPageSizing: prefersPageSizing,
+        );
       },
     },
     getters: {
-      'largestUndimmedDetent': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetIOSConfig>(target, 'DNSheetIOSConfig').largestUndimmedDetent,
-      'edgeAttachedInCompactHeight': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetIOSConfig>(target, 'DNSheetIOSConfig').edgeAttachedInCompactHeight,
-      'widthFollowsContentSizeWhenEdgeAttached': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetIOSConfig>(target, 'DNSheetIOSConfig').widthFollowsContentSizeWhenEdgeAttached,
-      'prefersPageSizing': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetIOSConfig>(target, 'DNSheetIOSConfig').prefersPageSizing,
+      'largestUndimmedDetent': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetIOSConfig>(
+            target,
+            'DNSheetIOSConfig',
+          )
+          .largestUndimmedDetent,
+      'edgeAttachedInCompactHeight': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetIOSConfig>(
+            target,
+            'DNSheetIOSConfig',
+          )
+          .edgeAttachedInCompactHeight,
+      'widthFollowsContentSizeWhenEdgeAttached': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetIOSConfig>(
+            target,
+            'DNSheetIOSConfig',
+          )
+          .widthFollowsContentSizeWhenEdgeAttached,
+      'prefersPageSizing': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetIOSConfig>(
+            target,
+            'DNSheetIOSConfig',
+          )
+          .prefersPageSizing,
     },
     methods: {
       'toJson': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_4.DNSheetIOSConfig>(target, 'DNSheetIOSConfig');
+        final t = D4.validateTarget<$native_bottomsheet_4.DNSheetIOSConfig>(
+          target,
+          'DNSheetIOSConfig',
+        );
         D4.requireMinArgs(positional, 1, 'toJson');
         if (positional.isEmpty) {
-          throw ArgumentError('toJson: Missing required argument "detents" at position 0');
+          throw ArgumentError(
+            'toJson: Missing required argument "detents" at position 0',
+          );
         }
-        final detents = D4.coerceList<$native_bottomsheet_3.DNSheetDetent>(positional[0], 'detents');
+        final detents = D4.coerceList<$native_bottomsheet_3.DNSheetDetent>(
+          positional[0],
+          'detents',
+        );
         return t.toJson(detents);
       },
     },
@@ -609,7 +998,8 @@ BridgedClass _createDNSheetIOSConfigBridge() {
     getterSignatures: {
       'largestUndimmedDetent': 'DNSheetDetent? get largestUndimmedDetent',
       'edgeAttachedInCompactHeight': 'bool get edgeAttachedInCompactHeight',
-      'widthFollowsContentSizeWhenEdgeAttached': 'bool get widthFollowsContentSizeWhenEdgeAttached',
+      'widthFollowsContentSizeWhenEdgeAttached':
+          'bool get widthFollowsContentSizeWhenEdgeAttached',
       'prefersPageSizing': 'bool get prefersPageSizing',
     },
   );
@@ -626,40 +1016,163 @@ BridgedClass _createDNSheetAndroidConfigBridge() {
     isAssignable: (v) => v is $native_bottomsheet_4.DNSheetAndroidConfig,
     constructors: {
       '': (visitor, positional, named) {
-        final tonalElevation = D4.getOptionalNamedArg<double?>(named, 'tonalElevation');
-        final containerColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(named, 'containerColor');
-        final scrimColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(named, 'scrimColor');
-        final scrimOpacity = D4.getOptionalNamedArg<double?>(named, 'scrimOpacity');
-        final contentColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(named, 'contentColor');
-        final sheetGesturesEnabled = D4.getOptionalNamedArg<bool?>(named, 'sheetGesturesEnabled');
-        final sheetMaxWidthDp = D4.getOptionalNamedArg<double?>(named, 'sheetMaxWidthDp');
-        final shouldDismissOnBackPress = D4.getOptionalNamedArg<bool?>(named, 'shouldDismissOnBackPress');
-        final shouldDismissOnClickOutside = D4.getOptionalNamedArg<bool?>(named, 'shouldDismissOnClickOutside');
-        final securePolicy = D4.getOptionalNamedArg<$native_bottomsheet_4.DNSecureFlagPolicy?>(named, 'securePolicy');
-        final isAppearanceLightStatusBars = D4.getOptionalNamedArg<bool?>(named, 'isAppearanceLightStatusBars');
-        final isAppearanceLightNavigationBars = D4.getOptionalNamedArg<bool?>(named, 'isAppearanceLightNavigationBars');
-        final floatingGrabber = D4.getNamedArgWithDefault<bool>(named, 'floatingGrabber', true);
-        return $native_bottomsheet_4.DNSheetAndroidConfig(tonalElevation: tonalElevation, containerColor: containerColor, scrimColor: scrimColor, scrimOpacity: scrimOpacity, contentColor: contentColor, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber);
+        final tonalElevation = D4.getOptionalNamedArg<double?>(
+          named,
+          'tonalElevation',
+        );
+        final containerColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(
+          named,
+          'containerColor',
+        );
+        final scrimColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(
+          named,
+          'scrimColor',
+        );
+        final scrimOpacity = D4.getOptionalNamedArg<double?>(
+          named,
+          'scrimOpacity',
+        );
+        final contentColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(
+          named,
+          'contentColor',
+        );
+        final sheetGesturesEnabled = D4.getOptionalNamedArg<bool?>(
+          named,
+          'sheetGesturesEnabled',
+        );
+        final sheetMaxWidthDp = D4.getOptionalNamedArg<double?>(
+          named,
+          'sheetMaxWidthDp',
+        );
+        final shouldDismissOnBackPress = D4.getOptionalNamedArg<bool?>(
+          named,
+          'shouldDismissOnBackPress',
+        );
+        final shouldDismissOnClickOutside = D4.getOptionalNamedArg<bool?>(
+          named,
+          'shouldDismissOnClickOutside',
+        );
+        final securePolicy = D4
+            .getOptionalNamedArg<$native_bottomsheet_4.DNSecureFlagPolicy?>(
+              named,
+              'securePolicy',
+            );
+        final isAppearanceLightStatusBars = D4.getOptionalNamedArg<bool?>(
+          named,
+          'isAppearanceLightStatusBars',
+        );
+        final isAppearanceLightNavigationBars = D4.getOptionalNamedArg<bool?>(
+          named,
+          'isAppearanceLightNavigationBars',
+        );
+        final floatingGrabber = D4.getNamedArgWithDefault<bool>(
+          named,
+          'floatingGrabber',
+          true,
+        );
+        return $native_bottomsheet_4.DNSheetAndroidConfig(
+          tonalElevation: tonalElevation,
+          containerColor: containerColor,
+          scrimColor: scrimColor,
+          scrimOpacity: scrimOpacity,
+          contentColor: contentColor,
+          sheetGesturesEnabled: sheetGesturesEnabled,
+          sheetMaxWidthDp: sheetMaxWidthDp,
+          shouldDismissOnBackPress: shouldDismissOnBackPress,
+          shouldDismissOnClickOutside: shouldDismissOnClickOutside,
+          securePolicy: securePolicy,
+          isAppearanceLightStatusBars: isAppearanceLightStatusBars,
+          isAppearanceLightNavigationBars: isAppearanceLightNavigationBars,
+          floatingGrabber: floatingGrabber,
+        );
       },
     },
     getters: {
-      'tonalElevation': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(target, 'DNSheetAndroidConfig').tonalElevation,
-      'containerColor': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(target, 'DNSheetAndroidConfig').containerColor,
-      'scrimColor': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(target, 'DNSheetAndroidConfig').scrimColor,
-      'scrimOpacity': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(target, 'DNSheetAndroidConfig').scrimOpacity,
-      'contentColor': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(target, 'DNSheetAndroidConfig').contentColor,
-      'sheetGesturesEnabled': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(target, 'DNSheetAndroidConfig').sheetGesturesEnabled,
-      'sheetMaxWidthDp': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(target, 'DNSheetAndroidConfig').sheetMaxWidthDp,
-      'shouldDismissOnBackPress': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(target, 'DNSheetAndroidConfig').shouldDismissOnBackPress,
-      'shouldDismissOnClickOutside': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(target, 'DNSheetAndroidConfig').shouldDismissOnClickOutside,
-      'securePolicy': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(target, 'DNSheetAndroidConfig').securePolicy,
-      'isAppearanceLightStatusBars': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(target, 'DNSheetAndroidConfig').isAppearanceLightStatusBars,
-      'isAppearanceLightNavigationBars': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(target, 'DNSheetAndroidConfig').isAppearanceLightNavigationBars,
-      'floatingGrabber': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(target, 'DNSheetAndroidConfig').floatingGrabber,
+      'tonalElevation': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(
+            target,
+            'DNSheetAndroidConfig',
+          )
+          .tonalElevation,
+      'containerColor': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(
+            target,
+            'DNSheetAndroidConfig',
+          )
+          .containerColor,
+      'scrimColor': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(
+            target,
+            'DNSheetAndroidConfig',
+          )
+          .scrimColor,
+      'scrimOpacity': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(
+            target,
+            'DNSheetAndroidConfig',
+          )
+          .scrimOpacity,
+      'contentColor': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(
+            target,
+            'DNSheetAndroidConfig',
+          )
+          .contentColor,
+      'sheetGesturesEnabled': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(
+            target,
+            'DNSheetAndroidConfig',
+          )
+          .sheetGesturesEnabled,
+      'sheetMaxWidthDp': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(
+            target,
+            'DNSheetAndroidConfig',
+          )
+          .sheetMaxWidthDp,
+      'shouldDismissOnBackPress': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(
+            target,
+            'DNSheetAndroidConfig',
+          )
+          .shouldDismissOnBackPress,
+      'shouldDismissOnClickOutside': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(
+            target,
+            'DNSheetAndroidConfig',
+          )
+          .shouldDismissOnClickOutside,
+      'securePolicy': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(
+            target,
+            'DNSheetAndroidConfig',
+          )
+          .securePolicy,
+      'isAppearanceLightStatusBars': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(
+            target,
+            'DNSheetAndroidConfig',
+          )
+          .isAppearanceLightStatusBars,
+      'isAppearanceLightNavigationBars': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(
+            target,
+            'DNSheetAndroidConfig',
+          )
+          .isAppearanceLightNavigationBars,
+      'floatingGrabber': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(
+            target,
+            'DNSheetAndroidConfig',
+          )
+          .floatingGrabber,
     },
     methods: {
       'toJson': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(target, 'DNSheetAndroidConfig');
+        final t = D4.validateTarget<$native_bottomsheet_4.DNSheetAndroidConfig>(
+          target,
+          'DNSheetAndroidConfig',
+        );
         return t.toJson();
       },
     },
@@ -681,7 +1194,8 @@ BridgedClass _createDNSheetAndroidConfigBridge() {
       'shouldDismissOnClickOutside': 'bool? get shouldDismissOnClickOutside',
       'securePolicy': 'DNSecureFlagPolicy? get securePolicy',
       'isAppearanceLightStatusBars': 'bool? get isAppearanceLightStatusBars',
-      'isAppearanceLightNavigationBars': 'bool? get isAppearanceLightNavigationBars',
+      'isAppearanceLightNavigationBars':
+          'bool? get isAppearanceLightNavigationBars',
       'floatingGrabber': 'bool get floatingGrabber',
     },
   );
@@ -698,42 +1212,143 @@ BridgedClass _createDNSheetPlatformConfigBridge() {
     isAssignable: (v) => v is $native_bottomsheet_4.DNSheetPlatformConfig,
     constructors: {
       '': (visitor, positional, named) {
-        final ios = D4.getOptionalNamedArg<$native_bottomsheet_4.DNSheetIOSConfig?>(named, 'ios');
-        final android = D4.getOptionalNamedArg<$native_bottomsheet_4.DNSheetAndroidConfig?>(named, 'android');
-        return $native_bottomsheet_4.DNSheetPlatformConfig(ios: ios, android: android);
+        final ios = D4
+            .getOptionalNamedArg<$native_bottomsheet_4.DNSheetIOSConfig?>(
+              named,
+              'ios',
+            );
+        final android = D4
+            .getOptionalNamedArg<$native_bottomsheet_4.DNSheetAndroidConfig?>(
+              named,
+              'android',
+            );
+        return $native_bottomsheet_4.DNSheetPlatformConfig(
+          ios: ios,
+          android: android,
+        );
       },
       'ios': (visitor, positional, named) {
-        final largestUndimmedDetent = D4.getOptionalNamedArg<$native_bottomsheet_3.DNSheetDetent?>(named, 'largestUndimmedDetent');
-        final edgeAttachedInCompactHeight = D4.getNamedArgWithDefault<bool>(named, 'edgeAttachedInCompactHeight', false);
-        final widthFollowsContentSizeWhenEdgeAttached = D4.getNamedArgWithDefault<bool>(named, 'widthFollowsContentSizeWhenEdgeAttached', false);
-        final prefersPageSizing = D4.getNamedArgWithDefault<bool>(named, 'prefersPageSizing', true);
-        return $native_bottomsheet_4.DNSheetPlatformConfig.ios(largestUndimmedDetent: largestUndimmedDetent, edgeAttachedInCompactHeight: edgeAttachedInCompactHeight, widthFollowsContentSizeWhenEdgeAttached: widthFollowsContentSizeWhenEdgeAttached, prefersPageSizing: prefersPageSizing);
+        final largestUndimmedDetent = D4
+            .getOptionalNamedArg<$native_bottomsheet_3.DNSheetDetent?>(
+              named,
+              'largestUndimmedDetent',
+            );
+        final edgeAttachedInCompactHeight = D4.getNamedArgWithDefault<bool>(
+          named,
+          'edgeAttachedInCompactHeight',
+          false,
+        );
+        final widthFollowsContentSizeWhenEdgeAttached = D4
+            .getNamedArgWithDefault<bool>(
+              named,
+              'widthFollowsContentSizeWhenEdgeAttached',
+              false,
+            );
+        final prefersPageSizing = D4.getNamedArgWithDefault<bool>(
+          named,
+          'prefersPageSizing',
+          true,
+        );
+        return $native_bottomsheet_4.DNSheetPlatformConfig.ios(
+          largestUndimmedDetent: largestUndimmedDetent,
+          edgeAttachedInCompactHeight: edgeAttachedInCompactHeight,
+          widthFollowsContentSizeWhenEdgeAttached:
+              widthFollowsContentSizeWhenEdgeAttached,
+          prefersPageSizing: prefersPageSizing,
+        );
       },
       'android': (visitor, positional, named) {
-        final tonalElevation = D4.getOptionalNamedArg<double?>(named, 'tonalElevation');
-        final containerColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(named, 'containerColor');
-        final scrimColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(named, 'scrimColor');
-        final scrimOpacity = D4.getOptionalNamedArg<double?>(named, 'scrimOpacity');
-        final contentColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(named, 'contentColor');
-        final sheetGesturesEnabled = D4.getOptionalNamedArg<bool?>(named, 'sheetGesturesEnabled');
-        final sheetMaxWidthDp = D4.getOptionalNamedArg<double?>(named, 'sheetMaxWidthDp');
-        final shouldDismissOnBackPress = D4.getOptionalNamedArg<bool?>(named, 'shouldDismissOnBackPress');
-        final shouldDismissOnClickOutside = D4.getOptionalNamedArg<bool?>(named, 'shouldDismissOnClickOutside');
-        final securePolicy = D4.getOptionalNamedArg<$native_bottomsheet_4.DNSecureFlagPolicy?>(named, 'securePolicy');
-        final isAppearanceLightStatusBars = D4.getOptionalNamedArg<bool?>(named, 'isAppearanceLightStatusBars');
-        final isAppearanceLightNavigationBars = D4.getOptionalNamedArg<bool?>(named, 'isAppearanceLightNavigationBars');
-        final floatingGrabber = D4.getNamedArgWithDefault<bool>(named, 'floatingGrabber', true);
-        return $native_bottomsheet_4.DNSheetPlatformConfig.android(tonalElevation: tonalElevation, containerColor: containerColor, scrimColor: scrimColor, scrimOpacity: scrimOpacity, contentColor: contentColor, sheetGesturesEnabled: sheetGesturesEnabled, sheetMaxWidthDp: sheetMaxWidthDp, shouldDismissOnBackPress: shouldDismissOnBackPress, shouldDismissOnClickOutside: shouldDismissOnClickOutside, securePolicy: securePolicy, isAppearanceLightStatusBars: isAppearanceLightStatusBars, isAppearanceLightNavigationBars: isAppearanceLightNavigationBars, floatingGrabber: floatingGrabber);
+        final tonalElevation = D4.getOptionalNamedArg<double?>(
+          named,
+          'tonalElevation',
+        );
+        final containerColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(
+          named,
+          'containerColor',
+        );
+        final scrimColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(
+          named,
+          'scrimColor',
+        );
+        final scrimOpacity = D4.getOptionalNamedArg<double?>(
+          named,
+          'scrimOpacity',
+        );
+        final contentColor = D4.getOptionalNamedArg<$dartnative_2.Color?>(
+          named,
+          'contentColor',
+        );
+        final sheetGesturesEnabled = D4.getOptionalNamedArg<bool?>(
+          named,
+          'sheetGesturesEnabled',
+        );
+        final sheetMaxWidthDp = D4.getOptionalNamedArg<double?>(
+          named,
+          'sheetMaxWidthDp',
+        );
+        final shouldDismissOnBackPress = D4.getOptionalNamedArg<bool?>(
+          named,
+          'shouldDismissOnBackPress',
+        );
+        final shouldDismissOnClickOutside = D4.getOptionalNamedArg<bool?>(
+          named,
+          'shouldDismissOnClickOutside',
+        );
+        final securePolicy = D4
+            .getOptionalNamedArg<$native_bottomsheet_4.DNSecureFlagPolicy?>(
+              named,
+              'securePolicy',
+            );
+        final isAppearanceLightStatusBars = D4.getOptionalNamedArg<bool?>(
+          named,
+          'isAppearanceLightStatusBars',
+        );
+        final isAppearanceLightNavigationBars = D4.getOptionalNamedArg<bool?>(
+          named,
+          'isAppearanceLightNavigationBars',
+        );
+        final floatingGrabber = D4.getNamedArgWithDefault<bool>(
+          named,
+          'floatingGrabber',
+          true,
+        );
+        return $native_bottomsheet_4.DNSheetPlatformConfig.android(
+          tonalElevation: tonalElevation,
+          containerColor: containerColor,
+          scrimColor: scrimColor,
+          scrimOpacity: scrimOpacity,
+          contentColor: contentColor,
+          sheetGesturesEnabled: sheetGesturesEnabled,
+          sheetMaxWidthDp: sheetMaxWidthDp,
+          shouldDismissOnBackPress: shouldDismissOnBackPress,
+          shouldDismissOnClickOutside: shouldDismissOnClickOutside,
+          securePolicy: securePolicy,
+          isAppearanceLightStatusBars: isAppearanceLightStatusBars,
+          isAppearanceLightNavigationBars: isAppearanceLightNavigationBars,
+          floatingGrabber: floatingGrabber,
+        );
       },
     },
     getters: {
-      'ios': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetPlatformConfig>(target, 'DNSheetPlatformConfig').ios,
-      'android': (visitor, target) => D4.validateTarget<$native_bottomsheet_4.DNSheetPlatformConfig>(target, 'DNSheetPlatformConfig').android,
+      'ios': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetPlatformConfig>(
+            target,
+            'DNSheetPlatformConfig',
+          )
+          .ios,
+      'android': (visitor, target) => D4
+          .validateTarget<$native_bottomsheet_4.DNSheetPlatformConfig>(
+            target,
+            'DNSheetPlatformConfig',
+          )
+          .android,
     },
     constructorSignatures: {
       '': 'const DNSheetPlatformConfig({DNSheetIOSConfig? ios, DNSheetAndroidConfig? android})',
-      'ios': 'factory DNSheetPlatformConfig.ios({DNSheetDetent? largestUndimmedDetent, bool edgeAttachedInCompactHeight = false, bool widthFollowsContentSizeWhenEdgeAttached = false, bool prefersPageSizing = true})',
-      'android': 'factory DNSheetPlatformConfig.android({double? tonalElevation, Color? containerColor, Color? scrimColor, double? scrimOpacity, Color? contentColor, bool? sheetGesturesEnabled, double? sheetMaxWidthDp, bool? shouldDismissOnBackPress, bool? shouldDismissOnClickOutside, DNSecureFlagPolicy? securePolicy, bool? isAppearanceLightStatusBars, bool? isAppearanceLightNavigationBars, bool floatingGrabber = true})',
+      'ios':
+          'factory DNSheetPlatformConfig.ios({DNSheetDetent? largestUndimmedDetent, bool edgeAttachedInCompactHeight = false, bool widthFollowsContentSizeWhenEdgeAttached = false, bool prefersPageSizing = true})',
+      'android':
+          'factory DNSheetPlatformConfig.android({double? tonalElevation, Color? containerColor, Color? scrimColor, double? scrimOpacity, Color? contentColor, bool? sheetGesturesEnabled, double? sheetMaxWidthDp, bool? shouldDismissOnBackPress, bool? shouldDismissOnClickOutside, DNSecureFlagPolicy? securePolicy, bool? isAppearanceLightStatusBars, bool? isAppearanceLightNavigationBars, bool floatingGrabber = true})',
     },
     getterSignatures: {
       'ios': 'DNSheetIOSConfig? get ios',
@@ -751,95 +1366,202 @@ BridgedClass _createBottomSheetFFIBindingsBridge() {
     nativeType: $native_bottomsheet_1.BottomSheetFFIBindings,
     name: 'BottomSheetFFIBindings',
     isAssignable: (v) => v is $native_bottomsheet_1.BottomSheetFFIBindings,
-    constructors: {
-    },
+    constructors: {},
     methods: {
       'show': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(target, 'BottomSheetFFIBindings');
+        final t = D4
+            .validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(
+              target,
+              'BottomSheetFFIBindings',
+            );
         D4.requireMinArgs(positional, 2, 'show');
         if (positional.isEmpty) {
-          throw ArgumentError('show: Missing required argument "config" at position 0');
+          throw ArgumentError(
+            'show: Missing required argument "config" at position 0',
+          );
         }
         final config = D4.coerceMap<String, dynamic>(positional[0], 'config');
         if (positional.length <= 1) {
-          throw ArgumentError('show: Missing required argument "handler" at position 1');
+          throw ArgumentError(
+            'show: Missing required argument "handler" at position 1',
+          );
         }
         final handlerRaw = positional[1];
-        return t.show(config, (int p0, String p1) { D4.callInterpreterCallback(visitor!, handlerRaw, [p0, p1]); });
+        return t.show(config, (int p0, String p1) {
+          D4.callInterpreterCallback(visitor!, handlerRaw, [p0, p1]);
+        });
       },
       'dismiss': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(target, 'BottomSheetFFIBindings');
-        final sheetId = D4.getRequiredNamedArg<int>(named, 'sheetId', 'dismiss');
-        final animated = D4.getRequiredNamedArg<bool>(named, 'animated', 'dismiss');
+        final t = D4
+            .validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(
+              target,
+              'BottomSheetFFIBindings',
+            );
+        final sheetId = D4.getRequiredNamedArg<int>(
+          named,
+          'sheetId',
+          'dismiss',
+        );
+        final animated = D4.getRequiredNamedArg<bool>(
+          named,
+          'animated',
+          'dismiss',
+        );
         t.dismiss(sheetId: sheetId, animated: animated);
         return null;
       },
       'snapTo': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(target, 'BottomSheetFFIBindings');
+        final t = D4
+            .validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(
+              target,
+              'BottomSheetFFIBindings',
+            );
         final sheetId = D4.getRequiredNamedArg<int>(named, 'sheetId', 'snapTo');
-        final detentIndex = D4.getRequiredNamedArg<int>(named, 'detentIndex', 'snapTo');
-        final animated = D4.getRequiredNamedArg<bool>(named, 'animated', 'snapTo');
-        t.snapTo(sheetId: sheetId, detentIndex: detentIndex, animated: animated);
+        final detentIndex = D4.getRequiredNamedArg<int>(
+          named,
+          'detentIndex',
+          'snapTo',
+        );
+        final animated = D4.getRequiredNamedArg<bool>(
+          named,
+          'animated',
+          'snapTo',
+        );
+        t.snapTo(
+          sheetId: sheetId,
+          detentIndex: detentIndex,
+          animated: animated,
+        );
         return null;
       },
       'invalidateDetents': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(target, 'BottomSheetFFIBindings');
-        final sheetId = D4.getRequiredNamedArg<int>(named, 'sheetId', 'invalidateDetents');
+        final t = D4
+            .validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(
+              target,
+              'BottomSheetFFIBindings',
+            );
+        final sheetId = D4.getRequiredNamedArg<int>(
+          named,
+          'sheetId',
+          'invalidateDetents',
+        );
         t.invalidateDetents(sheetId: sheetId);
         return null;
       },
       'beginAnimateChanges': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(target, 'BottomSheetFFIBindings');
-        final sheetId = D4.getRequiredNamedArg<int>(named, 'sheetId', 'beginAnimateChanges');
+        final t = D4
+            .validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(
+              target,
+              'BottomSheetFFIBindings',
+            );
+        final sheetId = D4.getRequiredNamedArg<int>(
+          named,
+          'sheetId',
+          'beginAnimateChanges',
+        );
         t.beginAnimateChanges(sheetId: sheetId);
         return null;
       },
       'endAnimateChanges': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(target, 'BottomSheetFFIBindings');
-        final sheetId = D4.getRequiredNamedArg<int>(named, 'sheetId', 'endAnimateChanges');
+        final t = D4
+            .validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(
+              target,
+              'BottomSheetFFIBindings',
+            );
+        final sheetId = D4.getRequiredNamedArg<int>(
+          named,
+          'sheetId',
+          'endAnimateChanges',
+        );
         t.endAnimateChanges(sheetId: sheetId);
         return null;
       },
       'mountContent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(target, 'BottomSheetFFIBindings');
-        final sheetId = D4.getRequiredNamedArg<int>(named, 'sheetId', 'mountContent');
-        final viewId = D4.getRequiredNamedArg<int>(named, 'viewId', 'mountContent');
+        final t = D4
+            .validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(
+              target,
+              'BottomSheetFFIBindings',
+            );
+        final sheetId = D4.getRequiredNamedArg<int>(
+          named,
+          'sheetId',
+          'mountContent',
+        );
+        final viewId = D4.getRequiredNamedArg<int>(
+          named,
+          'viewId',
+          'mountContent',
+        );
         t.mountContent(sheetId: sheetId, viewId: viewId);
         return null;
       },
       'layoutContent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(target, 'BottomSheetFFIBindings');
-        final sheetId = D4.getRequiredNamedArg<int>(named, 'sheetId', 'layoutContent');
+        final t = D4
+            .validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(
+              target,
+              'BottomSheetFFIBindings',
+            );
+        final sheetId = D4.getRequiredNamedArg<int>(
+          named,
+          'sheetId',
+          'layoutContent',
+        );
         t.layoutContent(sheetId: sheetId);
         return null;
       },
       'push': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(target, 'BottomSheetFFIBindings');
+        final t = D4
+            .validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(
+              target,
+              'BottomSheetFFIBindings',
+            );
         final sheetId = D4.getRequiredNamedArg<int>(named, 'sheetId', 'push');
-        final expandsToDetentIndex = D4.getRequiredNamedArg<int>(named, 'expandsToDetentIndex', 'push');
+        final expandsToDetentIndex = D4.getRequiredNamedArg<int>(
+          named,
+          'expandsToDetentIndex',
+          'push',
+        );
         t.push(sheetId: sheetId, expandsToDetentIndex: expandsToDetentIndex);
         return null;
       },
       'pop': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(target, 'BottomSheetFFIBindings');
+        final t = D4
+            .validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(
+              target,
+              'BottomSheetFFIBindings',
+            );
         final sheetId = D4.getRequiredNamedArg<int>(named, 'sheetId', 'pop');
         t.pop(sheetId: sheetId);
         return null;
       },
       'removeHandler': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(target, 'BottomSheetFFIBindings');
+        final t = D4
+            .validateTarget<$native_bottomsheet_1.BottomSheetFFIBindings>(
+              target,
+              'BottomSheetFFIBindings',
+            );
         D4.requireMinArgs(positional, 1, 'removeHandler');
-        final sheetId = D4.getRequiredArg<int>(positional, 0, 'sheetId', 'removeHandler');
+        final sheetId = D4.getRequiredArg<int>(
+          positional,
+          0,
+          'sheetId',
+          'removeHandler',
+        );
         t.removeHandler(sheetId);
         return null;
       },
     },
     staticGetters: {
-      'instance': (visitor) => $native_bottomsheet_1.BottomSheetFFIBindings.instance,
-      'eventDetentChanged': (visitor) => $native_bottomsheet_1.BottomSheetFFIBindings.eventDetentChanged,
-      'eventDismissed': (visitor) => $native_bottomsheet_1.BottomSheetFFIBindings.eventDismissed,
-      'eventDismissAttempted': (visitor) => $native_bottomsheet_1.BottomSheetFFIBindings.eventDismissAttempted,
-      'eventPresented': (visitor) => $native_bottomsheet_1.BottomSheetFFIBindings.eventPresented,
+      'instance': (visitor) =>
+          $native_bottomsheet_1.BottomSheetFFIBindings.instance,
+      'eventDetentChanged': (visitor) =>
+          $native_bottomsheet_1.BottomSheetFFIBindings.eventDetentChanged,
+      'eventDismissed': (visitor) =>
+          $native_bottomsheet_1.BottomSheetFFIBindings.eventDismissed,
+      'eventDismissAttempted': (visitor) =>
+          $native_bottomsheet_1.BottomSheetFFIBindings.eventDismissAttempted,
+      'eventPresented': (visitor) =>
+          $native_bottomsheet_1.BottomSheetFFIBindings.eventPresented,
     },
     staticMethods: {
       'loadSymbols': (visitor, positional, named, typeArgs) {
@@ -847,15 +1569,19 @@ BridgedClass _createBottomSheetFFIBindingsBridge() {
       },
     },
     methodSignatures: {
-      'show': 'int show(Map<String, dynamic> config, void Function(int, String) handler)',
+      'show':
+          'int show(Map<String, dynamic> config, void Function(int, String) handler)',
       'dismiss': 'void dismiss({required int sheetId, required bool animated})',
-      'snapTo': 'void snapTo({required int sheetId, required int detentIndex, required bool animated})',
+      'snapTo':
+          'void snapTo({required int sheetId, required int detentIndex, required bool animated})',
       'invalidateDetents': 'void invalidateDetents({required int sheetId})',
       'beginAnimateChanges': 'void beginAnimateChanges({required int sheetId})',
       'endAnimateChanges': 'void endAnimateChanges({required int sheetId})',
-      'mountContent': 'void mountContent({required int sheetId, required int viewId})',
+      'mountContent':
+          'void mountContent({required int sheetId, required int viewId})',
       'layoutContent': 'void layoutContent({required int sheetId})',
-      'push': 'void push({required int sheetId, required int expandsToDetentIndex})',
+      'push':
+          'void push({required int sheetId, required int expandsToDetentIndex})',
       'pop': 'void pop({required int sheetId})',
       'removeHandler': 'void removeHandler(int sheetId)',
     },
@@ -892,7 +1618,12 @@ BridgedClass _createColorBridge() {
         final r = D4.getRequiredArg<int>(positional, 0, 'r', 'Color');
         final g = D4.getRequiredArg<int>(positional, 1, 'g', 'Color');
         final b = D4.getRequiredArg<int>(positional, 2, 'b', 'Color');
-        final opacity = D4.getRequiredArg<double>(positional, 3, 'opacity', 'Color');
+        final opacity = D4.getRequiredArg<double>(
+          positional,
+          3,
+          'opacity',
+          'Color',
+        );
         return $dartnative_2.Color.fromRGBO(r, g, b, opacity);
       },
       'fromARGB': (visitor, positional, named) {
@@ -905,23 +1636,39 @@ BridgedClass _createColorBridge() {
       },
     },
     getters: {
-      'value': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').value,
-      'alpha': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').alpha,
-      'red': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').red,
-      'green': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').green,
-      'blue': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').blue,
-      'a': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').a,
-      'r': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').r,
-      'g': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').g,
-      'b': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').b,
-      'opacity': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').opacity,
-      'hashCode': (visitor, target) => D4.validateTarget<$dartnative_2.Color>(target, 'Color').hashCode,
+      'value': (visitor, target) =>
+          D4.validateTarget<$dartnative_2.Color>(target, 'Color').value,
+      'alpha': (visitor, target) =>
+          D4.validateTarget<$dartnative_2.Color>(target, 'Color').alpha,
+      'red': (visitor, target) =>
+          D4.validateTarget<$dartnative_2.Color>(target, 'Color').red,
+      'green': (visitor, target) =>
+          D4.validateTarget<$dartnative_2.Color>(target, 'Color').green,
+      'blue': (visitor, target) =>
+          D4.validateTarget<$dartnative_2.Color>(target, 'Color').blue,
+      'a': (visitor, target) =>
+          D4.validateTarget<$dartnative_2.Color>(target, 'Color').a,
+      'r': (visitor, target) =>
+          D4.validateTarget<$dartnative_2.Color>(target, 'Color').r,
+      'g': (visitor, target) =>
+          D4.validateTarget<$dartnative_2.Color>(target, 'Color').g,
+      'b': (visitor, target) =>
+          D4.validateTarget<$dartnative_2.Color>(target, 'Color').b,
+      'opacity': (visitor, target) =>
+          D4.validateTarget<$dartnative_2.Color>(target, 'Color').opacity,
+      'hashCode': (visitor, target) =>
+          D4.validateTarget<$dartnative_2.Color>(target, 'Color').hashCode,
     },
     methods: {
       'withOpacity': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$dartnative_2.Color>(target, 'Color');
         D4.requireMinArgs(positional, 1, 'withOpacity');
-        final opacity = D4.getRequiredArg<double>(positional, 0, 'opacity', 'withOpacity');
+        final opacity = D4.getRequiredArg<double>(
+          positional,
+          0,
+          'opacity',
+          'withOpacity',
+        );
         return t.withOpacity(opacity);
       },
       'withValues': (visitor, target, positional, named, typeArgs) {
@@ -943,15 +1690,30 @@ BridgedClass _createColorBridge() {
         final t = D4.validateTarget<$dartnative_2.Color>(target, 'Color');
         // GEN-103: Dart spec — non-null == null is always false.
         if (positional.isEmpty || positional[0] == null) return false;
-        final other = D4.getRequiredArg<Object>(positional, 0, 'other', 'operator==');
+        final other = D4.getRequiredArg<Object>(
+          positional,
+          0,
+          'other',
+          'operator==',
+        );
         return t == other;
       },
     },
     staticMethods: {
       'lerp': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 3, 'lerp');
-        final a = D4.getRequiredArg<$dartnative_2.Color?>(positional, 0, 'a', 'lerp');
-        final b = D4.getRequiredArg<$dartnative_2.Color?>(positional, 1, 'b', 'lerp');
+        final a = D4.getRequiredArg<$dartnative_2.Color?>(
+          positional,
+          0,
+          'a',
+          'lerp',
+        );
+        final b = D4.getRequiredArg<$dartnative_2.Color?>(
+          positional,
+          1,
+          'b',
+          'lerp',
+        );
         final t_ = D4.getRequiredArg<double>(positional, 2, 't', 'lerp');
         return $dartnative_2.Color.lerp(a, b, t_);
       },
@@ -985,4 +1747,3 @@ BridgedClass _createColorBridge() {
     },
   );
 }
-

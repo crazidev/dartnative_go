@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 3 files
-// Generated: 2026-11-01T03:48:40.327071 by tom_d4rt_generator 1.26.2
+// Generated: 2026-11-06T23:49:47.906418 by tom_d4rt_generator 1.26.2
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -9,8 +9,10 @@ import 'package:tom_d4rt_ast/runtime.dart';
 import 'dart:async';
 
 import 'package:dartnative_system/src/app_badge.dart' as $dartnative_system_1;
-import 'package:dartnative_system/src/package_info.dart' as $dartnative_system_2;
-import 'package:dartnative_system/src/system_ffi_bindings.dart' as $dartnative_system_3;
+import 'package:dartnative_system/src/package_info.dart'
+    as $dartnative_system_2;
+import 'package:dartnative_system/src/system_ffi_bindings.dart'
+    as $dartnative_system_3;
 
 /// Bridge class for dartnative_system module.
 class DartnativeSystemBridge {
@@ -58,7 +60,8 @@ class DartnativeSystemBridge {
     return {
       'PackageInfo': 'package:dartnative_system/src/package_info.dart',
       'AppBadgePlus': 'package:dartnative_system/src/app_badge.dart',
-      'SystemFFIBindings': 'package:dartnative_system/src/system_ffi_bindings.dart',
+      'SystemFFIBindings':
+          'package:dartnative_system/src/system_ffi_bindings.dart',
     };
   }
 
@@ -70,8 +73,7 @@ class DartnativeSystemBridge {
   /// ancestors and the interface-proxy supertype walk resolves up the
   /// chain.
   static Map<String, List<String>> classSupertypes() {
-    return {
-    };
+    return {};
   }
 
   /// Returns a map of type alias names to their target class names.
@@ -80,8 +82,7 @@ class DartnativeSystemBridge {
   /// are registered so that code using the alias name can resolve to the
   /// bridged class under its canonical name.
   static Map<String, String> classAliases() {
-    return {
-    };
+    return {};
   }
 
   /// Returns the list of function typedef names declared in this library.
@@ -89,14 +90,12 @@ class DartnativeSystemBridge {
   /// Function typedefs like `typedef VoidCallback = void Function()` are
   /// registered so that they can be used as type arguments in D4rt scripts.
   static List<String> functionTypedefs() {
-    return [
-    ];
+    return [];
   }
 
   /// Returns all bridged enum definitions.
   static List<BridgedEnumDefinition> bridgedEnums() {
-    return [
-    ];
+    return [];
   }
 
   /// Returns a map of enum names to their canonical source URIs.
@@ -104,32 +103,46 @@ class DartnativeSystemBridge {
   /// Used for deduplication when the same enum is exported through
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> enumSourceUris() {
-    return {
-    };
+    return {};
   }
 
   /// Returns all bridged extension definitions.
   static List<BridgedExtensionDefinition> bridgedExtensions() {
-    return [
-    ];
+    return [];
   }
 
   /// Returns a map of extension identifiers to their canonical source URIs.
   static Map<String, String> extensionSourceUris() {
-    return {
-    };
+    return {};
   }
 
   /// GEN-107: Library re-exports declared by the bridged source
   /// libraries. Each tuple mirrors a Dart `export '…'` directive.
   /// Consumed by `registerBridges` via `D4rt.registerLibraryReExport`
   /// (mirrored on `D4rtRunner` in tom_d4rt_ast).
-  static List<({String source, String target, Set<String>? show, Set<String>? hide})>
+  static List<
+    ({String source, String target, Set<String>? show, Set<String>? hide})
+  >
   bridgeReExports() {
     return [
-      (source: 'package:dartnative_system/dartnative_system.dart', target: 'package:dartnative_system/src/package_info.dart', show: null, hide: null),
-      (source: 'package:dartnative_system/dartnative_system.dart', target: 'package:dartnative_system/src/app_badge.dart', show: null, hide: null),
-      (source: 'package:dartnative_system/dartnative_system.dart', target: 'package:dartnative_system/src/system_ffi_bindings.dart', show: {'SystemFFIBindings'}, hide: null),
+      (
+        source: 'package:dartnative_system/dartnative_system.dart',
+        target: 'package:dartnative_system/src/package_info.dart',
+        show: null,
+        hide: null,
+      ),
+      (
+        source: 'package:dartnative_system/dartnative_system.dart',
+        target: 'package:dartnative_system/src/app_badge.dart',
+        show: null,
+        hide: null,
+      ),
+      (
+        source: 'package:dartnative_system/dartnative_system.dart',
+        target: 'package:dartnative_system/src/system_ffi_bindings.dart',
+        show: {'SystemFFIBindings'},
+        hide: null,
+      ),
     ];
   }
 
@@ -161,7 +174,12 @@ class DartnativeSystemBridge {
 
     // GEN-107: Register library re-exports
     for (final r in bridgeReExports()) {
-      interpreter.registerLibraryReExport(r.source, r.target, show: r.show, hide: r.hide);
+      interpreter.registerLibraryReExport(
+        r.source,
+        r.target,
+        show: r.show,
+        hide: r.hide,
+      );
     }
   }
 
@@ -210,7 +228,6 @@ class DartnativeSystemBridge {
   static List<String> subPackageBarrels() {
     return [];
   }
-
 }
 
 // =============================================================================
@@ -224,18 +241,59 @@ BridgedClass _createPackageInfoBridge() {
     isAssignable: (v) => v is $dartnative_system_2.PackageInfo,
     constructors: {
       '': (visitor, positional, named) {
-        final appName = D4.getRequiredNamedArg<String>(named, 'appName', 'PackageInfo');
-        final packageName = D4.getRequiredNamedArg<String>(named, 'packageName', 'PackageInfo');
-        final version = D4.getRequiredNamedArg<String>(named, 'version', 'PackageInfo');
-        final buildNumber = D4.getRequiredNamedArg<String>(named, 'buildNumber', 'PackageInfo');
-        return $dartnative_system_2.PackageInfo(appName: appName, packageName: packageName, version: version, buildNumber: buildNumber);
+        final appName = D4.getRequiredNamedArg<String>(
+          named,
+          'appName',
+          'PackageInfo',
+        );
+        final packageName = D4.getRequiredNamedArg<String>(
+          named,
+          'packageName',
+          'PackageInfo',
+        );
+        final version = D4.getRequiredNamedArg<String>(
+          named,
+          'version',
+          'PackageInfo',
+        );
+        final buildNumber = D4.getRequiredNamedArg<String>(
+          named,
+          'buildNumber',
+          'PackageInfo',
+        );
+        return $dartnative_system_2.PackageInfo(
+          appName: appName,
+          packageName: packageName,
+          version: version,
+          buildNumber: buildNumber,
+        );
       },
     },
     getters: {
-      'appName': (visitor, target) => D4.validateTarget<$dartnative_system_2.PackageInfo>(target, 'PackageInfo').appName,
-      'packageName': (visitor, target) => D4.validateTarget<$dartnative_system_2.PackageInfo>(target, 'PackageInfo').packageName,
-      'version': (visitor, target) => D4.validateTarget<$dartnative_system_2.PackageInfo>(target, 'PackageInfo').version,
-      'buildNumber': (visitor, target) => D4.validateTarget<$dartnative_system_2.PackageInfo>(target, 'PackageInfo').buildNumber,
+      'appName': (visitor, target) => D4
+          .validateTarget<$dartnative_system_2.PackageInfo>(
+            target,
+            'PackageInfo',
+          )
+          .appName,
+      'packageName': (visitor, target) => D4
+          .validateTarget<$dartnative_system_2.PackageInfo>(
+            target,
+            'PackageInfo',
+          )
+          .packageName,
+      'version': (visitor, target) => D4
+          .validateTarget<$dartnative_system_2.PackageInfo>(
+            target,
+            'PackageInfo',
+          )
+          .version,
+      'buildNumber': (visitor, target) => D4
+          .validateTarget<$dartnative_system_2.PackageInfo>(
+            target,
+            'PackageInfo',
+          )
+          .buildNumber,
     },
     staticMethods: {
       'fromPlatform': (visitor, positional, named, typeArgs) {
@@ -266,15 +324,19 @@ BridgedClass _createAppBadgePlusBridge() {
     nativeType: $dartnative_system_1.AppBadgePlus,
     name: 'AppBadgePlus',
     isAssignable: (v) => v is $dartnative_system_1.AppBadgePlus,
-    constructors: {
-    },
+    constructors: {},
     staticMethods: {
       'isSupported': (visitor, positional, named, typeArgs) {
         return $dartnative_system_1.AppBadgePlus.isSupported();
       },
       'updateBadge': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'updateBadge');
-        final count = D4.getRequiredArg<int>(positional, 0, 'count', 'updateBadge');
+        final count = D4.getRequiredArg<int>(
+          positional,
+          0,
+          'count',
+          'updateBadge',
+        );
         return $dartnative_system_1.AppBadgePlus.updateBadge(count);
       },
     },
@@ -294,17 +356,27 @@ BridgedClass _createSystemFFIBindingsBridge() {
     nativeType: $dartnative_system_3.SystemFFIBindings,
     name: 'SystemFFIBindings',
     isAssignable: (v) => v is $dartnative_system_3.SystemFFIBindings,
-    constructors: {
-    },
+    constructors: {},
     methods: {
       'getPackageInfo': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_system_3.SystemFFIBindings>(target, 'SystemFFIBindings');
+        final t = D4.validateTarget<$dartnative_system_3.SystemFFIBindings>(
+          target,
+          'SystemFFIBindings',
+        );
         return t.getPackageInfo();
       },
       'updateBadge': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_system_3.SystemFFIBindings>(target, 'SystemFFIBindings');
+        final t = D4.validateTarget<$dartnative_system_3.SystemFFIBindings>(
+          target,
+          'SystemFFIBindings',
+        );
         D4.requireMinArgs(positional, 1, 'updateBadge');
-        final count = D4.getRequiredArg<int>(positional, 0, 'count', 'updateBadge');
+        final count = D4.getRequiredArg<int>(
+          positional,
+          0,
+          'count',
+          'updateBadge',
+        );
         t.updateBadge(count);
         return null;
       },
@@ -329,4 +401,3 @@ BridgedClass _createSystemFFIBindingsBridge() {
     },
   );
 }
-

@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 5 files
-// Generated: 2026-11-01T03:46:18.591411 by tom_d4rt_generator 1.26.2
+// Generated: 2026-11-06T23:48:46.601536 by tom_d4rt_generator 1.26.2
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -10,11 +10,16 @@ import 'dart:async';
 
 import 'package:dartnative/src/core.dart' as $dartnative_1;
 import 'package:dartnative/src/painting.dart' as $dartnative_2;
-import 'package:dartnative_webview/src/javascript_mode.dart' as $dartnative_webview_1;
-import 'package:dartnative_webview/src/navigation_delegate.dart' as $dartnative_webview_2;
-import 'package:dartnative_webview/src/webview_controller.dart' as $dartnative_webview_3;
-import 'package:dartnative_webview/src/webview_ffi_bindings.dart' as $dartnative_webview_4;
-import 'package:dartnative_webview/src/webview_widget.dart' as $dartnative_webview_5;
+import 'package:dartnative_webview/src/javascript_mode.dart'
+    as $dartnative_webview_1;
+import 'package:dartnative_webview/src/navigation_delegate.dart'
+    as $dartnative_webview_2;
+import 'package:dartnative_webview/src/webview_controller.dart'
+    as $dartnative_webview_3;
+import 'package:dartnative_webview/src/webview_ffi_bindings.dart'
+    as $dartnative_webview_4;
+import 'package:dartnative_webview/src/webview_widget.dart'
+    as $dartnative_webview_5;
 
 /// Bridge class for dartnative_webview module.
 class DartnativeWebviewBridge {
@@ -43,7 +48,8 @@ class DartnativeWebviewBridge {
       'NavigationRequest': _createNavigationRequestBridge,
       'NavigationDelegate': _createNavigationDelegateBridge,
       'WebViewController': _createWebViewControllerBridge,
-      'WebKitWebViewControllerCreationParams': _createWebKitWebViewControllerCreationParamsBridge,
+      'WebKitWebViewControllerCreationParams':
+          _createWebKitWebViewControllerCreationParamsBridge,
       'WebViewWidget': _createWebViewWidgetBridge,
       'WebViewFFIBindings': _createWebViewFFIBindingsBridge,
     };
@@ -57,7 +63,8 @@ class DartnativeWebviewBridge {
       'NavigationRequest': $dartnative_webview_2.NavigationRequest,
       'NavigationDelegate': $dartnative_webview_2.NavigationDelegate,
       'WebViewController': $dartnative_webview_3.WebViewController,
-      'WebKitWebViewControllerCreationParams': $dartnative_webview_3.WebKitWebViewControllerCreationParams,
+      'WebKitWebViewControllerCreationParams':
+          $dartnative_webview_3.WebKitWebViewControllerCreationParams,
       'WebViewWidget': $dartnative_webview_5.WebViewWidget,
       'WebViewFFIBindings': $dartnative_webview_4.WebViewFFIBindings,
     };
@@ -69,12 +76,17 @@ class DartnativeWebviewBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> classSourceUris() {
     return {
-      'NavigationRequest': 'package:dartnative_webview/src/navigation_delegate.dart',
-      'NavigationDelegate': 'package:dartnative_webview/src/navigation_delegate.dart',
-      'WebViewController': 'package:dartnative_webview/src/webview_controller.dart',
-      'WebKitWebViewControllerCreationParams': 'package:dartnative_webview/src/webview_controller.dart',
+      'NavigationRequest':
+          'package:dartnative_webview/src/navigation_delegate.dart',
+      'NavigationDelegate':
+          'package:dartnative_webview/src/navigation_delegate.dart',
+      'WebViewController':
+          'package:dartnative_webview/src/webview_controller.dart',
+      'WebKitWebViewControllerCreationParams':
+          'package:dartnative_webview/src/webview_controller.dart',
       'WebViewWidget': 'package:dartnative_webview/src/webview_widget.dart',
-      'WebViewFFIBindings': 'package:dartnative_webview/src/webview_ffi_bindings.dart',
+      'WebViewFFIBindings':
+          'package:dartnative_webview/src/webview_ffi_bindings.dart',
     };
   }
 
@@ -107,8 +119,7 @@ class DartnativeWebviewBridge {
   /// Function typedefs like `typedef VoidCallback = void Function()` are
   /// registered so that they can be used as type arguments in D4rt scripts.
   static List<String> functionTypedefs() {
-    return [
-    ];
+    return [];
   }
 
   /// Returns all bridged enum definitions.
@@ -132,34 +143,60 @@ class DartnativeWebviewBridge {
   static Map<String, String> enumSourceUris() {
     return {
       'JavaScriptMode': 'package:dartnative_webview/src/javascript_mode.dart',
-      'NavigationDecision': 'package:dartnative_webview/src/navigation_delegate.dart',
+      'NavigationDecision':
+          'package:dartnative_webview/src/navigation_delegate.dart',
     };
   }
 
   /// Returns all bridged extension definitions.
   static List<BridgedExtensionDefinition> bridgedExtensions() {
-    return [
-    ];
+    return [];
   }
 
   /// Returns a map of extension identifiers to their canonical source URIs.
   static Map<String, String> extensionSourceUris() {
-    return {
-    };
+    return {};
   }
 
   /// GEN-107: Library re-exports declared by the bridged source
   /// libraries. Each tuple mirrors a Dart `export '…'` directive.
   /// Consumed by `registerBridges` via `D4rt.registerLibraryReExport`
   /// (mirrored on `D4rtRunner` in tom_d4rt_ast).
-  static List<({String source, String target, Set<String>? show, Set<String>? hide})>
+  static List<
+    ({String source, String target, Set<String>? show, Set<String>? hide})
+  >
   bridgeReExports() {
     return [
-      (source: 'package:dartnative_webview/dartnative_webview.dart', target: 'package:dartnative_webview/src/javascript_mode.dart', show: null, hide: null),
-      (source: 'package:dartnative_webview/dartnative_webview.dart', target: 'package:dartnative_webview/src/navigation_delegate.dart', show: null, hide: null),
-      (source: 'package:dartnative_webview/dartnative_webview.dart', target: 'package:dartnative_webview/src/webview_controller.dart', show: null, hide: null),
-      (source: 'package:dartnative_webview/dartnative_webview.dart', target: 'package:dartnative_webview/src/webview_widget.dart', show: null, hide: null),
-      (source: 'package:dartnative_webview/dartnative_webview.dart', target: 'package:dartnative_webview/src/webview_ffi_bindings.dart', show: {'WebViewFFIBindings'}, hide: null),
+      (
+        source: 'package:dartnative_webview/dartnative_webview.dart',
+        target: 'package:dartnative_webview/src/javascript_mode.dart',
+        show: null,
+        hide: null,
+      ),
+      (
+        source: 'package:dartnative_webview/dartnative_webview.dart',
+        target: 'package:dartnative_webview/src/navigation_delegate.dart',
+        show: null,
+        hide: null,
+      ),
+      (
+        source: 'package:dartnative_webview/dartnative_webview.dart',
+        target: 'package:dartnative_webview/src/webview_controller.dart',
+        show: null,
+        hide: null,
+      ),
+      (
+        source: 'package:dartnative_webview/dartnative_webview.dart',
+        target: 'package:dartnative_webview/src/webview_widget.dart',
+        show: null,
+        hide: null,
+      ),
+      (
+        source: 'package:dartnative_webview/dartnative_webview.dart',
+        target: 'package:dartnative_webview/src/webview_ffi_bindings.dart',
+        show: {'WebViewFFIBindings'},
+        hide: null,
+      ),
     ];
   }
 
@@ -193,7 +230,11 @@ class DartnativeWebviewBridge {
     final enums = bridgedEnums();
     final enumSources = enumSourceUris();
     for (final enumDef in enums) {
-      interpreter.registerBridgedEnum(enumDef, importPath, sourceUri: enumSources[enumDef.name]);
+      interpreter.registerBridgedEnum(
+        enumDef,
+        importPath,
+        sourceUri: enumSources[enumDef.name],
+      );
     }
 
     // Register global functions with source URIs for deduplication
@@ -201,7 +242,13 @@ class DartnativeWebviewBridge {
     final funcSources = globalFunctionSourceUris();
     final funcSigs = globalFunctionSignatures();
     for (final entry in funcs.entries) {
-      interpreter.registertopLevelFunction(entry.key, entry.value, importPath, sourceUri: funcSources[entry.key], signature: funcSigs[entry.key]);
+      interpreter.registertopLevelFunction(
+        entry.key,
+        entry.value,
+        importPath,
+        sourceUri: funcSources[entry.key],
+        signature: funcSigs[entry.key],
+      );
     }
 
     // Register class aliases (typedef type aliases)
@@ -212,7 +259,12 @@ class DartnativeWebviewBridge {
 
     // GEN-107: Register library re-exports
     for (final r in bridgeReExports()) {
-      interpreter.registerLibraryReExport(r.source, r.target, show: r.show, hide: r.hide);
+      interpreter.registerLibraryReExport(
+        r.source,
+        r.target,
+        show: r.show,
+        hide: r.hide,
+      );
     }
   }
 
@@ -231,7 +283,8 @@ class DartnativeWebviewBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> globalFunctionSourceUris() {
     return {
-      'registerWebViewElementFactory': 'package:dartnative_webview/src/webview_widget.dart',
+      'registerWebViewElementFactory':
+          'package:dartnative_webview/src/webview_widget.dart',
     };
   }
 
@@ -280,7 +333,6 @@ class DartnativeWebviewBridge {
     'JavaScriptMode',
     'NavigationDecision',
   ];
-
 }
 
 // =============================================================================
@@ -294,14 +346,35 @@ BridgedClass _createNavigationRequestBridge() {
     isAssignable: (v) => v is $dartnative_webview_2.NavigationRequest,
     constructors: {
       '': (visitor, positional, named) {
-        final url = D4.getRequiredNamedArg<String>(named, 'url', 'NavigationRequest');
-        final isMainFrame = D4.getNamedArgWithDefault<bool>(named, 'isMainFrame', true);
-        return $dartnative_webview_2.NavigationRequest(url: url, isMainFrame: isMainFrame);
+        final url = D4.getRequiredNamedArg<String>(
+          named,
+          'url',
+          'NavigationRequest',
+        );
+        final isMainFrame = D4.getNamedArgWithDefault<bool>(
+          named,
+          'isMainFrame',
+          true,
+        );
+        return $dartnative_webview_2.NavigationRequest(
+          url: url,
+          isMainFrame: isMainFrame,
+        );
       },
     },
     getters: {
-      'url': (visitor, target) => D4.validateTarget<$dartnative_webview_2.NavigationRequest>(target, 'NavigationRequest').url,
-      'isMainFrame': (visitor, target) => D4.validateTarget<$dartnative_webview_2.NavigationRequest>(target, 'NavigationRequest').isMainFrame,
+      'url': (visitor, target) => D4
+          .validateTarget<$dartnative_webview_2.NavigationRequest>(
+            target,
+            'NavigationRequest',
+          )
+          .url,
+      'isMainFrame': (visitor, target) => D4
+          .validateTarget<$dartnative_webview_2.NavigationRequest>(
+            target,
+            'NavigationRequest',
+          )
+          .isMainFrame,
     },
     constructorSignatures: {
       '': 'const NavigationRequest({required String url, bool isMainFrame = true})',
@@ -328,20 +401,75 @@ BridgedClass _createNavigationDelegateBridge() {
         final onProgressRaw = named['onProgress'];
         final onPageStartedRaw = named['onPageStarted'];
         final onPageFinishedRaw = named['onPageFinished'];
-        return $dartnative_webview_2.NavigationDelegate(onNavigationRequest: onNavigationRequestRaw == null ? null : (($dartnative_webview_2.NavigationRequest p0) { return D4.extractBridgedArg<FutureOr<$dartnative_webview_2.NavigationDecision>>(D4.callInterpreterCallback(visitor!, onNavigationRequestRaw, [p0]), 'callback', visitor) as FutureOr<$dartnative_webview_2.NavigationDecision>; }) as FutureOr<$dartnative_webview_2.NavigationDecision> Function($dartnative_webview_2.NavigationRequest), onProgress: onProgressRaw == null ? null : (int p0) { D4.callInterpreterCallback(visitor!, onProgressRaw, [p0]); }, onPageStarted: onPageStartedRaw == null ? null : (String p0) { D4.callInterpreterCallback(visitor!, onPageStartedRaw, [p0]); }, onPageFinished: onPageFinishedRaw == null ? null : (String p0) { D4.callInterpreterCallback(visitor!, onPageFinishedRaw, [p0]); });
+        return $dartnative_webview_2.NavigationDelegate(
+          onNavigationRequest: onNavigationRequestRaw == null
+              ? null
+              : (($dartnative_webview_2.NavigationRequest p0) {
+                      return D4.extractBridgedArg<
+                            FutureOr<$dartnative_webview_2.NavigationDecision>
+                          >(
+                            D4.callInterpreterCallback(
+                              visitor!,
+                              onNavigationRequestRaw,
+                              [p0],
+                            ),
+                            'callback',
+                            visitor,
+                          )
+                          as FutureOr<$dartnative_webview_2.NavigationDecision>;
+                    })
+                    as FutureOr<$dartnative_webview_2.NavigationDecision>
+                    Function($dartnative_webview_2.NavigationRequest),
+          onProgress: onProgressRaw == null
+              ? null
+              : (int p0) {
+                  D4.callInterpreterCallback(visitor!, onProgressRaw, [p0]);
+                },
+          onPageStarted: onPageStartedRaw == null
+              ? null
+              : (String p0) {
+                  D4.callInterpreterCallback(visitor!, onPageStartedRaw, [p0]);
+                },
+          onPageFinished: onPageFinishedRaw == null
+              ? null
+              : (String p0) {
+                  D4.callInterpreterCallback(visitor!, onPageFinishedRaw, [p0]);
+                },
+        );
       },
     },
     getters: {
-      'onNavigationRequest': (visitor, target) => D4.validateTarget<$dartnative_webview_2.NavigationDelegate>(target, 'NavigationDelegate').onNavigationRequest,
-      'onProgress': (visitor, target) => D4.validateTarget<$dartnative_webview_2.NavigationDelegate>(target, 'NavigationDelegate').onProgress,
-      'onPageStarted': (visitor, target) => D4.validateTarget<$dartnative_webview_2.NavigationDelegate>(target, 'NavigationDelegate').onPageStarted,
-      'onPageFinished': (visitor, target) => D4.validateTarget<$dartnative_webview_2.NavigationDelegate>(target, 'NavigationDelegate').onPageFinished,
+      'onNavigationRequest': (visitor, target) => D4
+          .validateTarget<$dartnative_webview_2.NavigationDelegate>(
+            target,
+            'NavigationDelegate',
+          )
+          .onNavigationRequest,
+      'onProgress': (visitor, target) => D4
+          .validateTarget<$dartnative_webview_2.NavigationDelegate>(
+            target,
+            'NavigationDelegate',
+          )
+          .onProgress,
+      'onPageStarted': (visitor, target) => D4
+          .validateTarget<$dartnative_webview_2.NavigationDelegate>(
+            target,
+            'NavigationDelegate',
+          )
+          .onPageStarted,
+      'onPageFinished': (visitor, target) => D4
+          .validateTarget<$dartnative_webview_2.NavigationDelegate>(
+            target,
+            'NavigationDelegate',
+          )
+          .onPageFinished,
     },
     constructorSignatures: {
       '': 'const NavigationDelegate({FutureOr<NavigationDecision> Function(NavigationRequest)? onNavigationRequest, void Function(int progress)? onProgress, void Function(String url)? onPageStarted, void Function(String url)? onPageFinished})',
     },
     getterSignatures: {
-      'onNavigationRequest': 'FutureOr<NavigationDecision> Function(NavigationRequest)? get onNavigationRequest',
+      'onNavigationRequest':
+          'FutureOr<NavigationDecision> Function(NavigationRequest)? get onNavigationRequest',
       'onProgress': 'void Function(int progress)? get onProgress',
       'onPageStarted': 'void Function(String url)? get onPageStarted',
       'onPageFinished': 'void Function(String url)? get onPageFinished',
@@ -364,82 +492,148 @@ BridgedClass _createWebViewControllerBridge() {
       },
       'fromPlatformCreationParams': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'WebViewController');
-        final params = D4.getRequiredArg<dynamic>(positional, 0, 'params', 'WebViewController');
-        return $dartnative_webview_3.WebViewController.fromPlatformCreationParams(params);
+        final params = D4.getRequiredArg<dynamic>(
+          positional,
+          0,
+          'params',
+          'WebViewController',
+        );
+        return $dartnative_webview_3
+            .WebViewController.fromPlatformCreationParams(params);
       },
     },
     getters: {
-      'webViewId': (visitor, target) => D4.validateTarget<$dartnative_webview_3.WebViewController>(target, 'WebViewController').webViewId,
+      'webViewId': (visitor, target) => D4
+          .validateTarget<$dartnative_webview_3.WebViewController>(
+            target,
+            'WebViewController',
+          )
+          .webViewId,
     },
     methods: {
       'prepareNativeAttach': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(target, 'WebViewController');
+        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(
+          target,
+          'WebViewController',
+        );
         t.prepareNativeAttach();
         return null;
       },
       'setJavaScriptMode': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(target, 'WebViewController');
+        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(
+          target,
+          'WebViewController',
+        );
         D4.requireMinArgs(positional, 1, 'setJavaScriptMode');
-        final mode = D4.getRequiredArg<$dartnative_webview_1.JavaScriptMode>(positional, 0, 'mode', 'setJavaScriptMode');
+        final mode = D4.getRequiredArg<$dartnative_webview_1.JavaScriptMode>(
+          positional,
+          0,
+          'mode',
+          'setJavaScriptMode',
+        );
         return t.setJavaScriptMode(mode);
       },
       'setBackgroundColor': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(target, 'WebViewController');
+        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(
+          target,
+          'WebViewController',
+        );
         D4.requireMinArgs(positional, 1, 'setBackgroundColor');
-        final color = D4.getRequiredArg<$dartnative_2.Color>(positional, 0, 'color', 'setBackgroundColor');
+        final color = D4.getRequiredArg<$dartnative_2.Color>(
+          positional,
+          0,
+          'color',
+          'setBackgroundColor',
+        );
         return t.setBackgroundColor(color);
       },
       'setNavigationDelegate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(target, 'WebViewController');
+        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(
+          target,
+          'WebViewController',
+        );
         D4.requireMinArgs(positional, 1, 'setNavigationDelegate');
-        final delegate = D4.getRequiredArg<$dartnative_webview_2.NavigationDelegate>(positional, 0, 'delegate', 'setNavigationDelegate');
+        final delegate = D4
+            .getRequiredArg<$dartnative_webview_2.NavigationDelegate>(
+              positional,
+              0,
+              'delegate',
+              'setNavigationDelegate',
+            );
         return t.setNavigationDelegate(delegate);
       },
       'loadRequest': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(target, 'WebViewController');
+        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(
+          target,
+          'WebViewController',
+        );
         D4.requireMinArgs(positional, 1, 'loadRequest');
         final uri = D4.getRequiredArg<Uri>(positional, 0, 'uri', 'loadRequest');
         return t.loadRequest(uri);
       },
       'goBack': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(target, 'WebViewController');
+        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(
+          target,
+          'WebViewController',
+        );
         return t.goBack();
       },
       'goForward': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(target, 'WebViewController');
+        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(
+          target,
+          'WebViewController',
+        );
         return t.goForward();
       },
       'reload': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(target, 'WebViewController');
+        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(
+          target,
+          'WebViewController',
+        );
         return t.reload();
       },
       'canGoBack': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(target, 'WebViewController');
+        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(
+          target,
+          'WebViewController',
+        );
         return t.canGoBack();
       },
       'canGoForward': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(target, 'WebViewController');
+        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(
+          target,
+          'WebViewController',
+        );
         return t.canGoForward();
       },
       'getTitle': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(target, 'WebViewController');
+        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(
+          target,
+          'WebViewController',
+        );
         return t.getTitle();
       },
       'dispose': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(target, 'WebViewController');
+        final t = D4.validateTarget<$dartnative_webview_3.WebViewController>(
+          target,
+          'WebViewController',
+        );
         (t as dynamic).dispose();
         return null;
       },
     },
     constructorSignatures: {
       '': 'WebViewController()',
-      'fromPlatformCreationParams': 'WebViewController.fromPlatformCreationParams(dynamic params)',
+      'fromPlatformCreationParams':
+          'WebViewController.fromPlatformCreationParams(dynamic params)',
     },
     methodSignatures: {
       'prepareNativeAttach': 'void prepareNativeAttach()',
-      'setJavaScriptMode': 'Future<void> setJavaScriptMode(JavaScriptMode mode)',
+      'setJavaScriptMode':
+          'Future<void> setJavaScriptMode(JavaScriptMode mode)',
       'setBackgroundColor': 'Future<void> setBackgroundColor(Color color)',
-      'setNavigationDelegate': 'Future<void> setNavigationDelegate(NavigationDelegate delegate)',
+      'setNavigationDelegate':
+          'Future<void> setNavigationDelegate(NavigationDelegate delegate)',
       'loadRequest': 'Future<void> loadRequest(Uri uri)',
       'goBack': 'Future<void> goBack()',
       'goForward': 'Future<void> goForward()',
@@ -463,26 +657,48 @@ BridgedClass _createWebKitWebViewControllerCreationParamsBridge() {
   return BridgedClass(
     nativeType: $dartnative_webview_3.WebKitWebViewControllerCreationParams,
     name: 'WebKitWebViewControllerCreationParams',
-    isAssignable: (v) => v is $dartnative_webview_3.WebKitWebViewControllerCreationParams,
+    isAssignable: (v) =>
+        v is $dartnative_webview_3.WebKitWebViewControllerCreationParams,
     constructors: {
       '': (visitor, positional, named) {
-        final allowsInlineMediaPlayback = D4.getNamedArgWithDefault<bool>(named, 'allowsInlineMediaPlayback', true);
-        final mediaTypesRequiringUserAction = named.containsKey('mediaTypesRequiringUserAction') && named['mediaTypesRequiringUserAction'] != null
-            ? D4.coerceSet<Object>(named['mediaTypesRequiringUserAction'], 'mediaTypesRequiringUserAction')
+        final allowsInlineMediaPlayback = D4.getNamedArgWithDefault<bool>(
+          named,
+          'allowsInlineMediaPlayback',
+          true,
+        );
+        final mediaTypesRequiringUserAction =
+            named.containsKey('mediaTypesRequiringUserAction') &&
+                named['mediaTypesRequiringUserAction'] != null
+            ? D4.coerceSet<Object>(
+                named['mediaTypesRequiringUserAction'],
+                'mediaTypesRequiringUserAction',
+              )
             : const <Object>{};
-        return $dartnative_webview_3.WebKitWebViewControllerCreationParams(allowsInlineMediaPlayback: allowsInlineMediaPlayback, mediaTypesRequiringUserAction: mediaTypesRequiringUserAction);
+        return $dartnative_webview_3.WebKitWebViewControllerCreationParams(
+          allowsInlineMediaPlayback: allowsInlineMediaPlayback,
+          mediaTypesRequiringUserAction: mediaTypesRequiringUserAction,
+        );
       },
     },
     getters: {
-      'allowsInlineMediaPlayback': (visitor, target) => D4.validateTarget<$dartnative_webview_3.WebKitWebViewControllerCreationParams>(target, 'WebKitWebViewControllerCreationParams').allowsInlineMediaPlayback,
-      'mediaTypesRequiringUserAction': (visitor, target) => D4.validateTarget<$dartnative_webview_3.WebKitWebViewControllerCreationParams>(target, 'WebKitWebViewControllerCreationParams').mediaTypesRequiringUserAction,
+      'allowsInlineMediaPlayback': (visitor, target) => D4
+          .validateTarget<
+            $dartnative_webview_3.WebKitWebViewControllerCreationParams
+          >(target, 'WebKitWebViewControllerCreationParams')
+          .allowsInlineMediaPlayback,
+      'mediaTypesRequiringUserAction': (visitor, target) => D4
+          .validateTarget<
+            $dartnative_webview_3.WebKitWebViewControllerCreationParams
+          >(target, 'WebKitWebViewControllerCreationParams')
+          .mediaTypesRequiringUserAction,
     },
     constructorSignatures: {
       '': 'const WebKitWebViewControllerCreationParams({bool allowsInlineMediaPlayback = true, Set<Object> mediaTypesRequiringUserAction = const {}})',
     },
     getterSignatures: {
       'allowsInlineMediaPlayback': 'bool get allowsInlineMediaPlayback',
-      'mediaTypesRequiringUserAction': 'Set<Object> get mediaTypesRequiringUserAction',
+      'mediaTypesRequiringUserAction':
+          'Set<Object> get mediaTypesRequiringUserAction',
     },
   );
 }
@@ -500,13 +716,32 @@ BridgedClass _createWebViewWidgetBridge() {
     constructors: {
       '': (visitor, positional, named) {
         final key = D4.getOptionalNamedArg<$dartnative_1.Key?>(named, 'key');
-        final controller = D4.getRequiredNamedArg<$dartnative_webview_3.WebViewController>(named, 'controller', 'WebViewWidget');
-        return $dartnative_webview_5.WebViewWidget(key: key, controller: controller);
+        final controller = D4
+            .getRequiredNamedArg<$dartnative_webview_3.WebViewController>(
+              named,
+              'controller',
+              'WebViewWidget',
+            );
+        return $dartnative_webview_5.WebViewWidget(
+          key: key,
+          controller: controller,
+        );
       },
     },
     getters: {
-      'controller': (visitor, target) => (D4.validateTarget<$dartnative_webview_5.WebViewWidget>(target, 'WebViewWidget') as dynamic).controller,
-      'key': (visitor, target) => D4.validateTarget<$dartnative_webview_5.WebViewWidget>(target, 'WebViewWidget').key,
+      'controller': (visitor, target) =>
+          (D4.validateTarget<$dartnative_webview_5.WebViewWidget>(
+                    target,
+                    'WebViewWidget',
+                  )
+                  as dynamic)
+              .controller,
+      'key': (visitor, target) => D4
+          .validateTarget<$dartnative_webview_5.WebViewWidget>(
+            target,
+            'WebViewWidget',
+          )
+          .key,
     },
     constructorSignatures: {
       '': 'const WebViewWidget({Key? key, required WebViewController controller})',
@@ -527,29 +762,45 @@ BridgedClass _createWebViewFFIBindingsBridge() {
     nativeType: $dartnative_webview_4.WebViewFFIBindings,
     name: 'WebViewFFIBindings',
     isAssignable: (v) => v is $dartnative_webview_4.WebViewFFIBindings,
-    constructors: {
-    },
+    constructors: {},
     methods: {
       'create': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+          target,
+          'WebViewFFIBindings',
+        );
         return t.create();
       },
       'setPendingWebViewId': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+          target,
+          'WebViewFFIBindings',
+        );
         D4.requireMinArgs(positional, 1, 'setPendingWebViewId');
-        final id = D4.getRequiredArg<int>(positional, 0, 'id', 'setPendingWebViewId');
+        final id = D4.getRequiredArg<int>(
+          positional,
+          0,
+          'id',
+          'setPendingWebViewId',
+        );
         t.setPendingWebViewId(id);
         return null;
       },
       'disposeView': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+          target,
+          'WebViewFFIBindings',
+        );
         D4.requireMinArgs(positional, 1, 'disposeView');
         final id = D4.getRequiredArg<int>(positional, 0, 'id', 'disposeView');
         t.disposeView(id);
         return null;
       },
       'loadURL': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+          target,
+          'WebViewFFIBindings',
+        );
         D4.requireMinArgs(positional, 2, 'loadURL');
         final id = D4.getRequiredArg<int>(positional, 0, 'id', 'loadURL');
         final url = D4.getRequiredArg<String>(positional, 1, 'url', 'loadURL');
@@ -557,111 +808,230 @@ BridgedClass _createWebViewFFIBindingsBridge() {
         return null;
       },
       'goBack': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+          target,
+          'WebViewFFIBindings',
+        );
         D4.requireMinArgs(positional, 1, 'goBack');
         final id = D4.getRequiredArg<int>(positional, 0, 'id', 'goBack');
         t.goBack(id);
         return null;
       },
       'goForward': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+          target,
+          'WebViewFFIBindings',
+        );
         D4.requireMinArgs(positional, 1, 'goForward');
         final id = D4.getRequiredArg<int>(positional, 0, 'id', 'goForward');
         t.goForward(id);
         return null;
       },
       'reload': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+          target,
+          'WebViewFFIBindings',
+        );
         D4.requireMinArgs(positional, 1, 'reload');
         final id = D4.getRequiredArg<int>(positional, 0, 'id', 'reload');
         t.reload(id);
         return null;
       },
       'canGoBack': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+          target,
+          'WebViewFFIBindings',
+        );
         D4.requireMinArgs(positional, 1, 'canGoBack');
         final id = D4.getRequiredArg<int>(positional, 0, 'id', 'canGoBack');
         return t.canGoBack(id);
       },
       'canGoForward': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+          target,
+          'WebViewFFIBindings',
+        );
         D4.requireMinArgs(positional, 1, 'canGoForward');
         final id = D4.getRequiredArg<int>(positional, 0, 'id', 'canGoForward');
         return t.canGoForward(id);
       },
       'getTitle': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+          target,
+          'WebViewFFIBindings',
+        );
         D4.requireMinArgs(positional, 1, 'getTitle');
         final id = D4.getRequiredArg<int>(positional, 0, 'id', 'getTitle');
         return t.getTitle(id);
       },
       'setJavaScriptEnabled': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+          target,
+          'WebViewFFIBindings',
+        );
         D4.requireMinArgs(positional, 2, 'setJavaScriptEnabled');
-        final id = D4.getRequiredArg<int>(positional, 0, 'id', 'setJavaScriptEnabled');
-        final enabled = D4.getRequiredArg<int>(positional, 1, 'enabled', 'setJavaScriptEnabled');
+        final id = D4.getRequiredArg<int>(
+          positional,
+          0,
+          'id',
+          'setJavaScriptEnabled',
+        );
+        final enabled = D4.getRequiredArg<int>(
+          positional,
+          1,
+          'enabled',
+          'setJavaScriptEnabled',
+        );
         t.setJavaScriptEnabled(id, enabled);
         return null;
       },
-      'setBackgroundTransparent': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
-        D4.requireMinArgs(positional, 2, 'setBackgroundTransparent');
-        final id = D4.getRequiredArg<int>(positional, 0, 'id', 'setBackgroundTransparent');
-        final transparent = D4.getRequiredArg<int>(positional, 1, 'transparent', 'setBackgroundTransparent');
-        t.setBackgroundTransparent(id, transparent);
-        return null;
-      },
+      'setBackgroundTransparent':
+          (visitor, target, positional, named, typeArgs) {
+            final t = D4
+                .validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+                  target,
+                  'WebViewFFIBindings',
+                );
+            D4.requireMinArgs(positional, 2, 'setBackgroundTransparent');
+            final id = D4.getRequiredArg<int>(
+              positional,
+              0,
+              'id',
+              'setBackgroundTransparent',
+            );
+            final transparent = D4.getRequiredArg<int>(
+              positional,
+              1,
+              'transparent',
+              'setBackgroundTransparent',
+            );
+            t.setBackgroundTransparent(id, transparent);
+            return null;
+          },
       'registerProgressCallback': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+          target,
+          'WebViewFFIBindings',
+        );
         D4.requireMinArgs(positional, 2, 'registerProgressCallback');
-        final id = D4.getRequiredArg<int>(positional, 0, 'id', 'registerProgressCallback');
+        final id = D4.getRequiredArg<int>(
+          positional,
+          0,
+          'id',
+          'registerProgressCallback',
+        );
         if (positional.length <= 1) {
-          throw ArgumentError('registerProgressCallback: Missing required argument "onProgress" at position 1');
+          throw ArgumentError(
+            'registerProgressCallback: Missing required argument "onProgress" at position 1',
+          );
         }
         final onProgressRaw = positional[1];
-        t.registerProgressCallback(id, (int p0) { D4.callInterpreterCallback(visitor!, onProgressRaw, [p0]); });
+        t.registerProgressCallback(id, (int p0) {
+          D4.callInterpreterCallback(visitor!, onProgressRaw, [p0]);
+        });
         return null;
       },
-      'registerPageChangedCallback': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
-        D4.requireMinArgs(positional, 2, 'registerPageChangedCallback');
-        final id = D4.getRequiredArg<int>(positional, 0, 'id', 'registerPageChangedCallback');
-        if (positional.length <= 1) {
-          throw ArgumentError('registerPageChangedCallback: Missing required argument "onPageChanged" at position 1');
-        }
-        final onPageChangedRaw = positional[1];
-        t.registerPageChangedCallback(id, (int p0, String p1) { D4.callInterpreterCallback(visitor!, onPageChangedRaw, [p0, p1]); });
-        return null;
-      },
+      'registerPageChangedCallback':
+          (visitor, target, positional, named, typeArgs) {
+            final t = D4
+                .validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+                  target,
+                  'WebViewFFIBindings',
+                );
+            D4.requireMinArgs(positional, 2, 'registerPageChangedCallback');
+            final id = D4.getRequiredArg<int>(
+              positional,
+              0,
+              'id',
+              'registerPageChangedCallback',
+            );
+            if (positional.length <= 1) {
+              throw ArgumentError(
+                'registerPageChangedCallback: Missing required argument "onPageChanged" at position 1',
+              );
+            }
+            final onPageChangedRaw = positional[1];
+            t.registerPageChangedCallback(id, (int p0, String p1) {
+              D4.callInterpreterCallback(visitor!, onPageChangedRaw, [p0, p1]);
+            });
+            return null;
+          },
       'registerNavigationCallback': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+          target,
+          'WebViewFFIBindings',
+        );
         D4.requireMinArgs(positional, 2, 'registerNavigationCallback');
-        final id = D4.getRequiredArg<int>(positional, 0, 'id', 'registerNavigationCallback');
+        final id = D4.getRequiredArg<int>(
+          positional,
+          0,
+          'id',
+          'registerNavigationCallback',
+        );
         if (positional.length <= 1) {
-          throw ArgumentError('registerNavigationCallback: Missing required argument "onRequest" at position 1');
+          throw ArgumentError(
+            'registerNavigationCallback: Missing required argument "onRequest" at position 1',
+          );
         }
         final onRequestRaw = positional[1];
-        t.registerNavigationCallback(id, ((int p0, String p1, bool p2) { return D4.callInterpreterCallback(visitor!, onRequestRaw, [p0, p1, p2]) as int; }) as int Function(int, String, bool));
+        t.registerNavigationCallback(
+          id,
+          ((int p0, String p1, bool p2) {
+                return D4.callInterpreterCallback(visitor!, onRequestRaw, [
+                      p0,
+                      p1,
+                      p2,
+                    ])
+                    as int;
+              })
+              as int Function(int, String, bool),
+        );
         return null;
       },
-      'unregisterNavigationCallback': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
-        D4.requireMinArgs(positional, 1, 'unregisterNavigationCallback');
-        final id = D4.getRequiredArg<int>(positional, 0, 'id', 'unregisterNavigationCallback');
-        t.unregisterNavigationCallback(id);
-        return null;
-      },
+      'unregisterNavigationCallback':
+          (visitor, target, positional, named, typeArgs) {
+            final t = D4
+                .validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+                  target,
+                  'WebViewFFIBindings',
+                );
+            D4.requireMinArgs(positional, 1, 'unregisterNavigationCallback');
+            final id = D4.getRequiredArg<int>(
+              positional,
+              0,
+              'id',
+              'unregisterNavigationCallback',
+            );
+            t.unregisterNavigationCallback(id);
+            return null;
+          },
       'decide': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+          target,
+          'WebViewFFIBindings',
+        );
         D4.requireMinArgs(positional, 3, 'decide');
         final id = D4.getRequiredArg<int>(positional, 0, 'id', 'decide');
-        final requestId = D4.getRequiredArg<int>(positional, 1, 'requestId', 'decide');
-        final answer = D4.getRequiredArg<int>(positional, 2, 'answer', 'decide');
+        final requestId = D4.getRequiredArg<int>(
+          positional,
+          1,
+          'requestId',
+          'decide',
+        );
+        final answer = D4.getRequiredArg<int>(
+          positional,
+          2,
+          'answer',
+          'decide',
+        );
         t.decide(id, requestId, answer);
         return null;
       },
       'disconnect': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(target, 'WebViewFFIBindings');
+        final t = D4.validateTarget<$dartnative_webview_4.WebViewFFIBindings>(
+          target,
+          'WebViewFFIBindings',
+        );
         D4.requireMinArgs(positional, 1, 'disconnect');
         final id = D4.getRequiredArg<int>(positional, 0, 'id', 'disconnect');
         t.disconnect(id);
@@ -669,7 +1039,8 @@ BridgedClass _createWebViewFFIBindingsBridge() {
       },
     },
     staticGetters: {
-      'instance': (visitor) => $dartnative_webview_4.WebViewFFIBindings.instance,
+      'instance': (visitor) =>
+          $dartnative_webview_4.WebViewFFIBindings.instance,
     },
     staticMethods: {
       'loadSymbols': (visitor, positional, named, typeArgs) {
@@ -688,11 +1059,16 @@ BridgedClass _createWebViewFFIBindingsBridge() {
       'canGoForward': 'int canGoForward(int id)',
       'getTitle': 'String? getTitle(int id)',
       'setJavaScriptEnabled': 'void setJavaScriptEnabled(int id, int enabled)',
-      'setBackgroundTransparent': 'void setBackgroundTransparent(int id, int transparent)',
-      'registerProgressCallback': 'void registerProgressCallback(int id, void Function(int progress) onProgress)',
-      'registerPageChangedCallback': 'void registerPageChangedCallback(int id, void Function(int type, String url) onPageChanged)',
-      'registerNavigationCallback': 'void registerNavigationCallback(int id, int Function(int requestId, String url, bool isMainFrame) onRequest)',
-      'unregisterNavigationCallback': 'void unregisterNavigationCallback(int id)',
+      'setBackgroundTransparent':
+          'void setBackgroundTransparent(int id, int transparent)',
+      'registerProgressCallback':
+          'void registerProgressCallback(int id, void Function(int progress) onProgress)',
+      'registerPageChangedCallback':
+          'void registerPageChangedCallback(int id, void Function(int type, String url) onPageChanged)',
+      'registerNavigationCallback':
+          'void registerNavigationCallback(int id, int Function(int requestId, String url, bool isMainFrame) onRequest)',
+      'unregisterNavigationCallback':
+          'void unregisterNavigationCallback(int id)',
       'decide': 'void decide(int id, int requestId, int answer)',
       'disconnect': 'void disconnect(int id)',
     },
@@ -704,4 +1080,3 @@ BridgedClass _createWebViewFFIBindingsBridge() {
     },
   );
 }
-

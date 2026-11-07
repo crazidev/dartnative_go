@@ -148,9 +148,11 @@ void main() {
         reason: 'a throwing build must reach the host error channel',
       );
       expect(
-        stacks.where((s) => s.contains('visitThrowExpression')),
+        stacks.where((s) => s.contains('Exploding.build')),
         isNotEmpty,
-        reason: 'the host channel must also capture the stack trace',
+        reason:
+            'the host channel must also capture the stack trace, pointing at '
+            'the guest frame that threw: $stacks',
       );
     });
   });

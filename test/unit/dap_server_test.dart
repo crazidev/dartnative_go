@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dartnative_go/src/dap/dap_server.dart';
-import 'package:dartnative_go/src/dap/protocol.dart';
 import 'package:dartnative_go/src/dap/variable_store.dart';
 import 'package:test/test.dart';
 

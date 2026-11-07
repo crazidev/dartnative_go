@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 4 files
-// Generated: 2026-11-01T03:40:17.973439 by tom_d4rt_generator 1.26.2
+// Generated: 2026-11-06T23:47:21.089159 by tom_d4rt_generator 1.26.2
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -8,10 +8,14 @@ import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
 import 'dart:async';
 
-import 'package:dartnative_connectivity/src/connectivity.dart' as $dartnative_connectivity_1;
-import 'package:dartnative_connectivity/src/connectivity_ffi_bindings.dart' as $dartnative_connectivity_2;
-import 'package:dartnative_connectivity/src/connectivity_result.dart' as $dartnative_connectivity_3;
-import 'package:dartnative_connectivity/src/internet_connection.dart' as $dartnative_connectivity_4;
+import 'package:dartnative_connectivity/src/connectivity.dart'
+    as $dartnative_connectivity_1;
+import 'package:dartnative_connectivity/src/connectivity_ffi_bindings.dart'
+    as $dartnative_connectivity_2;
+import 'package:dartnative_connectivity/src/connectivity_result.dart'
+    as $dartnative_connectivity_3;
+import 'package:dartnative_connectivity/src/internet_connection.dart'
+    as $dartnative_connectivity_4;
 
 /// Bridge class for dartnative_connectivity module.
 class DartnativeConnectivityBridge {
@@ -46,7 +50,8 @@ class DartnativeConnectivityBridge {
   static Map<String, Type> bridgeClassTypes() {
     return {
       'Connectivity': $dartnative_connectivity_1.Connectivity,
-      'ConnectivityFFIBindings': $dartnative_connectivity_2.ConnectivityFFIBindings,
+      'ConnectivityFFIBindings':
+          $dartnative_connectivity_2.ConnectivityFFIBindings,
       'InternetConnection': $dartnative_connectivity_4.InternetConnection,
     };
   }
@@ -58,8 +63,10 @@ class DartnativeConnectivityBridge {
   static Map<String, String> classSourceUris() {
     return {
       'Connectivity': 'package:dartnative_connectivity/src/connectivity.dart',
-      'ConnectivityFFIBindings': 'package:dartnative_connectivity/src/connectivity_ffi_bindings.dart',
-      'InternetConnection': 'package:dartnative_connectivity/src/internet_connection.dart',
+      'ConnectivityFFIBindings':
+          'package:dartnative_connectivity/src/connectivity_ffi_bindings.dart',
+      'InternetConnection':
+          'package:dartnative_connectivity/src/internet_connection.dart',
     };
   }
 
@@ -71,8 +78,7 @@ class DartnativeConnectivityBridge {
   /// ancestors and the interface-proxy supertype walk resolves up the
   /// chain.
   static Map<String, List<String>> classSupertypes() {
-    return {
-    };
+    return {};
   }
 
   /// Returns a map of type alias names to their target class names.
@@ -81,8 +87,7 @@ class DartnativeConnectivityBridge {
   /// are registered so that code using the alias name can resolve to the
   /// bridged class under its canonical name.
   static Map<String, String> classAliases() {
-    return {
-    };
+    return {};
   }
 
   /// Returns the list of function typedef names declared in this library.
@@ -90,8 +95,7 @@ class DartnativeConnectivityBridge {
   /// Function typedefs like `typedef VoidCallback = void Function()` are
   /// registered so that they can be used as type arguments in D4rt scripts.
   static List<String> functionTypedefs() {
-    return [
-    ];
+    return [];
   }
 
   /// Returns all bridged enum definitions.
@@ -110,33 +114,55 @@ class DartnativeConnectivityBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> enumSourceUris() {
     return {
-      'ConnectivityType': 'package:dartnative_connectivity/src/connectivity_result.dart',
+      'ConnectivityType':
+          'package:dartnative_connectivity/src/connectivity_result.dart',
     };
   }
 
   /// Returns all bridged extension definitions.
   static List<BridgedExtensionDefinition> bridgedExtensions() {
-    return [
-    ];
+    return [];
   }
 
   /// Returns a map of extension identifiers to their canonical source URIs.
   static Map<String, String> extensionSourceUris() {
-    return {
-    };
+    return {};
   }
 
   /// GEN-107: Library re-exports declared by the bridged source
   /// libraries. Each tuple mirrors a Dart `export '…'` directive.
   /// Consumed by `registerBridges` via `D4rt.registerLibraryReExport`
   /// (mirrored on `D4rtRunner` in tom_d4rt_ast).
-  static List<({String source, String target, Set<String>? show, Set<String>? hide})>
+  static List<
+    ({String source, String target, Set<String>? show, Set<String>? hide})
+  >
   bridgeReExports() {
     return [
-      (source: 'package:dartnative_connectivity/connectivity.dart', target: 'package:dartnative_connectivity/src/connectivity.dart', show: null, hide: null),
-      (source: 'package:dartnative_connectivity/connectivity.dart', target: 'package:dartnative_connectivity/src/connectivity_ffi_bindings.dart', show: null, hide: null),
-      (source: 'package:dartnative_connectivity/connectivity.dart', target: 'package:dartnative_connectivity/src/connectivity_result.dart', show: null, hide: null),
-      (source: 'package:dartnative_connectivity/connectivity.dart', target: 'package:dartnative_connectivity/src/internet_connection.dart', show: null, hide: null),
+      (
+        source: 'package:dartnative_connectivity/connectivity.dart',
+        target: 'package:dartnative_connectivity/src/connectivity.dart',
+        show: null,
+        hide: null,
+      ),
+      (
+        source: 'package:dartnative_connectivity/connectivity.dart',
+        target:
+            'package:dartnative_connectivity/src/connectivity_ffi_bindings.dart',
+        show: null,
+        hide: null,
+      ),
+      (
+        source: 'package:dartnative_connectivity/connectivity.dart',
+        target: 'package:dartnative_connectivity/src/connectivity_result.dart',
+        show: null,
+        hide: null,
+      ),
+      (
+        source: 'package:dartnative_connectivity/connectivity.dart',
+        target: 'package:dartnative_connectivity/src/internet_connection.dart',
+        show: null,
+        hide: null,
+      ),
     ];
   }
 
@@ -170,7 +196,11 @@ class DartnativeConnectivityBridge {
     final enums = bridgedEnums();
     final enumSources = enumSourceUris();
     for (final enumDef in enums) {
-      interpreter.registerBridgedEnum(enumDef, importPath, sourceUri: enumSources[enumDef.name]);
+      interpreter.registerBridgedEnum(
+        enumDef,
+        importPath,
+        sourceUri: enumSources[enumDef.name],
+      );
     }
 
     // Register global functions with source URIs for deduplication
@@ -178,12 +208,23 @@ class DartnativeConnectivityBridge {
     final funcSources = globalFunctionSourceUris();
     final funcSigs = globalFunctionSignatures();
     for (final entry in funcs.entries) {
-      interpreter.registertopLevelFunction(entry.key, entry.value, importPath, sourceUri: funcSources[entry.key], signature: funcSigs[entry.key]);
+      interpreter.registertopLevelFunction(
+        entry.key,
+        entry.value,
+        importPath,
+        sourceUri: funcSources[entry.key],
+        signature: funcSigs[entry.key],
+      );
     }
 
     // GEN-107: Register library re-exports
     for (final r in bridgeReExports()) {
-      interpreter.registerLibraryReExport(r.source, r.target, show: r.show, hide: r.hide);
+      interpreter.registerLibraryReExport(
+        r.source,
+        r.target,
+        show: r.show,
+        hide: r.hide,
+      );
     }
   }
 
@@ -192,7 +233,12 @@ class DartnativeConnectivityBridge {
     return {
       'connectivityTypeFromBitmask': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'connectivityTypeFromBitmask');
-        final mask = D4.getRequiredArg<int>(positional, 0, 'mask', 'connectivityTypeFromBitmask');
+        final mask = D4.getRequiredArg<int>(
+          positional,
+          0,
+          'mask',
+          'connectivityTypeFromBitmask',
+        );
         return $dartnative_connectivity_3.connectivityTypeFromBitmask(mask);
       },
     };
@@ -204,14 +250,16 @@ class DartnativeConnectivityBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> globalFunctionSourceUris() {
     return {
-      'connectivityTypeFromBitmask': 'package:dartnative_connectivity/src/connectivity_result.dart',
+      'connectivityTypeFromBitmask':
+          'package:dartnative_connectivity/src/connectivity_result.dart',
     };
   }
 
   /// Returns a map of global function names to their display signatures.
   static Map<String, String> globalFunctionSignatures() {
     return {
-      'connectivityTypeFromBitmask': 'ConnectivityType connectivityTypeFromBitmask(int mask)',
+      'connectivityTypeFromBitmask':
+          'ConnectivityType connectivityTypeFromBitmask(int mask)',
     };
   }
 
@@ -251,7 +299,6 @@ class DartnativeConnectivityBridge {
   static List<String> get enumNames => [
     'ConnectivityType',
   ];
-
 }
 
 // =============================================================================
@@ -269,11 +316,19 @@ BridgedClass _createConnectivityBridge() {
       },
     },
     getters: {
-      'onConnectivityTypeChanged': (visitor, target) => D4.validateTarget<$dartnative_connectivity_1.Connectivity>(target, 'Connectivity').onConnectivityTypeChanged,
+      'onConnectivityTypeChanged': (visitor, target) => D4
+          .validateTarget<$dartnative_connectivity_1.Connectivity>(
+            target,
+            'Connectivity',
+          )
+          .onConnectivityTypeChanged,
     },
     methods: {
       'checkConnectivityType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_connectivity_1.Connectivity>(target, 'Connectivity');
+        final t = D4.validateTarget<$dartnative_connectivity_1.Connectivity>(
+          target,
+          'Connectivity',
+        );
         return t.checkConnectivityType();
       },
     },
@@ -281,10 +336,12 @@ BridgedClass _createConnectivityBridge() {
       '': 'factory Connectivity()',
     },
     methodSignatures: {
-      'checkConnectivityType': 'Future<ConnectivityType> checkConnectivityType()',
+      'checkConnectivityType':
+          'Future<ConnectivityType> checkConnectivityType()',
     },
     getterSignatures: {
-      'onConnectivityTypeChanged': 'Stream<ConnectivityType> get onConnectivityTypeChanged',
+      'onConnectivityTypeChanged':
+          'Stream<ConnectivityType> get onConnectivityTypeChanged',
     },
   );
 }
@@ -297,9 +354,9 @@ BridgedClass _createConnectivityFFIBindingsBridge() {
   return BridgedClass(
     nativeType: $dartnative_connectivity_2.ConnectivityFFIBindings,
     name: 'ConnectivityFFIBindings',
-    isAssignable: (v) => v is $dartnative_connectivity_2.ConnectivityFFIBindings,
-    constructors: {
-    },
+    isAssignable: (v) =>
+        v is $dartnative_connectivity_2.ConnectivityFFIBindings,
+    constructors: {},
     staticMethods: {
       'loadSymbols': (visitor, positional, named, typeArgs) {
         return $dartnative_connectivity_2.ConnectivityFFIBindings.loadSymbols();
@@ -310,11 +367,17 @@ BridgedClass _createConnectivityFFIBindingsBridge() {
       'startMonitor': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'startMonitor');
         if (positional.isEmpty) {
-          throw ArgumentError('startMonitor: Missing required argument "onUpdate" at position 0');
+          throw ArgumentError(
+            'startMonitor: Missing required argument "onUpdate" at position 0',
+          );
         }
         final onUpdateRaw = positional[0];
-        final onUpdate = (int p0) { D4.callInterpreterCallback(visitor!, onUpdateRaw, [p0]); };
-        return $dartnative_connectivity_2.ConnectivityFFIBindings.startMonitor(onUpdate);
+        final onUpdate = (int p0) {
+          D4.callInterpreterCallback(visitor!, onUpdateRaw, [p0]);
+        };
+        return $dartnative_connectivity_2.ConnectivityFFIBindings.startMonitor(
+          onUpdate,
+        );
       },
       'stopMonitor': (visitor, positional, named, typeArgs) {
         return $dartnative_connectivity_2.ConnectivityFFIBindings.stopMonitor();
@@ -344,14 +407,42 @@ BridgedClass _createInternetConnectionBridge() {
       },
     },
     getters: {
-      'checkInterval': (visitor, target) => D4.validateTarget<$dartnative_connectivity_4.InternetConnection>(target, 'InternetConnection').checkInterval,
-      'hasInternet': (visitor, target) => D4.validateTarget<$dartnative_connectivity_4.InternetConnection>(target, 'InternetConnection').hasInternet,
-      'isConnected': (visitor, target) => D4.validateTarget<$dartnative_connectivity_4.InternetConnection>(target, 'InternetConnection').isConnected,
-      'onInternetChanged': (visitor, target) => D4.validateTarget<$dartnative_connectivity_4.InternetConnection>(target, 'InternetConnection').onInternetChanged,
+      'checkInterval': (visitor, target) => D4
+          .validateTarget<$dartnative_connectivity_4.InternetConnection>(
+            target,
+            'InternetConnection',
+          )
+          .checkInterval,
+      'hasInternet': (visitor, target) => D4
+          .validateTarget<$dartnative_connectivity_4.InternetConnection>(
+            target,
+            'InternetConnection',
+          )
+          .hasInternet,
+      'isConnected': (visitor, target) => D4
+          .validateTarget<$dartnative_connectivity_4.InternetConnection>(
+            target,
+            'InternetConnection',
+          )
+          .isConnected,
+      'onInternetChanged': (visitor, target) => D4
+          .validateTarget<$dartnative_connectivity_4.InternetConnection>(
+            target,
+            'InternetConnection',
+          )
+          .onInternetChanged,
     },
     setters: {
-      'checkInterval': (visitor, target, value) => 
-        D4.validateTarget<$dartnative_connectivity_4.InternetConnection>(target, 'InternetConnection').checkInterval = D4.extractBridgedArg<Duration>(value, 'checkInterval'),
+      'checkInterval': (visitor, target, value) =>
+          D4
+              .validateTarget<$dartnative_connectivity_4.InternetConnection>(
+                target,
+                'InternetConnection',
+              )
+              .checkInterval = D4.extractBridgedArg<Duration>(
+            value,
+            'checkInterval',
+          ),
     },
     constructorSignatures: {
       '': 'factory InternetConnection()',
@@ -367,4 +458,3 @@ BridgedClass _createInternetConnectionBridge() {
     },
   );
 }
-

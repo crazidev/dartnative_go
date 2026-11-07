@@ -45,7 +45,8 @@ R _runWithLogCapture<R>(R Function() action) {
     final report = onAstGuestError;
     if (report != null) {
       try {
-        final guestStack = (error is D4rtException &&
+        final guestStack =
+            (error is D4rtException &&
                 error.guestStackTrace != null &&
                 error.guestStackTrace!.isNotEmpty)
             ? StackTrace.fromString(error.guestStackTrace!)
@@ -76,7 +77,7 @@ class InterpretedStatelessWidget extends StatelessWidget
   Object get d4rtInstance => instance;
 
   InterpretedStatelessWidget(this.visitor, this.instance, {Key? key})
-      : super(key: key ?? _resolveKey(instance)) {
+    : super(key: key ?? _resolveKey(instance)) {
     instance.nativeProxy = this;
   }
 
@@ -112,10 +113,16 @@ class InterpretedStatelessWidget extends StatelessWidget
         final method = instance.get('build', visitor: visitor);
         if (method is Callable) {
           final rawResult = method.call(visitor, [context], {});
-          final widget = D4.extractBridgedArg<Widget>(rawResult, 'buildResult', visitor);
+          final widget = D4.extractBridgedArg<Widget>(
+            rawResult,
+            'buildResult',
+            visitor,
+          );
           return widget;
         }
-        throw StateError('Interpreted StatelessWidget has no callable build(context) method');
+        throw StateError(
+          'Interpreted StatelessWidget has no callable build(context) method',
+        );
       });
       _lastGoodChild = built;
       return built;
@@ -137,7 +144,7 @@ class InterpretedConsumerWidget extends ConsumerWidget
   Object get d4rtInstance => instance;
 
   InterpretedConsumerWidget(this.visitor, this.instance, {Key? key})
-      : super(key: key ?? _resolveKey(instance)) {
+    : super(key: key ?? _resolveKey(instance)) {
     instance.nativeProxy = this;
   }
 
@@ -176,10 +183,16 @@ class InterpretedConsumerWidget extends ConsumerWidget
         final method = instance.get('build', visitor: visitor);
         if (method is Callable) {
           final rawResult = method.call(visitor, [context, ref], {});
-          final widget = D4.extractBridgedArg<Widget>(rawResult, 'buildResult', visitor);
+          final widget = D4.extractBridgedArg<Widget>(
+            rawResult,
+            'buildResult',
+            visitor,
+          );
           return widget;
         }
-        throw StateError('Interpreted ConsumerWidget has no callable build(context, ref) method');
+        throw StateError(
+          'Interpreted ConsumerWidget has no callable build(context, ref) method',
+        );
       });
       _lastGoodChild = built;
       return built;
@@ -307,7 +320,7 @@ class InterpretedStatefulWidget extends StatefulWidget
   Object get d4rtInstance => instance;
 
   InterpretedStatefulWidget(this.visitor, this.instance, {Key? key})
-      : super(key: key ?? _resolveKey(instance)) {
+    : super(key: key ?? _resolveKey(instance)) {
     instance.nativeProxy = this;
   }
 
@@ -382,13 +395,16 @@ class InterpretedStateProxy extends State<StatefulWidget>
   bool _isDispatchingDidUpdateWidget = false;
   bool _isDispatchingDispose = false;
   NativeBottomSheetScopeState? _sheetScope;
+  late final MountedWidgetReloadListener _reloadListener = _onHotReload;
 
   InterpretedStateProxy(this.visitor, this.stateInstance, this.ownerWidget) {
     _wireStateInstance(stateInstance, ownerWidget.instance);
   }
 
   void _wireStateInstance(
-      InterpretedInstance state, InterpretedInstance widgetInstance) {
+    InterpretedInstance state,
+    InterpretedInstance widgetInstance,
+  ) {
     state.nativeProxy = this;
     state.bridgedSuperObject = this;
     state.nativeStateProxy = this;
@@ -398,6 +414,7 @@ class InterpretedStateProxy extends State<StatefulWidget>
   @override
   void initState() {
     super.initState();
+    WidgetGenerationTracker.registerMountedWidget(_reloadListener);
     try {
       final scope = NativeBottomSheetScope.of(context);
       if (scope != null) {
@@ -438,7 +455,9 @@ class InterpretedStateProxy extends State<StatefulWidget>
     _isDispatchingDidChangeDependencies = true;
     try {
       _runWithLogCapture(() {
-        final method = stateInstance.klass.findInstanceMethod('didChangeDependencies');
+        final method = stateInstance.klass.findInstanceMethod(
+          'didChangeDependencies',
+        );
         if (method != null) {
           final callable = stateInstance.bindMethodCached(method);
           callable.call(visitor, [], {});
@@ -488,11 +507,12 @@ class InterpretedStateProxy extends State<StatefulWidget>
           // Re-create state instance from updated class definition in the new interpreter,
           // while preserving all existing state fields (like counter values).
           try {
-            final createStateMethod =
-                newOwner.instance.get('createState', visitor: newVisitor);
+            final createStateMethod = newOwner.instance.get(
+              'createState',
+              visitor: newVisitor,
+            );
             if (createStateMethod is Callable) {
-              final newStateResult =
-                  createStateMethod.call(newVisitor, [], {});
+              final newStateResult = createStateMethod.call(newVisitor, [], {});
               if (newStateResult is InterpretedInstance) {
                 final oldState = stateInstance;
                 final newState = newStateResult;
@@ -508,7 +528,9 @@ class InterpretedStateProxy extends State<StatefulWidget>
             stateInstance.interpretedStatefulWidget = newOwner.instance;
           }
         }
-        final method = stateInstance.klass.findInstanceMethod('didUpdateWidget');
+        final method = stateInstance.klass.findInstanceMethod(
+          'didUpdateWidget',
+        );
         if (method != null) {
           final callable = stateInstance.bindMethodCached(method);
           callable.call(visitor, [oldWidget], {});
@@ -561,10 +583,16 @@ class InterpretedStateProxy extends State<StatefulWidget>
         final method = stateInstance.get('build', visitor: visitor);
         if (method is Callable) {
           final rawResult = method.call(visitor, [context], {});
-          final widget = D4.extractBridgedArg<Widget>(rawResult, 'buildResult', visitor);
+          final widget = D4.extractBridgedArg<Widget>(
+            rawResult,
+            'buildResult',
+            visitor,
+          );
           return widget;
         }
-        throw StateError('Interpreted State has no callable build(context) method');
+        throw StateError(
+          'Interpreted State has no callable build(context) method',
+        );
       });
       _lastGoodChild = built;
       return built;
@@ -602,8 +630,37 @@ class InterpretedStateProxy extends State<StatefulWidget>
     _rebuildIfMounted();
   }
 
+  void _onHotReload(Object? newVisitor) {
+    if (_sheetScope != null || newVisitor is! InterpreterVisitor) return;
+    final ownerClass = findUserClassInVisitor(
+      newVisitor,
+      ownerWidget.instance.klass.name,
+    );
+    if (ownerClass is! InterpretedClass) {
+      onAstGuestLog?.call(
+        '[HotReload] could not find ${ownerWidget.instance.klass.name} '
+        'in the updated interpreter',
+      );
+      return;
+    }
+    final stateClass = findUserClassInVisitor(
+      newVisitor,
+      stateInstance.klass.name,
+    );
+    if (stateClass is! InterpretedClass) {
+      onAstGuestLog?.call(
+        '[HotReload] could not find ${stateInstance.klass.name} '
+        'in the updated interpreter',
+      );
+      return;
+    }
+    ownerWidget.rebindForHotReload(newVisitor, ownerClass);
+    rebindForHotReload(newVisitor, stateClass);
+  }
+
   @override
   void dispose() {
+    WidgetGenerationTracker.unregisterMountedWidget(_reloadListener);
     _sheetScope?.unregisterProxy(this);
     _sheetScope = null;
     if (_isDispatchingDispose) return;
@@ -636,8 +693,10 @@ void rebindAstConsumerStateForReload(
 ) {
   proxy.visitor = newOwner.visitor;
   proxy.ownerWidget = newOwner;
-  final createStateMethod =
-      newOwner.instance.get('createState', visitor: proxy.visitor);
+  final createStateMethod = newOwner.instance.get(
+    'createState',
+    visitor: proxy.visitor,
+  );
   if (createStateMethod is! Callable) {
     throw StateError(
       'Hot reload rebind: ${newOwner.instance.klass.name} has no callable createState',
@@ -663,15 +722,30 @@ void rebindAstConsumerStateForReload(
 /// matches. Registered under the exact name `ConsumerStatefulWidget`.
 class InterpretedConsumerStatefulWidget extends ConsumerStatefulWidget
     implements D4InterpretedProxy {
-  final InterpreterVisitor visitor;
-  final InterpretedInstance instance;
+  InterpreterVisitor visitor;
+  InterpretedInstance instance;
 
   @override
   Object get d4rtInstance => instance;
 
   InterpretedConsumerStatefulWidget(this.visitor, this.instance, {Key? key})
-      : super(key: key ?? _resolveKey(instance)) {
+    : super(key: key ?? _resolveKey(instance)) {
     instance.nativeProxy = this;
+  }
+
+  void rebindForHotReload(
+    InterpreterVisitor newVisitor,
+    InterpretedClass newClass,
+  ) {
+    visitor = newVisitor;
+    final newInstance = InterpretedInstance(newClass);
+    for (final fieldName in instance.klass.getInstanceFieldNames()) {
+      try {
+        newInstance.set(fieldName, instance.getField(fieldName));
+      } catch (_) {}
+    }
+    newInstance.nativeProxy = this;
+    instance = newInstance;
   }
 
   static Key _resolveKey(InterpretedInstance instance) {
@@ -701,7 +775,9 @@ class InterpretedConsumerStatefulWidget extends ConsumerStatefulWidget
           return stateResult;
         }
       }
-      throw StateError('Interpreted ConsumerStatefulWidget failed to create state');
+      throw StateError(
+        'Interpreted ConsumerStatefulWidget failed to create state',
+      );
     });
   }
 }
@@ -710,7 +786,8 @@ class InterpretedConsumerStatefulWidget extends ConsumerStatefulWidget
 ///
 /// Extends the real [ConsumerState] so interpreted code gets the native
 /// `ref` getter. Field snapshot/restore cannot synthesize this lifecycle.
-class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget>
+class InterpretedConsumerStateProxy
+    extends ConsumerState<ConsumerStatefulWidget>
     implements D4InterpretedProxy {
   InterpreterVisitor visitor;
   InterpretedInstance stateInstance;
@@ -724,12 +801,20 @@ class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget
   bool _isDispatchingDidUpdateWidget = false;
   bool _isDispatchingDispose = false;
   NativeBottomSheetScopeState? _sheetScope;
+  late final MountedWidgetReloadListener _reloadListener = _onHotReload;
 
-  InterpretedConsumerStateProxy(this.visitor, this.stateInstance, [this.ownerWidget]) {
+  InterpretedConsumerStateProxy(
+    this.visitor,
+    this.stateInstance, [
+    this.ownerWidget,
+  ]) {
     _wireStateInstance(stateInstance, ownerWidget?.instance);
   }
 
-  void _wireStateInstance(InterpretedInstance state, InterpretedInstance? widgetInstance) {
+  void _wireStateInstance(
+    InterpretedInstance state,
+    InterpretedInstance? widgetInstance,
+  ) {
     state.nativeProxy = this;
     state.bridgedSuperObject = this;
     state.nativeStateProxy = this;
@@ -741,6 +826,7 @@ class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget
   @override
   void initState() {
     super.initState();
+    WidgetGenerationTracker.registerMountedWidget(_reloadListener);
     try {
       final scope = NativeBottomSheetScope.of(context);
       if (scope != null) {
@@ -777,7 +863,9 @@ class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget
     _isDispatchingDidChangeDependencies = true;
     try {
       _runWithLogCapture(() {
-        final method = stateInstance.klass.findInstanceMethod('didChangeDependencies');
+        final method = stateInstance.klass.findInstanceMethod(
+          'didChangeDependencies',
+        );
         if (method != null) {
           stateInstance.bindMethodCached(method).call(visitor, [], {});
         }
@@ -828,7 +916,9 @@ class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget
             stateInstance.interpretedStatefulWidget = newOwner.instance;
           }
         }
-        final method = stateInstance.klass.findInstanceMethod('didUpdateWidget');
+        final method = stateInstance.klass.findInstanceMethod(
+          'didUpdateWidget',
+        );
         if (method != null) {
           stateInstance.bindMethodCached(method).call(visitor, [oldWidget], {});
         }
@@ -844,7 +934,9 @@ class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget
   /// Public so [rebindAstConsumerStateForReload] can share the exact wiring
   /// used at construction.
   void wireStateInstance(
-      InterpretedInstance state, InterpretedInstance? widgetInstance) {
+    InterpretedInstance state,
+    InterpretedInstance? widgetInstance,
+  ) {
     _wireStateInstance(state, widgetInstance);
   }
 
@@ -898,9 +990,15 @@ class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget
         final method = stateInstance.get('build', visitor: visitor);
         if (method is Callable) {
           final rawResult = method.call(visitor, [context], {});
-          return D4.extractBridgedArg<Widget>(rawResult, 'buildResult', visitor);
+          return D4.extractBridgedArg<Widget>(
+            rawResult,
+            'buildResult',
+            visitor,
+          );
         }
-        throw StateError('Interpreted ConsumerState has no callable build(context) method');
+        throw StateError(
+          'Interpreted ConsumerState has no callable build(context) method',
+        );
       });
       _lastGoodChild = built;
       return built;
@@ -938,8 +1036,40 @@ class InterpretedConsumerStateProxy extends ConsumerState<ConsumerStatefulWidget
     _rebuildIfMounted();
   }
 
+  void _onHotReload(Object? newVisitor) {
+    if (_sheetScope != null || newVisitor is! InterpreterVisitor) return;
+    final owner = ownerWidget;
+    if (owner != null) {
+      final ownerClass = findUserClassInVisitor(
+        newVisitor,
+        owner.instance.klass.name,
+      );
+      if (ownerClass is! InterpretedClass) {
+        onAstGuestLog?.call(
+          '[HotReload] could not find ${owner.instance.klass.name} '
+          'in the updated interpreter',
+        );
+        return;
+      }
+      owner.rebindForHotReload(newVisitor, ownerClass);
+    }
+    final stateClass = findUserClassInVisitor(
+      newVisitor,
+      stateInstance.klass.name,
+    );
+    if (stateClass is! InterpretedClass) {
+      onAstGuestLog?.call(
+        '[HotReload] could not find ${stateInstance.klass.name} '
+        'in the updated interpreter',
+      );
+      return;
+    }
+    rebindForHotReload(newVisitor, stateClass);
+  }
+
   @override
   void dispose() {
+    WidgetGenerationTracker.unregisterMountedWidget(_reloadListener);
     _sheetScope?.unregisterProxy(this);
     _sheetScope = null;
     if (_isDispatchingDispose) return;
@@ -964,7 +1094,9 @@ Widget? wrapAstInterpretedWidget(Object? arg, {InterpreterVisitor? visitor}) {
   if (arg is Widget) return arg;
   if (arg is InterpretedInstance) {
     if (arg.nativeProxy is Widget) return arg.nativeProxy as Widget;
-    if (arg.bridgedSuperObject is Widget) return arg.bridgedSuperObject as Widget;
+    if (arg.bridgedSuperObject is Widget) {
+      return arg.bridgedSuperObject as Widget;
+    }
     final effectiveVisitor = visitor ?? D4.activeVisitor;
     if (effectiveVisitor != null) {
       // ConsumerStatefulWidget first: it extends StatefulWidget natively,
@@ -975,13 +1107,16 @@ Widget? wrapAstInterpretedWidget(Object? arg, {InterpreterVisitor? visitor}) {
             cur.bridgedSuperclass?.name == 'ConsumerStatefulWidget') {
           return InterpretedConsumerStatefulWidget(effectiveVisitor, arg);
         }
-        if (cur.name == 'ConsumerWidget' || cur.bridgedSuperclass?.name == 'ConsumerWidget') {
+        if (cur.name == 'ConsumerWidget' ||
+            cur.bridgedSuperclass?.name == 'ConsumerWidget') {
           return InterpretedConsumerWidget(effectiveVisitor, arg);
         }
-        if (cur.name == 'StatefulWidget' || cur.bridgedSuperclass?.name == 'StatefulWidget') {
+        if (cur.name == 'StatefulWidget' ||
+            cur.bridgedSuperclass?.name == 'StatefulWidget') {
           return InterpretedStatefulWidget(effectiveVisitor, arg);
         }
-        if (cur.name == 'StatelessWidget' || cur.bridgedSuperclass?.name == 'StatelessWidget') {
+        if (cur.name == 'StatelessWidget' ||
+            cur.bridgedSuperclass?.name == 'StatelessWidget') {
           return InterpretedStatelessWidget(effectiveVisitor, arg);
         }
         if (cur.superclass == null) break;

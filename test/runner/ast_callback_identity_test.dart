@@ -88,7 +88,7 @@ void main() {
         );
         final texts = findTexts(root).map((t) => t.data).toList();
         expect(texts, hasLength(1));
-        final report = texts.single ?? '';
+        final report = texts.single;
         expect(report, contains('eq=0'), reason: '== must not invoke: $report');
         expect(report, contains('neq=0'), reason: '!= must not invoke: $report');
         expect(report, contains('async=0'),

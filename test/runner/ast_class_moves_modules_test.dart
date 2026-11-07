@@ -152,7 +152,13 @@ void main() {
       );
       final loaderV3 = (runner.visitor as dynamic).moduleContext;
       final cacheV3 = (loaderV3 as dynamic).moduleCache as Map;
-      final todoEnv = (cacheV3[Uri.parse('lib/todo.dart')] as dynamic).environment;
+      final todoKey = cacheV3.keys.firstWhere(
+        (u) => u.toString().endsWith('/todo.dart'),
+        orElse: () => throw StateError(
+          'todo.dart missing from the module cache: ${cacheV3.keys}',
+        ),
+      );
+      final todoEnv = (cacheV3[todoKey] as dynamic).environment;
       expect(
         ((todoEnv as dynamic).values as Map).containsKey('Note'),
         isTrue,

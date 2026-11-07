@@ -16,7 +16,20 @@ import 'package:tom_d4rt/d4rt.dart';
 /// 'Undefined property appName on SystemFFIBindings'). Distinct native types
 /// keep each bridge unambiguous.
 class FakeSystemFfiHost {
+  FakeSystemFfiHost(this.host);
+
+  final FakeSystemHost host;
+
   String appName = 'HeadlessDemo';
+}
+
+/// Distinct native type for the static-only `AppBadgePlus` bridge.
+///
+/// It never wraps a real instance: the class only exposes static members, so
+/// giving it its own type keeps `toBridgedInstance` from mistaking a
+/// [FakeSystemHost] (PackageInfo) for an AppBadgePlus instance.
+class FakeAppBadgeHost {
+  const FakeAppBadgeHost();
 }
 
 /// In-memory backing store visible to the host test.
@@ -49,7 +62,10 @@ FakeSystemHost targetOf(Object? target) {
   );
 }
 
-FakeSystemHost ffiTargetOf(Object? target) => targetOf(target);
+FakeSystemHost ffiTargetOf(Object? target) {
+  if (target is FakeSystemFfiHost) return target.host;
+  return targetOf(target);
+}
 
 BridgedClass _buildPackageInfoBridge(FakeSystemHost host) {
   return BridgedClass(
@@ -58,10 +74,26 @@ BridgedClass _buildPackageInfoBridge(FakeSystemHost host) {
     isAssignable: (v) => v is FakeSystemHost,
     constructors: {
       '': (visitor, positional, named) {
-        final appName = D4.getRequiredNamedArg<String>(named, 'appName', 'PackageInfo');
-        final packageName = D4.getRequiredNamedArg<String>(named, 'packageName', 'PackageInfo');
-        final version = D4.getRequiredNamedArg<String>(named, 'version', 'PackageInfo');
-        final buildNumber = D4.getRequiredNamedArg<String>(named, 'buildNumber', 'PackageInfo');
+        final appName = D4.getRequiredNamedArg<String>(
+          named,
+          'appName',
+          'PackageInfo',
+        );
+        final packageName = D4.getRequiredNamedArg<String>(
+          named,
+          'packageName',
+          'PackageInfo',
+        );
+        final version = D4.getRequiredNamedArg<String>(
+          named,
+          'version',
+          'PackageInfo',
+        );
+        final buildNumber = D4.getRequiredNamedArg<String>(
+          named,
+          'buildNumber',
+          'PackageInfo',
+        );
         return host;
       },
     },
@@ -92,9 +124,9 @@ BridgedClass _buildPackageInfoBridge(FakeSystemHost host) {
 
 BridgedClass _buildAppBadgePlusBridge(FakeSystemHost host) {
   return BridgedClass(
-    nativeType: FakeSystemHost,
+    nativeType: FakeAppBadgeHost,
     name: 'AppBadgePlus',
-    isAssignable: (v) => v is FakeSystemHost,
+    isAssignable: (v) => v is FakeAppBadgeHost,
     constructors: const {},
     staticMethods: {
       'isSupported': (visitor, positional, named, typeArgs) =>
@@ -122,18 +154,19 @@ BridgedClass _buildSystemFfiBridge(FakeSystemHost host) {
     isAssignable: (v) => v is FakeSystemFfiHost,
     constructors: const {},
     methods: {
-      'getPackageInfo': (visitor, target, positional, named, typeArgs) =>
-          host,
+      'getPackageInfo': (visitor, target, positional, named, typeArgs) => host,
       'updateBadge': (visitor, target, positional, named, typeArgs) {
         if (positional.isEmpty || positional[0] is! int) {
           throw ArgumentD4rtException('updateBadge requires an int count');
         }
-        ffiTargetOf(target).badge = positional[0] as int;
+        final ffiHost = ffiTargetOf(target);
+        ffiHost.badge = positional[0] as int;
+        ffiHost.badgeCalls.add(ffiHost.badge);
         return null;
       },
     },
     staticGetters: {
-      'instance': (visitor) => host,
+      'instance': (visitor) => FakeSystemFfiHost(host),
     },
     staticMethods: {
       'loadSymbols': (visitor, positional, named, typeArgs) => null,

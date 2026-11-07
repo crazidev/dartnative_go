@@ -11,7 +11,6 @@
 library;
 
 import 'package:test/test.dart';
-import 'package:tom_ast_model/tom_ast_model.dart';
 import 'package:tom_d4rt_ast/runtime.dart';
 
 InterpreterVisitor _visitor() {

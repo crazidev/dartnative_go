@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 2 files
-// Generated: 2026-11-01T03:48:31.866945 by tom_d4rt_generator 1.26.2
+// Generated: 2026-11-06T23:49:42.892122 by tom_d4rt_generator 1.26.2
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -9,8 +9,10 @@ import 'package:tom_d4rt_ast/runtime.dart';
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:dartnative_notifications/src/dartnative_notifications.dart' as $dartnative_notifications_1;
-import 'package:dartnative_notifications/src/notifications_ffi_bindings.dart' as $dartnative_notifications_2;
+import 'package:dartnative_notifications/src/dartnative_notifications.dart'
+    as $dartnative_notifications_1;
+import 'package:dartnative_notifications/src/notifications_ffi_bindings.dart'
+    as $dartnative_notifications_2;
 
 /// Bridge class for dartnative_notifications module.
 class DartnativeNotificationsBridge {
@@ -42,8 +44,10 @@ class DartnativeNotificationsBridge {
   /// lookup thunk without building the BridgedClass.
   static Map<String, Type> bridgeClassTypes() {
     return {
-      'DartNativeNotifications': $dartnative_notifications_1.DartNativeNotifications,
-      'NotificationsFFIBindings': $dartnative_notifications_2.NotificationsFFIBindings,
+      'DartNativeNotifications':
+          $dartnative_notifications_1.DartNativeNotifications,
+      'NotificationsFFIBindings':
+          $dartnative_notifications_2.NotificationsFFIBindings,
     };
   }
 
@@ -53,8 +57,10 @@ class DartnativeNotificationsBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> classSourceUris() {
     return {
-      'DartNativeNotifications': 'package:dartnative_notifications/src/dartnative_notifications.dart',
-      'NotificationsFFIBindings': 'package:dartnative_notifications/src/notifications_ffi_bindings.dart',
+      'DartNativeNotifications':
+          'package:dartnative_notifications/src/dartnative_notifications.dart',
+      'NotificationsFFIBindings':
+          'package:dartnative_notifications/src/notifications_ffi_bindings.dart',
     };
   }
 
@@ -66,8 +72,7 @@ class DartnativeNotificationsBridge {
   /// ancestors and the interface-proxy supertype walk resolves up the
   /// chain.
   static Map<String, List<String>> classSupertypes() {
-    return {
-    };
+    return {};
   }
 
   /// Returns a map of type alias names to their target class names.
@@ -76,8 +81,7 @@ class DartnativeNotificationsBridge {
   /// are registered so that code using the alias name can resolve to the
   /// bridged class under its canonical name.
   static Map<String, String> classAliases() {
-    return {
-    };
+    return {};
   }
 
   /// Returns the list of function typedef names declared in this library.
@@ -85,14 +89,12 @@ class DartnativeNotificationsBridge {
   /// Function typedefs like `typedef VoidCallback = void Function()` are
   /// registered so that they can be used as type arguments in D4rt scripts.
   static List<String> functionTypedefs() {
-    return [
-    ];
+    return [];
   }
 
   /// Returns all bridged enum definitions.
   static List<BridgedEnumDefinition> bridgedEnums() {
-    return [
-    ];
+    return [];
   }
 
   /// Returns a map of enum names to their canonical source URIs.
@@ -100,31 +102,44 @@ class DartnativeNotificationsBridge {
   /// Used for deduplication when the same enum is exported through
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> enumSourceUris() {
-    return {
-    };
+    return {};
   }
 
   /// Returns all bridged extension definitions.
   static List<BridgedExtensionDefinition> bridgedExtensions() {
-    return [
-    ];
+    return [];
   }
 
   /// Returns a map of extension identifiers to their canonical source URIs.
   static Map<String, String> extensionSourceUris() {
-    return {
-    };
+    return {};
   }
 
   /// GEN-107: Library re-exports declared by the bridged source
   /// libraries. Each tuple mirrors a Dart `export '…'` directive.
   /// Consumed by `registerBridges` via `D4rt.registerLibraryReExport`
   /// (mirrored on `D4rtRunner` in tom_d4rt_ast).
-  static List<({String source, String target, Set<String>? show, Set<String>? hide})>
+  static List<
+    ({String source, String target, Set<String>? show, Set<String>? hide})
+  >
   bridgeReExports() {
     return [
-      (source: 'package:dartnative_notifications/dartnative_notifications.dart', target: 'package:dartnative_notifications/src/dartnative_notifications.dart', show: null, hide: null),
-      (source: 'package:dartnative_notifications/dartnative_notifications.dart', target: 'package:dartnative_notifications/src/notifications_ffi_bindings.dart', show: {'NotificationsFFIBindings'}, hide: null),
+      (
+        source:
+            'package:dartnative_notifications/dartnative_notifications.dart',
+        target:
+            'package:dartnative_notifications/src/dartnative_notifications.dart',
+        show: null,
+        hide: null,
+      ),
+      (
+        source:
+            'package:dartnative_notifications/dartnative_notifications.dart',
+        target:
+            'package:dartnative_notifications/src/notifications_ffi_bindings.dart',
+        show: {'NotificationsFFIBindings'},
+        hide: null,
+      ),
     ];
   }
 
@@ -156,7 +171,12 @@ class DartnativeNotificationsBridge {
 
     // GEN-107: Register library re-exports
     for (final r in bridgeReExports()) {
-      interpreter.registerLibraryReExport(r.source, r.target, show: r.show, hide: r.hide);
+      interpreter.registerLibraryReExport(
+        r.source,
+        r.target,
+        show: r.show,
+        hide: r.hide,
+      );
     }
   }
 
@@ -204,7 +224,6 @@ class DartnativeNotificationsBridge {
   static List<String> subPackageBarrels() {
     return [];
   }
-
 }
 
 // =============================================================================
@@ -215,40 +234,78 @@ BridgedClass _createDartNativeNotificationsBridge() {
   return BridgedClass(
     nativeType: $dartnative_notifications_1.DartNativeNotifications,
     name: 'DartNativeNotifications',
-    isAssignable: (v) => v is $dartnative_notifications_1.DartNativeNotifications,
-    constructors: {
-    },
+    isAssignable: (v) =>
+        v is $dartnative_notifications_1.DartNativeNotifications,
+    constructors: {},
     staticGetters: {
-      'onTap': (visitor) => $dartnative_notifications_1.DartNativeNotifications.onTap,
+      'onTap': (visitor) =>
+          $dartnative_notifications_1.DartNativeNotifications.onTap,
     },
     staticMethods: {
       'setup': (visitor, positional, named, typeArgs) {
         final onTapRaw = named['onTap'];
-        final onTap = onTapRaw == null ? null : (String p0) { D4.callInterpreterCallback(visitor!, onTapRaw, [p0]); };
-        return $dartnative_notifications_1.DartNativeNotifications.setup(onTap: onTap);
+        final onTap = onTapRaw == null
+            ? null
+            : (String p0) {
+                D4.callInterpreterCallback(visitor!, onTapRaw, [p0]);
+              };
+        return $dartnative_notifications_1.DartNativeNotifications.setup(
+          onTap: onTap,
+        );
       },
       'getInitialTapPayload': (visitor, positional, named, typeArgs) {
-        return $dartnative_notifications_1.DartNativeNotifications.getInitialTapPayload();
+        return $dartnative_notifications_1
+            .DartNativeNotifications.getInitialTapPayload();
       },
       'requestPermission': (visitor, positional, named, typeArgs) {
-        return $dartnative_notifications_1.DartNativeNotifications.requestPermission();
+        return $dartnative_notifications_1
+            .DartNativeNotifications.requestPermission();
       },
       'show': (visitor, positional, named, typeArgs) {
         final id = D4.getRequiredNamedArg<String>(named, 'id', 'show');
         final title = D4.getRequiredNamedArg<String>(named, 'title', 'show');
         final body = D4.getRequiredNamedArg<String>(named, 'body', 'show');
         final payload = D4.getNamedArgWithDefault<String>(named, 'payload', '');
-        final delaySeconds = D4.getNamedArgWithDefault<int>(named, 'delaySeconds', 0);
-        return $dartnative_notifications_1.DartNativeNotifications.show(id: id, title: title, body: body, payload: payload, delaySeconds: delaySeconds);
+        final delaySeconds = D4.getNamedArgWithDefault<int>(
+          named,
+          'delaySeconds',
+          0,
+        );
+        return $dartnative_notifications_1.DartNativeNotifications.show(
+          id: id,
+          title: title,
+          body: body,
+          payload: payload,
+          delaySeconds: delaySeconds,
+        );
       },
       'showChat': (visitor, positional, named, typeArgs) {
         final id = D4.getRequiredNamedArg<String>(named, 'id', 'showChat');
-        final senderName = D4.getRequiredNamedArg<String>(named, 'senderName', 'showChat');
+        final senderName = D4.getRequiredNamedArg<String>(
+          named,
+          'senderName',
+          'showChat',
+        );
         final body = D4.getRequiredNamedArg<String>(named, 'body', 'showChat');
-        final avatar = D4.getRequiredNamedArg<Uint8List>(named, 'avatar', 'showChat');
+        final avatar = D4.getRequiredNamedArg<Uint8List>(
+          named,
+          'avatar',
+          'showChat',
+        );
         final payload = D4.getNamedArgWithDefault<String>(named, 'payload', '');
-        final delaySeconds = D4.getNamedArgWithDefault<int>(named, 'delaySeconds', 0);
-        return $dartnative_notifications_1.DartNativeNotifications.showChat(id: id, senderName: senderName, body: body, avatar: avatar, payload: payload, delaySeconds: delaySeconds);
+        final delaySeconds = D4.getNamedArgWithDefault<int>(
+          named,
+          'delaySeconds',
+          0,
+        );
+        return $dartnative_notifications_1.DartNativeNotifications.showChat(
+          id: id,
+          senderName: senderName,
+          body: body,
+          avatar: avatar,
+          payload: payload,
+          delaySeconds: delaySeconds,
+        );
       },
       'cancel': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'cancel');
@@ -263,8 +320,10 @@ BridgedClass _createDartNativeNotificationsBridge() {
       'setup': 'void setup({void Function(String payload)? onTap})',
       'getInitialTapPayload': 'String? getInitialTapPayload()',
       'requestPermission': 'Future<bool> requestPermission()',
-      'show': 'void show({required String id, required String title, required String body, String payload = \'\', int delaySeconds = 0})',
-      'showChat': 'void showChat({required String id, required String senderName, required String body, required Uint8List avatar, String payload = \'\', int delaySeconds = 0})',
+      'show':
+          'void show({required String id, required String title, required String body, String payload = \'\', int delaySeconds = 0})',
+      'showChat':
+          'void showChat({required String id, required String senderName, required String body, required Uint8List avatar, String payload = \'\', int delaySeconds = 0})',
       'cancel': 'void cancel(String id)',
       'cancelAll': 'void cancelAll()',
     },
@@ -282,69 +341,130 @@ BridgedClass _createNotificationsFFIBindingsBridge() {
   return BridgedClass(
     nativeType: $dartnative_notifications_2.NotificationsFFIBindings,
     name: 'NotificationsFFIBindings',
-    isAssignable: (v) => v is $dartnative_notifications_2.NotificationsFFIBindings,
-    constructors: {
-    },
+    isAssignable: (v) =>
+        v is $dartnative_notifications_2.NotificationsFFIBindings,
+    constructors: {},
     getters: {
-      'onNotificationTap': (visitor, target) => D4.validateTarget<$dartnative_notifications_2.NotificationsFFIBindings>(target, 'NotificationsFFIBindings').onNotificationTap,
+      'onNotificationTap': (visitor, target) => D4
+          .validateTarget<$dartnative_notifications_2.NotificationsFFIBindings>(
+            target,
+            'NotificationsFFIBindings',
+          )
+          .onNotificationTap,
     },
     methods: {
       'getInitialTapPayload': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_notifications_2.NotificationsFFIBindings>(target, 'NotificationsFFIBindings');
+        final t = D4
+            .validateTarget<
+              $dartnative_notifications_2.NotificationsFFIBindings
+            >(target, 'NotificationsFFIBindings');
         return t.getInitialTapPayload();
       },
       'requestPermission': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_notifications_2.NotificationsFFIBindings>(target, 'NotificationsFFIBindings');
+        final t = D4
+            .validateTarget<
+              $dartnative_notifications_2.NotificationsFFIBindings
+            >(target, 'NotificationsFFIBindings');
         return t.requestPermission();
       },
       'show': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_notifications_2.NotificationsFFIBindings>(target, 'NotificationsFFIBindings');
+        final t = D4
+            .validateTarget<
+              $dartnative_notifications_2.NotificationsFFIBindings
+            >(target, 'NotificationsFFIBindings');
         final id = D4.getRequiredNamedArg<String>(named, 'id', 'show');
         final title = D4.getRequiredNamedArg<String>(named, 'title', 'show');
         final body = D4.getRequiredNamedArg<String>(named, 'body', 'show');
         final payload = D4.getNamedArgWithDefault<String>(named, 'payload', '');
-        final delaySeconds = D4.getNamedArgWithDefault<int>(named, 'delaySeconds', 0);
-        t.show(id: id, title: title, body: body, payload: payload, delaySeconds: delaySeconds);
+        final delaySeconds = D4.getNamedArgWithDefault<int>(
+          named,
+          'delaySeconds',
+          0,
+        );
+        t.show(
+          id: id,
+          title: title,
+          body: body,
+          payload: payload,
+          delaySeconds: delaySeconds,
+        );
         return null;
       },
       'showChat': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_notifications_2.NotificationsFFIBindings>(target, 'NotificationsFFIBindings');
+        final t = D4
+            .validateTarget<
+              $dartnative_notifications_2.NotificationsFFIBindings
+            >(target, 'NotificationsFFIBindings');
         final id = D4.getRequiredNamedArg<String>(named, 'id', 'showChat');
-        final senderName = D4.getRequiredNamedArg<String>(named, 'senderName', 'showChat');
+        final senderName = D4.getRequiredNamedArg<String>(
+          named,
+          'senderName',
+          'showChat',
+        );
         final body = D4.getRequiredNamedArg<String>(named, 'body', 'showChat');
-        final avatar = D4.getRequiredNamedArg<Uint8List>(named, 'avatar', 'showChat');
+        final avatar = D4.getRequiredNamedArg<Uint8List>(
+          named,
+          'avatar',
+          'showChat',
+        );
         final payload = D4.getNamedArgWithDefault<String>(named, 'payload', '');
-        final delaySeconds = D4.getNamedArgWithDefault<int>(named, 'delaySeconds', 0);
-        t.showChat(id: id, senderName: senderName, body: body, avatar: avatar, payload: payload, delaySeconds: delaySeconds);
+        final delaySeconds = D4.getNamedArgWithDefault<int>(
+          named,
+          'delaySeconds',
+          0,
+        );
+        t.showChat(
+          id: id,
+          senderName: senderName,
+          body: body,
+          avatar: avatar,
+          payload: payload,
+          delaySeconds: delaySeconds,
+        );
         return null;
       },
       'cancel': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_notifications_2.NotificationsFFIBindings>(target, 'NotificationsFFIBindings');
+        final t = D4
+            .validateTarget<
+              $dartnative_notifications_2.NotificationsFFIBindings
+            >(target, 'NotificationsFFIBindings');
         D4.requireMinArgs(positional, 1, 'cancel');
         final id = D4.getRequiredArg<String>(positional, 0, 'id', 'cancel');
         t.cancel(id);
         return null;
       },
       'cancelAll': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$dartnative_notifications_2.NotificationsFFIBindings>(target, 'NotificationsFFIBindings');
+        final t = D4
+            .validateTarget<
+              $dartnative_notifications_2.NotificationsFFIBindings
+            >(target, 'NotificationsFFIBindings');
         t.cancelAll();
         return null;
       },
     },
     staticGetters: {
-      'instance': (visitor) => $dartnative_notifications_2.NotificationsFFIBindings.instance,
+      'instance': (visitor) =>
+          $dartnative_notifications_2.NotificationsFFIBindings.instance,
     },
     staticMethods: {
       'loadSymbols': (visitor, positional, named, typeArgs) {
-        final registerTapHandler = D4.getNamedArgWithDefault<bool>(named, 'registerTapHandler', true);
-        return $dartnative_notifications_2.NotificationsFFIBindings.loadSymbols(registerTapHandler: registerTapHandler);
+        final registerTapHandler = D4.getNamedArgWithDefault<bool>(
+          named,
+          'registerTapHandler',
+          true,
+        );
+        return $dartnative_notifications_2.NotificationsFFIBindings.loadSymbols(
+          registerTapHandler: registerTapHandler,
+        );
       },
     },
     methodSignatures: {
       'getInitialTapPayload': 'String? getInitialTapPayload()',
       'requestPermission': 'Future<bool> requestPermission()',
-      'show': 'void show({required String id, required String title, required String body, String payload = \'\', int delaySeconds = 0})',
-      'showChat': 'void showChat({required String id, required String senderName, required String body, required Uint8List avatar, String payload = \'\', int delaySeconds = 0})',
+      'show':
+          'void show({required String id, required String title, required String body, String payload = \'\', int delaySeconds = 0})',
+      'showChat':
+          'void showChat({required String id, required String senderName, required String body, required Uint8List avatar, String payload = \'\', int delaySeconds = 0})',
       'cancel': 'void cancel(String id)',
       'cancelAll': 'void cancelAll()',
     },
@@ -359,4 +479,3 @@ BridgedClass _createNotificationsFFIBindingsBridge() {
     },
   );
 }
-

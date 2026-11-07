@@ -13,6 +13,8 @@ library;
 
 import 'package:dartnative_go/src/interpreter/auto_import_parser.dart';
 import 'package:dartnative_go/src/interpreter/widget_generation_tracker.dart';
+import 'package:dartnative_go/src/interpreter/widget_proxies.dart'
+    as source_proxies;
 import 'package:test/test.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
 
@@ -240,12 +242,14 @@ CounterState createState() => CounterState();
           'main.dart': v1,
           'package:guest_app/main.dart': v1,
         };
-        final state1 = interpreter.execute(
-          source: v1,
-          name: 'createState',
-          library: 'package:guest_app/main.dart',
-          sources: virtualV1,
-        ) as InterpretedInstance;
+        final state1 =
+            interpreter.execute(
+                  source: v1,
+                  name: 'createState',
+                  library: 'package:guest_app/main.dart',
+                  sources: virtualV1,
+                )
+                as InterpretedInstance;
         expect(state1.getField('_count'), equals(0));
 
         final inc1 = state1.bindMethodCached(
@@ -262,12 +266,14 @@ CounterState createState() => CounterState();
           'main.dart': v2,
           'package:guest_app/main.dart': v2,
         };
-        final state2 = interpreter.execute(
-          source: v2,
-          name: 'createState',
-          library: 'package:guest_app/main.dart',
-          sources: virtualV2,
-        ) as InterpretedInstance;
+        final state2 =
+            interpreter.execute(
+                  source: v2,
+                  name: 'createState',
+                  library: 'package:guest_app/main.dart',
+                  sources: virtualV2,
+                )
+                as InterpretedInstance;
         expect(state2.getField('_count'), equals(0));
         expect(state2.get('label'), equals('V2'));
         expect(state2.get('step'), equals(5));
@@ -284,6 +290,82 @@ CounterState createState() => CounterState();
         interpreter.dispose();
       }
     });
+  });
+
+  group('mounted route hot reload', () {
+    late DnHarness harness;
+
+    setUp(() {
+      harness = DnHarness(onLog: (_) {});
+      WidgetGenerationTracker.resetAll();
+    });
+
+    tearDown(() {
+      harness.dispose();
+      WidgetGenerationTracker.resetAll();
+    });
+
+    test(
+      'an already-created state proxy rebinds after a reload notification',
+      () async {
+        const v1 = '''
+import 'package:dartnative/dartnative.dart';
+
+class RouteScreen extends StatefulWidget {
+  const RouteScreen();
+  @override
+  State<RouteScreen> createState() => _RouteScreenState();
+}
+
+class _RouteScreenState extends State<RouteScreen> {
+  int count = 0;
+  String version() => 'v1';
+  @override
+  Widget build(BuildContext context) => Text(version());
+}
+
+void main() => runApp(const RouteScreen());
+''';
+        const v2 = '''
+import 'package:dartnative/dartnative.dart';
+
+class RouteScreen extends StatefulWidget {
+  const RouteScreen();
+  @override
+  State<RouteScreen> createState() => _RouteScreenState();
+}
+
+class _RouteScreenState extends State<RouteScreen> {
+  int count = 0;
+  String version() => 'v2';
+  @override
+  Widget build(BuildContext context) => Text(version());
+}
+
+void main() => runApp(const RouteScreen());
+''';
+
+        final root = await harness.evaluate({'main.dart': v1});
+        final screen = root as source_proxies.InterpretedStatefulWidget;
+        final proxy =
+            screen.createState() as source_proxies.InterpretedStateProxy;
+        proxy.initState();
+        addTearDown(proxy.dispose);
+        proxy.stateInstance.set('count', 4);
+
+        await harness.hotReload({'main.dart': v2});
+        final visitor = harness.sourceRunner.activeVisitor;
+        expect(visitor, isNotNull);
+        WidgetGenerationTracker.notifyMountedWidgets(visitor);
+
+        expect(identical(proxy.visitor, visitor), isTrue);
+        expect(proxy.stateInstance.getField('count'), equals(4));
+        final version =
+            proxy.stateInstance.get('version', visitor: proxy.visitor)
+                as Callable;
+        expect(version.call(proxy.visitor, [], {}), equals('v2'));
+      },
+    );
   });
 
   group('generational remounting targets only edited widgets', () {
@@ -348,8 +430,9 @@ class MyButtons extends StatelessWidget {
     });
 
     test('editing reset_button.dart bumps only ResetButton', () {
-      final bumped =
-          WidgetGenerationTracker.notifyFilesChanged({'reset_button.dart'});
+      final bumped = WidgetGenerationTracker.notifyFilesChanged({
+        'reset_button.dart',
+      });
       expect(bumped, contains('ResetButton'));
       expect(bumped, contains('_ResetButtonState'));
       expect(bumped, isNot(contains('CounterApp')));
@@ -370,8 +453,9 @@ class MyButtons extends StatelessWidget {
 
     test('editing my_buttons.dart bumps only MyButtons', () {
       WidgetGenerationTracker.notifyFilesChanged({'reset_button.dart'});
-      final bumped =
-          WidgetGenerationTracker.notifyFilesChanged({'my_buttons.dart'});
+      final bumped = WidgetGenerationTracker.notifyFilesChanged({
+        'my_buttons.dart',
+      });
       expect(bumped, contains('MyButtons'));
       expect(bumped, isNot(contains('CounterApp')));
       expect(bumped, isNot(contains('ResetButton')));
@@ -382,8 +466,7 @@ class MyButtons extends StatelessWidget {
     test('editing main.dart bumps only CounterApp', () {
       WidgetGenerationTracker.notifyFilesChanged({'reset_button.dart'});
       WidgetGenerationTracker.notifyFilesChanged({'my_buttons.dart'});
-      final bumped =
-          WidgetGenerationTracker.notifyFilesChanged({'main.dart'});
+      final bumped = WidgetGenerationTracker.notifyFilesChanged({'main.dart'});
       expect(bumped, contains('CounterApp'));
       expect(bumped, isNot(contains('ResetButton')));
       expect(bumped, isNot(contains('MyButtons')));

@@ -127,7 +127,7 @@ void main() {
       final cacheV2 = (loaderV2 as dynamic).moduleCache as Map;
       expect(
         cacheV2.keys.map((u) => u.toString()),
-        contains('lib/b.dart'),
+        anyElement(endsWith('/b.dart')),
         reason: 'a reused importer must still load its dependencies',
       );
       expect(

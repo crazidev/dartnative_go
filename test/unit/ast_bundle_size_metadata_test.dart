@@ -13,7 +13,6 @@ import 'package:dartnative_go/src/runner/ast_bundle_codec.dart';
 import 'package:dartnative_go/src/runner/ast_profile.dart';
 import 'package:test/test.dart';
 import 'package:tom_ast_generator/tom_ast_generator.dart';
-import 'package:tom_ast_model/ast.dart' show SClassDeclaration;
 import 'package:tom_d4rt_ast/runtime.dart' as ast;
 
 const _source = '''

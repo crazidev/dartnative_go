@@ -91,12 +91,27 @@ class DepPackager {
     return '1.0.0';
   }
 
+  /// Fixed ZIP entry timestamp for [zipFilesMap]: 1980-01-01T00:00:00Z, the
+  /// earliest representable DOS date. Pinned so identical sources always
+  /// encode to identical bytes.
+  static const int _fixedZipTimestamp = 315532800;
+
   /// Packs a memory map of files (path -> content) into a ZIP archive.
+  ///
+  /// The output is byte-for-byte deterministic for the same [files]: entries
+  /// are sorted by path and every entry gets a fixed modification time.
+  /// `ArchiveFile` otherwise defaults `lastModTime` to `DateTime.now()`, so
+  /// two packs of identical sources straddling a second boundary produced
+  /// different bytes — and therefore a different `userCodeHash`, which clients
+  /// use to decide whether to re-download `user-code.zip`.
   static List<int> zipFilesMap(Map<String, String> files) {
     final archive = Archive();
-    for (final entry in files.entries) {
-      final bytes = utf8.encode(entry.value);
-      archive.addFile(ArchiveFile(entry.key, bytes.length, bytes));
+    final paths = files.keys.toList()..sort();
+    for (final path in paths) {
+      final bytes = utf8.encode(files[path]!);
+      final file = ArchiveFile(path, bytes.length, bytes)
+        ..lastModTime = _fixedZipTimestamp;
+      archive.addFile(file);
     }
     final encoder = ZipEncoder();
     final dynamic encoded = encoder.encode(archive);

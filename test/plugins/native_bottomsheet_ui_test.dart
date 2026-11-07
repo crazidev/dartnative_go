@@ -73,6 +73,13 @@ void main() {
 const _patchedBuilderExpr =
     "extractBridgedArg<\$flutter_widgets.Widget>(D4.callInterpreterCallback(visitor!, builderRaw, [p0, p1]), 'builder', visitor)";
 
+/// Normalizes generated source for these assertions: the formatter re-wraps
+/// the emitted call across several lines and appends trailing commas before
+/// closing brackets, neither of which changes behavior.
+String _flat(String source) => source
+    .replaceAll(RegExp(r'\s+'), '')
+    .replaceAll(RegExp(r',(?=[)\]])'), '');
+
 void main() {
   group('native_bottomsheet bridge surface', () {
     test('showBottomSheet registered in source bridges', () {
@@ -97,8 +104,8 @@ void main() {
         reason: 'bridge file must exist at $path',
       );
       expect(
-        File(path).readAsStringSync(),
-        contains(_patchedBuilderExpr),
+        _flat(File(path).readAsStringSync()),
+        contains(_flat(_patchedBuilderExpr)),
         reason:
             'builder wrapper must coerce via extractBridgedArg<Widget> '
             '(regen must keep _patchNativeBottomsheetBridges)',
@@ -113,8 +120,8 @@ void main() {
         reason: 'bridge file must exist at $path',
       );
       expect(
-        File(path).readAsStringSync(),
-        contains(_patchedBuilderExpr),
+        _flat(File(path).readAsStringSync()),
+        contains(_flat(_patchedBuilderExpr)),
         reason:
             'builder wrapper must coerce via extractBridgedArg<Widget> '
             '(regen must keep _patchNativeBottomsheetBridges)',
@@ -225,17 +232,21 @@ void main() {
     test('NativeBottomSheetScope wraps builder result in bridge', () {
       final srcPath = 'lib/src/interpreter/native_bottomsheet_bridges.b.dart';
       expect(
-        File(srcPath).readAsStringSync(),
+        _flat(File(srcPath).readAsStringSync()),
         contains(
-          r'$bottomsheet_mgr.NativeBottomSheetScope(controller: p1, child:',
+          _flat(
+            r'$bottomsheet_mgr.NativeBottomSheetScope(controller: p1, child:',
+          ),
         ),
       );
       final astPath =
           'lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart';
       expect(
-        File(astPath).readAsStringSync(),
+        _flat(File(astPath).readAsStringSync()),
         contains(
-          r'$bottomsheet_mgr.NativeBottomSheetScope(controller: p1, child:',
+          _flat(
+            r'$bottomsheet_mgr.NativeBottomSheetScope(controller: p1, child:',
+          ),
         ),
       );
     });

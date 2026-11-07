@@ -15,8 +15,12 @@ void main() {
       expect(userCode.bytes.isNotEmpty, isTrue);
       expect(userCode.hash.isNotEmpty, isTrue);
 
-      // Verify hash is deterministic
+      // Verify the packed bytes (and therefore the hash) are deterministic.
+      // ZIP entry timestamps used to come from `DateTime.now()`, so two packs
+      // of identical sources straddling a second boundary produced different
+      // bytes and clients re-downloaded unchanged user code.
       final userCode2 = DepPackager.packUserCode(codeDir);
+      expect(userCode2.bytes, equals(userCode.bytes));
       expect(userCode2.hash, equals(userCode.hash));
 
       // Verify deps hash computation

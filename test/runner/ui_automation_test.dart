@@ -79,6 +79,15 @@ class FakeNativeElement extends FakeElement implements NativeElement {
   bool get stretchAsStackFlowChild => false;
 
   @override
+  bool get isConstraintTransparent => false;
+
+  @override
+  bool get keepsOwnSizeAtRoot => false;
+
+  @override
+  void setSideSafeInset(double left, double right) {}
+
+  @override
   int fillClaimUnder({required bool parentIsRow}) => 0;
 }
 
