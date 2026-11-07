@@ -35,11 +35,7 @@ class ShareDemoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return App(
-      title: 'dartnative_share',
-      theme: ThemeData.dark(),
-      home: const ShareDemoScreen(),
-    );
+    return ShareDemoScreen();
   }
 }
 
@@ -77,7 +73,7 @@ class _ShareDemoScreenState extends State<ShareDemoScreen> {
       // (PickMultipleVisualMedia); 0 falls back to single-pick.
       final files = await showMediaPicker(
         type: MediaPickerType.imagesAndVideos,
-        maxSelection: 20,
+        maxSelection: 30,
       );
       setState(() {
         _picked = files;
@@ -115,27 +111,27 @@ class _ShareDemoScreenState extends State<ShareDemoScreen> {
   }
 
   Future<void> _shareWithResult() async {
-      final text = _captionController.text;
-      print("====> mounted: $mounted");
-      if (text.trim().isEmpty) {
-        setState(() => _status = 'Type a caption...');
-        return;
-      }
-      setState(() => _status = 'Waiting for the share sheet…');
-      // Unlike Share.share (fire-and-forget), this Future completes when the
-      // sheet CLOSES — reporting the chosen target, or that the user swiped
-      // the sheet away. See the plugin docs for how the result crosses the
-      // FFI boundary without blocking the isolate.
-      final result = await Share.shareWithResult(text);
-      if (!mounted) return;
-      setState(() {
-        _status = switch (result.status) {
-          ShareResultStatus.success =>
-            'Shared ✓${result.raw.isEmpty ? '' : ' via ${result.raw}'}',
-          ShareResultStatus.dismissed => 'Share sheet dismissed.',
-          ShareResultStatus.unavailable => 'Share result unavailable.',
-        };
-      });
+    final text = _captionController.text;
+    print("====> mounted: $mounted");
+    if (text.trim().isEmpty) {
+      setState(() => _status = 'Type a caption...');
+      return;
+    }
+    setState(() => _status = 'Waiting for the share sheet…');
+    // Unlike Share.share (fire-and-forget), this Future completes when the
+    // sheet CLOSES — reporting the chosen target, or that the user swiped
+    // the sheet away. See the plugin docs for how the result crosses the
+    // FFI boundary without blocking the isolate.
+    final result = await Share.shareWithResult(text);
+    if (!mounted) return;
+    setState(() {
+      _status = switch (result.status) {
+        ShareResultStatus.success =>
+          'Shared ✓${result.raw.isEmpty ? '' : ' via ${result.raw}'}',
+        ShareResultStatus.dismissed => 'Share sheet dismissed.',
+        ShareResultStatus.unavailable => 'Share result unavailable.',
+      };
+    });
   }
 
   void _sharePicked() {
@@ -201,7 +197,7 @@ class _ShareDemoScreenState extends State<ShareDemoScreen> {
           // ── Subtitle ─────────────────────────────────────────────────
           const Text(
             'Share media or text from your DartNative app to other apps.',
-            style: TextStyle(color: Color(0xFF8E8E93), fontSize: 13),
+            style: TextStyle(fontSize: 13),
           ),
           const SizedBox(height: 24),
 
@@ -211,7 +207,7 @@ class _ShareDemoScreenState extends State<ShareDemoScreen> {
           const Text(
             'Uses dartnative_media_picker to pick one or many images / '
             'videos from the gallery. Files are copied to a tmp dir.',
-            style: TextStyle(color: Color(0xFF8E8E93), fontSize: 13),
+            style: TextStyle(fontSize: 13),
           ),
           const SizedBox(height: 12),
           _Card(
@@ -310,7 +306,6 @@ class _SectionHeader extends StatelessWidget {
     return Text(
       title,
       style: const TextStyle(
-        color: Color(0xFFFFFFFF),
         fontSize: 15,
         fontWeight: FontWeight.w600,
       ),

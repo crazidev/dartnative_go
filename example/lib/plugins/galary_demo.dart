@@ -332,7 +332,7 @@ class _GalleryDemoState extends State<GalleryDemo> {
               padding: const EdgeInsets.only(right: 8, top: 6, bottom: 6),
               child: GestureDetector(
                 onTap: () {
-                  print('album tapped: ${album}, current: ${_album}');
+                  print('album tapped: $album, current: $_album');
                   setState(() => _album = album);
                   _loadPage(reset: true);
                 },

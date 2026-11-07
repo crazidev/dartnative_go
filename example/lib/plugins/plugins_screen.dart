@@ -1,5 +1,4 @@
 import 'package:dartnative/dartnative.dart';
-import 'package:example/dependencies.dart';
 import 'package:example/plugins/dartnative_connectivity.dart';
 import 'package:example/plugins/dartnative_media_picker.dart';
 import 'package:example/plugins/dartnative_notification.dart';
@@ -76,6 +75,7 @@ class _PluginsScreenState extends State<PluginsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text(
           'Plugin List',
           style: TextStyle(
@@ -84,15 +84,15 @@ class _PluginsScreenState extends State<PluginsScreen> {
           ),
         ),
         actions: [
-          BarButtonItem(
-            title: 'Clear',
-            onPressed: () {
-              var userRepo = getIt<UserRepository>();
-              userRepo.users.add("Crazibeat");
+          // BarButtonItem(
+          //   title: 'Clear',
+          //   onPressed: () {
+          //     var userRepo = getIt<UserRepository>();
+          //     userRepo.users.add("Crazibeat");
 
-              print("UserRepo users: ${userRepo.users}");
-            },
-          ),
+          //     print("UserRepo users: ${userRepo.users}");
+          //   },
+          // ),
         ],
       ),
       body: Padding(
@@ -118,7 +118,6 @@ class _PluginsScreenState extends State<PluginsScreen> {
                         vertical: 0,
                         horizontal: 20,
                       ),
-
                       // leading: Image.asset(
                       //   'assets/dn-logo-1.png',
                       //   width: 40,
@@ -138,10 +137,11 @@ class _PluginsScreenState extends State<PluginsScreen> {
                       ),
                     ),
                   ),
-                  Divider(color: Colors.grey.shade900),
+                  Divider(color: Colors.grey.shade300, thickness: .5),
                 ],
               ),
             ),
+            // ServerDemoCard(userId: 2),
           ],
         ),
       ),

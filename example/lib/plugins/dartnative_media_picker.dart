@@ -4,8 +4,7 @@
 /// the native gallery and shows the returned file metadata.
 library;
 
-import 'package:dartnative/dartnative.dart'
-    hide showMediaPicker, MediaPickerType;
+import 'package:dartnative/dartnative.dart';
 import 'package:dartnative_media_picker/dartnative_media_picker.dart';
 import 'package:example/plugins/galary_demo.dart';
 
