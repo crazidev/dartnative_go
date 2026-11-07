@@ -11,17 +11,16 @@
       "port": 8088
     },
     {
-      "name": "DartNative: Example App",
-      "type": "dartnative",
-      "request": "launch",
-      "cwd": "example",
-      "program": "lib/main.dart"
-    },
-    {
       "name": "dartnative_go",
       "request": "launch",
       "type": "dart",
       "args": ["--no-pub"]
+    },
+    {
+      "name": "dartnative_go --no-build",
+      "request": "launch",
+      "type": "dart",
+      "args": ["--no-pub", "--use-application-binary=/Users/mac/Dev/projects/dartnative_go/build/ios/Debug-iphoneos/Runner.app"]
     },
     {
       "name": "dartnative_go (profile mode)",

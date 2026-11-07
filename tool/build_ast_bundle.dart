@@ -23,7 +23,9 @@ String? _flag(List<String> args, String name) {
 }
 
 Future<void> main(List<String> args) async {
-  final projectDir = Directory(_flag(args, 'project') ?? Directory.current.path);
+  final projectDir = Directory(
+    _flag(args, 'project') ?? Directory.current.path,
+  );
   if (!projectDir.existsSync()) {
     stderr.writeln('Project directory not found: ${projectDir.path}');
     exitCode = 1;
@@ -44,6 +46,6 @@ Future<void> main(List<String> args) async {
   }
   print(
     'Wrote ${result.outputPath} (${result.moduleCount} modules, '
-    '${result.byteSize} bytes, entry: ${result.entryPointUri})',
+    '${formatByteSize(result.byteSize)}, entry: ${result.entryPointUri})',
   );
 }

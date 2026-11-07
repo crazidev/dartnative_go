@@ -33,11 +33,15 @@ String? _flag(List<String> args, String name) {
 Future<void> main(List<String> args) async {
   final baseUrl = _flag(args, 'base-url');
   if (baseUrl == null || baseUrl.isEmpty) {
-    stderr.writeln('Missing required --base-url=https://cdn.example.com/app/vN');
+    stderr.writeln(
+      'Missing required --base-url=https://cdn.example.com/app/vN',
+    );
     exitCode = 2;
     return;
   }
-  final projectDir = Directory(_flag(args, 'project') ?? Directory.current.path);
+  final projectDir = Directory(
+    _flag(args, 'project') ?? Directory.current.path,
+  );
   if (!projectDir.existsSync()) {
     stderr.writeln('Project directory not found: ${projectDir.path}');
     exitCode = 1;
@@ -69,8 +73,9 @@ Future<void> main(List<String> args) async {
       ? baseUrl.substring(0, baseUrl.length - 1)
       : baseUrl;
   for (final entry in components.components.entries) {
-    File('${outDir.path}/${entry.key}.ast')
-        .writeAsBytesSync(entry.value.astBytes);
+    File(
+      '${outDir.path}/${entry.key}.ast',
+    ).writeAsBytesSync(entry.value.astBytes);
   }
   final manifest = serverManifestToJson({
     for (final entry in components.manifest.entries)
@@ -85,10 +90,12 @@ Future<void> main(List<String> args) async {
   print(
     'Exported ${components.components.length} server components to '
     '${outDir.path} (client: ${result.moduleCount} modules, '
-    '${result.byteSize} bytes)',
+    '${formatByteSize(result.byteSize)})',
   );
   for (final entry in components.components.entries) {
-    print('  ${entry.key}: ${entry.value.byteSize} bytes, '
-        'fp=${entry.value.fingerprint}');
+    print(
+      '  ${entry.key}: ${formatByteSize(entry.value.byteSize)}, '
+      'fp=${entry.value.fingerprint}',
+    );
   }
 }

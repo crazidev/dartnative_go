@@ -55,18 +55,16 @@ class DartNativeDapServer {
           }
         }
 
-        if (expectedContentLength != null) {
-          if (buffer.length < expectedContentLength) {
-            break; // Incomplete payload
-          }
-
-          final payloadBytes = buffer.sublist(0, expectedContentLength);
-          buffer.removeRange(0, expectedContentLength);
-          expectedContentLength = null;
-
-          final payloadStr = utf8.decode(payloadBytes);
-          _handleRawMessage(payloadStr);
+        if (buffer.length < expectedContentLength) {
+          break; // Incomplete payload
         }
+
+        final payloadBytes = buffer.sublist(0, expectedContentLength);
+        buffer.removeRange(0, expectedContentLength);
+        expectedContentLength = null;
+
+        final payloadStr = utf8.decode(payloadBytes);
+        _handleRawMessage(payloadStr);
       }
     }
   }

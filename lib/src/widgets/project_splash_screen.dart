@@ -59,7 +59,6 @@ class ProjectSplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       key: const ValueKey('project_splash_screen'),
-      // backgroundColor: backgroundColor,
       body: Stack(
         children: [
           Center(
@@ -101,7 +100,6 @@ class ProjectSplashScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: downloadProgress,
-                        // backgroundColor: Colors.white24,
                         valueColor: const AlwaysStoppedAnimation<Color>(
                           Colors.blue,
                         ),
@@ -110,8 +108,7 @@ class ProjectSplashScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                   ] else ...[
-                    const CircularProgressIndicator(
-                    ),
+                    const CircularProgressIndicator(),
                     const SizedBox(height: 16),
                   ],
                   Text(
@@ -119,7 +116,6 @@ class ProjectSplashScreen extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 14,
-                      // color: Colors.white70,
                     ),
                   ),
                 ],

@@ -171,12 +171,11 @@ class DevSocketHub {
   }
 
   void _printDeviceLog(Map data) {
-    final time = DateTime.now().toIso8601String().substring(11, 19);
     final msg = data['message'] ?? '';
     if ((data['level'] ?? 'INFO') == 'ERROR') {
-      print('\x1B[31m[$time][Device Error]\x1B[0m $msg');
+      print('\x1B[31m[Device Error]\x1B[0m $msg');
     } else {
-      print('\x1B[36m[$time][Device Log]\x1B[0m $msg');
+      print('\x1B[36m[Device Log]\x1B[0m $msg');
     }
   }
 

@@ -214,7 +214,7 @@ class DartGoServer {
       if (result.success) {
         print(
           '[DevServer] [AST] guest.ast ready '
-          '(${result.moduleCount} modules, ${result.byteSize} bytes)',
+          '(${result.moduleCount} modules, ${formatByteSize(result.byteSize)})',
         );
       } else {
         print(
