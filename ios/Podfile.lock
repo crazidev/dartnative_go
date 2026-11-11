@@ -1,4 +1,5 @@
 PODS:
+  - app_links_kit (0.1.0)
   - dartnative_background (1.0.1)
   - dartnative_connectivity (1.0.0)
   - dartnative_ios (1.0.0):
@@ -17,6 +18,7 @@ PODS:
     - FlexLayout
 
 DEPENDENCIES:
+  - app_links_kit (from `.symlinks/plugins/app_links_kit/ios`)
   - dartnative_background (from `.symlinks/plugins/dartnative_background/ios`)
   - dartnative_connectivity (from `.symlinks/plugins/dartnative_connectivity/ios`)
   - dartnative_ios (from `.symlinks/plugins/dartnative_ios/ios`)
@@ -36,6 +38,8 @@ SPEC REPOS:
     - FlexLayout
 
 EXTERNAL SOURCES:
+  app_links_kit:
+    :path: ".symlinks/plugins/app_links_kit/ios"
   dartnative_background:
     :path: ".symlinks/plugins/dartnative_background/ios"
   dartnative_connectivity:
@@ -64,6 +68,7 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/native_bottomsheet/ios"
 
 SPEC CHECKSUMS:
+  app_links_kit: e73d28fcc3acf5640a52a95e27c1de7d4afc3206
   dartnative_background: ec8ba5a3951f356d8dad6a24c86e2fa780986061
   dartnative_connectivity: 892218819e7e5f6b62d902b36bfcab06b2f54d7d
   dartnative_ios: c5e063a6bc126b1f88144c1c16ff9c200caf1e9e
@@ -79,6 +84,6 @@ SPEC CHECKSUMS:
   FlexLayout: ea94491c923485f7f28891cb5b10245d22df380b
   native_bottomsheet: 32d2e15c1db2812363d1ffabf1ac8acf6c63a82d
 
-PODFILE CHECKSUM: 7ebfe451e66b5eadb0cc21fd30abfd19d621dd60
+PODFILE CHECKSUM: 0eb83f38c0038ca753c95effc43e8a0e67ec8c2c
 
 COCOAPODS: 1.16.2

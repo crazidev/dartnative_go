@@ -27,6 +27,9 @@ dependencies:
   dartnative_connectivity: ^1.0.0
   dartnative_media_picker: ^1.1.0
   dartnative_background: ^1.0.0
+  app_links_kit:
+    hosted: https://dartpub.dev
+    version: ^0.1.0
   crypto: ^3.0.0
   dio: ^5.0.0
   riverpod_kit:
@@ -45,6 +48,7 @@ dependencies:
 dev_dependencies:
   lints: ^6.0.0
   image: 4.3.0
+  test: any
   tom_d4rt_generator: any
   tom_ast_generator: any
   tom_d4rt_exec: any
@@ -59,5 +63,10 @@ dartnative:
     - assets/dn-logo.png
 
 dependency_overrides:
+  # DartNative: local patch of riverpod 3.3.2 that swaps `package:test` for
+  # `test_api`. Upstream fixed this in 3.4.3, but that requires SDK 3.12
+  # stable. See third_party/riverpod/pubspec.yaml for the full patch note.
+  riverpod:
+    path: third_party/riverpod
   tom_d4rt_ast:
     path: pkgs/tom_d4rt_ast

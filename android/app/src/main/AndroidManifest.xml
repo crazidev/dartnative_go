@@ -16,6 +16,16 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Deep links: `dartnativego://open?url=http://host:port` opens a
+                 project without scanning. `singleTop` (above) is required so a
+                 warm link reaches onNewIntent instead of stacking an activity.
+                 See lib/src/client/deep_link.dart. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="dartnativego"/>
+            </intent-filter>
         </activity>
     </application>
     <!-- Required to query activities that can process text, see:
