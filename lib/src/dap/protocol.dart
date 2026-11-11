@@ -36,11 +36,11 @@ class DapRequest extends DapMessage {
 
   @override
   Map<String, dynamic> toJson() => {
-        'seq': seq,
-        'type': type,
-        'command': command,
-        if (arguments != null) 'arguments': arguments,
-      };
+    'seq': seq,
+    'type': type,
+    'command': command,
+    if (arguments != null) 'arguments': arguments,
+  };
 }
 
 /// A DAP Response message sent to the client (IDE).
@@ -90,14 +90,14 @@ class DapResponse extends DapMessage {
 
   @override
   Map<String, dynamic> toJson() => {
-        'seq': seq,
-        'type': type,
-        'request_seq': requestSeq,
-        'success': success,
-        'command': command,
-        if (message != null) 'message': message,
-        if (body != null) 'body': body,
-      };
+    'seq': seq,
+    'type': type,
+    'request_seq': requestSeq,
+    'success': success,
+    'command': command,
+    if (message != null) 'message': message,
+    if (body != null) 'body': body,
+  };
 }
 
 /// A DAP Event message sent asynchronously to the client (IDE).
@@ -113,9 +113,9 @@ class DapEvent extends DapMessage {
 
   @override
   Map<String, dynamic> toJson() => {
-        'seq': seq,
-        'type': type,
-        'event': event,
-        if (body != null) 'body': body,
-      };
+    'seq': seq,
+    'type': type,
+    'event': event,
+    if (body != null) 'body': body,
+  };
 }

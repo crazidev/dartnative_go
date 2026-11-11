@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:tom_d4rt/d4rt.dart';
 
 /// Represents a source line breakpoint.
 class Breakpoint {
@@ -70,7 +69,7 @@ class BreakpointHitEvent {
 /// 2. Line breakpoints managed dynamically from dev server or IDE.
 /// 3. Native IDE breakpoint triggers via `dart:developer.debugger()`.
 /// 4. Execution suspension (`Completer<void>`) with interactive resume.
-/// 5. Snapshotting variables from the active [D4rt] interpreter.
+/// 5. Snapshotting variables from the active source interpreter.
 class DebugController {
   static final DebugController _instance = DebugController._internal();
   factory DebugController() => _instance;
@@ -114,8 +113,8 @@ class DebugController {
   /// Callback to log debugger output to host/console.
   void Function(String message)? onLog;
 
-  /// Reference to active interpreter for variable inspection.
-  D4rt? activeInterpreter;
+  /// Active source interpreter (`D4rt`), untyped to avoid linking `tom_d4rt`.
+  Object? activeInterpreter;
 
   /// Returns an unmodifiable list of active breakpoints.
   List<Breakpoint> get breakpoints =>
@@ -211,10 +210,14 @@ class DebugController {
   Map<String, String> inspectVariables() {
     final vars = <String, String>{};
     try {
-      final envState = activeInterpreter?.getEnvironmentState();
+      // Dynamic on purpose: see [activeInterpreter].
+      final dynamic envState = (activeInterpreter as dynamic)
+          ?.getEnvironmentState();
       if (envState != null) {
-        for (final v in envState.variables) {
-          vars[v.name] = v.isNull ? 'null' : '(${v.valueType})';
+        for (final dynamic v in envState.variables as Iterable) {
+          vars[v.name as String] = (v.isNull as bool)
+              ? 'null'
+              : '(${v.valueType})';
         }
       }
     } catch (_) {}
@@ -270,7 +273,9 @@ class DebugController {
     _log(
       '\n╔═══════════════════════════════════════════════════════════════════════════════╗',
     );
-    _log('║ [STOP] [BREAKPOINT HIT] $cleanFile:$line (hit #${bp?.hitCount ?? 1})');
+    _log(
+      '║ [STOP] [BREAKPOINT HIT] $cleanFile:$line (hit #${bp?.hitCount ?? 1})',
+    );
     _log('║ -> guest_app/$cleanFile:$line');
     if (vars.isNotEmpty) {
       _log(

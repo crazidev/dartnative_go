@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dartnative_go/src/interpreter/auto_import_parser.dart';
+import 'package:dartnative_go/src/interpreter/breakpoint_instrumenter.dart';
 import 'package:dartnative_go/src/interpreter/debug_controller.dart';
 import 'package:test/test.dart';
 import 'package:tom_d4rt/d4rt.dart';
@@ -103,7 +104,7 @@ void main() {
   print("Hello");
   print("World");
 }''';
-      final instrumented = AutoImportParser.instrumentBreakpoints(
+      final instrumented = instrumentBreakpoints(
         source,
         'main.dart',
         {2},
@@ -129,6 +130,7 @@ void main() {
         breakpointsByFile: {
           'reset_button.dart': {3},
         },
+        breakpointInstrumenter: instrumentBreakpoints,
       );
       expect(
         vMap['reset_button.dart'],

@@ -47,7 +47,9 @@ class DartNativeDapServer {
           final headerStr = ascii.decode(buffer.sublist(0, headerEnd));
           buffer.removeRange(0, headerEnd + 4); // Remove header + \r\n\r\n
 
-          final match = RegExp(r'Content-Length:\s*(\d+)').firstMatch(headerStr);
+          final match = RegExp(
+            r'Content-Length:\s*(\d+)',
+          ).firstMatch(headerStr);
           if (match != null) {
             expectedContentLength = int.parse(match.group(1)!);
           } else {
@@ -154,7 +156,7 @@ class DartNativeDapServer {
             request: request,
             body: {
               'threads': [
-                {'id': 1, 'name': 'DartNative Main Thread'}
+                {'id': 1, 'name': 'DartNative Main Thread'},
               ],
             },
           ),
@@ -238,13 +240,17 @@ class DartNativeDapServer {
   }
 
   Future<void> _handleLaunchOrAttach(
-      DapRequest request, Map<String, dynamic> args) async {
+    DapRequest request,
+    Map<String, dynamic> args,
+  ) async {
     _serverHost = args['host']?.toString() ?? '127.0.0.1';
     _serverPort = (args['port'] is int)
         ? args['port'] as int
         : int.tryParse(args['port']?.toString() ?? '') ?? 8088;
 
-    _sendOutput('[CONNECT] [DartNative] Connecting to Dev Server at ws://$_serverHost:$_serverPort/ws...');
+    _sendOutput(
+      '[CONNECT] [DartNative] Connecting to Dev Server at ws://$_serverHost:$_serverPort/ws...',
+    );
 
     try {
       final wsUrl = Uri.parse('ws://$_serverHost:$_serverPort/ws');
@@ -252,7 +258,9 @@ class DartNativeDapServer {
         const Duration(seconds: 5),
       );
       _isAttached = true;
-      _sendOutput('[OK] [DartNative] Attached to dev server (port $_serverPort).');
+      _sendOutput(
+        '[OK] [DartNative] Attached to dev server (port $_serverPort).',
+      );
 
       _devServerSocket!.listen(
         _handleDevServerMessage,
@@ -271,7 +279,10 @@ class DartNativeDapServer {
 
       _sendResponse(DapResponse.success(seq: _seq++, request: request));
     } catch (e) {
-      _sendOutput('! [DartNative] Warning: Could not connect to dev server ($e). Debug session active offline.', 'console');
+      _sendOutput(
+        '! [DartNative] Warning: Could not connect to dev server ($e). Debug session active offline.',
+        'console',
+      );
       _sendResponse(DapResponse.success(seq: _seq++, request: request));
     }
   }
@@ -309,10 +320,13 @@ class DartNativeDapServer {
   }
 
   Future<void> _handleSetBreakpoints(
-      DapRequest request, Map<String, dynamic> args) async {
+    DapRequest request,
+    Map<String, dynamic> args,
+  ) async {
     final source = args['source'] as Map<String, dynamic>?;
     final sourcePath = source?['path']?.toString() ?? '';
-    final bps = (args['breakpoints'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final bps =
+        (args['breakpoints'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
     final lines = <int>[];
     final verifiedBps = <Map<String, dynamic>>[];
@@ -406,7 +420,7 @@ class DartNativeDapServer {
         },
         'line': line,
         'column': column,
-      }
+      },
     ];
 
     _sendResponse(
@@ -530,11 +544,15 @@ class DartNativeDapServer {
 
       final elapsed = sw.elapsedMilliseconds;
       if (res.statusCode == 200) {
-        _sendOutput('[RELOAD] [DartNative] Hot Reload completed in ${elapsed}ms.');
+        _sendOutput(
+          '[RELOAD] [DartNative] Hot Reload completed in ${elapsed}ms.',
+        );
       } else {
         // Fallback to WebSocket reload broadcast
         _devServerSocket?.add(jsonEncode({'type': 'reload', 'origin': 'test'}));
-        _sendOutput('[RELOAD] [DartNative] Hot Reload broadcast sent (${elapsed}ms).');
+        _sendOutput(
+          '[RELOAD] [DartNative] Hot Reload broadcast sent (${elapsed}ms).',
+        );
       }
     } catch (_) {
       _devServerSocket?.add(jsonEncode({'type': 'reload', 'origin': 'test'}));
@@ -557,10 +575,16 @@ class DartNativeDapServer {
 
       final elapsed = sw.elapsedMilliseconds;
       if (res.statusCode == 200) {
-        _sendOutput('[RESTART] [DartNative] Hot Restart completed in ${elapsed}ms.');
+        _sendOutput(
+          '[RESTART] [DartNative] Hot Restart completed in ${elapsed}ms.',
+        );
       } else {
-        _devServerSocket?.add(jsonEncode({'type': 'restart', 'origin': 'test'}));
-        _sendOutput('[RESTART] [DartNative] Hot Restart broadcast sent (${elapsed}ms).');
+        _devServerSocket?.add(
+          jsonEncode({'type': 'restart', 'origin': 'test'}),
+        );
+        _sendOutput(
+          '[RESTART] [DartNative] Hot Restart broadcast sent (${elapsed}ms).',
+        );
       }
     } catch (_) {
       _devServerSocket?.add(jsonEncode({'type': 'restart', 'origin': 'test'}));

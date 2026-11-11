@@ -1,4 +1,6 @@
 import 'package:dartnative/dartnative.dart';
+
+import '../theme/shadcn_theme.dart';
 import '../interpreter/debug_controller.dart';
 
 /// Top-centered on-screen overlay displayed when execution is paused at a breakpoint.
@@ -19,6 +21,7 @@ class BreakpointOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = context.theme;
     final fileName = widgetFileName(hit.file);
     final line = hit.line?.toString() ?? '?';
 
@@ -34,8 +37,8 @@ class BreakpointOverlay extends StatelessWidget {
               vertical: 8,
             ),
             decoration: BoxDecoration(
-              color: const Color(0xFF1C1C1E).withOpacity(0.96),
-              borderRadius: BorderRadius.circular(16),
+              color: theme.card.withOpacity(0.96),
+              borderRadius: theme.radius.xl,
               border: Border.all(
                 color: const Color(0xFFFF9F0A),
                 width: 1.5,
@@ -79,8 +82,8 @@ class BreakpointOverlay extends StatelessWidget {
                     const SizedBox(height: 1),
                     Text(
                       '$fileName:$line',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: theme.cardForeground,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),

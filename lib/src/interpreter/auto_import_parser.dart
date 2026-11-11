@@ -1,7 +1,3 @@
-import 'package:analyzer/dart/analysis/utilities.dart';
-import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/dart/ast/visitor.dart';
-
 /// Represents a parsed import or export directive.
 class ImportDirectiveInfo {
   final String uri;
@@ -26,6 +22,16 @@ class ImportDirectiveInfo {
     return buffer.toString();
   }
 }
+
+/// Rewrites [source] to instrument breakpoints on [targetLines].
+///
+/// Injected by the Source entrypoint so this library stays analyzer-free.
+typedef BreakpointInstrumenter =
+    String Function(
+      String source,
+      String fileName,
+      Set<int> targetLines,
+    );
 
 /// Advanced Auto Import & Dependency Graph Parser for interpreted DartNative apps.
 ///
@@ -333,79 +339,6 @@ class AutoImportParser {
     return '$importsText\n\n$source';
   }
 
-  /// Instruments the given [source] code with breakpoint triggers.
-  ///
-  /// For every line in [targetLines]:
-  /// 1. Finds the enclosing function/closure via AST and ensures it is marked `async`.
-  /// 2. Prepends `await __debugBreakpoint('$normalizedFile', $line);` to that line.
-  /// Preserves exact line numbering across the entire document.
-  static String instrumentBreakpoints(
-    String source,
-    String fileName,
-    Set<int> targetLines,
-  ) {
-    if (targetLines.isEmpty) return source;
-
-    final cleanFile = fileName.replaceAll(r'\', '/');
-    final baseFile = cleanFile.contains('/')
-        ? cleanFile.split('/').last
-        : cleanFile;
-
-    // First pass: analyze AST to ensure any enclosing function bodies for target lines are async
-    var code = source;
-    try {
-      final parseResult = parseString(content: code, throwIfDiagnostics: false);
-      final lineInfo = parseResult.lineInfo;
-      final asyncInsertOffsets = <int>{};
-
-      for (final targetLine in targetLines) {
-        final finder = _EnclosingBodyFinder(targetLine, lineInfo);
-        parseResult.unit.accept(finder);
-        final body = finder.innermostBody;
-        if (body != null && !body.isAsynchronous) {
-          asyncInsertOffsets.add(body.block.leftBracket.offset);
-        }
-      }
-
-      if (asyncInsertOffsets.isNotEmpty) {
-        final sorted = asyncInsertOffsets.toList()
-          ..sort((a, b) => b.compareTo(a));
-        for (final offset in sorted) {
-          code = '${code.substring(0, offset)}async ${code.substring(offset)}';
-        }
-      }
-    } catch (_) {}
-
-    // Second pass: prepend `await __debugBreakpoint('$baseFile', $targetLine); ` to target lines
-    final lines = code.split('\n');
-    for (final targetLine in targetLines) {
-      final index = targetLine - 1;
-      if (index >= 0 && index < lines.length) {
-        final line = lines[index];
-        final trimmed = line.trim();
-
-        // Skip blank lines, comments, imports, exports, solitary braces
-        if (trimmed.isEmpty ||
-            trimmed.startsWith('//') ||
-            trimmed.startsWith('/*') ||
-            trimmed.startsWith('*') ||
-            trimmed.startsWith('import ') ||
-            trimmed.startsWith('export ') ||
-            trimmed.startsWith('part ') ||
-            trimmed == '{' ||
-            trimmed == '}') {
-          continue;
-        }
-
-        final leadingSpaces = line.substring(0, line.indexOf(trimmed));
-        lines[index] =
-            '$leadingSpaces'
-            'await __debugBreakpoint(\'$baseFile\', $targetLine); $trimmed';
-      }
-    }
-    return lines.join('\n');
-  }
-
   /// Normalizes and generates all virtual alias paths for a given file.
   ///
   /// Examples for `components/button.dart`:
@@ -418,6 +351,7 @@ class AutoImportParser {
     Map<String, String> rawFiles, {
     String? packageName,
     Map<String, Set<int>>? breakpointsByFile,
+    BreakpointInstrumenter? breakpointInstrumenter,
   }) {
     final result = <String, String>{};
 
@@ -428,8 +362,9 @@ class AutoImportParser {
     }
 
     // Auto-discover any imported package name from raw files
-    final importRegex =
-        RegExp(r'''(?:import|export)\s+['"]package:([a-zA-Z0-9_]+)/''');
+    final importRegex = RegExp(
+      r'''(?:import|export)\s+['"]package:([a-zA-Z0-9_]+)/''',
+    );
     for (final content in rawFiles.values) {
       for (final match in importRegex.allMatches(content)) {
         final pkg = match.group(1);
@@ -462,8 +397,9 @@ class AutoImportParser {
           breakpointsByFile?[cleanFile] ??
           const <int>{});
 
-      final instrumented = targetLines.isNotEmpty
-          ? instrumentBreakpoints(content, baseFile, targetLines)
+      final instrumented =
+          targetLines.isNotEmpty && breakpointInstrumenter != null
+          ? breakpointInstrumenter(content, baseFile, targetLines)
           : content;
 
       processedFiles[normalized] = processAndAutoImport(
@@ -520,7 +456,8 @@ class AndroidNativeBindings {
 }
 ''';
 
-    result['package:dartnative_shared_preferences/dartnative_shared_preferences.dart'] = '''
+    result['package:dartnative_shared_preferences/dartnative_shared_preferences.dart'] =
+        '''
 library dartnative_shared_preferences;
 
 class PrefsBindings {
@@ -590,24 +527,5 @@ abstract final class DartNativePluginRegistrant {
 
     final joined = resultSegments.join('/');
     return joined.isEmpty ? './' : joined;
-  }
-}
-
-/// AST visitor to identify the innermost BlockFunctionBody enclosing a target line number.
-class _EnclosingBodyFinder extends RecursiveAstVisitor<void> {
-  final int targetLine;
-  final dynamic lineInfo;
-  BlockFunctionBody? innermostBody;
-
-  _EnclosingBodyFinder(this.targetLine, this.lineInfo);
-
-  @override
-  void visitBlockFunctionBody(BlockFunctionBody node) {
-    final start = lineInfo.getLocation(node.offset).lineNumber;
-    final end = lineInfo.getLocation(node.end).lineNumber;
-    if (targetLine >= start && targetLine <= end) {
-      innermostBody = node;
-    }
-    super.visitBlockFunctionBody(node);
   }
 }
