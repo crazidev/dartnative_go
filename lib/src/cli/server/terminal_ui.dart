@@ -28,6 +28,14 @@ void printConnectionInfo(String serverUrl) {
   );
 }
 
+/// Prints the `dartnativego://` link that opens [serverUrl] in the app.
+///
+/// Tapping it (or `dart_go open --device`) launches the app straight into the
+/// project, skipping discovery. See `lib/src/client/deep_link.dart`.
+void printDeepLink(String link) {
+  print('[LINK] Deep link:  $_cyan$link$_reset');
+}
+
 void printHelpHint() => print('${_dim}Press h for help$_reset\n');
 
 void printQr(String serverUrl) {
@@ -64,7 +72,10 @@ class StdinCommands {
           onStop();
           exit(0);
         }
-        _handle(String.fromCharCode(byte).toLowerCase());
+        // `R` (hot restart) is case-sensitive; every other command is
+        // accepted in either case, as before.
+        final ch = String.fromCharCode(byte);
+        _handle(ch == 'R' ? ch : ch.toLowerCase());
       }
     });
   }
@@ -85,14 +96,18 @@ class StdinCommands {
         print('\nCommands:');
         print('  h  Help');
         print('  r  Hot reload');
+        print('  R  Hot restart');
         print(
           '  v  Toggle verbose logging (currently: ${DartGoLogger.verbose ? "on" : "off"})',
         );
         print('  q  Show QR code');
         print('  c  Clear screen\n');
       case 'r':
-        print('\n[RELOAD] Triggering manual reload...');
+        print('\n[RELOAD] Triggering hot reload...');
         hub.broadcastReload();
+      case 'R':
+        print('\n[RESTART] Triggering hot restart...');
+        hub.broadcastRestart();
       case 'v':
         final enabled = DartGoLogger.toggleVerbose();
         hub.broadcast({'type': 'set_verbose', 'enabled': enabled});

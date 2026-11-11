@@ -1,11 +1,11 @@
-// Builds `<project>/assets/bundles/guest.ast` for AST-mode testing.
+// Builds `<project>/.dart_tool/bundles/guest.ast` for AST-mode testing.
 //
 // Thin CLI over `lib/src/cli/packaging/ast_builder.dart` (shared with the dev server's
 // `--rebuild-ast` watcher so both produce identical bundles).
 //
 // Usage:
 //   dart run tool/build_ast_bundle.dart [--project=/path/to/app]
-//     [--entry=lib/main.dart] [--output=assets/bundles/guest.ast]
+//     [--entry=lib/main.dart] [--output=.dart_tool/bundles/guest.ast]
 //     [--package=my_app]
 import 'dart:io';
 

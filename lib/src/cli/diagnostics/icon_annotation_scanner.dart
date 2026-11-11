@@ -52,8 +52,7 @@ class AnnotatedIconFont {
   });
 
   @override
-  String toString() =>
-      'AnnotatedIconFont($className → $family @ $package)';
+  String toString() => 'AnnotatedIconFont($className → $family @ $package)';
 
   @override
   bool operator ==(Object other) =>
@@ -255,8 +254,7 @@ Map<String, String> iconFontAnnotationSources() {
     final file = File('${root.path}/${_kIconFontAnnotationPaths[i]}');
     try {
       if (!file.existsSync()) return const {};
-      sources[kIconFontAnnotationUris.elementAt(i)] =
-          file.readAsStringSync();
+      sources[kIconFontAnnotationUris.elementAt(i)] = file.readAsStringSync();
     } catch (_) {
       return const {};
     }

@@ -5,9 +5,11 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../../runner/logger.dart';
+import '../../client/deep_link.dart';
 import '../diagnostics/asset_detector.dart';
 import '../diagnostics/icon_font_detector.dart';
 import '../packaging/ast_builder.dart';
+import '../packaging/ast_artifact_paths.dart';
 import 'broadcaster.dart';
 import 'dev_socket_hub.dart';
 import 'terminal_ui.dart';
@@ -25,7 +27,7 @@ class DartGoServerOptions {
   final String? customHost;
 
   /// When true (default), Dart file changes trigger an `AstBundle` rebuild
-  /// (`assets/bundles/guest.ast`) before the reload broadcast, so AST-mode
+  /// (`.dart_tool/bundles/guest.ast`) before the reload broadcast, so AST-mode
   /// clients hot-reload fresh bytes. Unchanged sources skip the analyzer
   /// parse via content fingerprint (millisecond fast path). Disable with
   /// `--no-rebuild-ast` if you only test source mode.
@@ -147,6 +149,9 @@ class DartGoServer {
     // 6. Display scannable QR code and connection details.
     if (options.enableQrCode) printQr(serverUrl);
     printConnectionInfo(serverUrl);
+    printDeepLink(
+      DartGoDeepLink.build(serverUrl, appName: validation.appName),
+    );
     print(
       options.rebuildAst
           ? '[AST] AST auto-build: \x1B[36mon\x1B[0m (guest.ast rebuilt on save; --no-rebuild-ast to disable)\n'
@@ -178,8 +183,14 @@ class DartGoServer {
       _assetsWatchSub = assetsDir.watch(recursive: true).listen((event) {
         // guest.ast writes and bundle directory changes are covered by code-change
         // broadcast that triggered the rebuild — ignore to avoid double reloads.
+        // Bundles now live under `.dart_tool/`, but keep ignoring legacy
+        // `assets/bundles/` writes so old projects don't double-reload.
         final p = event.path.replaceAll(r'\', '/');
-        if (p.contains('/assets/bundles') || p.endsWith('guest.ast')) return;
+        if (p.contains('/assets/bundles') ||
+            p.contains('/.dart_tool/') ||
+            p.endsWith('guest.ast')) {
+          return;
+        }
         assetsDebounceTimer?.cancel();
         assetsDebounceTimer = Timer(const Duration(milliseconds: 150), () {
           print(
@@ -390,8 +401,7 @@ class DartGoServer {
       // `CupertinoIcons.xxx` / `Icons.xxx` glyphs appear without restart.
       IconFontReport fontsReport;
       try {
-        fontsReport =
-            iconFonts ?? IconFontDetector(projectDir).detect();
+        fontsReport = iconFonts ?? IconFontDetector(projectDir).detect();
       } catch (_) {
         fontsReport = const IconFontReport();
       }
@@ -530,8 +540,7 @@ class DartGoServer {
       // Subset manifest for on-demand font loading: families + used glyphs.
       IconFontReport fontsReport;
       try {
-        fontsReport =
-            iconFonts ?? IconFontDetector(projectDir).detect();
+        fontsReport = iconFonts ?? IconFontDetector(projectDir).detect();
       } catch (_) {
         fontsReport = const IconFontReport();
       }
@@ -573,8 +582,7 @@ class DartGoServer {
         }
         if (fontFile != null && fontFile.existsSync()) {
           final stat = fontFile.statSync();
-          final etag =
-              '"${stat.modified.millisecondsSinceEpoch}-${stat.size}"';
+          final etag = '"${stat.modified.millisecondsSinceEpoch}-${stat.size}"';
           final clientEtag = request.headers
               .value(HttpHeaders.ifNoneMatchHeader)
               ?.trim();
@@ -726,13 +734,17 @@ class DartGoServer {
           await request.response.close();
           return;
         }
-        await _serveAssetFile(request, astFile, etag: etag,
-            // Patch lineage: the fingerprint of the exact bytes served, so
-            // devices know which bundle generation they are based on.
-            extraHeaders: {
-              if (fileSourceFingerprintForPath(astFile.path).isNotEmpty)
-                'X-Ast-Bundle': fileSourceFingerprintForPath(astFile.path),
-            });
+        await _serveAssetFile(
+          request,
+          astFile,
+          etag: etag,
+          // Patch lineage: the fingerprint of the exact bytes served, so
+          // devices know which bundle generation they are based on.
+          extraHeaders: {
+            if (fileSourceFingerprintForPath(astFile.path).isNotEmpty)
+              'X-Ast-Bundle': fileSourceFingerprintForPath(astFile.path),
+          },
+        );
         print(
           '[DevServer] [AST] Served guest.ast (${await astFile.length()} bytes, etag=$etag)',
         );
@@ -1038,15 +1050,13 @@ class DartGoServer {
 
   /// Locates a pre-compiled AST bundle if `tool/build_ast_bundle.dart` ran.
   ///
-  /// Checks `assets/bundles/guest.ast` then `build/guest.ast` (traversal-safe).
+  /// Checks `.dart_tool/bundles/guest.ast` first, then the legacy
+  /// `assets/bundles/guest.ast` and `build/guest.ast` locations
+  /// (traversal-safe).
   static File? _resolveAstBundleFile(Directory projectDir) {
-    const candidates = [
-      'assets/bundles/guest.ast',
-      'build/guest.ast',
-    ];
     try {
       final canonicalProject = projectDir.resolveSymbolicLinksSync();
-      for (final rel in candidates) {
+      for (final rel in kAstBundleCandidates) {
         final file = File('${projectDir.path}/$rel');
         if (file.existsSync()) {
           final canonicalFile = file.resolveSymbolicLinksSync();

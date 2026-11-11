@@ -1,7 +1,7 @@
 import 'dart:io';
 
 /// Commands exposed by the `dart_go` executable.
-enum DartGoCommand { start, doctor, version, dap, help, unknown }
+enum DartGoCommand { start, open, doctor, version, dap, help, unknown }
 
 /// Parsed, side-effect-free CLI configuration.
 ///
@@ -24,6 +24,21 @@ class DartGoCommandLine {
   /// default — the explorer costs an on-demand AST sizing walk per open.
   final bool profile;
 
+  /// `open`: the project address (or a whole `dartnativego://` link) to hand
+  /// to the app. Null when the command was given neither `--url` nor a
+  /// positional link.
+  final String? deepLinkTarget;
+
+  /// `open --name`: app name shown on the splash while the project loads.
+  final String? deepLinkName;
+
+  /// `open --device`: deliver the link with `xcrun simctl` / `adb` instead of
+  /// only printing it.
+  final bool deepLinkDevice;
+
+  /// `open --qr`: also render the link as a terminal QR code.
+  final bool deepLinkQr;
+
   const DartGoCommandLine({
     required this.command,
     required this.commandArgs,
@@ -36,6 +51,10 @@ class DartGoCommandLine {
     required this.qrCode,
     required this.rebuildAst,
     required this.profile,
+    this.deepLinkTarget,
+    this.deepLinkName,
+    this.deepLinkDevice = false,
+    this.deepLinkQr = false,
   });
 
   factory DartGoCommandLine.parse(List<String> args, {Directory? currentDir}) {
@@ -63,6 +82,9 @@ class DartGoCommandLine {
     if (first == 'dap' || first == 'debug_adapter') {
       return _simple(DartGoCommand.dap, args.skip(1).toList(), baseDir);
     }
+    if (first == 'open') {
+      return _open(args.skip(1).toList(), baseDir);
+    }
 
     final startArgs = first == 'start' ? args.skip(1).toList() : args;
     if (first == 'start' ||
@@ -88,6 +110,39 @@ class DartGoCommandLine {
       qrCode: !args.contains('--no-qrcode'),
       rebuildAst: !args.contains('--no-rebuild-ast'),
       profile: args.contains('--profile'),
+    );
+  }
+
+  static DartGoCommandLine _open(List<String> args, Directory baseDir) {
+    // Positional form: `dart_go open dartnativego://…` (or `open 192.168.1.9:8088`).
+    String? positional;
+    for (var i = 0; i < args.length; i++) {
+      final arg = args[i];
+      if (arg.startsWith('-')) {
+        // Skip the value of `--flag value` pairs.
+        if (!arg.contains('=') && i + 1 < args.length) i++;
+        continue;
+      }
+      positional = arg;
+      break;
+    }
+    final target = _value(args, 'url') ?? positional;
+    return DartGoCommandLine(
+      command: DartGoCommand.open,
+      commandArgs: args,
+      projectDir: baseDir,
+      startPort: 8088,
+      endPort: 8098,
+      host: null,
+      verbose: false,
+      broadcast: true,
+      qrCode: true,
+      rebuildAst: true,
+      profile: false,
+      deepLinkTarget: (target == null || target.trim().isEmpty) ? null : target,
+      deepLinkName: _value(args, 'name'),
+      deepLinkDevice: args.contains('--device'),
+      deepLinkQr: args.contains('--qr'),
     );
   }
 

@@ -119,6 +119,15 @@ class DevSocketHub {
     });
   }
 
+  /// Broadcasts hot restart so devices drop interpreter state and re-evaluate.
+  void broadcastRestart({String origin = 'cli'}) {
+    broadcast({
+      'type': 'restart',
+      'origin': origin,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
   void closeAll() {
     for (final ws in _sockets) {
       try {
@@ -152,11 +161,7 @@ class DevSocketHub {
         broadcastReload(data['changedFile']?.toString(), projectDir.path);
       case 'restart' when fromTest:
         print('[DevServer] [UI] Test-triggered restart requested');
-        broadcast({
-          'type': 'restart',
-          'origin': 'test',
-          'timestamp': DateTime.now().millisecondsSinceEpoch,
-        });
+        broadcastRestart(origin: 'test');
       case 'ui_tree':
         print(
           '[DevServer] [UI] UI tree received (request ${data['requestId'] ?? '?'})',

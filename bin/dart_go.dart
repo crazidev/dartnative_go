@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dartnative_go/src/cli/diagnostics/asset_detector.dart';
 import 'package:dartnative_go/src/cli/commands/command_line.dart';
+import 'package:dartnative_go/src/cli/commands/deep_link_command.dart';
 import 'package:dartnative_go/src/cli/diagnostics/dart_go_version.dart';
 import 'package:dartnative_go/src/cli/diagnostics/pubspec_validator.dart';
 import 'package:dartnative_go/src/cli/server/server.dart';
@@ -21,6 +22,9 @@ Future<void> main(List<String> args) async {
       return;
     case DartGoCommand.dap:
       await runDartNativeDap(cli.commandArgs);
+      return;
+    case DartGoCommand.open:
+      await runDeepLinkCommand(cli);
       return;
     case DartGoCommand.unknown:
       print('Unknown command: ${args.first}\n');
@@ -84,18 +88,25 @@ USAGE:
 
 AVAILABLE COMMANDS:
   start          Start live dev server with QR code, asset serving & hot reload (default)
+  open           Open a project in the app through a dartnativego:// deep link
   dap            Start DAP (Debug Adapter Protocol) server for VS Code debugging
   debug_adapter  Alias for 'dap'
   doctor         Inspect project dependencies and assets for compatibility
   version        Display CLI version and bundled native plugin compatibility matrix
   help           Show this help message
 
+OPTIONS FOR 'open':
+      --url=<host:port>       Dev server address to open (or pass a whole link)
+      --name=<app>            App name shown on the splash while it loads
+      --device                Open the link with xcrun simctl / adb
+      --qr                    Render the link as a terminal QR code
+
 OPTIONS FOR 'start':
   -p, --port=<int>            Base port to start listening on (default: 8088)
       --port-range=<min-max>  Range of ports to scan and broadcast across (default: 8088-8098)
       --project=<path>        Path to DartNative project directory (default: current directory)
       --host=<ip>             Custom host IP/interface to advertise
-      --rebuild-ast           Rebuild assets/bundles/guest.ast on Dart changes (AST hot reload; default: on)
+      --rebuild-ast           Rebuild .dart_tool/bundles/guest.ast on Dart changes (AST hot reload; default: on)
       --no-rebuild-ast        Disable AST rebuild (source-only hot reload)
   -v, --verbose               Enable verbose step-by-step benchmark logs and diagnostic traces
       --profile               Show the AST BUNDLE explorer in the app DevTools sheet (default: off)
@@ -107,6 +118,8 @@ EXAMPLES:
   dart_go start --project=/path/to/my_app
   dart_go start --project=/path/to/my_app --rebuild-ast
   dart_go start -p 8090
+  dart_go open --url=192.168.1.10:8088 --device
+  dart_go open dartnativego://open?url=192.168.1.10%3A8088
   dart_go doctor
   dart_go version
 ''');

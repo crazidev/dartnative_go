@@ -15,6 +15,7 @@ import 'package:tom_d4rt_ast/runtime.dart' show AstBundle;
 
 import '../../runner/logger.dart';
 import '../server_components/client_module_index.dart';
+import 'ast_artifact_paths.dart';
 import 'safe_ast_converter.dart';
 import '../server_components/server_annotation_scanner.dart';
 import '../server_components/server_annotation_source.dart';
@@ -883,8 +884,9 @@ class IncrementalAstBundler {
     for (final declaration in unit.declarations) {
       if (declaration is! SClassDeclaration) continue;
       final className = declaration.name?.name ?? '(unnamed)';
-      classBytes[className] =
-          utf8.encode(jsonEncode(declaration.toJson())).length;
+      classBytes[className] = utf8
+          .encode(jsonEncode(declaration.toJson()))
+          .length;
     }
     _moduleAstBytesCache[uri] = moduleBytes.length;
     _classAstBytesCache[uri] = classBytes;
@@ -1125,7 +1127,9 @@ class IncrementalAstBundler {
   }
 }
 
-/// Builds `<project>/assets/bundles/guest.ast` for the target guest project.
+/// Builds `<project>/.dart_tool/bundles/guest.ast` for the target guest
+/// project. The artifact lives under `.dart_tool/` so it can't be committed
+/// by accident (see [kAstBundleRelativePath]).
 ///
 /// Incremental: when [incremental] (default) and the source fingerprint
 /// matches the last successful build for this project, the analyzer parse
@@ -1164,7 +1168,7 @@ Future<AstBuildResult> buildGuestAstBundle(
     );
   }
 
-  final rawPath = outputArg ?? 'assets/bundles/guest.ast';
+  final rawPath = outputArg ?? kAstBundleRelativePath;
   final outPath = rawPath.startsWith('${projectDir.path}/')
       ? rawPath
       : p.isAbsolute(rawPath)

@@ -3,40 +3,10 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
+import '../../runner/dep_entry.dart';
 import 'ast_builder.dart';
 
-/// Metadata entry for a single pure-Dart dependency package.
-class DepEntry {
-  final String name;
-  final String version;
-  final String zipUrl;
-  final String contentHash;
-  final int byteSize;
-
-  const DepEntry({
-    required this.name,
-    required this.version,
-    required this.zipUrl,
-    required this.contentHash,
-    required this.byteSize,
-  });
-
-  Map<String, dynamic> toJson() => {
-    'name': name,
-    'version': version,
-    'zipUrl': zipUrl,
-    'contentHash': contentHash,
-    'byteSize': byteSize,
-  };
-
-  factory DepEntry.fromJson(Map<String, dynamic> json) => DepEntry(
-    name: json['name'] as String,
-    version: json['version'] as String? ?? '1.0.0',
-    zipUrl: json['zipUrl'] as String,
-    contentHash: json['contentHash'] as String,
-    byteSize: json['byteSize'] as int? ?? 0,
-  );
-}
+export '../../runner/dep_entry.dart';
 
 /// Result of resolving dependencies and building package ZIP archives.
 class DepPackagerResult {
@@ -98,12 +68,7 @@ class DepPackager {
 
   /// Packs a memory map of files (path -> content) into a ZIP archive.
   ///
-  /// The output is byte-for-byte deterministic for the same [files]: entries
-  /// are sorted by path and every entry gets a fixed modification time.
-  /// `ArchiveFile` otherwise defaults `lastModTime` to `DateTime.now()`, so
-  /// two packs of identical sources straddling a second boundary produced
-  /// different bytes — and therefore a different `userCodeHash`, which clients
-  /// use to decide whether to re-download `user-code.zip`.
+  /// Creates a deterministic ZIP archive from [files] with fixed timestamps and sorted paths.
   static List<int> zipFilesMap(Map<String, String> files) {
     final archive = Archive();
     final paths = files.keys.toList()..sort();

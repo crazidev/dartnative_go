@@ -5,6 +5,8 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
+import '../packaging/ast_artifact_paths.dart';
+
 const _corsHeader = 'Access-Control-Allow-Origin';
 
 /// Writes [body] as plain text with [status] and CORS headers.
@@ -144,13 +146,12 @@ List<String> collectProjectAssets(Directory projectDir) {
   return results;
 }
 
-/// Finds `assets/bundles/guest.ast` (then `build/guest.ast`) inside the
-/// project, rejecting symlinks that escape it.
+/// Finds `.dart_tool/bundles/guest.ast` (then the legacy `assets/bundles/` and
+/// `build/` locations) inside the project, rejecting symlinks that escape it.
 File? resolveAstBundleFile(Directory projectDir) {
-  const candidates = ['assets/bundles/guest.ast', 'build/guest.ast'];
   return _firstInsideProject(
     projectDir,
-    candidates.map((rel) => '${projectDir.path}/$rel'),
+    kAstBundleCandidates.map((rel) => '${projectDir.path}/$rel'),
   );
 }
 

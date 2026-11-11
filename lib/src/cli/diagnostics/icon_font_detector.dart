@@ -55,10 +55,10 @@ class CustomFontDecl {
   });
 
   Map<String, dynamic> toJson() => {
-        'family': family,
-        'asset': asset,
-        if (weight != 400) 'weight': weight,
-      };
+    'family': family,
+    'asset': asset,
+    if (weight != 400) 'weight': weight,
+  };
 }
 
 /// Usage + font-file report for a guest project.
@@ -102,10 +102,10 @@ class IconFontReport {
 
   /// Families the guest actually uses (built-in + custom).
   Set<String> get families => {
-        ...glyphsByFamily.keys,
-        ...codePointsByFamily.keys,
-        for (final f in customFonts) f.family,
-      };
+    ...glyphsByFamily.keys,
+    ...codePointsByFamily.keys,
+    for (final f in customFonts) f.family,
+  };
 
   /// Stable hash over families + glyphs + custom fonts. Devices compare this
   /// against the last loaded set to skip redundant font fetches on reload.
@@ -120,7 +120,10 @@ class IconFontReport {
     final customs = customFonts.map((f) => '${f.family}@${f.asset}').toList()
       ..sort();
     parts.addAll(customs);
-    return sha256.convert(utf8.encode(parts.join('|'))).toString().substring(
+    return sha256
+        .convert(utf8.encode(parts.join('|')))
+        .toString()
+        .substring(
           0,
           16,
         );
@@ -162,15 +165,15 @@ class IconFontReport {
     buffer.writeln('[FONTS] Icon-font usage:');
     final fams = families.toList()..sort();
     for (final family in fams) {
-      final count = (glyphsByFamily[family]?.length ?? 0) +
+      final count =
+          (glyphsByFamily[family]?.length ?? 0) +
           (codePointsByFamily[family]?.length ?? 0);
       final builtIn = IconFontFamilies.builtIn.contains(family);
       final file = fontFiles[family];
       final tag = builtIn
           ? 'built-in'
           : (file != null ? 'served on demand' : 'no .ttf found');
-      final via =
-          annotatedFamilies.contains(family) ? ' [annotated]' : '';
+      final via = annotatedFamilies.contains(family) ? ' [annotated]' : '';
       buffer.writeln('   • $family: $count glyph(s) ($tag)$via');
     }
     if (customFonts.isNotEmpty) {
@@ -398,8 +401,7 @@ class IconFontDetector {
     for (final content in sources.values) {
       final clean = _stripCommentsAndStrings(content);
       final noComments = _stripCommentsOnly(content);
-      for (final m
-          in _cupertinoPattern.allMatches(clean)) {
+      for (final m in _cupertinoPattern.allMatches(clean)) {
         addGlyph(IconFontFamilies.cupertino, m.group(1)!);
       }
       for (final m in _materialPattern.allMatches(clean)) {
@@ -483,15 +485,17 @@ class IconFontDetector {
 
   // -- patterns -----------------------------------------------------------
 
-  static final _cupertinoPattern =
-      RegExp(r'\bCupertinoIcons\.([A-Za-z0-9_]+)');
+  static final _cupertinoPattern = RegExp(r'\bCupertinoIcons\.([A-Za-z0-9_]+)');
   static final _materialPattern = RegExp(r'\bIcons\.([A-Za-z0-9_]+)');
-  static final _symbolsOutlinedPattern =
-      RegExp(r'\bMaterialSymbolsOutlined\.([A-Za-z0-9_]+)');
-  static final _symbolsRoundedPattern =
-      RegExp(r'\bMaterialSymbolsRounded\.([A-Za-z0-9_]+)');
-  static final _symbolsSharpPattern =
-      RegExp(r'\bMaterialSymbolsSharp\.([A-Za-z0-9_]+)');
+  static final _symbolsOutlinedPattern = RegExp(
+    r'\bMaterialSymbolsOutlined\.([A-Za-z0-9_]+)',
+  );
+  static final _symbolsRoundedPattern = RegExp(
+    r'\bMaterialSymbolsRounded\.([A-Za-z0-9_]+)',
+  );
+  static final _symbolsSharpPattern = RegExp(
+    r'\bMaterialSymbolsSharp\.([A-Za-z0-9_]+)',
+  );
   static final _faPattern = RegExp(
     r'\b(FontAwesome(?:5|6)?|FaIcon|FontAwesomeIcons)\.([A-Za-z0-9_]+)',
   );
@@ -501,8 +505,9 @@ class IconFontDetector {
   static final _iconDataFamFirst = RegExp(
     "fontFamily\\s*:\\s*['\"]([^'\"]+)['\"][^)]*?IconData\\(\\s*(0[xX][0-9a-fA-F]+|\\d+)",
   );
-  static final _fontFamilyPattern =
-      RegExp(r'''fontFamily\s*:\s*['"]([^'"]+)['"]''');
+  static final _fontFamilyPattern = RegExp(
+    r'''fontFamily\s*:\s*['"]([^'"]+)['"]''',
+  );
 
   static String _stripCommentsAndStrings(String source) {
     return source
@@ -589,15 +594,18 @@ class IconFontDetector {
       final root = Directory('${projectDir.path}/$rootName');
       if (!root.existsSync()) continue;
       try {
-        final files = root
-            .listSync(recursive: true)
-            .whereType<File>()
-            .where((f) => f.path.endsWith('.dart'))
-            .toList()
-          ..sort((a, b) => a.path.compareTo(b.path));
+        final files =
+            root
+                .listSync(recursive: true)
+                .whereType<File>()
+                .where((f) => f.path.endsWith('.dart'))
+                .toList()
+              ..sort((a, b) => a.path.compareTo(b.path));
         for (final f in files) {
           try {
-            inputs.add('${f.path}:${f.lastModifiedSync().millisecondsSinceEpoch}');
+            inputs.add(
+              '${f.path}:${f.lastModifiedSync().millisecondsSinceEpoch}',
+            );
           } catch (_) {}
         }
       } catch (_) {}
@@ -644,8 +652,7 @@ class IconFontDetector {
     }
   }
 
-  ({Map<String, String> files, Map<String, String> packages})
-      _resolveFontFiles(
+  ({Map<String, String> files, Map<String, String> packages}) _resolveFontFiles(
     IconFontReport usage,
     List<CustomFontDecl> customs, {
     Set<AnnotatedIconFont> annotated = const {},
@@ -729,8 +736,9 @@ class IconFontDetector {
   /// Resolves a package's on-disk root, or null when unknown. Never throws.
   Directory? _packageRootDir(String packageName) {
     try {
-      final configFile =
-          File('${projectDir.path}/.dart_tool/package_config.json');
+      final configFile = File(
+        '${projectDir.path}/.dart_tool/package_config.json',
+      );
       if (!configFile.existsSync()) return null;
       final json =
           jsonDecode(configFile.readAsStringSync()) as Map<String, dynamic>;
@@ -765,7 +773,10 @@ class IconFontDetector {
             p.endsWith('.woff2'))) {
           continue;
         }
-        final base = p.split(Platform.pathSeparator).last.replaceAll(
+        final base = p
+            .split(Platform.pathSeparator)
+            .last
+            .replaceAll(
               RegExp(r'\.(ttf|otf|woff2?)$'),
               '',
             );
