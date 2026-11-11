@@ -5,6 +5,9 @@ plugins {
     id("com.dartnative.gradle-plugin")
 }
 
+// Disable icon tree-shaking: interpreted guest code constructs IconData at runtime.
+project.ext.set("tree-shake-icons", "false")
+
 android {
     namespace = "com.example.dartnative_go"
     compileSdk = dartnative.compileSdkVersion
