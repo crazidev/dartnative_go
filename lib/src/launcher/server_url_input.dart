@@ -1,19 +1,16 @@
 import 'package:dartnative/dartnative.dart';
 
-import '../theme/launcher_theme.dart';
 import '../theme/shadcn_theme.dart';
 
 /// Text field for manually typing or pasting a dev server URL styled per shadcn.
 class ServerUrlInput extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onSubmitted;
-  final LauncherColors? colors;
 
   const ServerUrlInput({
     super.key,
     required this.controller,
     required this.onSubmitted,
-    this.colors,
   });
 
   @override
@@ -23,7 +20,7 @@ class ServerUrlInput extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: theme.input,
-        borderRadius: BorderRadius.zero,
+        border: Border.all(color: theme.border, width: 1),
       ),
       child: TextField(
         controller: controller,
@@ -40,7 +37,7 @@ class ServerUrlInput extends StatelessWidget {
           ),
           filled: false,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
+            horizontal: 10,
             vertical: 12,
           ),
           border: InputBorder.none,
@@ -49,7 +46,7 @@ class ServerUrlInput extends StatelessWidget {
         ),
         prefixIcon: CupertinoIcons.link,
         prefixIconColor: theme.mutedForeground,
-        prefixIconPadding: const EdgeInsets.only(left: 12, right: 8),
+        prefixIconPadding: const EdgeInsets.only(left: 10, right: 0),
         clearButtonMode: ClearButtonMode.whileEditing,
         keyboardType: TextInputType.url,
         textInputAction: TextInputAction.go,

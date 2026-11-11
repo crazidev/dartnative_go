@@ -207,7 +207,10 @@ AstProfileSnapshot buildAstProfile({
   for (final entry in bundle.modules.entries) {
     final uri = entry.key;
     final unit = entry.value;
-    final astBytes = sizeOf(uri, () => utf8.encode(jsonEncode(unit.toJson())).length);
+    final astBytes = sizeOf(
+      uri,
+      () => utf8.encode(jsonEncode(unit.toJson())).length,
+    );
     if (astBytes == null) sizesComplete = false;
     totalAstBytes += astBytes ?? 0;
     final source = bundle.sources?[uri];
@@ -222,7 +225,8 @@ AstProfileSnapshot buildAstProfile({
     final knownClassSizes = precomputedClassSizes?[uri];
     for (final declaration in classes) {
       final className = declaration.name?.name ?? '(unnamed)';
-      final classBytes = knownClassSizes?[className] ??
+      final classBytes =
+          knownClassSizes?[className] ??
           (allowSerialization
               ? utf8.encode(jsonEncode(declaration.toJson())).length
               : null);
@@ -268,16 +272,17 @@ AstProfileSnapshot buildAstProfile({
     );
   }).toList();
 
-  final bridged = bridgedSymbols.entries
-      .map(
-        (e) => AstBridgedLibProfile(
-          uri: e.key,
-          symbols: e.value,
-          loadMicros: moduleLoadMicros[e.key],
-        ),
-      )
-      .toList()
-    ..sort((a, b) => b.symbols.compareTo(a.symbols));
+  final bridged =
+      bridgedSymbols.entries
+          .map(
+            (e) => AstBridgedLibProfile(
+              uri: e.key,
+              symbols: e.value,
+              loadMicros: moduleLoadMicros[e.key],
+            ),
+          )
+          .toList()
+        ..sort((a, b) => b.symbols.compareTo(a.symbols));
 
   final packageAccum = <String, AstPackageProfile>{};
   for (final m in modules) {

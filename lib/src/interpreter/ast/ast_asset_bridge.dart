@@ -36,8 +36,12 @@ void registerAstAssetAwareBridges(
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'Image');
-        final image =
-            D4.getRequiredArg<ImageProvider>(positional, 0, 'image', 'Image');
+        final image = D4.getRequiredArg<ImageProvider>(
+          positional,
+          0,
+          'image',
+          'Image',
+        );
         final key = D4.getOptionalNamedArg<Key?>(named, 'key');
         final width = D4.getOptionalNamedArg<double?>(named, 'width');
         final height = D4.getOptionalNamedArg<double?>(named, 'height');
@@ -58,15 +62,19 @@ void registerAstAssetAwareBridges(
           'fadeInDuration',
           Duration.zero,
         );
-        final placeholder =
-            D4.getOptionalNamedArg<Widget?>(named, 'placeholder');
+        final placeholder = D4.getOptionalNamedArg<Widget?>(
+          named,
+          'placeholder',
+        );
         final placeholderMinDuration = D4.getNamedArgWithDefault<Duration>(
           named,
           'placeholderMinDuration',
           Duration.zero,
         );
-        final errorWidget =
-            D4.getOptionalNamedArg<Widget?>(named, 'errorWidget');
+        final errorWidget = D4.getOptionalNamedArg<Widget?>(
+          named,
+          'errorWidget',
+        );
         final cacheWidth = D4.getOptionalNamedArg<int?>(named, 'cacheWidth');
         final cacheHeight = D4.getOptionalNamedArg<int?>(named, 'cacheHeight');
         return Image(
@@ -108,15 +116,19 @@ void registerAstAssetAwareBridges(
           'fadeInDuration',
           Duration.zero,
         );
-        final placeholder =
-            D4.getOptionalNamedArg<Widget?>(named, 'placeholder');
+        final placeholder = D4.getOptionalNamedArg<Widget?>(
+          named,
+          'placeholder',
+        );
         final placeholderMinDuration = D4.getNamedArgWithDefault<Duration>(
           named,
           'placeholderMinDuration',
           Duration.zero,
         );
-        final errorWidget =
-            D4.getOptionalNamedArg<Widget?>(named, 'errorWidget');
+        final errorWidget = D4.getOptionalNamedArg<Widget?>(
+          named,
+          'errorWidget',
+        );
         final cacheWidth = D4.getOptionalNamedArg<int?>(named, 'cacheWidth');
         final cacheHeight = D4.getOptionalNamedArg<int?>(named, 'cacheHeight');
         return Image.network(
@@ -208,8 +220,12 @@ void registerAstAssetAwareBridges(
       },
       'memory': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'Image');
-        final bytes =
-            D4.getRequiredArg<Uint8List>(positional, 0, 'bytes', 'Image');
+        final bytes = D4.getRequiredArg<Uint8List>(
+          positional,
+          0,
+          'bytes',
+          'Image',
+        );
         final key = D4.getOptionalNamedArg<Key?>(named, 'key');
         final width = D4.getOptionalNamedArg<double?>(named, 'width');
         final height = D4.getOptionalNamedArg<double?>(named, 'height');
@@ -272,8 +288,9 @@ void registerAstAssetAwareBridges(
         );
         final serverUrl = provider();
         if (serverUrl != null && serverUrl.isNotEmpty) {
-          final cleanName =
-              assetName.startsWith('/') ? assetName.substring(1) : assetName;
+          final cleanName = assetName.startsWith('/')
+              ? assetName.substring(1)
+              : assetName;
           return NetworkImage('$serverUrl/$cleanName');
         }
         return AssetImage(assetName);

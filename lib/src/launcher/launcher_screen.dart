@@ -2,8 +2,6 @@ import 'package:dartnative/dartnative.dart' hide Button;
 import 'package:riverpod_kit/riverpod_kit.dart';
 
 import '../client/project_model.dart';
-import '../client/theme_storage.dart';
-import '../theme/launcher_theme.dart';
 import '../theme/shadcn_theme.dart';
 import '../theme/theme_providers.dart';
 import 'launcher_app_bar.dart';
@@ -44,74 +42,54 @@ class LauncherScreen extends StatefulWidget {
 class _LauncherScreenState extends State<LauncherScreen> {
   @override
   Widget build(BuildContext context) {
+    final theme = context.theme;
+
     return Consumer(
       builder: (context, ref, _) {
-        final preference = ref.watch(themePreferenceProvider);
-        final appearanceMode = switch (preference) {
-          ThemePreference.system => ShadcnAppearanceMode.system,
-          ThemePreference.light => ShadcnAppearanceMode.light,
-          ThemePreference.dark => ShadcnAppearanceMode.dark,
-        };
-
-        return ShadcnTheme(
-          mode: appearanceMode,
-          child: Builder(
-            builder: (context) {
-              final theme = context.theme;
-              final colors = LauncherColors.fromTheme(theme);
-              return Scaffold(
-                backgroundColor: theme.background,
-                brightness: theme.brightness,
-                appBar: LauncherAppBar(
-                  onRescan: widget.onRescan,
-                  colors: colors,
-                  onChangeTheme: () =>
-                      ref.read(themePreferenceProvider.notifier).cycle(),
-                  onCycleMode: widget.onCycleMode,
-                  runtimeModeLabel: widget.runtimeModeLabel,
-                ),
-                body: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 24,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Development Server',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: theme.foreground,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Connect to an active DartNative local dev server.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: theme.mutedForeground,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ServerUrlInput(
-                        controller: widget.urlController,
-                        onSubmitted: widget.onUrlSubmitted,
-                        colors: colors,
-                      ),
-                      const SizedBox(height: 32),
-                      RecentProjectsList(
-                        projects: widget.projects,
-                        isLoading: widget.isLoading,
-                        onSelectProject: widget.onSelectProject,
-                        colors: colors,
-                      ),
-                    ],
+        return Scaffold(
+          backgroundColor: theme.background,
+          // Omit brightness so Scaffold doesn't override MediaQuery theme inheritance.
+          appBar: LauncherAppBar(
+            onRescan: widget.onRescan,
+            onChangeTheme: () =>
+                ref.read(themePreferenceProvider.notifier).cycle(),
+            onCycleMode: widget.onCycleMode,
+            runtimeModeLabel: widget.runtimeModeLabel,
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Development Server',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: theme.foreground,
                   ),
                 ),
-              );
-            },
+                const SizedBox(height: 4),
+                Text(
+                  'Connect to an active DartNative local dev server.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: theme.mutedForeground,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ServerUrlInput(
+                  controller: widget.urlController,
+                  onSubmitted: widget.onUrlSubmitted,
+                ),
+                const SizedBox(height: 32),
+                RecentProjectsList(
+                  projects: widget.projects,
+                  isLoading: widget.isLoading,
+                  onSelectProject: widget.onSelectProject,
+                ),
+              ],
+            ),
           ),
         );
       },

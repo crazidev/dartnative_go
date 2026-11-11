@@ -30,8 +30,8 @@ class DartGoNetworkScanner {
     this.discoveryPort = 45454,
     DartGoHttpClient? httpClient,
     IProjectStorage? storage,
-  })  : _httpClient = httpClient ?? DartGoHttpClient(),
-        _storage = storage ?? InMemoryProjectStorage();
+  }) : _httpClient = httpClient ?? DartGoHttpClient(),
+       _storage = storage ?? InMemoryProjectStorage();
 
   /// Stream of projects sorted with active projects at the top.
   Stream<List<DartGoProject>> get projectsStream => _projectsController.stream;

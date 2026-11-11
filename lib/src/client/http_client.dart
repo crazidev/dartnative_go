@@ -7,8 +7,8 @@ class DartGoHttpClient {
   final HttpClient _client;
 
   DartGoHttpClient({HttpClient? client})
-      : _client = client ?? HttpClient()
-          ..connectionTimeout = const Duration(milliseconds: 1500);
+    : _client = client ?? HttpClient()
+        ..connectionTimeout = const Duration(milliseconds: 1500);
 
   /// Normalizes a user-entered or scanned URL by ensuring the http scheme and stripping trailing slashes.
   static String normalizeUrl(String input) {
@@ -47,7 +47,10 @@ class DartGoHttpClient {
         return null;
       }
 
-      final body = await response.transform(utf8.decoder).join().timeout(timeout);
+      final body = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(timeout);
       final decoded = jsonDecode(body);
       if (decoded is Map<String, dynamic> && decoded['protocol'] == 'dart_go') {
         return decoded;

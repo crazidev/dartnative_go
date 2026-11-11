@@ -103,9 +103,7 @@ int oklchToArgb(String oklch) {
 
 int _toSrbgByte(double linear) {
   final c = linear.clamp(0.0, 1.0);
-  final v = c <= 0.0031308
-      ? 12.92 * c
-      : 1.055 * math.pow(c, 1.0 / 2.4) - 0.055;
+  final v = c <= 0.0031308 ? 12.92 * c : 1.055 * math.pow(c, 1.0 / 2.4) - 0.055;
   return (v * 255).round().clamp(0, 255);
 }
 
@@ -113,7 +111,9 @@ int _toSrbgByte(double linear) {
 double relativeLuminance(int argb) {
   double channel(int byte) {
     final c = byte / 255.0;
-    return c <= 0.03928 ? c / 12.92 : math.pow((c + 0.055) / 1.055, 2.4).toDouble();
+    return c <= 0.03928
+        ? c / 12.92
+        : math.pow((c + 0.055) / 1.055, 2.4).toDouble();
   }
 
   return 0.2126 * channel((argb >> 16) & 0xFF) +
@@ -128,8 +128,7 @@ int bestOnColor(int backgroundArgb, List<int> candidates) {
   for (final c in candidates) {
     final l1 = relativeLuminance(backgroundArgb);
     final l2 = relativeLuminance(c);
-    final contrast =
-        (math.max(l1, l2) + 0.05) / (math.min(l1, l2) + 0.05);
+    final contrast = (math.max(l1, l2) + 0.05) / (math.min(l1, l2) + 0.05);
     if (contrast > bestScore) {
       bestScore = contrast;
       best = c;
@@ -218,7 +217,9 @@ String generateThemeDart({
   out.writeln("import '../client/theme_storage.dart';");
   out.writeln();
 
-  final radiusVal = parseRadius(light['radius'] ?? dark['radius'] ?? '0.625rem');
+  final radiusVal = parseRadius(
+    light['radius'] ?? dark['radius'] ?? '0.625rem',
+  );
 
   for (final entry in [('Light', light, 'light'), ('Dark', dark, 'dark')]) {
     final className = 'Shadcn${entry.$1}';
@@ -228,8 +229,7 @@ String generateThemeDart({
     for (final name in kAllTokenNames) {
       final raw = tokens[name];
       if (raw == null) {
-        throw FormatException(
-            'theme $brightness is missing token --$name');
+        throw FormatException('theme $brightness is missing token --$name');
       }
       argb[name] = oklchToArgb(raw);
     }
@@ -248,16 +248,27 @@ String generateThemeDart({
     out.writeln('abstract final class $className {');
     for (final name in kTokenNames) {
       out.writeln(
-          '  static const Color ${_dartField(name)} = Color(${_hex(argb[name]!)});');
+        '  static const Color ${_dartField(name)} = Color(${_hex(argb[name]!)});',
+      );
     }
     for (final name in [
-      'chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5',
-      'sidebar', 'sidebar-foreground', 'sidebar-primary',
-      'sidebar-primary-foreground', 'sidebar-accent',
-      'sidebar-accent-foreground', 'sidebar-border', 'sidebar-ring',
+      'chart-1',
+      'chart-2',
+      'chart-3',
+      'chart-4',
+      'chart-5',
+      'sidebar',
+      'sidebar-foreground',
+      'sidebar-primary',
+      'sidebar-primary-foreground',
+      'sidebar-accent',
+      'sidebar-accent-foreground',
+      'sidebar-border',
+      'sidebar-ring',
     ]) {
       out.writeln(
-          '  static const Color ${_dartField(name)} = Color(${_hex(argb[name]!)});');
+        '  static const Color ${_dartField(name)} = Color(${_hex(argb[name]!)});',
+      );
     }
     out.writeln('  static const double radius = $radius;');
     out.writeln();
@@ -290,7 +301,9 @@ String generateThemeDart({
   }
 
   // --- ShadcnTokens ---
-  out.writeln('/// Multi-theme token bag. Each color is a [ShadcnColor] holding both light and dark values.');
+  out.writeln(
+    '/// Multi-theme token bag. Each color is a [ShadcnColor] holding both light and dark values.',
+  );
   out.writeln('abstract final class ShadcnTokens {');
   for (final name in kAllTokenNames) {
     final field = _dartField(name);
@@ -304,7 +317,9 @@ String generateThemeDart({
   out.writeln();
 
   // --- ShadcnColor ---
-  out.writeln('/// Dynamic theme color token pairing a light and dark [Color].');
+  out.writeln(
+    '/// Dynamic theme color token pairing a light and dark [Color].',
+  );
   out.writeln('class ShadcnColor {');
   out.writeln('  final Color light;');
   out.writeln('  final Color dark;');
@@ -318,8 +333,12 @@ String generateThemeDart({
   out.writeln('  Color resolve(Brightness brightness) =>');
   out.writeln('      brightness == Brightness.dark ? dark : light;');
   out.writeln();
-  out.writeln('  /// Resolves the concrete [Color] according to the ambient [context] theme.');
-  out.writeln('  Color of(BuildContext context) => resolve(Theme.of(context).brightness);');
+  out.writeln(
+    '  /// Resolves the concrete [Color] according to the ambient [context] theme.',
+  );
+  out.writeln(
+    '  Color of(BuildContext context) => resolve(Theme.of(context).brightness);',
+  );
   out.writeln('}');
   out.writeln();
   out.writeln('typedef ShadncColor = ShadcnColor;');
@@ -350,18 +369,32 @@ String generateThemeDart({
   out.writeln();
   out.writeln('  BorderRadius get none => BorderRadius.zero;');
   out.writeln('  BorderRadius get sm =>');
-  out.writeln('      BorderRadius.all(Radius.circular((base - 4.0).clamp(0.0, double.infinity)));');
+  out.writeln(
+    '      BorderRadius.all(Radius.circular((base - 4.0).clamp(0.0, double.infinity)));',
+  );
   out.writeln('  BorderRadius get md =>');
-  out.writeln('      BorderRadius.all(Radius.circular((base - 2.0).clamp(0.0, double.infinity)));');
-  out.writeln('  BorderRadius get lg => BorderRadius.all(Radius.circular(base));');
-  out.writeln('  BorderRadius get xl => BorderRadius.all(Radius.circular(base + 4.0));');
-  out.writeln('  BorderRadius get full => const BorderRadius.all(Radius.circular(9999.0));');
-  out.writeln('  BorderRadius px(double radius) => BorderRadius.all(Radius.circular(radius));');
+  out.writeln(
+    '      BorderRadius.all(Radius.circular((base - 2.0).clamp(0.0, double.infinity)));',
+  );
+  out.writeln(
+    '  BorderRadius get lg => BorderRadius.all(Radius.circular(base));',
+  );
+  out.writeln(
+    '  BorderRadius get xl => BorderRadius.all(Radius.circular(base + 4.0));',
+  );
+  out.writeln(
+    '  BorderRadius get full => const BorderRadius.all(Radius.circular(9999.0));',
+  );
+  out.writeln(
+    '  BorderRadius px(double radius) => BorderRadius.all(Radius.circular(radius));',
+  );
   out.writeln('}');
   out.writeln();
 
   // --- ShadcnThemeData ---
-  out.writeln('/// Resolved theme data representing active colors and metrics.');
+  out.writeln(
+    '/// Resolved theme data representing active colors and metrics.',
+  );
   out.writeln('class ShadcnThemeData {');
   out.writeln('  final Brightness brightness;');
   out.writeln('  final ShadcnRadius radius;');
@@ -379,7 +412,9 @@ String generateThemeDart({
   out.writeln();
   out.writeln('  bool get isDark => brightness == Brightness.dark;');
   out.writeln('  bool get isLight => brightness == Brightness.light;');
-  out.writeln('  ThemeData get materialTheme => isDark ? ShadcnDark.theme : ShadcnLight.theme;');
+  out.writeln(
+    '  ThemeData get materialTheme => isDark ? ShadcnDark.theme : ShadcnLight.theme;',
+  );
   out.writeln();
   out.writeln('  static final ShadcnThemeData light = ShadcnThemeData(');
   out.writeln('    brightness: Brightness.light,');
@@ -399,7 +434,9 @@ String generateThemeDart({
   }
   out.writeln('  );');
   out.writeln();
-  out.writeln('  factory ShadcnThemeData.fromBrightness(Brightness brightness) =>');
+  out.writeln(
+    '  factory ShadcnThemeData.fromBrightness(Brightness brightness) =>',
+  );
   out.writeln('      brightness == Brightness.dark ? dark : light;');
   out.writeln();
   out.writeln('  ShadcnThemeData copyWith({');
@@ -460,35 +497,55 @@ String generateThemeDart({
   out.writeln('    required this.child,');
   out.writeln('  });');
   out.writeln();
-  out.writeln('  factory ShadcnTheme.dark({Key? key, required Widget child}) =>');
-  out.writeln('      ShadcnTheme(key: key, data: ShadcnThemeData.dark, child: child);');
+  out.writeln(
+    '  factory ShadcnTheme.dark({Key? key, required Widget child}) =>',
+  );
+  out.writeln(
+    '      ShadcnTheme(key: key, data: ShadcnThemeData.dark, child: child);',
+  );
   out.writeln();
-  out.writeln('  factory ShadcnTheme.light({Key? key, required Widget child}) =>');
-  out.writeln('      ShadcnTheme(key: key, data: ShadcnThemeData.light, child: child);');
+  out.writeln(
+    '  factory ShadcnTheme.light({Key? key, required Widget child}) =>',
+  );
+  out.writeln(
+    '      ShadcnTheme(key: key, data: ShadcnThemeData.light, child: child);',
+  );
   out.writeln();
   out.writeln('  static ShadcnThemeData of(BuildContext context) {');
   out.writeln('    final inherited =');
-  out.writeln('        context.dependOnInheritedWidgetOfExactType<_ShadcnInheritedTheme>();');
+  out.writeln(
+    '        context.dependOnInheritedWidgetOfExactType<_ShadcnInheritedTheme>();',
+  );
   out.writeln('    if (inherited != null) return inherited.data;');
   out.writeln('    final brightness = Theme.of(context).brightness;');
   out.writeln('    return ShadcnThemeData.fromBrightness(brightness);');
   out.writeln('  }');
   out.writeln();
-  out.writeln('  static void setAppearance(BuildContext context, ShadcnAppearanceMode mode) {');
+  out.writeln(
+    '  static void setAppearance(BuildContext context, ShadcnAppearanceMode mode) {',
+  );
   out.writeln('    final scope =');
-  out.writeln('        context.dependOnInheritedWidgetOfExactType<_ShadcnInheritedTheme>();');
+  out.writeln(
+    '        context.dependOnInheritedWidgetOfExactType<_ShadcnInheritedTheme>();',
+  );
   out.writeln('    scope?.onSetMode(mode);');
   out.writeln('  }');
   out.writeln();
   out.writeln('  static void cycleAppearance(BuildContext context) {');
   out.writeln('    final scope =');
-  out.writeln('        context.dependOnInheritedWidgetOfExactType<_ShadcnInheritedTheme>();');
+  out.writeln(
+    '        context.dependOnInheritedWidgetOfExactType<_ShadcnInheritedTheme>();',
+  );
   out.writeln('    scope?.onCycleMode();');
   out.writeln('  }');
   out.writeln();
-  out.writeln('  static ShadcnAppearanceMode getAppearance(BuildContext context) {');
+  out.writeln(
+    '  static ShadcnAppearanceMode getAppearance(BuildContext context) {',
+  );
   out.writeln('    final scope =');
-  out.writeln('        context.dependOnInheritedWidgetOfExactType<_ShadcnInheritedTheme>();');
+  out.writeln(
+    '        context.dependOnInheritedWidgetOfExactType<_ShadcnInheritedTheme>();',
+  );
   out.writeln('    return scope?.mode ?? ShadcnAppearanceMode.system;');
   out.writeln('  }');
   out.writeln();
@@ -500,7 +557,9 @@ String generateThemeDart({
   out.writeln();
 
   // --- _ShadcnThemeState ---
-  out.writeln('class _ShadcnThemeState extends State<ShadcnTheme> with WidgetsBindingObserver {');
+  out.writeln(
+    'class _ShadcnThemeState extends State<ShadcnTheme> with WidgetsBindingObserver {',
+  );
   out.writeln('  late ShadcnAppearanceMode _mode;');
   out.writeln();
   out.writeln('  ShadcnAppearanceMode get mode => widget.mode ?? _mode;');
@@ -517,7 +576,9 @@ String generateThemeDart({
   out.writeln('  @override');
   out.writeln('  void didUpdateWidget(covariant ShadcnTheme oldWidget) {');
   out.writeln('    super.didUpdateWidget(oldWidget);');
-  out.writeln('    if (widget.mode != null && widget.mode != oldWidget.mode) {');
+  out.writeln(
+    '    if (widget.mode != null && widget.mode != oldWidget.mode) {',
+  );
   out.writeln('      _mode = widget.mode!;');
   out.writeln('    } else if (widget.initialMode != null &&');
   out.writeln('        widget.initialMode != oldWidget.initialMode) {');
@@ -550,9 +611,13 @@ String generateThemeDart({
   out.writeln();
   out.writeln('  void cycleMode() {');
   out.writeln('    final next = switch (mode) {');
-  out.writeln('      ShadcnAppearanceMode.system => ShadcnAppearanceMode.light,');
+  out.writeln(
+    '      ShadcnAppearanceMode.system => ShadcnAppearanceMode.light,',
+  );
   out.writeln('      ShadcnAppearanceMode.light => ShadcnAppearanceMode.dark,');
-  out.writeln('      ShadcnAppearanceMode.dark => ShadcnAppearanceMode.system,');
+  out.writeln(
+    '      ShadcnAppearanceMode.dark => ShadcnAppearanceMode.system,',
+  );
   out.writeln('    };');
   out.writeln('    setMode(next);');
   out.writeln('  }');
@@ -578,7 +643,9 @@ String generateThemeDart({
   out.writeln('  @override');
   out.writeln('  Widget build(BuildContext context) {');
   out.writeln('    final effectiveData = widget.data ??');
-  out.writeln('        ShadcnThemeData.fromBrightness(_resolveBrightness(context));');
+  out.writeln(
+    '        ShadcnThemeData.fromBrightness(_resolveBrightness(context));',
+  );
   out.writeln('    return _ShadcnInheritedTheme(');
   out.writeln('      data: effectiveData,');
   out.writeln('      mode: mode,');
@@ -589,13 +656,17 @@ String generateThemeDart({
   out.writeln('  }');
   out.writeln('}');
   out.writeln();
-  out.writeln('ThemePreference _modeToPref(ShadcnAppearanceMode mode) => switch (mode) {');
+  out.writeln(
+    'ThemePreference _modeToPref(ShadcnAppearanceMode mode) => switch (mode) {',
+  );
   out.writeln('      ShadcnAppearanceMode.system => ThemePreference.system,');
   out.writeln('      ShadcnAppearanceMode.light => ThemePreference.light,');
   out.writeln('      ShadcnAppearanceMode.dark => ThemePreference.dark,');
   out.writeln('    };');
   out.writeln();
-  out.writeln('ShadcnAppearanceMode _prefToMode(ThemePreference pref) => switch (pref) {');
+  out.writeln(
+    'ShadcnAppearanceMode _prefToMode(ThemePreference pref) => switch (pref) {',
+  );
   out.writeln('      ThemePreference.system => ShadcnAppearanceMode.system,');
   out.writeln('      ThemePreference.light => ShadcnAppearanceMode.light,');
   out.writeln('      ThemePreference.dark => ShadcnAppearanceMode.dark,');
@@ -624,7 +695,9 @@ String generateThemeDart({
   out.writeln();
 
   // --- ShadcnApp ---
-  out.writeln('/// Convenience root application widget preconfigured with shadcn themes.');
+  out.writeln(
+    '/// Convenience root application widget preconfigured with shadcn themes.',
+  );
   out.writeln('class ShadcnApp extends StatelessWidget {');
   out.writeln('  final Widget? home;');
   out.writeln('  final String title;');
@@ -661,7 +734,9 @@ String generateThemeDart({
   out.writeln('            routes: routes,');
   out.writeln('            initialRoute: initialRoute,');
   out.writeln('            navigatorObserver: navigatorObserver,');
-  out.writeln('            debugShowCheckedModeBanner: debugShowCheckedModeBanner,');
+  out.writeln(
+    '            debugShowCheckedModeBanner: debugShowCheckedModeBanner,',
+  );
   out.writeln('          );');
   out.writeln('        },');
   out.writeln('      ),');
@@ -673,20 +748,28 @@ String generateThemeDart({
   // --- ShadcnThemeContextExtension ---
   out.writeln('/// Extensions on [BuildContext] for ergonomic theme access.');
   out.writeln('extension ShadcnThemeContextExtension on BuildContext {');
-  out.writeln('  /// The active resolved theme data (e.g. `context.theme.background`, `context.theme.radius.lg`).');
+  out.writeln(
+    '  /// The active resolved theme data (e.g. `context.theme.background`, `context.theme.radius.lg`).',
+  );
   out.writeln('  ShadcnThemeData get theme => ShadcnTheme.of(this);');
   out.writeln();
   out.writeln('  /// The current application appearance mode.');
-  out.writeln('  ShadcnAppearanceMode get appearanceMode => ShadcnTheme.getAppearance(this);');
+  out.writeln(
+    '  ShadcnAppearanceMode get appearanceMode => ShadcnTheme.getAppearance(this);',
+  );
   out.writeln();
-  out.writeln('  /// Sets application appearance mode (`system`, `light`, `dark`).');
+  out.writeln(
+    '  /// Sets application appearance mode (`system`, `light`, `dark`).',
+  );
   out.writeln('  void setAppearance(ShadcnAppearanceMode mode) =>');
   out.writeln('      ShadcnTheme.setAppearance(this, mode);');
   out.writeln();
   out.writeln('  /// Cycles appearance mode (system → light → dark → system).');
   out.writeln('  void cycleAppearance() => ShadcnTheme.cycleAppearance(this);');
   out.writeln();
-  out.writeln('  // Direct token getters returning [ShadcnColor] (e.g. `context.background.dark`, `context.background.light`).');
+  out.writeln(
+    '  // Direct token getters returning [ShadcnColor] (e.g. `context.background.dark`, `context.background.light`).',
+  );
   for (final name in kAllTokenNames) {
     final field = _dartField(name);
     out.writeln('  ShadcnColor get $field => ShadcnTokens.$field;');

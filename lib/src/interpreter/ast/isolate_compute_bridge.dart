@@ -24,12 +24,14 @@ void registerAstComputeBridge(ast.D4rtRunner runner) {
     final message = positional.length > 1 ? positional[1] : null;
 
     if (callback is ast.InterpretedFunction) {
-      final fnName = callback.codeCell?.key.qualifiedName ??
-          callback.currentCode.name;
+      final fnName =
+          callback.codeCell?.key.qualifiedName ?? callback.currentCode.name;
       final moduleUri = callback.codeCell?.key.moduleUri;
-      final bytes = D4rtIsolateWorker.activeBundleBytes ??
+      final bytes =
+          D4rtIsolateWorker.activeBundleBytes ??
           D4rtIsolateWorker.bundleBytesProvider?.call();
-      final isTopLevel = callback.codeCell != null &&
+      final isTopLevel =
+          callback.codeCell != null &&
           !callback.codeCell!.key.qualifiedName.contains('#');
 
       if (fnName != null && isTopLevel && bytes != null && bytes.isNotEmpty) {

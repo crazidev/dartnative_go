@@ -1,7 +1,6 @@
 import 'package:dartnative/dartnative.dart';
-import 'package:dartnative_go/src/theme/shadcn_theme.dart';
 
-import '../theme/launcher_theme.dart';
+import '../theme/shadcn_theme.dart';
 
 /// Top application bar for the DartNative Go launcher.
 class LauncherAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -9,12 +8,10 @@ class LauncherAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onChangeTheme;
   final VoidCallback? onCycleMode;
   final String? runtimeModeLabel;
-  final LauncherColors colors;
 
   const LauncherAppBar({
     super.key,
     required this.onRescan,
-    required this.colors,
     this.onChangeTheme,
     this.onCycleMode,
     this.runtimeModeLabel,

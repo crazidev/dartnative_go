@@ -6,7 +6,8 @@ import 'dart:io';
 class LiveConnection {
   final String serverUrl;
   final void Function(String? changedFile)? onReload;
-  final void Function(List<String> changedFiles, {bool isAssetChange})? onReloadBatch;
+  final void Function(List<String> changedFiles, {bool isAssetChange})?
+  onReloadBatch;
   final void Function(List<Map<String, dynamic>> breakpoints)? onBreakpoints;
   final void Function()? onResume;
   final void Function(bool enabled)? onSetVmDebugger;
@@ -23,7 +24,12 @@ class LiveConnection {
   /// the handler should reply with [sendUiTree]. `onUiTap` fires with the
   /// button title and/or target spec; the handler should reply with [sendUiTapResult].
   final void Function(String requestId)? onUiProbeRequest;
-  final void Function(String requestId, String? title, Map<String, dynamic>? target)? onUiTap;
+  final void Function(
+    String requestId,
+    String? title,
+    Map<String, dynamic>? target,
+  )?
+  onUiTap;
 
   /// UI automation triggers (see `lib/src/runner/ui_probe.dart`). Each fires
   /// with the request id plus the decoded target (and text for type/submit);
@@ -31,9 +37,25 @@ class LiveConnection {
   final void Function(String requestId, Map<String, dynamic> target)? onUiHover;
   final void Function(String requestId, Map<String, dynamic> target)? onUiFocus;
   final void Function(String requestId, Map<String, dynamic> target)? onUiBlur;
-  final void Function(String requestId, Map<String, dynamic> target, String? text)? onUiSubmit;
-  final void Function(String requestId, Map<String, dynamic> target, String text)? onUiType;
-  final void Function(String requestId, Map<String, dynamic>? target, double deltaX, double deltaY)? onUiScroll;
+  final void Function(
+    String requestId,
+    Map<String, dynamic> target,
+    String? text,
+  )?
+  onUiSubmit;
+  final void Function(
+    String requestId,
+    Map<String, dynamic> target,
+    String text,
+  )?
+  onUiType;
+  final void Function(
+    String requestId,
+    Map<String, dynamic>? target,
+    double deltaX,
+    double deltaY,
+  )?
+  onUiScroll;
 
   WebSocket? _socket;
   bool _isDisposed = false;
@@ -59,7 +81,8 @@ class LiveConnection {
     this.onUiScroll,
   });
 
-  bool get isConnected => _socket != null && _socket!.readyState == WebSocket.open;
+  bool get isConnected =>
+      _socket != null && _socket!.readyState == WebSocket.open;
 
   static Map<String, dynamic> _targetMap(Map<String, dynamic> data) {
     final target = data['target'];
@@ -111,7 +134,8 @@ class LiveConnection {
             } else if (type == 'restart') {
               onRestart?.call();
             } else if (type == 'breakpoints') {
-              final bpList = (data['breakpoints'] as List).cast<Map<String, dynamic>>();
+              final bpList = (data['breakpoints'] as List)
+                  .cast<Map<String, dynamic>>();
               onBreakpoints?.call(bpList);
             } else if (type == 'resume') {
               onResume?.call();
@@ -258,8 +282,13 @@ class LiveConnection {
 
   /// Sends the outcome of a `ui_tap` request (`error` is null on success).
   void sendUiTapResult(String requestId, bool ok, [String? error]) {
-    sendUiActionResult('ui_tap_result', requestId, ok,
-        error: error, viewId: null);
+    sendUiActionResult(
+      'ui_tap_result',
+      requestId,
+      ok,
+      error: error,
+      viewId: null,
+    );
   }
 
   /// Sends a trigger outcome (`ui_hover_result`, `ui_focus_result`,

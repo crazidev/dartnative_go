@@ -12,8 +12,8 @@ class AppCache {
 
   /// Creates or returns the on-device application cache root.
   static Future<AppCache> create([Directory? baseDir]) async {
-    final root = baseDir ??
-        Directory('${Directory.systemTemp.path}/dn_app_cache');
+    final root =
+        baseDir ?? Directory('${Directory.systemTemp.path}/dn_app_cache');
     if (!root.existsSync()) {
       root.createSync(recursive: true);
     }
@@ -145,7 +145,8 @@ class AppCache {
         splashUrl: metaJson['splashUrl']?.toString(),
         iconUrl: metaJson['iconUrl']?.toString(),
         splashBackgroundColor: metaJson['splashBackgroundColor']?.toString(),
-        serverUrl: metaJson['serverUrl']?.toString() ??
+        serverUrl:
+            metaJson['serverUrl']?.toString() ??
             BundleLoader.normalizeUrl(serverUrl),
         sources: sources,
         entrypointCode: metaJson['entrypointCode']?.toString() ?? '',

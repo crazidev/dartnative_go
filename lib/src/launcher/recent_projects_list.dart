@@ -1,7 +1,6 @@
 import 'package:dartnative/dartnative.dart';
 
 import '../client/project_model.dart';
-import '../theme/launcher_theme.dart';
 import '../theme/shadcn_theme.dart';
 import 'project_card.dart';
 
@@ -10,14 +9,12 @@ class RecentProjectsList extends StatelessWidget {
   final List<DartGoProject> projects;
   final bool isLoading;
   final ValueChanged<DartGoProject> onSelectProject;
-  final LauncherColors? colors;
 
   const RecentProjectsList({
     super.key,
     required this.projects,
     required this.isLoading,
     required this.onSelectProject,
-    this.colors,
   });
 
   @override
@@ -95,12 +92,12 @@ class RecentProjectsList extends StatelessWidget {
               );
 
               return Column(
+                key: ValueKey(project.url),
                 children: [
                   ?(!isFirst ? divider : null),
                   ProjectCard(
                     project: project,
                     onTap: onSelectProject,
-                    colors: colors,
                   ),
                 ],
               );

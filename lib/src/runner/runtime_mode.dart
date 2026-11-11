@@ -10,8 +10,13 @@ const bool kUseAst = true;
 
 const RuntimeMode kDefaultRuntimeMode = RuntimeMode.ast;
 
-/// Modes a user can actually select right now.
-List<RuntimeMode> get selectableRuntimeModes => RuntimeMode.values;
+/// Whether the analyzer-based Source runtime is linked into this binary.
+/// Set before `runApp` by development entrypoints (e.g. `main_source.dart`).
+bool kSourceRuntimeLinked = false;
+
+/// Available runtime modes based on linked engines.
+List<RuntimeMode> get selectableRuntimeModes =>
+    kSourceRuntimeLinked ? RuntimeMode.values : const [RuntimeMode.ast];
 
 extension RuntimeModeX on RuntimeMode {
   bool get isSource => this == RuntimeMode.source;
@@ -22,11 +27,13 @@ extension RuntimeModeX on RuntimeMode {
     RuntimeMode.ast => 'AST',
   };
 
-  /// Cycle order: AST -> Source -> AST.
-  RuntimeMode get next => switch (this) {
-    RuntimeMode.ast => RuntimeMode.source,
-    RuntimeMode.source => RuntimeMode.ast,
-  };
+  /// Cycle order: AST -> Source -> AST, restricted to linked modes.
+  RuntimeMode get next {
+    final modes = selectableRuntimeModes;
+    if (modes.length <= 1) return this;
+    final index = modes.indexOf(this);
+    return modes[(index < 0 ? 0 : index + 1) % modes.length];
+  }
 }
 
 RuntimeMode runtimeModeFromBool(bool useAst) =>
@@ -41,3 +48,10 @@ RuntimeMode runtimeModeFromName(String? name) {
 }
 
 bool flagsFromRuntimeMode(RuntimeMode mode) => mode == RuntimeMode.ast;
+
+/// Clamps a stored/requested mode to one this binary can actually run.
+///
+/// A persisted `source` selection from a debug build must not strand a product
+/// build in a mode whose runtime is not linked.
+RuntimeMode supportedRuntimeMode(RuntimeMode mode) =>
+    selectableRuntimeModes.contains(mode) ? mode : kDefaultRuntimeMode;

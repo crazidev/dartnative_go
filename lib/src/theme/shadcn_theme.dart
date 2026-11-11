@@ -8,37 +8,37 @@ import '../client/theme_storage.dart';
 /// shadcn `light` tokens as Dart colors.
 abstract final class ShadcnLight {
   static const Color background = Color(0xFFFFFFFF);
-  static const Color foreground = Color(0xFF0A0A0A);
+  static const Color foreground = Color(0xFF090B0C);
   static const Color card = Color(0xFFFFFFFF);
-  static const Color cardForeground = Color(0xFF0A0A0A);
+  static const Color cardForeground = Color(0xFF090B0C);
   static const Color popover = Color(0xFFFFFFFF);
-  static const Color popoverForeground = Color(0xFF0A0A0A);
-  static const Color primary = Color(0xFF171717);
-  static const Color primaryForeground = Color(0xFFFAFAFA);
-  static const Color secondary = Color(0xFFF5F5F5);
-  static const Color secondaryForeground = Color(0xFF171717);
-  static const Color muted = Color(0xFFF5F5F5);
-  static const Color mutedForeground = Color(0xFF737373);
-  static const Color accent = Color(0xFFF5F5F5);
-  static const Color accentForeground = Color(0xFF171717);
+  static const Color popoverForeground = Color(0xFF090B0C);
+  static const Color primary = Color(0xFF007595);
+  static const Color primaryForeground = Color(0xFFECFEFF);
+  static const Color secondary = Color(0xFFF4F4F5);
+  static const Color secondaryForeground = Color(0xFF18181B);
+  static const Color muted = Color(0xFFF1F3F3);
+  static const Color mutedForeground = Color(0xFF67787C);
+  static const Color accent = Color(0xFF007595);
+  static const Color accentForeground = Color(0xFFECFEFF);
   static const Color destructive = Color(0xFFE7000B);
-  static const Color border = Color(0xFFE5E5E5);
-  static const Color input = Color(0xFFE5E5E5);
-  static const Color ring = Color(0xFFA1A1A1);
-  static const Color chart1 = Color(0xFFD4D4D4);
-  static const Color chart2 = Color(0xFF737373);
-  static const Color chart3 = Color(0xFF525252);
-  static const Color chart4 = Color(0xFF404040);
-  static const Color chart5 = Color(0xFF262626);
-  static const Color sidebar = Color(0xFFFAFAFA);
-  static const Color sidebarForeground = Color(0xFF0A0A0A);
-  static const Color sidebarPrimary = Color(0xFF171717);
-  static const Color sidebarPrimaryForeground = Color(0xFFFAFAFA);
-  static const Color sidebarAccent = Color(0xFFF5F5F5);
-  static const Color sidebarAccentForeground = Color(0xFF171717);
-  static const Color sidebarBorder = Color(0xFFE5E5E5);
-  static const Color sidebarRing = Color(0xFFA1A1A1);
-  static const double radius = 10.0;
+  static const Color border = Color(0xFFE3E7E8);
+  static const Color input = Color(0xFFE3E7E8);
+  static const Color ring = Color(0xFF9CA8AB);
+  static const Color chart1 = Color(0xFFBBF451);
+  static const Color chart2 = Color(0xFF7CCF00);
+  static const Color chart3 = Color(0xFF5EA500);
+  static const Color chart4 = Color(0xFF497D00);
+  static const Color chart5 = Color(0xFF3C6300);
+  static const Color sidebar = Color(0xFFF9FBFB);
+  static const Color sidebarForeground = Color(0xFF090B0C);
+  static const Color sidebarPrimary = Color(0xFF0092B8);
+  static const Color sidebarPrimaryForeground = Color(0xFFECFEFF);
+  static const Color sidebarAccent = Color(0xFFF1F3F3);
+  static const Color sidebarAccentForeground = Color(0xFF161B1D);
+  static const Color sidebarBorder = Color(0xFFE3E7E8);
+  static const Color sidebarRing = Color(0xFF9CA8AB);
+  static const double radius = 7.2;
 
   static ThemeData get theme => const ThemeData(
     brightness: Brightness.light,
@@ -54,7 +54,7 @@ abstract final class ShadcnLight {
       secondary: secondary,
       onSecondary: secondaryForeground,
       error: destructive,
-      onError: Color(0xFFFAFAFA),
+      onError: Color(0xFFECFEFF),
       surface: card,
       onSurface: cardForeground,
       surfaceContainerHighest: accent,
@@ -68,37 +68,37 @@ abstract final class ShadcnLight {
 
 /// shadcn `dark` tokens as Dart colors.
 abstract final class ShadcnDark {
-  static const Color background = Color(0xFF0A0A0A);
-  static const Color foreground = Color(0xFFFAFAFA);
-  static const Color card = Color(0xFF171717);
-  static const Color cardForeground = Color(0xFFFAFAFA);
-  static const Color popover = Color(0xFF171717);
-  static const Color popoverForeground = Color(0xFFFAFAFA);
-  static const Color primary = Color(0xFFE5E5E5);
-  static const Color primaryForeground = Color(0xFF171717);
-  static const Color secondary = Color(0xFF262626);
+  static const Color background = Color(0xFF090B0C);
+  static const Color foreground = Color(0xFFF9FBFB);
+  static const Color card = Color(0xFF161B1D);
+  static const Color cardForeground = Color(0xFFF9FBFB);
+  static const Color popover = Color(0xFF161B1D);
+  static const Color popoverForeground = Color(0xFFF9FBFB);
+  static const Color primary = Color(0xFF005F78);
+  static const Color primaryForeground = Color(0xFFECFEFF);
+  static const Color secondary = Color(0xFF27272A);
   static const Color secondaryForeground = Color(0xFFFAFAFA);
-  static const Color muted = Color(0xFF262626);
-  static const Color mutedForeground = Color(0xFFA1A1A1);
-  static const Color accent = Color(0xFF262626);
-  static const Color accentForeground = Color(0xFFFAFAFA);
+  static const Color muted = Color(0xFF22292B);
+  static const Color mutedForeground = Color(0xFF9CA8AB);
+  static const Color accent = Color(0xFF005F78);
+  static const Color accentForeground = Color(0xFFECFEFF);
   static const Color destructive = Color(0xFFFF6467);
   static const Color border = Color(0x1AFFFFFF);
   static const Color input = Color(0x26FFFFFF);
-  static const Color ring = Color(0xFF737373);
-  static const Color chart1 = Color(0xFFD4D4D4);
-  static const Color chart2 = Color(0xFF737373);
-  static const Color chart3 = Color(0xFF525252);
-  static const Color chart4 = Color(0xFF404040);
-  static const Color chart5 = Color(0xFF262626);
-  static const Color sidebar = Color(0xFF171717);
-  static const Color sidebarForeground = Color(0xFFFAFAFA);
-  static const Color sidebarPrimary = Color(0xFF1447E6);
-  static const Color sidebarPrimaryForeground = Color(0xFFFAFAFA);
-  static const Color sidebarAccent = Color(0xFF262626);
-  static const Color sidebarAccentForeground = Color(0xFFFAFAFA);
+  static const Color ring = Color(0xFF67787C);
+  static const Color chart1 = Color(0xFFBBF451);
+  static const Color chart2 = Color(0xFF7CCF00);
+  static const Color chart3 = Color(0xFF5EA500);
+  static const Color chart4 = Color(0xFF497D00);
+  static const Color chart5 = Color(0xFF3C6300);
+  static const Color sidebar = Color(0xFF161B1D);
+  static const Color sidebarForeground = Color(0xFFF9FBFB);
+  static const Color sidebarPrimary = Color(0xFF00B8DB);
+  static const Color sidebarPrimaryForeground = Color(0xFF053345);
+  static const Color sidebarAccent = Color(0xFF22292B);
+  static const Color sidebarAccentForeground = Color(0xFFF9FBFB);
   static const Color sidebarBorder = Color(0x1AFFFFFF);
-  static const Color sidebarRing = Color(0xFF737373);
+  static const Color sidebarRing = Color(0xFF67787C);
   static const double radius = 10.0;
 
   static ThemeData get theme => const ThemeData(
@@ -115,7 +115,7 @@ abstract final class ShadcnDark {
       secondary: secondary,
       onSecondary: secondaryForeground,
       error: destructive,
-      onError: Color(0xFF171717),
+      onError: Color(0xFFF9FBFB),
       surface: card,
       onSurface: cardForeground,
       surfaceContainerHighest: accent,
@@ -253,7 +253,7 @@ abstract final class ShadcnTokens {
     light: ShadcnLight.chart5,
     dark: ShadcnDark.chart5,
   );
-  static const ShadcnSize radius = ShadcnSize.px(10.0);
+  static const ShadcnSize radius = ShadcnSize.px(7.2);
 }
 
 /// Dynamic theme color token pairing a light and dark [Color].
@@ -294,7 +294,7 @@ typedef ShadncSize = ShadcnSize;
 class ShadcnRadius {
   final double base;
 
-  const ShadcnRadius([this.base = 10.0]);
+  const ShadcnRadius([this.base = 7.2]);
 
   BorderRadius get none => BorderRadius.zero;
   BorderRadius get sm =>
@@ -385,7 +385,7 @@ class ShadcnThemeData {
 
   static final ShadcnThemeData light = ShadcnThemeData(
     brightness: Brightness.light,
-    radius: const ShadcnRadius(10.0),
+    radius: const ShadcnRadius(7.2),
     background: ShadcnLight.background,
     foreground: ShadcnLight.foreground,
     card: ShadcnLight.card,
@@ -421,7 +421,7 @@ class ShadcnThemeData {
 
   static final ShadcnThemeData dark = ShadcnThemeData(
     brightness: Brightness.dark,
-    radius: const ShadcnRadius(10.0),
+    radius: const ShadcnRadius(7.2),
     background: ShadcnDark.background,
     foreground: ShadcnDark.foreground,
     card: ShadcnDark.card,

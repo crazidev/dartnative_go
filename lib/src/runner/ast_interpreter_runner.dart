@@ -407,7 +407,11 @@ class AstInterpreterRunner {
       DartGoLogger.debug(
         '[PROFILE] bundle: modules=${profile.moduleCount}, '
         'AST=${sized ? formatBytes(profile.totalAstBytes) : 'sizes unavailable (rebuild guest.ast)'}, '
-        'source=${!profile.hasSources ? 'not bundled' : sized ? formatBytes(profile.totalSourceBytes) : 'sizes unavailable'}, '
+        'source=${!profile.hasSources
+            ? 'not bundled'
+            : sized
+            ? formatBytes(profile.totalSourceBytes)
+            : 'sizes unavailable'}, '
         'classes=${profile.totalClasses}, mainCallSync=${profile.mainMs == null ? 'n/a' : '${profile.mainMs!.toStringAsFixed(1)}ms'}',
         tag: 'AstInterpreter',
       );

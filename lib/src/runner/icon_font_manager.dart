@@ -86,11 +86,13 @@ class IconFontManager {
     if (cached != null) return Future.value(cached);
     final flight = _inFlight[fam];
     if (flight != null) return flight;
-    final future = fetcher(fam).then((bytes) {
-      _inFlight.remove(fam);
-      if (bytes != null && bytes.isNotEmpty) _loaded[fam] = bytes;
-      return bytes;
-    }).catchError((_) => null);
+    final future = fetcher(fam)
+        .then((bytes) {
+          _inFlight.remove(fam);
+          if (bytes != null && bytes.isNotEmpty) _loaded[fam] = bytes;
+          return bytes;
+        })
+        .catchError((_) => null);
     _inFlight[fam] = future;
     return future;
   }

@@ -10,9 +10,9 @@ class ResolvedIcon {
   const ResolvedIcon(this.codePoint, this.fontFamily);
 
   Map<String, dynamic> toJson() => {
-        "code_point": codePoint,
-        "font_family": fontFamily,
-      };
+    "code_point": codePoint,
+    "font_family": fontFamily,
+  };
 
   @override
   String toString() => "$fontFamily.$codePoint";
@@ -73,7 +73,9 @@ ResolvedIcon? resolveIcon(dynamic input) {
     final trimmed = input.trim();
     // Format: Family.glyph or Family:glyph
     if (trimmed.contains(".") || trimmed.contains(":")) {
-      final parts = trimmed.contains(".") ? trimmed.split(".") : trimmed.split(":");
+      final parts = trimmed.contains(".")
+          ? trimmed.split(".")
+          : trimmed.split(":");
       final family = parts[0].trim();
       final name = parts[1].trim();
       return _resolveByName(family, name);
@@ -86,14 +88,20 @@ ResolvedIcon? resolveIcon(dynamic input) {
       return resolveIcon(input["icon"]);
     }
     if (input["name"] != null) {
-      final family = input["family"]?.toString() ?? input["font_family"]?.toString() ?? "CupertinoIcons";
+      final family =
+          input["family"]?.toString() ??
+          input["font_family"]?.toString() ??
+          "CupertinoIcons";
       return _resolveByName(family, input["name"].toString());
     }
     final cp = input["code_point"] ?? input["icon_code_point"] ?? input["icon"];
     if (cp != null) {
       final intCode = cp is int ? cp : int.tryParse("$cp");
       if (intCode != null) {
-        final ff = input["font_family"]?.toString() ?? input["icon_font_family"]?.toString() ?? "CupertinoIcons";
+        final ff =
+            input["font_family"]?.toString() ??
+            input["icon_font_family"]?.toString() ??
+            "CupertinoIcons";
         return ResolvedIcon(intCode, ff);
       }
     }
@@ -102,13 +110,18 @@ ResolvedIcon? resolveIcon(dynamic input) {
 }
 
 ResolvedIcon? _resolveByName(String family, String name) {
-  final normFamily = family.toLowerCase().replaceAll("_", "").replaceAll(" ", "");
+  final normFamily = family
+      .toLowerCase()
+      .replaceAll("_", "")
+      .replaceAll(" ", "");
   final normName = name.toLowerCase().replaceAll("-", "_");
   if (normFamily == "cupertinoicons" || normFamily == "cupertino") {
     final cp = kCupertinoIcons[normName];
     if (cp != null) return ResolvedIcon(cp, "CupertinoIcons");
   }
-  if (normFamily.contains("fontawesome") || normFamily == "fa" || normFamily == "fa5") {
+  if (normFamily.contains("fontawesome") ||
+      normFamily == "fa" ||
+      normFamily == "fa5") {
     final cp = kFontAwesome5Icons[normName];
     if (cp != null) return ResolvedIcon(cp, "FontAwesome5");
   }

@@ -1,6 +1,7 @@
 import 'package:dartnative/dartnative.dart';
 
 import '../runner/ast_profile.dart';
+import '../theme/shadcn_theme.dart';
 
 /// In-app AST bundle explorer for the DevTools sheet.
 ///
@@ -13,9 +14,8 @@ class AstProfilePanel extends StatelessWidget {
 
   const AstProfilePanel({super.key, required this.profile});
 
-  static String _bytes(int bytes) => bytes >= 1024
-      ? '${(bytes / 1024).toStringAsFixed(1)} KiB'
-      : '$bytes B';
+  static String _bytes(int bytes) =>
+      bytes >= 1024 ? '${(bytes / 1024).toStringAsFixed(1)} KiB' : '$bytes B';
 
   static String _shortUri(String uri) {
     if (uri.startsWith('package:')) {
@@ -27,26 +27,29 @@ class AstProfilePanel extends StatelessWidget {
     return uri;
   }
 
-  static const _labelStyle = TextStyle(
-    color: Colors.white38,
+  static TextStyle _labelStyle(ShadcnThemeData theme) => TextStyle(
+    color: theme.mutedForeground,
     fontSize: 10,
     fontWeight: FontWeight.bold,
     letterSpacing: 0.5,
   );
 
-  static const _valueStyle = TextStyle(color: Colors.white, fontSize: 13);
+  static TextStyle _valueStyle(ShadcnThemeData theme) =>
+      TextStyle(color: theme.foreground, fontSize: 13);
 
-  static const _dimStyle = TextStyle(color: Colors.white60, fontSize: 12);
+  static TextStyle _dimStyle(ShadcnThemeData theme) =>
+      TextStyle(color: theme.mutedForeground, fontSize: 12);
 
   @override
   Widget build(BuildContext context) {
     final snapshot = profile;
+    final theme = context.theme;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF2C2C2E),
-        borderRadius: BorderRadius.circular(12),
+        color: theme.secondary,
+        borderRadius: theme.radius.lg,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,12 +57,12 @@ class AstProfilePanel extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('AST BUNDLE', style: _labelStyle),
+              Text('AST BUNDLE', style: _labelStyle(theme)),
               if (snapshot != null)
                 Text(
                   snapshot.isHotReload ? 'hot reload' : 'initial',
-                  style: const TextStyle(
-                    color: Colors.white38,
+                  style: TextStyle(
+                    color: theme.mutedForeground,
                     fontSize: 10,
                   ),
                 ),
@@ -67,9 +70,9 @@ class AstProfilePanel extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           if (snapshot == null)
-            const Text(
+            Text(
               'No bundle evaluated yet.',
-              style: _dimStyle,
+              style: _dimStyle(theme),
             )
           else ...[
             Text(
@@ -77,10 +80,10 @@ class AstProfilePanel extends StatelessWidget {
               '${snapshot.hasSizeMetadata ? '${_bytes(snapshot.totalAstBytes)} AST · ' : ''}'
               '${snapshot.totalClasses} classes'
               '${snapshot.mainMs == null ? '' : ' · main ${snapshot.mainMs!.toStringAsFixed(1)}ms'}',
-              style: _valueStyle,
+              style: _valueStyle(theme),
             ),
             const SizedBox(height: 10),
-            const Text('PACKAGES', style: _labelStyle),
+            Text('PACKAGES', style: _labelStyle(theme)),
             const SizedBox(height: 4),
             for (final pkg in snapshot.packages)
               Padding(
@@ -88,17 +91,17 @@ class AstProfilePanel extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(pkg.package, style: _valueStyle),
+                      child: Text(pkg.package, style: _valueStyle(theme)),
                     ),
                     Text(
                       '${pkg.modules} mod${snapshot.hasSizeMetadata ? ' · ${_bytes(pkg.astBytes)}' : ''}',
-                      style: _dimStyle,
+                      style: _dimStyle(theme),
                     ),
                   ],
                 ),
               ),
             const SizedBox(height: 10),
-            const Text('LARGEST MODULES', style: _labelStyle),
+            Text('LARGEST MODULES', style: _labelStyle(theme)),
             const SizedBox(height: 4),
             for (final module in snapshot.modules.take(5))
               Padding(
@@ -108,21 +111,21 @@ class AstProfilePanel extends StatelessWidget {
                   children: [
                     Text(
                       _shortUri(module.uri),
-                      style: _valueStyle,
+                      style: _valueStyle(theme),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       '${snapshot.hasSizeMetadata ? '${_bytes(module.astBytes)} · ' : ''}${module.classCount} classes'
                       '${module.loadMicros == null ? '' : ' · ${(module.loadMicros! / 1000).toStringAsFixed(1)}ms'}',
-                      style: _dimStyle,
+                      style: _dimStyle(theme),
                     ),
                   ],
                 ),
               ),
             if (snapshot.slowestModules.isNotEmpty) ...[
               const SizedBox(height: 10),
-              const Text('SLOWEST LOADS', style: _labelStyle),
+              Text('SLOWEST LOADS', style: _labelStyle(theme)),
               const SizedBox(height: 4),
               for (final slow in snapshot.slowestModules.take(5))
                 Padding(
@@ -132,14 +135,14 @@ class AstProfilePanel extends StatelessWidget {
                       Expanded(
                         child: Text(
                           _shortUri(slow.uri),
-                          style: _valueStyle,
+                          style: _valueStyle(theme),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Text(
                         '${(slow.loadMicros / 1000).toStringAsFixed(1)}ms',
-                        style: _dimStyle,
+                        style: _dimStyle(theme),
                       ),
                     ],
                   ),
@@ -147,7 +150,7 @@ class AstProfilePanel extends StatelessWidget {
             ],
             if (snapshot.largestClasses.isNotEmpty) ...[
               const SizedBox(height: 10),
-              const Text('LARGEST CLASSES', style: _labelStyle),
+              Text('LARGEST CLASSES', style: _labelStyle(theme)),
               const SizedBox(height: 4),
               for (final clazz in snapshot.largestClasses.take(5))
                 Padding(
@@ -157,14 +160,14 @@ class AstProfilePanel extends StatelessWidget {
                       Expanded(
                         child: Text(
                           clazz.name,
-                          style: _valueStyle,
+                          style: _valueStyle(theme),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Text(
                         snapshot.hasSizeMetadata ? _bytes(clazz.astBytes) : '?',
-                        style: _dimStyle,
+                        style: _dimStyle(theme),
                       ),
                     ],
                   ),
@@ -172,7 +175,7 @@ class AstProfilePanel extends StatelessWidget {
             ],
             if (snapshot.bridgedLibs.isNotEmpty) ...[
               const SizedBox(height: 10),
-              const Text('BRIDGED LIBS', style: _labelStyle),
+              Text('BRIDGED LIBS', style: _labelStyle(theme)),
               const SizedBox(height: 4),
               for (final lib in snapshot.bridgedLibs.take(5))
                 Padding(
@@ -182,12 +185,12 @@ class AstProfilePanel extends StatelessWidget {
                       Expanded(
                         child: Text(
                           _shortUri(lib.uri),
-                          style: _valueStyle,
+                          style: _valueStyle(theme),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Text('${lib.symbols} sym', style: _dimStyle),
+                      Text('${lib.symbols} sym', style: _dimStyle(theme)),
                     ],
                   ),
                 ),

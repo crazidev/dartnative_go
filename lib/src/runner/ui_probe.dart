@@ -58,8 +58,7 @@ import 'native_bottomsheet_manager.dart';
 Map<String, dynamic> serializeTree(
   Widget root, [
   Map<Widget, Element>? elementIndex,
-]) =>
-    _serializeWidget(root, elementIndex);
+]) => _serializeWidget(root, elementIndex);
 
 Map<String, dynamic> _serializeWidget(
   Widget w,
@@ -91,9 +90,9 @@ Map<String, dynamic> _serializeWidget(
   }
   final element = elementIndex?[w];
   if (element != null) _attachElementData(node, element);
-  final children = directChildrenOf(w)
-      .map((c) => _serializeWidget(c, elementIndex))
-      .toList(growable: false);
+  final children = directChildrenOf(
+    w,
+  ).map((c) => _serializeWidget(c, elementIndex)).toList(growable: false);
   if (children.isNotEmpty) node['children'] = children;
   return node;
 }
@@ -175,8 +174,7 @@ void _attachIcon(Map<String, dynamic> node, Icon icon) {
   try {
     node['icon'] = {
       'code_point': icon.icon.codePoint,
-      if (icon.icon.fontFamily != null)
-        'font_family': icon.icon.fontFamily,
+      if (icon.icon.fontFamily != null) 'font_family': icon.icon.fontFamily,
     };
   } catch (_) {}
 }
@@ -441,14 +439,14 @@ class TargetSpec {
       iconFontFamily == null;
 
   Map<String, dynamic> toJson() => {
-        if (title != null) 'title': title,
-        if (text != null) 'text': text,
-        if (key != null) 'key': key,
-        if (placeholder != null) 'placeholder': placeholder,
-        if (anyTextField) 'any_text_field': true,
-        if (iconCodePoint != null) 'icon_code_point': iconCodePoint,
-        if (iconFontFamily != null) 'icon_font_family': iconFontFamily,
-      };
+    if (title != null) 'title': title,
+    if (text != null) 'text': text,
+    if (key != null) 'key': key,
+    if (placeholder != null) 'placeholder': placeholder,
+    if (anyTextField) 'any_text_field': true,
+    if (iconCodePoint != null) 'icon_code_point': iconCodePoint,
+    if (iconFontFamily != null) 'icon_font_family': iconFontFamily,
+  };
 
   static TargetSpec fromJson(Map<String, dynamic> json) {
     int? cp;
@@ -480,18 +478,20 @@ class TargetSpec {
         }
       }
 
-      ff = json['icon_font_family']?.toString() ??
+      ff =
+          json['icon_font_family']?.toString() ??
           json['font_family']?.toString();
       if (ff == null && json['icon'] is Map) {
         ff = (json['icon'] as Map)['font_family']?.toString();
       }
     }
 
-    final placeholder = json['placeholder']?.toString() ??
+    final placeholder =
+        json['placeholder']?.toString() ??
         json['hint']?.toString() ??
         (json['into'] is String ? json['into'] as String : null);
-    final anyTextField = json['any_text_field'] == true ||
-        json['type'] == 'TextField';
+    final anyTextField =
+        json['any_text_field'] == true || json['type'] == 'TextField';
 
     return TargetSpec(
       title: json['title']?.toString(),
@@ -584,10 +584,12 @@ bool _matchesWidget(Widget w, TargetSpec spec) {
     } else if (w is TextField) {
       final hint = w.decoration?.hintText;
       final current = w.controller?.text;
-      final matchesHint = hint != null &&
+      final matchesHint =
+          hint != null &&
           (hint == spec.text ||
               (spec.text!.isNotEmpty && hint.contains(spec.text!)));
-      final matchesCurrent = current != null &&
+      final matchesCurrent =
+          current != null &&
           (current == spec.text ||
               (spec.text!.isNotEmpty && current.contains(spec.text!)));
       if (!matchesHint && !matchesCurrent) return false;
@@ -845,7 +847,9 @@ TriggerOutcome tapTarget({
             foundCallback!();
             return TriggerOutcome.ok(foundTarget!.viewId);
           } catch (e) {
-            return TriggerOutcome.fail('$callbackWidgetType tap callback threw: $e');
+            return TriggerOutcome.fail(
+              '$callbackWidgetType tap callback threw: $e',
+            );
           }
         }
         return TriggerOutcome.fail(
@@ -900,7 +904,9 @@ TriggerOutcome tapTarget({
           foundCallback!();
           return TriggerOutcome.ok(foundTarget!.viewId);
         } catch (e) {
-          return TriggerOutcome.fail('$callbackWidgetType tap callback threw: $e');
+          return TriggerOutcome.fail(
+            '$callbackWidgetType tap callback threw: $e',
+          );
         }
       }
       return TriggerOutcome.fail(
@@ -975,7 +981,9 @@ TriggerOutcome tapTarget({
           foundCallback!();
           return TriggerOutcome.ok(foundTarget!.viewId);
         } catch (e) {
-          return TriggerOutcome.fail('$callbackWidgetType tap callback threw: $e');
+          return TriggerOutcome.fail(
+            '$callbackWidgetType tap callback threw: $e',
+          );
         }
       }
       return TriggerOutcome.fail(
@@ -1031,7 +1039,9 @@ TriggerOutcome tapTarget({
           foundCallback!();
           return TriggerOutcome.ok(foundTarget!.viewId);
         } catch (e) {
-          return TriggerOutcome.fail('$callbackWidgetType tap callback threw: $e');
+          return TriggerOutcome.fail(
+            '$callbackWidgetType tap callback threw: $e',
+          );
         }
       }
       return TriggerOutcome.fail(
@@ -1075,7 +1085,8 @@ TriggerOutcome scrollTarget({
 
   if (scrollWidget == null) {
     final sheets = activeSheets ?? NativeBottomSheetManager.activeSheets;
-    for (final sheet in sheets.where((s) => s.isScopeActive).toList().reversed) {
+    for (final sheet
+        in sheets.where((s) => s.isScopeActive).toList().reversed) {
       final sheetEl = sheet.elementRoot;
       if (sheetEl != null) {
         void findScrollElement(Element element) {
@@ -1093,6 +1104,7 @@ TriggerOutcome scrollTarget({
             findScrollElement(child);
           }
         }
+
         try {
           findScrollElement(sheetEl);
         } catch (_) {}
@@ -1109,6 +1121,7 @@ TriggerOutcome scrollTarget({
           findScrollWidget(child);
         }
       }
+
       findScrollWidget(sheet.scopeWidget.child);
       if (scrollWidget != null) break;
     }
@@ -1131,6 +1144,7 @@ TriggerOutcome scrollTarget({
           findScrollElement(child);
         }
       }
+
       try {
         findScrollElement(elementRoot);
       } catch (_) {}
@@ -1145,12 +1159,15 @@ TriggerOutcome scrollTarget({
           findScrollWidget(child);
         }
       }
+
       findScrollWidget(widgetRoot);
     }
   }
 
   if (scrollWidget == null) {
-    return TriggerOutcome.fail('no scrollable widget (SingleChildScrollView / ListView) found');
+    return TriggerOutcome.fail(
+      'no scrollable widget (SingleChildScrollView / ListView) found',
+    );
   }
 
   try {
@@ -1191,13 +1208,13 @@ class TriggerOutcome {
       TriggerOutcome._(false, error, null);
 
   Map<String, dynamic> toJson(String requestId, String type) => {
-        'type': type,
-        'requestId': requestId,
-        'ok': ok,
-        if (error != null) 'error': error,
-        if (viewId != null) 'viewId': viewId,
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-      };
+    'type': type,
+    'requestId': requestId,
+    'ok': ok,
+    if (error != null) 'error': error,
+    if (viewId != null) 'viewId': viewId,
+    'timestamp': DateTime.now().millisecondsSinceEpoch,
+  };
 }
 
 /// Hover: resolve the target and report its native `viewId`.

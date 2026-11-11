@@ -22,8 +22,8 @@ class ThemeStorage {
     try {
       final prefs = _prefs ??= await SharedPreferences.getInstance();
       final saved = prefs.getString(kStorageKey);
-      final preference = ThemePreference.values.asNameMap()[saved] ??
-          ThemePreference.system;
+      final preference =
+          ThemePreference.values.asNameMap()[saved] ?? ThemePreference.system;
       _memoryPreference = preference;
       return preference;
     } catch (_) {
@@ -34,6 +34,9 @@ class ThemeStorage {
   /// Synchronous getter for the currently known preference, or system.
   static ThemePreference get currentPreference =>
       _memoryPreference ?? ThemePreference.system;
+
+  /// Whether [loadPreference] has resolved into the in-memory cache.
+  static bool get isLoaded => _memoryPreference != null;
 
   /// Persists [preference] and updates the in-memory cache immediately.
   static Future<void> savePreference(ThemePreference preference) async {

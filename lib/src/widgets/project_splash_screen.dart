@@ -55,10 +55,22 @@ class ProjectSplashScreen extends StatelessWidget {
     return Image.asset('assets/dn-logo.png', width: 90, height: 90);
   }
 
+  /// Contrast foreground color computed from [backgroundColor] luminance.
+  Color get _onBackground {
+    final value = backgroundColor.value;
+    final r = (value >> 16) & 0xFF;
+    final g = (value >> 8) & 0xFF;
+    final b = value & 0xFF;
+    final luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+    return luminance < 140 ? Colors.white : Colors.black87;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final onBackground = _onBackground;
     return Scaffold(
       key: const ValueKey('project_splash_screen'),
+      backgroundColor: backgroundColor,
       body: Stack(
         children: [
           Center(
@@ -68,9 +80,10 @@ class ProjectSplashScreen extends StatelessWidget {
                 _buildLogo(),
                 Text(
                   appName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
+                    color: onBackground,
                   ),
                 ),
               ],
@@ -91,8 +104,9 @@ class ProjectSplashScreen extends StatelessWidget {
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Text(
                           'Downloading packages ($downloadedCount / $downloadTotal)',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
+                            color: onBackground.withOpacity(0.8),
                           ),
                         ),
                       ),
@@ -114,8 +128,9 @@ class ProjectSplashScreen extends StatelessWidget {
                   Text(
                     statusMessage,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
+                      color: onBackground.withOpacity(0.9),
                     ),
                   ),
                 ],

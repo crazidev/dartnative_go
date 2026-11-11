@@ -24,8 +24,10 @@ T? unwrap<T>(Object? arg, {InterpreterVisitor? visitor}) {
 }
 
 /// Registers the complete generated DartNative bridges into a [D4rt] interpreter.
-void registerDartNativeBridges(D4rt interpreter, {void Function(String message)? onLog}) {
+void registerDartNativeBridges(
+  D4rt interpreter, {
+  void Function(String message)? onLog,
+}) {
   DartnativeGoBridges.register(interpreter);
   registerWidgetInterfaceProxies(interpreter, onLog: onLog);
 }
-

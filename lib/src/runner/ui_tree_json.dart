@@ -16,7 +16,8 @@ List<Map<String, dynamic>> findTextNodes(
 ) {
   final out = <Map<String, dynamic>>[];
   void visit(Map<String, dynamic> node) {
-    final t = node['text']?.toString() ??
+    final t =
+        node['text']?.toString() ??
         node['title']?.toString() ??
         node['hint']?.toString() ??
         node['placeholder']?.toString();
@@ -47,7 +48,8 @@ List<Map<String, dynamic>> findButtonNodes(
         node['type'] == 'BarButtonItem' ||
         node['type'].toString().contains('Button')) {
       final t = node['title']?.toString();
-      if (t != null && (t == title || (title.isNotEmpty && t.contains(title)))) {
+      if (t != null &&
+          (t == title || (title.isNotEmpty && t.contains(title)))) {
         out.add(node);
       }
     }
@@ -108,7 +110,9 @@ List<Map<String, dynamic>> findIconNodes(
       final cp = nodeIcon is Map
           ? nodeIcon['code_point']
           : (nodeIcon is int ? nodeIcon : node['code_point']);
-      final ff = nodeIcon is Map ? nodeIcon['font_family'] : node['font_family'];
+      final ff = nodeIcon is Map
+          ? nodeIcon['font_family']
+          : node['font_family'];
       if ((codePoint == null || cp == codePoint) &&
           (fontFamily == null || ff == fontFamily)) {
         out.add(node);

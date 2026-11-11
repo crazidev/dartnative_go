@@ -42,10 +42,23 @@ void main() {
       expect(runtimeModeFromName('source'), equals(RuntimeMode.source));
       expect(runtimeModeFromName('unknown'), equals(RuntimeMode.ast));
 
-      // Cycle order: AST -> Source -> AST
+      // Cycle order: AST -> Source -> AST (when both engines are linked).
+      kSourceRuntimeLinked = true;
+      addTearDown(() => kSourceRuntimeLinked = false);
       expect(RuntimeMode.ast.next, equals(RuntimeMode.source));
       expect(RuntimeMode.source.next, equals(RuntimeMode.ast));
       expect(selectableRuntimeModes, hasLength(2));
+    });
+
+    test('product builds expose AST only and clamp a stored Source mode', () {
+      expect(kSourceRuntimeLinked, isFalse);
+      expect(selectableRuntimeModes, equals([RuntimeMode.ast]));
+      expect(RuntimeMode.ast.next, equals(RuntimeMode.ast));
+      expect(
+        supportedRuntimeMode(RuntimeMode.source),
+        equals(RuntimeMode.ast),
+      );
+      expect(supportedRuntimeMode(RuntimeMode.ast), equals(RuntimeMode.ast));
     });
 
     test('harness starts in source mode and can switch', () {

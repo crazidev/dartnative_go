@@ -6,6 +6,7 @@ import '../client/theme_storage.dart';
 import '../runner/ast_profile.dart';
 import '../runner/dep_cache.dart';
 import '../runner/runtime_mode.dart';
+import '../theme/shadcn_theme.dart';
 import 'ast_profile_panel.dart';
 
 /// Content panel rendered inside the native bottom sheet for DartNative DevTools.
@@ -126,8 +127,11 @@ class _DevToolSheetState extends State<DevToolSheet> {
 
   @override
   Widget build(BuildContext context) {
+    // The sheet follows the shell theme, so it flips with light/dark mode
+    // instead of being a fixed dark surface.
+    final theme = context.theme;
     return Container(
-      color: const Color(0xFF1C1C1E),
+      color: theme.background,
       child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
@@ -148,8 +152,8 @@ class _DevToolSheetState extends State<DevToolSheet> {
                           children: [
                             Text(
                               widget.appName,
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: theme.foreground,
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -202,8 +206,8 @@ class _DevToolSheetState extends State<DevToolSheet> {
                           widget.appVersion != null
                               ? 'Runtime Version: ${widget.appVersion}'
                               : 'DartNative Project',
-                          style: const TextStyle(
-                            color: Colors.white60,
+                          style: TextStyle(
+                            color: theme.mutedForeground,
                             fontSize: 12,
                           ),
                         ),
@@ -230,7 +234,7 @@ class _DevToolSheetState extends State<DevToolSheet> {
                     child: Button(
                       title: 'Go Home',
                       variant: ButtonVariant.bordered,
-                      foregroundColor: Colors.white,
+                      foregroundColor: theme.foreground,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       onPressed: () {
                         widget.controller.dismiss();
@@ -243,7 +247,7 @@ class _DevToolSheetState extends State<DevToolSheet> {
                     child: Button(
                       title: 'Reload',
                       variant: ButtonVariant.bordered,
-                      foregroundColor: Colors.white,
+                      foregroundColor: theme.foreground,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       onPressed: () {
                         widget.controller.dismiss();
@@ -260,16 +264,16 @@ class _DevToolSheetState extends State<DevToolSheet> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2C2C2E),
-                  borderRadius: BorderRadius.circular(12),
+                  color: theme.secondary,
+                  borderRadius: theme.radius.lg,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'DEV SERVER',
                       style: TextStyle(
-                        color: Colors.white38,
+                        color: theme.mutedForeground,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.5,
@@ -278,8 +282,8 @@ class _DevToolSheetState extends State<DevToolSheet> {
                     const SizedBox(height: 4),
                     Text(
                       widget.serverUrl,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: theme.foreground,
                         fontSize: 13,
                         fontFamily: 'Courier',
                       ),
@@ -289,62 +293,64 @@ class _DevToolSheetState extends State<DevToolSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Runtime mode (Source, AST)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2C2C2E),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'RUNTIME MODE',
-                          style: TextStyle(
-                            color: Colors.white38,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
+              // Runtime mode segment (hidden in single-engine product builds).
+              if (selectableRuntimeModes.length > 1) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.secondary,
+                    borderRadius: theme.radius.lg,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'RUNTIME MODE',
+                            style: TextStyle(
+                              color: theme.mutedForeground,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                        ),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: SegmentedControl(
-                            segments: selectableRuntimeModes
-                                .map(
-                                  (m) => m == RuntimeMode.source
-                                      ? 'Source'
-                                      : 'AST',
-                                )
-                                .toList(),
-                            selectedIndex: _selectedModeIndex,
-                            onValueChanged: (index) {
-                              if (index == _selectedModeIndex) return;
-                              setState(() {
-                                _selectedModeIndex = index;
-                              });
-                              final mode = _indexToMode(index);
-                              if (widget.onSelectMode != null) {
-                                widget.onSelectMode!(mode);
-                              } else if (widget.onCycleMode != null) {
-                                widget.onCycleMode!();
-                              } else if (widget.onToggleAst != null) {
-                                widget.onToggleAst!(mode == RuntimeMode.ast);
-                              }
-                            },
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: SegmentedControl(
+                              segments: selectableRuntimeModes
+                                  .map(
+                                    (m) => m == RuntimeMode.source
+                                        ? 'Source'
+                                        : 'AST',
+                                  )
+                                  .toList(),
+                              selectedIndex: _selectedModeIndex,
+                              onValueChanged: (index) {
+                                if (index == _selectedModeIndex) return;
+                                setState(() {
+                                  _selectedModeIndex = index;
+                                });
+                                final mode = _indexToMode(index);
+                                if (widget.onSelectMode != null) {
+                                  widget.onSelectMode!(mode);
+                                } else if (widget.onCycleMode != null) {
+                                  widget.onCycleMode!();
+                                } else if (widget.onToggleAst != null) {
+                                  widget.onToggleAst!(mode == RuntimeMode.ast);
+                                }
+                              },
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
+              ],
 
               // AST bundle explorer (packages, modules, classes, loads).
               // Shown only when the server runs with `--profile` (the app
@@ -406,8 +412,8 @@ class _DevToolSheetState extends State<DevToolSheet> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2C2C2E),
-                  borderRadius: BorderRadius.circular(12),
+                  color: theme.secondary,
+                  borderRadius: theme.radius.lg,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -415,10 +421,10 @@ class _DevToolSheetState extends State<DevToolSheet> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'THEME',
                           style: TextStyle(
-                            color: Colors.white38,
+                            color: theme.mutedForeground,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.5,
@@ -457,8 +463,8 @@ class _DevToolSheetState extends State<DevToolSheet> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2C2C2E),
-                    borderRadius: BorderRadius.circular(12),
+                    color: theme.secondary,
+                    borderRadius: theme.radius.lg,
                   ),
                   child: Row(
                     children: [
@@ -466,10 +472,10 @@ class _DevToolSheetState extends State<DevToolSheet> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'DEPENDENCY CACHE',
                               style: TextStyle(
-                                color: Colors.white38,
+                                color: theme.mutedForeground,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.5,
@@ -480,8 +486,8 @@ class _DevToolSheetState extends State<DevToolSheet> {
                               _isCacheCleared
                                   ? '0 B (0 packages)'
                                   : '${widget.depCache!.getFormattedCacheSize()} (${widget.depCache!.getCachedPackageCount()} packages)',
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: theme.foreground,
                                 fontSize: 13,
                               ),
                             ),
@@ -493,7 +499,7 @@ class _DevToolSheetState extends State<DevToolSheet> {
                           child: Icon(CupertinoIcons.trash_1, size: 20),
                           variant: ButtonVariant.plain,
                           padding: EdgeInsets.zero,
-                          foregroundColor: Colors.red,
+                          foregroundColor: theme.destructive,
                           onPressed: _isCacheCleared
                               ? null
                               : () async {
@@ -526,8 +532,8 @@ class _DevToolSheetState extends State<DevToolSheet> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2C2C2E),
-                    borderRadius: BorderRadius.circular(12),
+                    color: theme.secondary,
+                    borderRadius: theme.radius.lg,
                   ),
                   child: Row(
                     children: [
@@ -535,10 +541,10 @@ class _DevToolSheetState extends State<DevToolSheet> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'VERBOSE LOGS',
                               style: TextStyle(
-                                color: Colors.white38,
+                                color: theme.mutedForeground,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.5,

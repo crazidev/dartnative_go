@@ -1,20 +1,17 @@
 import 'package:dartnative/dartnative.dart';
 
 import '../client/project_model.dart';
-import '../theme/launcher_theme.dart';
 import '../theme/shadcn_theme.dart';
 
 /// Card item representing a discovered or recent project styled per shadcn.
 class ProjectCard extends StatelessWidget {
   final DartGoProject project;
   final ValueChanged<DartGoProject> onTap;
-  final LauncherColors? colors;
 
   const ProjectCard({
     super.key,
     required this.project,
     required this.onTap,
-    this.colors,
   });
 
   @override
@@ -26,7 +23,9 @@ class ProjectCard extends StatelessWidget {
       onTap: () => onTap(project),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        decoration: BoxDecoration(color: context.theme.secondary),
+        decoration: BoxDecoration(
+          color: context.theme.secondary,
+        ),
         child: Row(
           children: [
             Container(
@@ -34,8 +33,8 @@ class ProjectCard extends StatelessWidget {
               height: 42,
               decoration: BoxDecoration(
                 color: theme.accent,
-                borderRadius: theme.radius.md,
-                border: Border.all(color: theme.border, width: 0.5),
+                borderRadius: theme.radius.md,  
+                // border: Border.all(color: theme.border, width: 0.5),
               ),
               child: Image.asset(
                 'assets/dn-logo.png',

@@ -57,13 +57,21 @@ class NativeBottomSheetScope extends StatefulWidget {
 
   static NativeBottomSheetScopeState? of(BuildContext context) {
     try {
-      return (context.getInheritedWidgetOfExactType<_InheritedNativeBottomSheetScope>() ??
-              context.dependOnInheritedWidgetOfExactType<_InheritedNativeBottomSheetScope>())
+      return (context
+                  .getInheritedWidgetOfExactType<
+                    _InheritedNativeBottomSheetScope
+                  >() ??
+              context
+                  .dependOnInheritedWidgetOfExactType<
+                    _InheritedNativeBottomSheetScope
+                  >())
           ?.state;
     } catch (_) {
       try {
         return context
-            .dependOnInheritedWidgetOfExactType<_InheritedNativeBottomSheetScope>()
+            .dependOnInheritedWidgetOfExactType<
+              _InheritedNativeBottomSheetScope
+            >()
             ?.state;
       } catch (_) {
         return null;
@@ -304,7 +312,9 @@ dynamic findUserClassInVisitor(dynamic visitor, String className) {
   // 2. Try globalEnvironment
   try {
     dynamic gEnv = visitor.globalEnvironment;
-    if (gEnv != null && gEnv.values is Map && gEnv.values.containsKey(className)) {
+    if (gEnv != null &&
+        gEnv.values is Map &&
+        gEnv.values.containsKey(className)) {
       return gEnv.values[className];
     }
   } catch (_) {}
@@ -353,7 +363,8 @@ dynamic findUserClassInVisitor(dynamic visitor, String className) {
               if (mod?.environment?.values?.containsKey(className) == true) {
                 return mod.environment.values[className];
               }
-              if (mod?.exportedEnvironment?.values?.containsKey(className) == true) {
+              if (mod?.exportedEnvironment?.values?.containsKey(className) ==
+                  true) {
                 return mod.exportedEnvironment.values[className];
               }
             } catch (_) {}
@@ -370,7 +381,8 @@ dynamic findUserClassInVisitor(dynamic visitor, String className) {
               if (mod?.environment?.values?.containsKey(className) == true) {
                 return mod.environment.values[className];
               }
-              if (mod?.exportedEnvironment?.values?.containsKey(className) == true) {
+              if (mod?.exportedEnvironment?.values?.containsKey(className) ==
+                  true) {
                 return mod.exportedEnvironment.values[className];
               }
             } catch (_) {}

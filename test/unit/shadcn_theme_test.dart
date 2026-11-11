@@ -1,6 +1,7 @@
 import 'package:dartnative/dartnative.dart';
-import 'package:dartnative_go/src/theme/launcher_theme.dart';
+import 'package:dartnative_go/src/client/theme_storage.dart';
 import 'package:dartnative_go/src/theme/shadcn_theme.dart';
+import 'package:dartnative_go/src/theme/theme_providers.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -13,15 +14,33 @@ void main() {
 
       expect(color.light.value, equals(ShadcnLight.background.value));
       expect(color.dark.value, equals(ShadcnDark.background.value));
-      expect(color.resolve(Brightness.light).value, equals(ShadcnLight.background.value));
-      expect(color.resolve(Brightness.dark).value, equals(ShadcnDark.background.value));
+      expect(
+        color.resolve(Brightness.light).value,
+        equals(ShadcnLight.background.value),
+      );
+      expect(
+        color.resolve(Brightness.dark).value,
+        equals(ShadcnDark.background.value),
+      );
     });
 
     test('ShadcnTokens exposes dual-tone tokens', () {
-      expect(ShadcnTokens.background.light.value, equals(ShadcnLight.background.value));
-      expect(ShadcnTokens.background.dark.value, equals(ShadcnDark.background.value));
-      expect(ShadcnTokens.foreground.light.value, equals(ShadcnLight.foreground.value));
-      expect(ShadcnTokens.foreground.dark.value, equals(ShadcnDark.foreground.value));
+      expect(
+        ShadcnTokens.background.light.value,
+        equals(ShadcnLight.background.value),
+      );
+      expect(
+        ShadcnTokens.background.dark.value,
+        equals(ShadcnDark.background.value),
+      );
+      expect(
+        ShadcnTokens.foreground.light.value,
+        equals(ShadcnLight.foreground.value),
+      );
+      expect(
+        ShadcnTokens.foreground.dark.value,
+        equals(ShadcnDark.foreground.value),
+      );
     });
   });
 
@@ -60,38 +79,94 @@ void main() {
       expect(dark.background.value, equals(ShadcnDark.background.value));
       expect(dark.foreground.value, equals(ShadcnDark.foreground.value));
 
-      expect(ShadcnThemeData.fromBrightness(Brightness.light).background.value, equals(ShadcnLight.background.value));
-      expect(ShadcnThemeData.fromBrightness(Brightness.dark).background.value, equals(ShadcnDark.background.value));
+      expect(
+        ShadcnThemeData.fromBrightness(Brightness.light).background.value,
+        equals(ShadcnLight.background.value),
+      );
+      expect(
+        ShadcnThemeData.fromBrightness(Brightness.dark).background.value,
+        equals(ShadcnDark.background.value),
+      );
     });
   });
 
   group('ShadcnAppearanceMode', () {
     test('maps to ThemeMode and native Brightness', () {
-      expect(ShadcnAppearanceMode.system.toThemeMode(), equals(ThemeMode.system));
+      expect(
+        ShadcnAppearanceMode.system.toThemeMode(),
+        equals(ThemeMode.system),
+      );
       expect(ShadcnAppearanceMode.light.toThemeMode(), equals(ThemeMode.light));
       expect(ShadcnAppearanceMode.dark.toThemeMode(), equals(ThemeMode.dark));
 
       expect(ShadcnAppearanceMode.system.toNativeBrightness(), isNull);
-      expect(ShadcnAppearanceMode.light.toNativeBrightness(), equals(Brightness.light));
-      expect(ShadcnAppearanceMode.dark.toNativeBrightness(), equals(Brightness.dark));
+      expect(
+        ShadcnAppearanceMode.light.toNativeBrightness(),
+        equals(Brightness.light),
+      );
+      expect(
+        ShadcnAppearanceMode.dark.toNativeBrightness(),
+        equals(Brightness.dark),
+      );
     });
   });
 
-  group('LauncherColors', () {
-    test('fromTheme maps all properties from ShadcnThemeData', () {
-      final lightColors = LauncherColors.fromTheme(ShadcnThemeData.light);
-      expect(lightColors.background.value, equals(ShadcnLight.background.value));
-      expect(lightColors.foreground.value, equals(ShadcnLight.foreground.value));
-      expect(lightColors.card.value, equals(ShadcnLight.card.value));
-      expect(lightColors.input.value, equals(ShadcnLight.input.value));
-      expect(lightColors.mutedForeground.value, equals(ShadcnLight.mutedForeground.value));
+  group('theme preference mapping', () {
+    test('themeModeOf maps every preference', () {
+      expect(themeModeOf(ThemePreference.system), equals(ThemeMode.system));
+      expect(themeModeOf(ThemePreference.light), equals(ThemeMode.light));
+      expect(themeModeOf(ThemePreference.dark), equals(ThemeMode.dark));
+    });
 
-      final darkColors = LauncherColors.fromTheme(ShadcnThemeData.dark);
-      expect(darkColors.background.value, equals(ShadcnDark.background.value));
-      expect(darkColors.foreground.value, equals(ShadcnDark.foreground.value));
-      expect(darkColors.card.value, equals(ShadcnDark.card.value));
-      expect(darkColors.input.value, equals(ShadcnDark.input.value));
-      expect(darkColors.mutedForeground.value, equals(ShadcnDark.mutedForeground.value));
+    test('resolveAppearance turns system into a concrete mode', () {
+      expect(
+        resolveAppearance(ThemePreference.system, Brightness.dark),
+        equals(ShadcnAppearanceMode.dark),
+      );
+      expect(
+        resolveAppearance(ThemePreference.system, Brightness.light),
+        equals(ShadcnAppearanceMode.light),
+      );
+    });
+
+    test('resolveAppearance honours an explicit preference', () {
+      expect(
+        resolveAppearance(ThemePreference.light, Brightness.dark),
+        equals(ShadcnAppearanceMode.light),
+        reason: 'an explicit light choice ignores the device',
+      );
+      expect(
+        resolveAppearance(ThemePreference.dark, Brightness.light),
+        equals(ShadcnAppearanceMode.dark),
+      );
+    });
+
+    test('resolveAppearance never returns system', () {
+      for (final preference in ThemePreference.values) {
+        for (final brightness in Brightness.values) {
+          expect(
+            resolveAppearance(preference, brightness),
+            isNot(equals(ShadcnAppearanceMode.system)),
+            reason: 'the shell must hand a concrete mode to ShadcnTheme',
+          );
+        }
+      }
+    });
+  });
+
+  group('ThemeStorage cache', () {
+    tearDown(ThemeStorage.resetForTesting);
+
+    test('currentPreference falls back to system when cold', () {
+      ThemeStorage.resetForTesting();
+      expect(ThemeStorage.isLoaded, isFalse);
+      expect(ThemeStorage.currentPreference, ThemePreference.system);
+    });
+
+    test('isLoaded reports a warm cache and returns the saved value', () {
+      ThemeStorage.resetForTesting(ThemePreference.dark);
+      expect(ThemeStorage.isLoaded, isTrue);
+      expect(ThemeStorage.currentPreference, ThemePreference.dark);
     });
   });
 }

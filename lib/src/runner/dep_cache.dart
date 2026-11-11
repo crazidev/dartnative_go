@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
-import '../cli/packaging/dep_packager.dart';
+import 'dep_entry.dart';
 
 /// On-device persistent cache for third-party dependency packages (Expo Go-style).
 class DepCache {

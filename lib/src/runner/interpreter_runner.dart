@@ -5,6 +5,7 @@ import 'package:tom_d4rt_ast/runtime.dart' as ast_runtime;
 
 import '../interpreter/asset_bridge.dart';
 import '../interpreter/auto_import_parser.dart';
+import '../interpreter/breakpoint_instrumenter.dart';
 import '../interpreter/d4rt_flutter_application.dart';
 import '../interpreter/debug_controller.dart';
 import '../interpreter/dn_bridge.dart';
@@ -12,11 +13,13 @@ import '../interpreter/server_component_source_bridge.dart';
 import '../widgets/server_component_loader.dart';
 import 'ast_interpreter_runner.dart';
 import 'bundle_loader.dart';
+import 'guest_error_format.dart';
+import 'guest_runner.dart';
 import 'logger.dart';
 import 'runtime_mode.dart';
 
 /// Manages dynamic execution of DartNative guest apps using tom_d4rt or tom_d4rt_ast.
-class InterpreterRunner {
+class InterpreterRunner implements GuestRunner {
   /// The analyzer-based interpreter.
   ///
   /// Built eagerly in source mode. In AST mode it is **deferred**: a full
@@ -28,16 +31,21 @@ class InterpreterRunner {
 
   Widget? _capturedApp;
   D4rtFlutterApplication? _activeApplication;
+  @override
   String? currentServerUrl;
+  @override
   void Function(String message)? onLog;
+  @override
   VoidCallback? onExit;
 
   /// When true, [evaluateBundle] prefers pre-compiled AST bytes.
+  @override
   bool useAst;
 
   // Per-module snapshots for hot reload state preservation
   final Map<String, Map<String, Object?>> _moduleTopLevelSnapshots = {};
-  final Map<String, Map<String, Map<String, Object?>>> _moduleStaticSnapshots = {};
+  final Map<String, Map<String, Map<String, Object?>>> _moduleStaticSnapshots =
+      {};
   final Map<String, Object?> _globalTopLevelSnapshot = {};
   final Map<String, Map<String, Object?>> _globalStaticSnapshot = {};
 
@@ -48,14 +56,30 @@ class InterpreterRunner {
   /// The source-mode interpreter, created on first use (see [_interpreter]).
   D4rt get interpreter => _interpreter ??= _buildSourceInterpreter();
   RuntimeMode get runtimeMode => runtimeModeFromBool(useAst);
+  @override
   AstInterpreterRunner? get astRunner => _astRunner;
+  @override
   Object? get activeVisitor =>
       useAst ? _astRunner?.visitor : _interpreter?.visitor;
+
+  @override
+  bool get supportsSourceRuntime => true;
+
+  @override
+  BreakpointInstrumenter? get breakpointInstrumenter => instrumentBreakpoints;
+
+  @override
+  void setBreakpoints(List<Map<String, dynamic>> breakpoints) =>
+      _debugController.setBreakpoints(breakpoints);
+
+  @override
+  void resumeDebugger() => _debugController.resume();
 
   /// Extra listener for guest failures outside evaluation (builds,
   /// lifecycle methods, bridge callbacks). The AST runner always logs these
   /// through [DartGoLogger]; this callback lets the host surface them too
   /// (e.g. an on-device error banner) without replacing that logging.
+  @override
   void Function(Object error, StackTrace stack)? onGuestError;
 
   InterpreterRunner({
@@ -68,11 +92,27 @@ class InterpreterRunner {
     initInterpreter();
   }
 
+  /// Constructor tear-off matching [GuestRunnerBuilder].
+  static InterpreterRunner create({
+    void Function(String message)? onLog,
+    VoidCallback? onExit,
+    String? currentServerUrl,
+    bool useAst = kUseAst,
+    void Function(Object error, StackTrace stack)? onGuestError,
+  }) => InterpreterRunner(
+    onLog: onLog,
+    onExit: onExit,
+    currentServerUrl: currentServerUrl,
+    useAst: useAst,
+    onGuestError: onGuestError,
+  );
+
   /// Initializes a fresh interpreter session with all registered bridges and runtime hooks.
   ///
   /// In AST mode the source interpreter is not built here — see [_interpreter].
   /// Server-scoped values (asset resolver URL, log sink) are still refreshed so
   /// a URL change reaches whichever engine ends up running.
+  @override
   void initInterpreter() {
     _capturedApp = null;
     _debugController.onLog = onLog;
@@ -216,7 +256,9 @@ class InterpreterRunner {
     interpreter.registertopLevelFunction(
       'debugger',
       (visitor, positional, named, typeArgs) {
-        final message = positional.isNotEmpty ? positional[0]?.toString() : null;
+        final message = positional.isNotEmpty
+            ? positional[0]?.toString()
+            : null;
         return _debugController.handleDebuggerCall(message);
       },
       'package:dartnative/dartnative.dart',
@@ -226,7 +268,9 @@ class InterpreterRunner {
     interpreter.registertopLevelFunction(
       'breakpoint',
       (visitor, positional, named, typeArgs) {
-        final message = positional.isNotEmpty ? positional[0]?.toString() : null;
+        final message = positional.isNotEmpty
+            ? positional[0]?.toString()
+            : null;
         return _debugController.handleDebuggerCall(message);
       },
       'package:dartnative/dartnative.dart',
@@ -236,10 +280,15 @@ class InterpreterRunner {
     interpreter.registertopLevelFunction(
       '__debugBreakpoint',
       (visitor, positional, named, typeArgs) {
-        final file = positional.isNotEmpty ? positional[0]?.toString() ?? '<unknown>' : '<unknown>';
+        final file = positional.isNotEmpty
+            ? positional[0]?.toString() ?? '<unknown>'
+            : '<unknown>';
         final line = positional.length > 1 && positional[1] is int
             ? positional[1] as int
-            : int.tryParse(positional.length > 1 ? positional[1].toString() : '') ?? 0;
+            : int.tryParse(
+                    positional.length > 1 ? positional[1].toString() : '',
+                  ) ??
+                  0;
         return _debugController.handleLineBreakpoint(file, line);
       },
       'package:dartnative/dartnative.dart',
@@ -252,7 +301,8 @@ class InterpreterRunner {
       (visitor, positional, named, typeArgs) {
         final rootWidget = unwrap<Widget>(named['root'], visitor: visitor);
         return D4rtFlutterApplication(
-          root: rootWidget ??
+          root:
+              rootWidget ??
               const Scaffold(
                 body: Center(child: Text('Empty D4rtFlutterApplication root')),
               ),
@@ -260,7 +310,8 @@ class InterpreterRunner {
               ? () => D4.callInterpreterCallback(visitor, named['onMount'], [])
               : null,
           onUnmount: named['onUnmount'] != null
-              ? () => D4.callInterpreterCallback(visitor, named['onUnmount'], [])
+              ? () =>
+                    D4.callInterpreterCallback(visitor, named['onUnmount'], [])
               : null,
         );
       },
@@ -337,18 +388,24 @@ class InterpreterRunner {
       snapshotEnvTo(currentEnv, _globalTopLevelSnapshot, _globalStaticSnapshot);
       currentEnv = currentEnv.enclosing;
     }
-    snapshotEnvTo(visitor.globalEnvironment, _globalTopLevelSnapshot, _globalStaticSnapshot);
+    snapshotEnvTo(
+      visitor.globalEnvironment,
+      _globalTopLevelSnapshot,
+      _globalStaticSnapshot,
+    );
 
     // 2. Snapshot per-module environments (only user package & relevant stateful modules)
     try {
       final loader = visitor.moduleLoader;
-      final mainPkg = (currentLibrary != null && currentLibrary.startsWith('package:'))
+      final mainPkg =
+          (currentLibrary != null && currentLibrary.startsWith('package:'))
           ? currentLibrary.split('/')[0]
           : 'package:guest_app';
 
       for (final key in loader.sources.keys) {
         // Skip stdlib and third-party dependency modules — only user app holds state
-        final isUserModule = key.startsWith(mainPkg) ||
+        final isUserModule =
+            key.startsWith(mainPkg) ||
             key.startsWith('package:guest_app') ||
             (!key.startsWith('package:') && !key.startsWith('dart:'));
         if (!isUserModule) continue;
@@ -397,10 +454,18 @@ class InterpreterRunner {
     // 1. Restore global environment & visitor current environment chain
     Environment? currentEnv = visitor.environment;
     while (currentEnv != null) {
-      restoreEnvFrom(currentEnv, _globalTopLevelSnapshot, _globalStaticSnapshot);
+      restoreEnvFrom(
+        currentEnv,
+        _globalTopLevelSnapshot,
+        _globalStaticSnapshot,
+      );
       currentEnv = currentEnv.enclosing;
     }
-    restoreEnvFrom(visitor.globalEnvironment, _globalTopLevelSnapshot, _globalStaticSnapshot);
+    restoreEnvFrom(
+      visitor.globalEnvironment,
+      _globalTopLevelSnapshot,
+      _globalStaticSnapshot,
+    );
 
     // 2. Restore per-module environments (only for modules that had snapshot data)
     try {
@@ -414,8 +479,16 @@ class InterpreterRunner {
         if (topMap != null || statMap != null) {
           try {
             final mod = loader.loadModule(Uri.parse(key));
-            restoreEnvFrom(mod.environment, topMap ?? const {}, statMap ?? const {});
-            restoreEnvFrom(mod.exportedEnvironment, topMap ?? const {}, statMap ?? const {});
+            restoreEnvFrom(
+              mod.environment,
+              topMap ?? const {},
+              statMap ?? const {},
+            );
+            restoreEnvFrom(
+              mod.exportedEnvironment,
+              topMap ?? const {},
+              statMap ?? const {},
+            );
           } catch (_) {}
         }
       }
@@ -484,8 +557,8 @@ class InterpreterRunner {
       } catch (_) {}
     }
 
-    Widget? resolvedWidget = _capturedApp ??
-        unwrap<Widget>(rawResult, visitor: interpreter.visitor);
+    Widget? resolvedWidget =
+        _capturedApp ?? unwrap<Widget>(rawResult, visitor: interpreter.visitor);
 
     if (resolvedWidget == null) {
       throw StateError(
@@ -517,6 +590,7 @@ class InterpreterRunner {
   }
 
   /// Dispatches to AST or Source evaluation based on flags.
+  @override
   Future<Widget> evaluateBundle(
     ProjectBundle bundle, {
     bool isHotReload = false,
@@ -563,12 +637,13 @@ class InterpreterRunner {
     _astRunner ??= AstInterpreterRunner(
       onLog: onLog,
       onGuestError: (error, stack) {
-        final effectiveStack = (error is ast_runtime.D4rtException &&
+        final effectiveStack =
+            (error is ast_runtime.D4rtException &&
                 error.guestStackTrace != null &&
                 error.guestStackTrace!.isNotEmpty)
             ? StackTrace.fromString(error.guestStackTrace!)
             : stack;
-        DartGoLogger.error('Guest runtime error', error, effectiveStack);
+        logGuestError(error, effectiveStack);
         onGuestError?.call(error, effectiveStack);
       },
       onExit: onExit,
@@ -578,12 +653,13 @@ class InterpreterRunner {
     _astRunner!.onLog = onLog;
     _astRunner!.profileExecution = DartGoLogger.verbose;
     _astRunner!.onGuestError ??= (error, stack) {
-      final effectiveStack = (error is ast_runtime.D4rtException &&
+      final effectiveStack =
+          (error is ast_runtime.D4rtException &&
               error.guestStackTrace != null &&
               error.guestStackTrace!.isNotEmpty)
           ? StackTrace.fromString(error.guestStackTrace!)
           : stack;
-      DartGoLogger.error('Guest runtime error', error, effectiveStack);
+      logGuestError(error, effectiveStack);
       onGuestError?.call(error, effectiveStack);
     };
     _astRunner!.onExit = onExit;
@@ -599,6 +675,7 @@ class InterpreterRunner {
   }
 
   /// Cleanly unmounts the active guest app.
+  @override
   void unmount() {
     try {
       _activeApplication?.onUnmount?.call();

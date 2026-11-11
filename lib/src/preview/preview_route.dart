@@ -5,13 +5,7 @@ import '../widgets/guest_error_banner.dart';
 import '../widgets/interpreter_error_view.dart';
 import '../widgets/project_splash_screen.dart';
 
-/// Immutable snapshot of the launch/preview surface.
-///
-/// The preview is a pushed route, so it is **not** rebuilt when the host root
-/// rebuilds (pushed routes are independent native screens). The host publishes
-/// this snapshot through a [ValueNotifier] after every state change; the route
-/// listens to it, so splash progress, the mounted guest and error surfaces all
-/// stay in sync without the root re-deciding its child.
+/// Immutable snapshot of the launch/preview surface published to pushed routes.
 class PreviewState {
   final String appName;
   final String? appVersion;
@@ -31,6 +25,12 @@ class PreviewState {
   final String? errorStackTrace;
   final ErrorDisplayMode errorDisplayMode;
 
+  /// Epoch counter bumped on hot restart so Flutter discards existing State.
+  final int guestEpoch;
+
+  /// True when the error occurred before the initial frame rendered.
+  final bool failedToStart;
+
   const PreviewState({
     this.appName = 'DartNative App',
     this.appVersion,
@@ -49,6 +49,8 @@ class PreviewState {
     this.errorMessage,
     this.errorStackTrace,
     this.errorDisplayMode = ErrorDisplayMode.overlay,
+    this.guestEpoch = 0,
+    this.failedToStart = false,
   });
 }
 
@@ -67,7 +69,6 @@ class PreviewScreen extends StatelessWidget {
 
   final VoidCallback onGoHome;
   final VoidCallback onRetry;
-  final void Function(String error)? onLogToTerminal;
   final VoidCallback onDismissError;
 
   const PreviewScreen({
@@ -76,7 +77,6 @@ class PreviewScreen extends StatelessWidget {
     required this.probeKey,
     required this.onGoHome,
     required this.onRetry,
-    this.onLogToTerminal,
     required this.onDismissError,
   });
 
@@ -97,20 +97,31 @@ class PreviewScreen extends StatelessWidget {
             stackTrace: s.errorStackTrace,
             onGoHome: onGoHome,
             onRetry: onRetry,
-            onLogToTerminal: onLogToTerminal,
+            // One general title for every failure; the subtitle says whether
+            // the project never loaded or crashed while running.
+            subtitle: s.failedToStart
+                ? 'The project did not finish loading'
+                : 'Runtime exception during execution',
           );
         }
 
         if (s.isAppMounted) {
           final guest = KeyedSubtree(
             key: probeKey,
+            // `guestEpoch` changes only on a hot restart, so the wrapper is
+            // stable across reloads (state/providers stay alive) but is
+            // discarded on restart — forcing fresh elements and State instead
+            // of reconciling onto the previous, disposed interpreter's tree.
             child: KeyedSubtree(
-              key: const ValueKey('guest_root'),
-              child:
-                  s.widget ??
-                  const Scaffold(
-                    body: Center(child: Text('Evaluating widget...')),
-                  ),
+              key: ValueKey('guest_epoch_${s.guestEpoch}'),
+              child: KeyedSubtree(
+                key: const ValueKey('guest_root'),
+                child:
+                    s.widget ??
+                    const Scaffold(
+                      body: Center(child: Text('Evaluating widget...')),
+                    ),
+              ),
             ),
           );
           if (s.errorMessage != null && s.widget != null) {

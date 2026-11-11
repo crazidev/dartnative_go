@@ -1,4 +1,3 @@
-
 /// Represents a DartNative project discovered via network scan, UDP beacon,
 /// or user entry.
 class DartGoProject {

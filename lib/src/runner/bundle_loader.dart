@@ -4,9 +4,9 @@ import 'dart:io';
 
 import 'package:archive/archive.dart';
 
-import '../cli/packaging/dep_packager.dart';
 import '../interpreter/auto_import_parser.dart';
 import 'dep_cache.dart';
+import 'dep_entry.dart';
 import 'logger.dart';
 
 /// Encapsulates the loaded project metadata and virtual multi-file source map.
@@ -101,6 +101,13 @@ class BundleLoader {
   DepCache? _depCache;
   Map<String, String>? _cachedDepSources;
   String? _loadedDepsHash;
+
+  /// Optional breakpoint instrumenter supplied by the Source runtime.
+  ///
+  /// The AST-only product graph leaves this null: `package:analyzer` is not
+  /// linked, so breakpoint instrumentation is unavailable (and unused, since
+  /// AST mode never replays source breakpoints).
+  BreakpointInstrumenter? breakpointInstrumenter;
 
   // NOTE: no `this._depCache` formal here: private named parameters need
   // language version 3.12, but the device toolchain pins this package to
@@ -650,6 +657,7 @@ class BundleLoader {
         rawFiles,
         packageName: packageName,
         breakpointsByFile: breakpointsByFile,
+        breakpointInstrumenter: breakpointInstrumenter,
       );
       final vmapMs = vmapSw.elapsedMilliseconds;
 
@@ -754,6 +762,7 @@ class BundleLoader {
           rawFiles,
           packageName: packageName,
           breakpointsByFile: breakpointsByFile,
+          breakpointInstrumenter: breakpointInstrumenter,
         );
 
         String entrypointLibrary = 'package:$packageName/main.dart';
@@ -813,6 +822,7 @@ class BundleLoader {
     final virtualSources = AutoImportParser.buildVirtualSourceMap(
       rawFiles,
       breakpointsByFile: breakpointsByFile,
+      breakpointInstrumenter: breakpointInstrumenter,
     );
 
     return ProjectBundle(

@@ -1,5 +1,7 @@
 import 'package:dartnative/dartnative.dart';
 
+import '../theme/shadcn_theme.dart';
+
 /// A floating, draggable DevTool pill that can be moved anywhere on the screen.
 ///
 /// Features:
@@ -44,9 +46,13 @@ class _FloatingDevToolButtonState extends State<FloatingDevToolButton> {
     final targetHeight = _isMinimized ? _minimizedHeight : _pillHeight;
 
     final minX = _margin;
-    final maxX = (screenSize.width - targetWidth - _margin).clamp(minX, double.infinity);
+    final maxX = (screenSize.width - targetWidth - _margin).clamp(
+      minX,
+      double.infinity,
+    );
     final minY = padding.top + _margin;
-    final maxY = (screenSize.height - targetHeight - padding.bottom - _margin).clamp(minY, double.infinity);
+    final maxY = (screenSize.height - targetHeight - padding.bottom - _margin)
+        .clamp(minY, double.infinity);
 
     // Initial default position: bottom-right corner above safe area
     _position ??= Offset(maxX, maxY - 20);
@@ -98,15 +104,13 @@ class _FloatingDevToolButtonState extends State<FloatingDevToolButton> {
   }
 
   Widget _buildFullPill() {
+    final theme = context.theme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xEE1C1C1E),
+        color: theme.card,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0x33FFFFFF),
-          width: 0.8,
-        ),
+        border: Border.all(color: theme.border, width: 0.8),
         boxShadow: const [
           BoxShadow(
             color: Color(0x66000000),
@@ -120,10 +124,10 @@ class _FloatingDevToolButtonState extends State<FloatingDevToolButton> {
         children: [
           Image.asset('assets/dn-logo.png', width: 22, height: 22),
           const SizedBox(width: 8),
-          const Text(
+          Text(
             'DevTool',
             style: TextStyle(
-              color: Colors.white,
+              color: theme.cardForeground,
               fontSize: 13,
               fontWeight: FontWeight.bold,
             ),
@@ -150,10 +154,10 @@ class _FloatingDevToolButtonState extends State<FloatingDevToolButton> {
             },
             child: Container(
               padding: const EdgeInsets.all(4),
-              child: const Text(
+              child: Text(
                 '✕',
                 style: TextStyle(
-                  color: Colors.white54,
+                  color: theme.mutedForeground,
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),
@@ -166,16 +170,14 @@ class _FloatingDevToolButtonState extends State<FloatingDevToolButton> {
   }
 
   Widget _buildMinimizedPill() {
+    final theme = context.theme;
     return Container(
       width: _minimizedWidth,
       height: _minimizedHeight,
       decoration: BoxDecoration(
-        color: const Color(0xEE1C1C1E),
+        color: theme.card,
         shape: BoxShape.circle,
-        border: Border.all(
-          color: const Color(0x33FFFFFF),
-          width: 0.8,
-        ),
+        border: Border.all(color: theme.border, width: 0.8),
         boxShadow: const [
           BoxShadow(
             color: Color(0x66000000),
@@ -184,10 +186,10 @@ class _FloatingDevToolButtonState extends State<FloatingDevToolButton> {
           ),
         ],
       ),
-      child: const Center(
+      child: Center(
         child: Text(
           '+',
-          style: TextStyle(fontSize: 16),
+          style: TextStyle(fontSize: 16, color: theme.cardForeground),
         ),
       ),
     );

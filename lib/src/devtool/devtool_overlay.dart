@@ -49,6 +49,9 @@ class DevToolOverlay extends StatefulWidget {
   /// Structured snapshot of the last AST bundle evaluation for the viewer.
   final AstProfileSnapshot? astProfile;
 
+  /// Whether the floating controls are active (gated until guest app mounts).
+  final bool isEnabled;
+
   const DevToolOverlay({
     super.key,
     required this.child,
@@ -58,6 +61,7 @@ class DevToolOverlay extends StatefulWidget {
     required this.isConnected,
     required this.onGoHome,
     required this.onReload,
+    this.isEnabled = true,
     this.depCache,
     this.onClearCache,
     this.runtimeModeLabel = 'Source (tom_d4rt)',
@@ -90,7 +94,22 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
         }
       },
     );
-    _shakeDetector.start();
+    if (widget.isEnabled) _shakeDetector.start();
+  }
+
+  @override
+  void didUpdateWidget(covariant DevToolOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isEnabled == widget.isEnabled) return;
+    if (widget.isEnabled) {
+      _shakeDetector.start();
+    } else {
+      _shakeDetector.stop();
+      // Leaving the guest (Go Home, teardown): close any open sheet so it
+      // cannot outlive the surface it belongs to.
+      _sheet?.dismiss();
+      _sheet = null;
+    }
   }
 
   @override
@@ -101,7 +120,7 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
 
   /// Opens the native bottom sheet with DevTools controls.
   void showDevtools(BuildContext context) {
-    if (_sheet != null) return;
+    if (!widget.isEnabled || _sheet != null) return;
 
     _sheet = showBottomSheet(
       context,
@@ -155,11 +174,12 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
         // 1. Guest App root
         widget.child,
 
-        // 2. Floating, draggable DevTool button
-        FloatingDevToolButton(
-          isConnected: widget.isConnected,
-          onTap: () => showDevtools(context),
-        ),
+        // 2. Floating, draggable DevTool button (only once a guest is up)
+        if (widget.isEnabled)
+          FloatingDevToolButton(
+            isConnected: widget.isConnected,
+            onTap: () => showDevtools(context),
+          ),
       ],
     );
   }

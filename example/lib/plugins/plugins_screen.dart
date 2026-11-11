@@ -79,20 +79,11 @@ class _PluginsScreenState extends State<PluginsScreen> {
         title: const Text(
           'Plugin List',
           style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.bold,
+            fontSize: 17, 
+            fontWeight: .bold,
           ),
         ),
         actions: [
-          // BarButtonItem(
-          //   title: 'Clear',
-          //   onPressed: () {
-          //     var userRepo = getIt<UserRepository>();
-          //     userRepo.users.add("Crazibeat");
-
-          //     print("UserRepo users: ${userRepo.users}");
-          //   },
-          // ),
         ],
       ),
       body: Padding(
@@ -118,11 +109,11 @@ class _PluginsScreenState extends State<PluginsScreen> {
                         vertical: 0,
                         horizontal: 20,
                       ),
-                      // leading: Image.asset(
-                      //   'assets/dn-logo-1.png',
-                      //   width: 40,
-                      //   height: 40,
-                      // ),
+                      leading: Image.asset(
+                        'assets/dn-logo-1.png',
+                        width: 40,
+                        height: 40,
+                      ),
                       subtitle: Text(
                         plugin.version,
                         style: TextStyle(color: Colors.grey),
@@ -141,7 +132,7 @@ class _PluginsScreenState extends State<PluginsScreen> {
                 ],
               ),
             ),
-            // ServerDemoCard(userId: 2),
+            // ServerDemoCard(userId: 1),
           ],
         ),
       ),

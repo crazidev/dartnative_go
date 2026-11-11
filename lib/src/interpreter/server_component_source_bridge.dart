@@ -49,18 +49,18 @@ void registerSourceServerComponentBridge(
         final loadingBuilder = loadingRaw == null
             ? null
             : (BuildContext context) => D4.extractBridgedArg<Widget>(
-                  D4.callInterpreterCallback(visitor, loadingRaw, [context]),
-                  'loadingBuilder',
-                  visitor,
-                );
+                D4.callInterpreterCallback(visitor, loadingRaw, [context]),
+                'loadingBuilder',
+                visitor,
+              );
         final errorRaw = named['errorBuilder'];
         final errorBuilder = errorRaw == null
             ? null
             : (Object error) => D4.extractBridgedArg<Widget>(
-                  D4.callInterpreterCallback(visitor, errorRaw, [error]),
-                  'errorBuilder',
-                  visitor,
-                );
+                D4.callInterpreterCallback(visitor, errorRaw, [error]),
+                'errorBuilder',
+                visitor,
+              );
         final loader = loaderProvider();
         return ServerComponentView(
           key: key,
@@ -76,20 +76,21 @@ void registerSourceServerComponentBridge(
       },
     },
     constructorSignatures: {
-      '':
-          'ServerComponentView({required String componentId, Map<String, dynamic>? props, String? fallbackComponentId, Widget? fallback, Widget Function(BuildContext)? loadingBuilder, Widget Function(Object)? errorBuilder, Key? key})',
+      '': 'ServerComponentView({required String componentId, Map<String, dynamic>? props, String? fallbackComponentId, Widget? fallback, Widget Function(BuildContext)? loadingBuilder, Widget Function(Object)? errorBuilder, Key? key})',
     },
     getters: {
-      'componentId': (visitor, target) =>
-          D4.validateTarget<ServerComponentView>(
+      'componentId': (visitor, target) => D4
+          .validateTarget<ServerComponentView>(
             target,
             'ServerComponentView',
-          ).componentId,
-      'props': (visitor, target) =>
-          D4.validateTarget<ServerComponentView>(
+          )
+          .componentId,
+      'props': (visitor, target) => D4
+          .validateTarget<ServerComponentView>(
             target,
             'ServerComponentView',
-          ).props,
+          )
+          .props,
     },
     getterSignatures: {
       'componentId': 'String get componentId',

@@ -1,21 +1,29 @@
+import 'dart:async';
+
 import 'package:dartnative/dartnative.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 
 import '../client/theme_storage.dart';
+import 'shadcn_theme.dart';
 
-/// The app-wide theme state, owned by Riverpod.
-///
-/// The initial state is the persisted [ThemeStorage] value, preloaded in
-/// `main()` before `runApp` so the first frame already uses the right theme.
-/// Every mutation persists and pins the native appearance via
-/// [setAppBrightness] (best-effort: framework shims throw on the host VM,
-/// where there is no native appearance to pin).
 final themePreferenceProvider =
     NotifierProvider<ThemeController, ThemePreference>(ThemeController.new);
 
 class ThemeController extends Notifier<ThemePreference> {
   @override
-  ThemePreference build() => ThemeStorage.currentPreference;
+  ThemePreference build() {
+    // Hydrate cold cache asynchronously if startup preload was skipped.
+    if (!ThemeStorage.isLoaded) unawaited(_hydrateFromStorage());
+    return ThemeStorage.currentPreference;
+  }
+
+  Future<void> _hydrateFromStorage() async {
+    final persisted = await ThemeStorage.loadPreference();
+
+    if (persisted == state) return;
+    state = persisted;
+    _applyNativeAppearance(persisted);
+  }
 
   Future<void> setPreference(ThemePreference preference) async {
     state = preference;
@@ -50,9 +58,55 @@ class ThemeController extends Notifier<ThemePreference> {
   }
 }
 
-/// Maps a preference to the framework [ThemeMode] for `App.themeMode`.
 ThemeMode themeModeOf(ThemePreference preference) => switch (preference) {
   ThemePreference.system => ThemeMode.system,
   ThemePreference.light => ThemeMode.light,
   ThemePreference.dark => ThemeMode.dark,
 };
+
+ShadcnAppearanceMode resolveAppearance(
+  ThemePreference preference,
+  Brightness platformBrightness,
+) => switch (preference) {
+  ThemePreference.system =>
+    platformBrightness == Brightness.dark
+        ? ShadcnAppearanceMode.dark
+        : ShadcnAppearanceMode.light,
+  ThemePreference.light => ShadcnAppearanceMode.light,
+  ThemePreference.dark => ShadcnAppearanceMode.dark,
+};
+
+class ShellThemeScope extends ConsumerStatefulWidget {
+  const ShellThemeScope({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<ShellThemeScope> createState() => _ShellThemeScopeState();
+}
+
+class _ShellThemeScopeState extends ConsumerState<ShellThemeScope> {
+  /// Resolves platform brightness with Theme fallback for headless testing.
+  Brightness _systemBrightness(BuildContext context) {
+    try {
+      return MediaQuery.of(context).platformBrightness;
+    } catch (_) {
+      try {
+        return Theme.of(context).brightness;
+      } catch (_) {
+        return Brightness.light;
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final preference = ref.watch(themePreferenceProvider);
+    final brightness = _systemBrightness(context);
+
+    return ShadcnTheme(
+      mode: resolveAppearance(preference, brightness),
+      child: widget.child,
+    );
+  }
+}
