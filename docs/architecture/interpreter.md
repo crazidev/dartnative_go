@@ -32,7 +32,9 @@ Local fixes to generated output are applied by the generator
   fix bugs in both.
 - A host widget handed back to guest code implements `D4InterpretedProxy` so
   covariant parameters and field reads resolve to the interpreted class.
-- A guest `build` that starts throwing renders its last good child.
+- A guest `build` that starts throwing renders its last good child; before
+  there is one, a monitored failure renders a neutral placeholder so the
+  framework's error screen never flashes before the host's error view.
 - Bridge registration order matters: the last registration wins (tests rely
   on this for fakes).
 - A re-registration of the *same* native class under one name (e.g. UI +

@@ -136,12 +136,18 @@ void main() {
         bundle.bytes,
         moduleFingerprints: bundle.fingerprints,
       );
+      final panel = root as InterpretedStatelessWidget;
 
+      late Widget fallback;
       expect(
-        () => (root as InterpretedStatelessWidget).build(_FakeContext()),
-        throwsA(anything),
-        reason: 'reporting must not swallow the failure',
+        () => fallback = panel.build(_FakeContext()),
+        returnsNormally,
+        reason:
+            'a monitored build failure becomes a neutral placeholder: the '
+            'host is about to replace it with its own error surface, and '
+            'rethrowing would flash the framework error screen first',
       );
+      expect(fallback, isA<SizedBox>());
       expect(
         errors.where((e) => e.contains('build blew up')),
         isNotEmpty,

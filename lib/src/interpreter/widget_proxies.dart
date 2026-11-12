@@ -459,6 +459,12 @@ class InterpretedStateProxy extends State<StatefulWidget> {
         bool hasVal = false;
         try {
           val = oldState.getField(fieldName);
+          // A `late` field is stored as a LateVariable. Copying the wrapper
+          // itself makes the next read return the wrapper instead of its value
+          // (e.g. TextField received a LateVariable for `controller`), so
+          // unwrap it. An uninitialized late field without an initializer
+          // throws here and is skipped, leaving the new state's slot untouched.
+          if (val is LateVariable) val = val.value;
           hasVal = true;
         } catch (_) {
           try {
@@ -860,6 +866,12 @@ class InterpretedConsumerStateProxy
         bool hasVal = false;
         try {
           val = oldState.getField(fieldName);
+          // A `late` field is stored as a LateVariable. Copying the wrapper
+          // itself makes the next read return the wrapper instead of its value
+          // (e.g. TextField received a LateVariable for `controller`), so
+          // unwrap it. An uninitialized late field without an initializer
+          // throws here and is skipped, leaving the new state's slot untouched.
+          if (val is LateVariable) val = val.value;
           hasVal = true;
         } catch (_) {
           try {

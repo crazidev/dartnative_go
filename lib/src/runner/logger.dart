@@ -39,7 +39,10 @@ class DartGoLogger {
     final breakdownStr = breakdown != null && breakdown.isNotEmpty
         ? ' (${breakdown.entries.map((e) => '${e.key}=${e.value}${e.value is int ? 'ms' : ''}').join(', ')})'
         : '';
-    _output('[$tag] [TIME] $operation ready in ${totalMs}ms$breakdownStr', level: 'BENCH');
+    _output(
+      '[$tag] [TIME] $operation ready in ${totalMs}ms$breakdownStr',
+      level: 'BENCH',
+    );
   }
 
   /// Logs hot reload duration and step breakdowns.
@@ -50,7 +53,9 @@ class DartGoLogger {
     required int totalMs,
     required Map<String, int> timings,
   }) {
-    final details = timings.entries.map((e) => '${e.key}=${e.value}ms').join(', ');
+    final details = timings.entries
+        .map((e) => '${e.key}=${e.value}ms')
+        .join(', ');
     final msg = verbose
         ? '[RELOAD] $mode finished in ${totalMs}ms ($details)'
         : '[RELOAD] $mode finished in ${totalMs}ms';
@@ -65,19 +70,25 @@ class DartGoLogger {
 
   /// Logs error messages and optional stack traces (always output).
   ///
-  /// An error is relayed to the CLI with a short stack even when verbose is
-  /// off: the device screen shows the message but not where it came from, so a
-  /// trimmed trace is what makes a guest failure diagnosable from the terminal.
+  /// The message and its trace go out as **one** entry, message first and the
+  /// trace beneath it, so a single failure shows up once in the CLI instead of
+  /// as a message block plus a detached trace block.
+  ///
+  /// An error is relayed with a short stack even when verbose is off: the
+  /// device screen shows the message but not where it came from, so a trimmed
+  /// trace is what makes a guest failure diagnosable from the terminal.
   /// Verbose mode sends the whole trace.
   static void error(String message, [dynamic err, StackTrace? stack]) {
     final msg = err != null ? '$message: $err' : message;
-    _output('[ERROR] $msg', level: 'ERROR');
-    if (stack == null) return;
-    final lines = '$stack'.split('\n');
-    _output(
-      verbose ? '$stack' : lines.take(8).join('\n'),
-      level: 'ERROR',
-    );
+    final buffer = StringBuffer('[ERROR] $msg');
+    if (stack != null) {
+      final trace = '$stack'.trim();
+      if (trace.isNotEmpty) {
+        final lines = trace.split('\n');
+        buffer.write('\n${verbose ? trace : lines.take(8).join('\n')}');
+      }
+    }
+    _output(buffer.toString(), level: 'ERROR');
   }
 
   static void _output(String message, {String level = 'INFO'}) {

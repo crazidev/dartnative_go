@@ -6,6 +6,7 @@ import 'package:tom_d4rt_ast/runtime.dart' as ast;
 
 import 'ast_bundle_codec.dart';
 import 'ast_profile.dart';
+import 'guest_runner.dart';
 import 'logger.dart';
 import '../cli/server_components/server_annotation_scanner.dart';
 import '../interpreter/ast/ast_asset_bridge.dart';
@@ -31,6 +32,14 @@ class AstInterpreterRunner {
   /// bridge callback. Relayed to the host (and through it to the `dart_go` CLI)
   /// so a runtime failure is not only visible on the device screen.
   void Function(Object error, StackTrace stack)? onGuestError;
+
+  /// Guest build failures that left no rendered child, so the host must take
+  /// over the whole screen instead of floating a banner over a blank surface.
+  GuestBlankBuildReporter? onGuestBlankBuild;
+
+  /// Fires when a previously blank guest surface builds a child again, so the
+  /// host can remove its error view without exposing a blank frame.
+  VoidCallback? onGuestRecovered;
   VoidCallback? onExit;
 
   /// Number of core `tom_d4rt_ast` runners constructed by this instance.
@@ -115,6 +124,8 @@ class AstInterpreterRunner {
   AstInterpreterRunner({
     this.onLog,
     this.onGuestError,
+    this.onGuestBlankBuild,
+    this.onGuestRecovered,
     this.onExit,
     this.currentServerUrl,
   });
@@ -176,6 +187,8 @@ class AstInterpreterRunner {
       runner,
       onLog: onLog,
       onError: onGuestError,
+      onBlankBuild: onGuestBlankBuild,
+      onRecovered: onGuestRecovered,
     );
     // Asset-aware Image/AssetImage overrides (last registration wins),
     // mirroring the source engine's registerAssetAwareBridges.

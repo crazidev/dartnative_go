@@ -29,7 +29,33 @@ void Function(String message)? onAstGuestLog;
 /// diagnostics — the `dart_go` CLI included.
 void Function(Object error, StackTrace stack)? onAstGuestError;
 
-R _runWithLogCapture<R>(R Function() action) {
+/// Reports a guest build that failed before the proxy ever rendered a child —
+/// the screen (or slot) is blank, so the host must take over with its
+/// full-screen error view instead of an overlay banner over a working tree.
+///
+/// Fires just before [onAstGuestError] for the same failure and only refines
+/// *how* the host shows it: it must not log or report the error a second time.
+///
+/// [rebuildsInPlace] says whether a later hot reload can repair this surface on
+/// its own: a `State` proxy is registered with the hot-reload tracker and is
+/// marked dirty, so fixed code repaints it. A stateless proxy has no State to
+/// mark, so the host has to remount the guest tree instead.
+void Function(
+  Object error,
+  StackTrace stack, {
+  required bool rebuildsInPlace,
+})?
+onAstGuestBlankBuild;
+
+/// Reports that a proxy which previously left its surface blank now built a
+/// child again.
+///
+/// The host keeps the full-screen error view up until this fires (or a new
+/// failure replaces it), so a fixed screen never flashes blank while the view
+/// is being removed.
+void Function()? onAstGuestRecovered;
+
+R _runWithLogCapture<R>(R Function() action, {bool reportError = true}) {
   try {
     final handler = onAstGuestLog;
     if (handler == null) return action();
@@ -42,21 +68,45 @@ R _runWithLogCapture<R>(R Function() action) {
       ),
     );
   } catch (error, stack) {
-    final report = onAstGuestError;
-    if (report != null) {
-      try {
-        final guestStack =
-            (error is D4rtException &&
-                error.guestStackTrace != null &&
-                error.guestStackTrace!.isNotEmpty)
-            ? StackTrace.fromString(error.guestStackTrace!)
-            : stack;
-        report(error, guestStack);
-      } catch (_) {}
-    }
+    if (reportError) _reportGuestError(error, stack);
     rethrow;
   }
 }
+
+/// Sends [error] to [onAstGuestError] with the guest stack when the engine
+/// carries one.
+///
+/// Build proxies defer this call to their own `catch` so a failure that left
+/// no rendered child can report the blank surface first (see
+/// [onAstGuestBlankBuild]) and then publish the message once.
+void _reportGuestError(Object error, StackTrace stack) {
+  final report = onAstGuestError;
+  if (report == null) return;
+  try {
+    final guestStack =
+        (error is D4rtException &&
+            error.guestStackTrace != null &&
+            error.guestStackTrace!.isNotEmpty)
+        ? StackTrace.fromString(error.guestStackTrace!)
+        : stack;
+    report(error, guestStack);
+  } catch (_) {}
+}
+
+/// Tells the host that a blank surface renders again (see
+/// [onAstGuestRecovered]).
+void _notifyGuestRecovered() {
+  try {
+    onAstGuestRecovered?.call();
+  } catch (_) {}
+}
+
+/// Placeholder for a monitored build that threw before producing a child.
+///
+/// The host already received the failure and shows its error surface next
+/// frame; rethrowing would flash the framework's red screen in between.
+/// Without a listener the proxy rethrows instead.
+const Widget _failedBuildPlaceholder = SizedBox.shrink();
 
 /// Native proxy for AST-interpreted classes that extend [StatelessWidget].
 class InterpretedStatelessWidget extends StatelessWidget
@@ -64,10 +114,16 @@ class InterpretedStatelessWidget extends StatelessWidget
   InterpreterVisitor visitor;
   InterpretedInstance instance;
 
-  /// The last child this proxy built successfully. When guest code throws
-  /// mid-reload, the proxy renders this instead of failing the whole tree:
-  /// the working UI stays up while the error goes to the CLI.
+  /// Last successful child; rendered when a later build throws.
+  /// Before the first success, [_failedBuildPlaceholder] is used instead.
   Widget? _lastGoodChild;
+
+  /// True when the last build left [_failedBuildPlaceholder]; the next
+  /// success reports recovery via [_notifyGuestRecovered].
+  bool _blankFailed = false;
+
+  /// Last blank-surface failure signature; suppresses per-frame repeats.
+  String? _blankErrorSignature;
 
   /// A stateless widget has no state to mark; a parent rebuild (or the sheet's
   /// per-reload subtree key) is what re-runs its build.
@@ -123,13 +179,36 @@ class InterpretedStatelessWidget extends StatelessWidget
         throw StateError(
           'Interpreted StatelessWidget has no callable build(context) method',
         );
-      });
+      }, reportError: false);
       _lastGoodChild = built;
+      if (_blankFailed) {
+        _blankFailed = false;
+        _blankErrorSignature = null;
+        _notifyGuestRecovered();
+      }
       return built;
-    } catch (_) {
+    } catch (error, stack) {
       final cached = _lastGoodChild;
-      if (cached != null) return cached;
-      rethrow;
+      if (cached != null) {
+        // The working UI stays up; report the failure for the banner.
+        _reportGuestError(error, stack);
+        return cached;
+      }
+      // Monitored blank failure: placeholder instead of framework red screen.
+      if (onAstGuestError == null) rethrow;
+      // Report once per distinct message; repeat rebuilds stay quiet.
+      final signature = error.toString();
+      final isRepeat = _blankFailed && _blankErrorSignature == signature;
+      _blankFailed = true;
+      _blankErrorSignature = signature;
+      if (isRepeat) return _failedBuildPlaceholder;
+      onAstGuestBlankBuild?.call(
+        error,
+        stack,
+        rebuildsInPlace: false,
+      );
+      _reportGuestError(error, stack);
+      return _failedBuildPlaceholder;
     }
   }
 }
@@ -176,6 +255,13 @@ class InterpretedConsumerWidget extends ConsumerWidget
   /// See [InterpretedStatelessWidget._lastGoodChild].
   Widget? _lastGoodChild;
 
+  /// True when the last build left [_failedBuildPlaceholder]; the next
+  /// success reports recovery via [_notifyGuestRecovered].
+  bool _blankFailed = false;
+
+  /// Last blank-surface failure signature; suppresses per-frame repeats.
+  String? _blankErrorSignature;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     try {
@@ -193,13 +279,36 @@ class InterpretedConsumerWidget extends ConsumerWidget
         throw StateError(
           'Interpreted ConsumerWidget has no callable build(context, ref) method',
         );
-      });
+      }, reportError: false);
       _lastGoodChild = built;
+      if (_blankFailed) {
+        _blankFailed = false;
+        _blankErrorSignature = null;
+        _notifyGuestRecovered();
+      }
       return built;
-    } catch (_) {
+    } catch (error, stack) {
       final cached = _lastGoodChild;
-      if (cached != null) return cached;
-      rethrow;
+      if (cached != null) {
+        // The working UI stays up; report the failure for the banner.
+        _reportGuestError(error, stack);
+        return cached;
+      }
+      // Monitored blank failure: placeholder instead of framework red screen.
+      if (onAstGuestError == null) rethrow;
+      // Report once per distinct message; repeat rebuilds stay quiet.
+      final signature = error.toString();
+      final isRepeat = _blankFailed && _blankErrorSignature == signature;
+      _blankFailed = true;
+      _blankErrorSignature = signature;
+      if (isRepeat) return _failedBuildPlaceholder;
+      onAstGuestBlankBuild?.call(
+        error,
+        stack,
+        rebuildsInPlace: false,
+      );
+      _reportGuestError(error, stack);
+      return _failedBuildPlaceholder;
     }
   }
 }
@@ -557,6 +666,12 @@ class InterpretedStateProxy extends State<StatefulWidget>
         bool hasVal = false;
         try {
           val = oldState.getField(fieldName);
+          if (val is LateVariable) val = val.value;
+          // A `late` field is stored as a LateVariable. Copying the wrapper
+          // itself makes the next read return the wrapper instead of its value
+          // (e.g. TextField received a LateVariable for `controller`), so
+          // unwrap it. An uninitialized late field without an initializer
+          // throws here and is skipped, leaving the new state's slot untouched.
           hasVal = true;
         } catch (_) {
           try {
@@ -576,6 +691,13 @@ class InterpretedStateProxy extends State<StatefulWidget>
   /// See [InterpretedStatelessWidget._lastGoodChild].
   Widget? _lastGoodChild;
 
+  /// True when the last build left [_failedBuildPlaceholder]; the next
+  /// success reports recovery via [_notifyGuestRecovered].
+  bool _blankFailed = false;
+
+  /// Last blank-surface failure signature; suppresses per-frame repeats.
+  String? _blankErrorSignature;
+
   @override
   Widget build(BuildContext context) {
     try {
@@ -593,18 +715,49 @@ class InterpretedStateProxy extends State<StatefulWidget>
         throw StateError(
           'Interpreted State has no callable build(context) method',
         );
-      });
+      }, reportError: false);
       _lastGoodChild = built;
+      if (_blankFailed) {
+        _blankFailed = false;
+        _blankErrorSignature = null;
+        _notifyGuestRecovered();
+      }
       return built;
-    } catch (_) {
+    } catch (error, stack) {
       final cached = _lastGoodChild;
-      if (cached != null) return cached;
-      rethrow;
+      if (cached != null) {
+        // The working UI stays up; report the failure for the banner.
+        _reportGuestError(error, stack);
+        return cached;
+      }
+      // Monitored blank failure: placeholder instead of framework red screen.
+      if (onAstGuestError == null) rethrow;
+      // Report once per distinct message; repeat rebuilds stay quiet.
+      final signature = error.toString();
+      final isRepeat = _blankFailed && _blankErrorSignature == signature;
+      _blankFailed = true;
+      _blankErrorSignature = signature;
+      if (isRepeat) return _failedBuildPlaceholder;
+      onAstGuestBlankBuild?.call(
+        error,
+        stack,
+        rebuildsInPlace: true,
+      );
+      _reportGuestError(error, stack);
+      return _failedBuildPlaceholder;
     }
   }
 
   void _rebuildIfMounted() {
-    if (!mounted) return;
+    // `mounted` is a native accessor; treat a host stub (or a disposed state)
+    // as "not mounted" instead of throwing out of the reload path.
+    bool isMounted;
+    try {
+      isMounted = mounted;
+    } catch (_) {
+      isMounted = false;
+    }
+    if (!isMounted) return;
     try {
       setState(() {});
     } catch (_) {}
@@ -964,6 +1117,12 @@ class InterpretedConsumerStateProxy
         bool hasVal = false;
         try {
           val = oldState.getField(fieldName);
+          if (val is LateVariable) val = val.value;
+          // A `late` field is stored as a LateVariable. Copying the wrapper
+          // itself makes the next read return the wrapper instead of its value
+          // (e.g. TextField received a LateVariable for `controller`), so
+          // unwrap it. An uninitialized late field without an initializer
+          // throws here and is skipped, leaving the new state's slot untouched.
           hasVal = true;
         } catch (_) {
           try {
@@ -983,6 +1142,13 @@ class InterpretedConsumerStateProxy
   /// See [InterpretedStatelessWidget._lastGoodChild].
   Widget? _lastGoodChild;
 
+  /// True when the last build left [_failedBuildPlaceholder]; the next
+  /// success reports recovery via [_notifyGuestRecovered].
+  bool _blankFailed = false;
+
+  /// Last blank-surface failure signature; suppresses per-frame repeats.
+  String? _blankErrorSignature;
+
   @override
   Widget build(BuildContext context) {
     try {
@@ -999,18 +1165,49 @@ class InterpretedConsumerStateProxy
         throw StateError(
           'Interpreted ConsumerState has no callable build(context) method',
         );
-      });
+      }, reportError: false);
       _lastGoodChild = built;
+      if (_blankFailed) {
+        _blankFailed = false;
+        _blankErrorSignature = null;
+        _notifyGuestRecovered();
+      }
       return built;
-    } catch (_) {
+    } catch (error, stack) {
       final cached = _lastGoodChild;
-      if (cached != null) return cached;
-      rethrow;
+      if (cached != null) {
+        // The working UI stays up; report the failure for the banner.
+        _reportGuestError(error, stack);
+        return cached;
+      }
+      // Monitored blank failure: placeholder instead of framework red screen.
+      if (onAstGuestError == null) rethrow;
+      // Report once per distinct message; repeat rebuilds stay quiet.
+      final signature = error.toString();
+      final isRepeat = _blankFailed && _blankErrorSignature == signature;
+      _blankFailed = true;
+      _blankErrorSignature = signature;
+      if (isRepeat) return _failedBuildPlaceholder;
+      onAstGuestBlankBuild?.call(
+        error,
+        stack,
+        rebuildsInPlace: true,
+      );
+      _reportGuestError(error, stack);
+      return _failedBuildPlaceholder;
     }
   }
 
   void _rebuildIfMounted() {
-    if (!mounted) return;
+    // `mounted` is a native accessor; treat a host stub (or a disposed state)
+    // as "not mounted" instead of throwing out of the reload path.
+    bool isMounted;
+    try {
+      isMounted = mounted;
+    } catch (_) {
+      isMounted = false;
+    }
+    if (!isMounted) return;
     try {
       setState(() {});
     } catch (_) {}
@@ -1139,6 +1336,13 @@ void registerAstWidgetInterfaceProxies(
   D4rt interpreter, {
   void Function(String message)? onLog,
   void Function(Object error, StackTrace stack)? onError,
+  void Function(
+    Object error,
+    StackTrace stack, {
+    required bool rebuildsInPlace,
+  })?
+  onBlankBuild,
+  VoidCallback? onRecovered,
 }) {
   if (onLog != null) {
     onAstGuestLog = onLog;
@@ -1146,6 +1350,12 @@ void registerAstWidgetInterfaceProxies(
   if (onError != null) {
     onAstGuestError = onError;
     D4.onCallbackError = onError;
+  }
+  if (onBlankBuild != null) {
+    onAstGuestBlankBuild = onBlankBuild;
+  }
+  if (onRecovered != null) {
+    onAstGuestRecovered = onRecovered;
   }
 
   // Intercept top-level print calls directly in interpreted scripts

@@ -153,14 +153,14 @@ gen N (todo.dart unchanged → REUSED)     gen N+1 (sticky.dart edited → re-de
 guest build / lifecycle / button handler throws
         ──▶ host hook (onGuestError / onCallbackError) ──▶ DartGoLogger.error
         ──▶ logSink ──▶ WebSocket ──▶ CLI prints red [Device Error] + short stack
-        (reporting never swallows: the error still propagates on-device)
+        (reporting never swallows: the error is logged and surfaced on-device)
 ```
 
 * **Bad saves never take down the working app** — three gates, inside out:
   1. **Server**: a bundle build that fails leaves the previous `guest.ast` in place and broadcasts *nothing*; devices keep running untouched, the CLI warning is the whole signal.
   2. **Host**: a reload whose evaluation throws keeps the mounted tree (the interpreter already rolled its generation back); only an initial load with nothing to show gets the error screen.
-  3. **Proxy**: a guest `build` that starts throwing renders its last good child (`_lastGoodChild`) instead of failing the tree; fixed code builds fresh on the next reload. First builds and `createState` still throw — there is nothing to keep.
-* **Error display mode** (`ErrorDisplayStorage`, DevTools → ERROR DISPLAY): failures are always recorded with message and stack trace, but *where* they show is a persisted setting. **Overlay** (default) floats a dismissible `GuestErrorBanner` on top of the still-running app — tap expands to message plus full stack, ✕ dismisses, ↻ restarts, and the next successful reload clears it. **Full screen** keeps the historical `InterpreterErrorView` takeover, now with a STACK TRACE card (and Copy grabs message plus stack). Guest runtime errors (builds, callbacks) feed the same surface through `InterpreterRunner.onGuestError`. The CLI still gets the trimmed 8-line stack (full under `-v`).
+  3. **Proxy**: a guest `build` that starts throwing renders its last good child (`_lastGoodChild`); before the first good child, a monitored failure renders a neutral placeholder (via `onGuestBlankBuild`) so the framework's red screen never flashes before the host error view. `createState` still throws — there is no widget to replace.
+* **Error display** (`ErrorDisplayStorage`, DevTools → ERROR DISPLAY): failures are always recorded; `summarizeGuestError` strips host/interpreter framing so surfaces show the cause with the exception type as subtitle. Automatic surface is the dismissible `GuestErrorBanner`; `InterpreterErrorView` opens on banner tap, failed-to-start, or persisted full-screen mode. Both live in the host `App.builder` layer (above every route). Recovery waits for `onGuestRecovered` (or remount + two clean frames). Blank proxies report once per distinct message. Error-view Reload again retries the screen in place; DevTools Reload restarts to root; Home pops to the launcher. CLI gets a trimmed 8-line stack (full under `-v`).
 * **Source engine** (legacy): user-module-only snapshots (`< 2ms`), stable root key, generational remount.
 * **Engines**: AST (default, pre-compiled bundles) and Source (on-device analyzer parsing). The Bytecode stack VM was removed: two engines, no kill switches.
 
@@ -272,7 +272,8 @@ test/
   commits because the bad reference sits in a build body heals when the export
   appears),
   `runner/ast_proxy_error_boundary_test.dart` (a throwing build falls back to
-  the last good child, then builds fresh when fixed),
+  the last good child, then builds fresh when fixed; a first build renders a
+  neutral placeholder instead of the framework error screen),
   `server/build_failure_gate_test.dart` (a failed rebuild broadcasts nothing,
   the fixed rebuild broadcasts),
   `runner/ast_reload_atomic_generation_test.dart` (failed generation rolls

@@ -52,6 +52,11 @@ class DevToolOverlay extends StatefulWidget {
   /// Whether the floating controls are active (gated until guest app mounts).
   final bool isEnabled;
 
+  /// Guest failure surface (banner or error view) drawn above the routes but
+  /// below the floating button, so DevTools stays reachable while an error is
+  /// on screen. Positioned children are fine: this is a `Stack`.
+  final Widget? errorSurface;
+
   const DevToolOverlay({
     super.key,
     required this.child,
@@ -74,6 +79,7 @@ class DevToolOverlay extends StatefulWidget {
     this.errorDisplayMode = ErrorDisplayMode.overlay,
     this.onSelectErrorMode,
     this.astProfile,
+    this.errorSurface,
   });
 
   @override
@@ -174,7 +180,11 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
         // 1. Guest App root
         widget.child,
 
-        // 2. Floating, draggable DevTool button (only once a guest is up)
+        // 2. Guest failure surface: above the routes (so a failure on a screen
+        //    the guest pushed is visible), below the button.
+        ?widget.errorSurface,
+
+        // 3. Floating, draggable DevTool button (only once a guest is up)
         if (widget.isEnabled)
           FloatingDevToolButton(
             isConnected: widget.isConnected,

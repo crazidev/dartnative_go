@@ -24,7 +24,8 @@ class ErrorDisplayStorage {
     try {
       final prefs = _prefs ??= await SharedPreferences.getInstance();
       final saved = prefs.getString(kStorageKey);
-      final mode = ErrorDisplayMode.values.asNameMap()[saved] ??
+      final mode =
+          ErrorDisplayMode.values.asNameMap()[saved] ??
           ErrorDisplayMode.overlay;
       _memoryMode = mode;
       return mode;

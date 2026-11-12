@@ -24,6 +24,8 @@ import 'runner/native_bottomsheet_manager.dart';
 import 'runner/runtime_mode.dart';
 import 'runner/ui_probe.dart';
 import 'theme/theme_providers.dart';
+import 'widgets/guest_error_banner.dart';
+import 'widgets/interpreter_error_view.dart';
 
 /// Host shell: launcher, preview route, guest mounting and DevTools overlay.
 ///
@@ -73,6 +75,10 @@ class _DartNativeGoState extends State<DartNativeGo> {
   bool _isLoadingBundle = false;
   String _statusMessage = 'Connecting to project...';
   String? _errorMessage;
+
+  /// Exception type of the current failure (`Argument Error`, `Bad state`, …),
+  /// shown as the error view's subtitle. Null when the message names none.
+  String? _errorType;
   String? _errorStackTrace;
   ProjectBundle? _activeBundle;
   Widget? _interpretedWidget;
@@ -124,6 +130,25 @@ class _DartNativeGoState extends State<DartNativeGo> {
   /// Set when a guest exception occurred before the first frame was rendered.
   bool _guestLoadFailed = false;
 
+  /// Last failure left no rendered child (blank surface).
+  bool _guestBlankBuild = false;
+
+  /// Blank surface cannot repaint in place (stateless) — recovery remounts.
+  bool _blankBuildNeedsRemount = false;
+
+  /// Set by [onAstGuestBlankBuild] just before the matching [onAstGuestError].
+  bool _pendingBlankBuild = false;
+  bool _pendingBlankNeedsRemount = false;
+
+  /// Waiting for [onAstGuestRecovered] before clearing the error surface.
+  bool _awaitingScreenRecovery = false;
+
+  /// User opened [InterpreterErrorView] from the floating banner.
+  bool _errorViewExpanded = false;
+
+  /// Monotonic guest-failure count; recovery ignores stale clears.
+  int _errorSeq = 0;
+
   /// True while the preview route is active on the navigator.
   bool _previewRouteOpen = false;
 
@@ -144,6 +169,8 @@ class _DartNativeGoState extends State<DartNativeGo> {
       onExit: _unmountApp,
       useAst: _useAst,
       onGuestError: (error, stack) => _showGuestErrorBanner(error, stack),
+      onGuestBlankBuild: _showGuestBlankBuild,
+      onGuestRecovered: _handleGuestRecovered,
     );
     _bundleLoader.breakpointInstrumenter =
         _interpreterRunner.breakpointInstrumenter;
@@ -222,46 +249,105 @@ class _DartNativeGoState extends State<DartNativeGo> {
       iconUrl: _activeBundle?.iconUrl,
       splashBackgroundColor: _activeBundle?.splashBackgroundColor,
       errorMessage: _errorMessage,
+      errorType: _errorType,
       errorStackTrace: _errorStackTrace,
       errorDisplayMode: _errorDisplayMode,
       guestEpoch: _guestEpoch,
       failedToStart: _guestLoadFailed,
+      guestBlankBuild: _guestBlankBuild,
     );
   }
 
-  /// Records a guest failure for the on-device error surface without
-  /// unmounting the working tree. The same failure is already on the CLI
-  /// through [DartGoLogger]; this only decides what the device shows.
+  /// Records a guest failure for the on-device surface (CLI already logged it).
   ///
-  /// A failure **before the guest has painted its first frame** is a load
-  /// failure, not a runtime one: the project never came up, so there is no
-  /// working tree to keep behind a banner. Those take over the screen with
-  /// [InterpreterErrorView] (see [_failGuestLoad]).
+  /// Pre-first-frame failures are load failures → [_failGuestLoad].
   void _showGuestErrorBanner(Object error, [StackTrace? stack]) {
     if (!mounted) return;
+    _errorSeq++;
+    final blank = _pendingBlankBuild;
+    final needsRemount = _pendingBlankNeedsRemount;
+    _pendingBlankBuild = false;
+    _pendingBlankNeedsRemount = false;
     if (!_guestRendered) {
+      _guestBlankBuild = blank;
+      _blankBuildNeedsRemount = needsRemount;
+      _awaitingScreenRecovery = false;
+      _errorViewExpanded = false;
       _failGuestLoad(error, stack);
       return;
     }
     final formatted = formatGuestError(error, stack);
-    final msg = 'Guest runtime error: ${formatted.message}';
-    if (_errorMessage == msg) return;
+    final summary = summarizeGuestError(formatted.message);
+    final msg = summary.displayMessage;
+    // A blank failure upgrades an already-shown message from banner to the
+    // full-screen view; otherwise identical repeat reports are ignored.
+    if (_errorMessage == msg &&
+        _errorType == summary.type &&
+        _guestBlankBuild == blank &&
+        _blankBuildNeedsRemount == needsRemount) {
+      return;
+    }
     _errorMessage = msg;
+    _errorType = summary.type;
     _errorStackTrace = formatted.stack;
-    _publishPreview();
+    _guestBlankBuild = blank;
+    _blankBuildNeedsRemount = needsRemount;
+    // An in-place screen can report its own recovery; a stateless one is
+    // repaired by remounting, so there is no surface to wait for.
+    _awaitingScreenRecovery = blank && !needsRemount;
+    if (blank) {
+      // A blank failure is reported from inside the guest's build (the screen
+      // never produced a child). Publishing now would mark the host overlay
+      // dirty mid-frame; let the build finish, then show the full-screen view.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _publishPreview();
+      });
+    } else {
+      _publishPreview();
+    }
   }
 
-  /// Shows the full-screen error view for a guest that failed to load.
-  ///
-  /// Drops the mounted widget (so the route hits its `widget == null` branch
-  /// regardless of the persisted [ErrorDisplayMode]) and stops the broken tree
-  /// from being rebuilt — which is what made the same exception get reported
-  /// over and over.
+  /// Marks the next guest report as a blank surface (no rendered child).
+  void _showGuestBlankBuild(
+    Object error,
+    StackTrace stack, {
+    required bool rebuildsInPlace,
+  }) {
+    _pendingBlankBuild = true;
+    _pendingBlankNeedsRemount = !rebuildsInPlace;
+  }
+
+  /// Clears the error once a previously blank surface builds again.
+  void _handleGuestRecovered() {
+    if (!mounted || !_awaitingScreenRecovery) return;
+    _awaitingScreenRecovery = false;
+    // The signal comes from inside the successful guest build; publishing now
+    // would mark the host overlay dirty mid-frame. Skip the clear if a newer
+    // failure arrived in the meantime.
+    final errorSeq = _errorSeq;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _errorSeq == errorSeq) _clearError();
+    });
+  }
+
+  /// Clears the error surface once the rebuilt guest has had two frames to
+  /// throw again. A newer failure leaves it in place (see [_errorSeq]).
+  void _clearErrorAfterRecovery(int errorSeq) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _errorSeq == errorSeq) _clearError();
+      });
+    });
+  }
+
+  /// Full-screen load failure: drop the broken tree and stop repeat reports.
   void _failGuestLoad(Object error, StackTrace? stack) {
     if (_guestLoadFailed) return;
     _guestLoadFailed = true;
     final formatted = formatGuestError(error, stack);
-    _errorMessage = 'Guest failed to start: ${formatted.message}';
+    final summary = summarizeGuestError(formatted.message);
+    _errorMessage = summary.displayMessage;
+    _errorType = summary.type;
     _errorStackTrace = formatted.stack;
     _isAppMounted = false;
     _interpretedWidget = null;
@@ -274,14 +360,8 @@ class _DartNativeGoState extends State<DartNativeGo> {
     });
   }
 
-  /// Marks the guest as rendered once its first frame has been committed.
-  ///
-  /// Publishing the mounted tree only marks the preview route dirty, so the
-  /// guest actually builds in the *next* frame — and an exception thrown there
-  /// (the reported case: a bridged constructor failing inside `build`) is
-  /// reported during that build, before any post-frame callback runs. Waiting
-  /// two frames therefore guarantees the flag cannot flip before the guest has
-  /// had its first build, so such a failure stays a load failure.
+  /// Marks the guest rendered two frames after publish (first build must run
+  /// first, or a throw during that build would be misclassified as runtime).
   void _markGuestRendered() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -295,32 +375,62 @@ class _DartNativeGoState extends State<DartNativeGo> {
   }
 
   void _recordError(String message, [StackTrace? stack]) {
-    _errorMessage = message;
+    _errorSeq++;
+    final summary = summarizeGuestError(message);
+    _errorMessage = summary.displayMessage;
+    _errorType = summary.type;
     _errorStackTrace = stack?.toString();
+    // A failed reload cannot repair a blank screen: keep the hard surface.
+    _pendingBlankBuild = false;
+    _pendingBlankNeedsRemount = false;
     _publishPreview();
   }
 
-  /// Records a failure that stopped the project from starting (bundle
-  /// evaluation threw, or the first build never completed).
-  ///
-  /// Marks the state as "failed to start" so the full-screen error view says
-  /// so, instead of reading like a crash in an app that was running.
+  /// Startup failure (bundle eval / first build); marks `failedToStart`.
   void _recordStartupError(String message, [StackTrace? stack]) {
     _guestLoadFailed = true;
-    _errorMessage = message;
+    _errorSeq++;
+    final summary = summarizeGuestError(message);
+    _errorMessage = summary.displayMessage;
+    _errorType = summary.type;
     _errorStackTrace = stack?.toString();
+    _guestBlankBuild = false;
+    _blankBuildNeedsRemount = false;
+    _awaitingScreenRecovery = false;
+    _errorViewExpanded = false;
+    _pendingBlankBuild = false;
+    _pendingBlankNeedsRemount = false;
     _publishPreview();
   }
 
   void _clearError() {
     if (_errorMessage == null && _errorStackTrace == null) return;
     _errorMessage = null;
+    _errorType = null;
     _errorStackTrace = null;
+    _guestBlankBuild = false;
+    _blankBuildNeedsRemount = false;
+    _awaitingScreenRecovery = false;
+    _errorViewExpanded = false;
+    _pendingBlankBuild = false;
+    _pendingBlankNeedsRemount = false;
     _publishPreview();
   }
 
   void _dismissGuestError() {
     _clearError();
+  }
+
+  /// Opens the full-screen error view from the floating banner (opt-in).
+  void _openErrorDetails() {
+    if (!mounted || _errorMessage == null || _errorViewExpanded) return;
+    setState(() => _errorViewExpanded = true);
+  }
+
+  /// Closes the full-screen error view, going back to the banner/app.
+  void _closeErrorDetails() {
+    if (!mounted || !_errorViewExpanded) return;
+    setState(() => _errorViewExpanded = false);
   }
 
   /// Sets how guest failures surface on the device and persists the choice.
@@ -415,9 +525,6 @@ class _DartNativeGoState extends State<DartNativeGo> {
             child: PreviewScreen(
               state: _previewState,
               probeKey: _guestProbeKey,
-              onGoHome: _unmountApp,
-              onRetry: () => _restartApp(),
-              onDismissError: _dismissGuestError,
             ),
           ),
         ),
@@ -508,8 +615,15 @@ class _DartNativeGoState extends State<DartNativeGo> {
     // frame are load failures.
     _guestRendered = false;
     _guestLoadFailed = false;
+    _guestBlankBuild = false;
+    _blankBuildNeedsRemount = false;
+    _awaitingScreenRecovery = false;
+    _errorViewExpanded = false;
+    _pendingBlankBuild = false;
+    _pendingBlankNeedsRemount = false;
     _isLoadingBundle = true;
     _errorMessage = null;
+    _errorType = null;
     _errorStackTrace = null;
     _statusMessage = 'Connecting to dev server...';
     _downloadProgress = null;
@@ -869,10 +983,35 @@ class _DartNativeGoState extends State<DartNativeGo> {
 
       if (!mounted || seq != _reloadSeq) return;
       final remountSw = Stopwatch()..start();
+      // A successful reload is also the recovery path for a hard failure, but
+      // the error view must not come down until the fixed surface is actually
+      // on screen — clearing it optimistically is what used to leave the user
+      // on a blank page when a later rebuild did not repaint.
+      //
+      //  • A load failure dropped the tree, so the fresh widget is mounted.
+      //  • A blank screen from a `State` proxy repaints itself through the
+      //    hot-reload tracker below and reports `onGuestRecovered`; the error
+      //    view stays until then.
+      //  • A blank screen from a stateless proxy has no State to mark, so the
+      //    guest tree is remounted (dropping the screens it pushed); the error
+      //    is cleared after two clean frames.
+      final dropped = _guestLoadFailed || !_isAppMounted;
+      final hadError = _errorMessage != null;
+      final errorSeq = _errorSeq;
+      final resetRoutes =
+          !dropped && hadError && _guestBlankBuild && _blankBuildNeedsRemount;
+      if (resetRoutes) _popGuestRoutes();
       _interpretedWidget = widget;
-      _errorMessage = null;
-      _errorStackTrace = null;
+      _pendingBlankBuild = false;
+      _pendingBlankNeedsRemount = false;
+      if (dropped) {
+        _guestLoadFailed = false;
+        _isAppMounted = true;
+        _isLoadingBundle = false;
+        _guestRendered = false;
+      }
       _publishPreview();
+      if (dropped) _markGuestRendered();
       NativeBottomSheetManager.notifyHotReload(
         _interpreterRunner.activeVisitor,
         changedFile:
@@ -885,6 +1024,12 @@ class _DartNativeGoState extends State<DartNativeGo> {
         WidgetGenerationTracker.notifyMountedWidgets(
           _interpreterRunner.activeVisitor,
         );
+      }
+      if (hadError && !_awaitingScreenRecovery) {
+        // Either the tree was remounted or the failure was a soft one: two
+        // clean frames are enough to be sure the rebuilt surface did not throw
+        // again before the error view is removed.
+        _clearErrorAfterRecovery(errorSeq);
       }
       final remountMs = remountSw.elapsedMilliseconds;
       final totalMs = reloadSw.elapsedMilliseconds;
@@ -919,16 +1064,27 @@ class _DartNativeGoState extends State<DartNativeGo> {
     _reloadSeq++;
     final seq = ++_restartSeq;
     final restartSw = Stopwatch()..start();
+    // A restart discards interpreter state. Screens the guest pushed were built
+    // from that interpreter, so drop them and land on the preview route before
+    // re-evaluating: a stale pushed screen would otherwise be left on top.
+    _popGuestRoutes();
     // A restart discards interpreter state, so the old tree is torn down
     // *before* the new evaluation (while the old interpreter is still alive to
     // run guest `dispose`). The route then shows the plain splash — exactly as
     // on a fresh launch — instead of a frozen copy of the old UI.
     _statusMessage = 'Restarting application...';
     _errorMessage = null;
+    _errorType = null;
     _errorStackTrace = null;
     // The restarted tree has not rendered yet either.
     _guestRendered = false;
     _guestLoadFailed = false;
+    _guestBlankBuild = false;
+    _blankBuildNeedsRemount = false;
+    _awaitingScreenRecovery = false;
+    _errorViewExpanded = false;
+    _pendingBlankBuild = false;
+    _pendingBlankNeedsRemount = false;
     _isAppMounted = false;
     _interpretedWidget = null;
     _publishPreview();
@@ -966,7 +1122,14 @@ class _DartNativeGoState extends State<DartNativeGo> {
       _isAppMounted = true;
       _isLoadingBundle = false;
       _errorMessage = null;
+      _errorType = null;
       _errorStackTrace = null;
+      _guestBlankBuild = false;
+      _blankBuildNeedsRemount = false;
+      _awaitingScreenRecovery = false;
+      _errorViewExpanded = false;
+      _pendingBlankBuild = false;
+      _pendingBlankNeedsRemount = false;
       // A hot restart must rebuild the guest from scratch: bump the epoch in
       // the same publish that installs the new tree, so Flutter discards the
       // previous elements (and their State) rather than reusing them.
@@ -1016,15 +1179,55 @@ class _DartNativeGoState extends State<DartNativeGo> {
     _publishPreview();
   }
 
+  /// Pops every guest-pushed screen, leaving the preview route on top.
+  ///
+  /// A restart discards the interpreter, so screens pushed by the old tree
+  /// would keep rendering proxies that no longer exist. The preview route
+  /// stays: it is where the fresh tree mounts.
+  void _popGuestRoutes() {
+    final navContext = _navKey.currentContext;
+    if (navContext == null || !_previewRouteOpen) return;
+    try {
+      Navigator.popUntil(navContext, _stopAtPreviewRoute);
+    } catch (_) {
+      // The framework may have no matching route (e.g. it was replaced); the
+      // restart still publishes a fresh tree, so there is nothing else to do.
+    }
+  }
+
+  /// `popUntil` predicate that stops at the host preview route.
+  ///
+  /// DartNative passes a *synthetic* route to the predicate (see
+  /// `_SyntheticRoute` in the SDK): it exposes `isFirst` and the name given to
+  /// `PageRoute.settings`, not a `PageRoute`. Testing `route is PageRoute` (or
+  /// reading `route.settings`) never matched, so `popUntil` popped straight
+  /// past the preview to the launcher — which made DevTools Reload go Home.
+  static final bool Function(Route) _previewNamePredicate = ModalRoute.withName(
+    '/preview',
+  );
+
+  static bool _stopAtPreviewRoute(Route route) =>
+      stopAtHostPreviewRoute(route, byName: _previewNamePredicate);
+
   /// Returns to the launcher: pops the preview route (and any screens the guest
   /// pushed above it) and tears the guest down.
   void _unmountApp() {
     if (_previewRouteOpen) {
-      _previewRouteOpen = false;
       final navContext = _navKey.currentContext;
+      // Go Home must reach the launcher even when the guest has pushed
+      // screens. `isFirst` is not dependable here (a native stack can treat
+      // the pushed preview as its first screen, which left Home on the plugin
+      // list), so drop guest routes by name and then pop the preview itself.
       if (navContext != null) {
-        Navigator.popUntil(navContext, (route) => route.isFirst);
+        _popGuestRoutes();
+        try {
+          Navigator.pop(navContext);
+        } catch (_) {
+          // The preview may already have left the stack; teardown still
+          // clears the session below.
+        }
       }
+      _previewRouteOpen = false;
     }
     _teardownPreview();
   }
@@ -1049,7 +1252,14 @@ class _DartNativeGoState extends State<DartNativeGo> {
     _isLoadingBundle = false;
     _interpretedWidget = null;
     _errorMessage = null;
+    _errorType = null;
     _errorStackTrace = null;
+    _guestBlankBuild = false;
+    _blankBuildNeedsRemount = false;
+    _awaitingScreenRecovery = false;
+    _errorViewExpanded = false;
+    _pendingBlankBuild = false;
+    _pendingBlankNeedsRemount = false;
     _activeBundle = null;
     _iconFontManager = null;
     _statusMessage = 'Connecting to project...';
@@ -1059,16 +1269,32 @@ class _DartNativeGoState extends State<DartNativeGo> {
     _publishPreview();
   }
 
-  /// Builds the floating DevTools surface overlaid across all routes.
+  /// Builds the shell layer overlaid across all routes: DevTools plus the
+  /// guest error surfaces.
+  ///
+  /// `App.builder` is the one layer the framework keeps above every route,
+  /// including screens the guest pushes on the shared navigator. A failure on
+  /// a pushed screen must surface here: inside the preview route it would be
+  /// hidden behind that screen, leaving the user on a blank page.
   Widget _buildDevToolsOverlay(BuildContext context, Widget? child) {
     final content = child ?? const SizedBox.shrink();
     return ValueListenableBuilder<PreviewState>(
       valueListenable: _previewState,
       builder: (context, s, _) {
+        final errorSurface = _buildGuestErrorSurface(s);
+        // The floating pill defaults to the bottom-right, where it would sit on
+        // top of the full-screen error view's actions and steal their taps. The
+        // error view owns Home/Reload, so hide the pill while it is up.
+        final devToolsEnabled =
+            s.isAppMounted &&
+            !previewStateNeedsFullScreenError(
+              s,
+              expanded: _errorViewExpanded,
+            );
         // Overlay stays mounted; floating button and shake are gated by isAppMounted.
         return ShellThemeScope(
           child: DevToolOverlay(
-            isEnabled: s.isAppMounted,
+            isEnabled: devToolsEnabled,
             appName: s.appName,
             appVersion: s.appVersion,
             serverUrl: s.serverUrl,
@@ -1090,12 +1316,78 @@ class _DartNativeGoState extends State<DartNativeGo> {
             astProfile: _useAst && _astProfileEnabled
                 ? _interpreterRunner.astRunner?.lastAstProfile
                 : null,
+            // A guest failure is drawn above the routes, below the button.
+            errorSurface: errorSurface,
             // The routes (and the app overlay) show through underneath.
             child: content,
           ),
         );
       },
     );
+  }
+
+  /// The guest failure surface for [s], or null when there is nothing to show.
+  ///
+  /// The floating banner is the automatic surface, so an invalid save or a
+  /// screen that fails for a frame never flashes a full-screen takeover. The
+  /// user opens `InterpreterErrorView` by tapping the banner; a project that
+  /// never mounted (or the persisted full-screen mode) shows it directly.
+  /// See [previewStateNeedsFullScreenError].
+  Widget? _buildGuestErrorSurface(PreviewState s) {
+    final message = s.errorMessage;
+    if (message == null) return null;
+    final fullScreen = previewStateNeedsFullScreenError(
+      s,
+      expanded: _errorViewExpanded,
+    );
+    if (fullScreen) {
+      // A mounted app can retry the failing screen where it is; a project
+      // that never came up needs a fresh evaluation (and the splash).
+      final retryScreen = s.isAppMounted && !s.failedToStart;
+      return InterpreterErrorView(
+        errorMessage: message,
+        stackTrace: s.errorStackTrace,
+        onGoHome: _unmountApp,
+        onRetry: retryScreen ? () => _retryFailedScreen() : () => _restartApp(),
+        // Only the banner-opened view has somewhere to close back to; a load
+        // failure owns the screen until Retry/Home.
+        onClose: _errorViewExpanded ? _closeErrorDetails : null,
+        // The exception type names what failed; the stage text is the fallback
+        // when the message does not name one.
+        errorType: s.errorType,
+        subtitle: s.failedToStart
+            ? 'The project did not finish loading'
+            : s.guestBlankBuild
+            ? 'This screen did not finish loading'
+            : 'Runtime exception during execution',
+      );
+    }
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: GuestErrorBanner(
+        errorMessage: message,
+        errorType: s.errorType,
+        onOpen: _openErrorDetails,
+        onDismiss: _dismissGuestError,
+        onRestart: () => _restartApp(),
+      ),
+    );
+  }
+
+  /// Retries the screen that failed without leaving the guest.
+  ///
+  /// The hot-reload path re-evaluates the bundle and marks mounted screen
+  /// proxies dirty, so a pushed route repaints in place; a stateless screen is
+  /// remounted by the recovery path in [_reloadApp]. The error view stays up
+  /// until the rebuilt surface is on screen (see [_handleGuestRecovered]).
+  Future<void> _retryFailedScreen() async {
+    if (_activeBundle == null) {
+      unawaited(_restartApp());
+      return;
+    }
+    await _reloadApp();
   }
 
   @override

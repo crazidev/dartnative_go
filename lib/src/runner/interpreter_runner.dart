@@ -82,12 +82,24 @@ class InterpreterRunner implements GuestRunner {
   @override
   void Function(Object error, StackTrace stack)? onGuestError;
 
+  /// Guest build failures that left no rendered child, so the host must take
+  /// over the whole screen instead of floating a banner over a blank surface.
+  @override
+  GuestBlankBuildReporter? onGuestBlankBuild;
+
+  /// Fires when a previously blank guest surface builds a child again, so the
+  /// host can remove its error view without exposing a blank frame.
+  @override
+  VoidCallback? onGuestRecovered;
+
   InterpreterRunner({
     this.onLog,
     this.onExit,
     this.currentServerUrl,
     this.useAst = kUseAst,
     this.onGuestError,
+    this.onGuestBlankBuild,
+    this.onGuestRecovered,
   }) {
     initInterpreter();
   }
@@ -99,12 +111,16 @@ class InterpreterRunner implements GuestRunner {
     String? currentServerUrl,
     bool useAst = kUseAst,
     void Function(Object error, StackTrace stack)? onGuestError,
+    GuestBlankBuildReporter? onGuestBlankBuild,
+    VoidCallback? onGuestRecovered,
   }) => InterpreterRunner(
     onLog: onLog,
     onExit: onExit,
     currentServerUrl: currentServerUrl,
     useAst: useAst,
     onGuestError: onGuestError,
+    onGuestBlankBuild: onGuestBlankBuild,
+    onGuestRecovered: onGuestRecovered,
   );
 
   /// Initializes a fresh interpreter session with all registered bridges and runtime hooks.
@@ -163,6 +179,9 @@ class InterpreterRunner implements GuestRunner {
         serverUrlProvider: () => currentServerUrl ?? '',
         runner: _astRunner ??= AstInterpreterRunner(
           onLog: onLog,
+          onGuestError: onGuestError,
+          onGuestBlankBuild: onGuestBlankBuild,
+          onGuestRecovered: onGuestRecovered,
           onExit: onExit,
           currentServerUrl: currentServerUrl,
         ),
@@ -646,12 +665,28 @@ class InterpreterRunner implements GuestRunner {
         logGuestError(error, effectiveStack);
         onGuestError?.call(error, effectiveStack);
       },
+      onGuestBlankBuild: (error, stack, {required rebuildsInPlace}) {
+        final effectiveStack =
+            (error is ast_runtime.D4rtException &&
+                error.guestStackTrace != null &&
+                error.guestStackTrace!.isNotEmpty)
+            ? StackTrace.fromString(error.guestStackTrace!)
+            : stack;
+        onGuestBlankBuild?.call(
+          error,
+          effectiveStack,
+          rebuildsInPlace: rebuildsInPlace,
+        );
+      },
+      onGuestRecovered: onGuestRecovered,
       onExit: onExit,
       currentServerUrl: currentServerUrl,
     );
     _astRunner!.currentServerUrl = currentServerUrl;
+    _astRunner!.onGuestRecovered = onGuestRecovered;
     _astRunner!.onLog = onLog;
     _astRunner!.profileExecution = DartGoLogger.verbose;
+    _astRunner!.onGuestBlankBuild = onGuestBlankBuild;
     _astRunner!.onGuestError ??= (error, stack) {
       final effectiveStack =
           (error is ast_runtime.D4rtException &&

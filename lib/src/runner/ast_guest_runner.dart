@@ -23,6 +23,12 @@ class AstGuestRunner implements GuestRunner {
   void Function(Object error, StackTrace stack)? onGuestError;
 
   @override
+  GuestBlankBuildReporter? onGuestBlankBuild;
+
+  @override
+  VoidCallback? onGuestRecovered;
+
+  @override
   bool useAst;
 
   AstInterpreterRunner? _astRunner;
@@ -33,6 +39,8 @@ class AstGuestRunner implements GuestRunner {
     this.currentServerUrl,
     this.useAst = true,
     this.onGuestError,
+    this.onGuestBlankBuild,
+    this.onGuestRecovered,
   }) {
     initInterpreter();
   }
@@ -44,12 +52,16 @@ class AstGuestRunner implements GuestRunner {
     String? currentServerUrl,
     bool useAst = true,
     void Function(Object error, StackTrace stack)? onGuestError,
+    GuestBlankBuildReporter? onGuestBlankBuild,
+    VoidCallback? onGuestRecovered,
   }) => AstGuestRunner(
     onLog: onLog,
     onExit: onExit,
     currentServerUrl: currentServerUrl,
     useAst: useAst,
     onGuestError: onGuestError,
+    onGuestBlankBuild: onGuestBlankBuild,
+    onGuestRecovered: onGuestRecovered,
   );
 
   @override
@@ -107,12 +119,23 @@ class AstGuestRunner implements GuestRunner {
         logGuestError(error, effectiveStack);
         onGuestError?.call(error, effectiveStack);
       },
+      onGuestBlankBuild: (error, stack, {required rebuildsInPlace}) {
+        final effectiveStack = _effectiveStack(error, stack);
+        onGuestBlankBuild?.call(
+          error,
+          effectiveStack,
+          rebuildsInPlace: rebuildsInPlace,
+        );
+      },
+      onGuestRecovered: onGuestRecovered,
       onExit: onExit,
       currentServerUrl: currentServerUrl,
     );
     _astRunner!.currentServerUrl = currentServerUrl;
+    _astRunner!.onGuestRecovered = onGuestRecovered;
     _astRunner!.onLog = onLog;
     _astRunner!.profileExecution = DartGoLogger.verbose;
+    _astRunner!.onGuestBlankBuild = onGuestBlankBuild;
     _astRunner!.onGuestError ??= (error, stack) {
       final effectiveStack = _effectiveStack(error, stack);
       logGuestError(error, effectiveStack);

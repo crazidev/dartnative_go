@@ -1,8 +1,6 @@
 import 'package:dartnative/dartnative.dart';
 
 import '../client/error_display_storage.dart';
-import '../widgets/guest_error_banner.dart';
-import '../widgets/interpreter_error_view.dart';
 import '../widgets/project_splash_screen.dart';
 
 /// Immutable snapshot of the launch/preview surface published to pushed routes.
@@ -21,7 +19,13 @@ class PreviewState {
   final String? splashUrl;
   final String? iconUrl;
   final String? splashBackgroundColor;
+
+  /// The failure's message, already stripped of host/interpreter framing.
   final String? errorMessage;
+
+  /// The exception type (`Argument Error`, `Bad state`, …) shown as the error
+  /// view's subtitle; null when the message names none.
+  final String? errorType;
   final String? errorStackTrace;
   final ErrorDisplayMode errorDisplayMode;
 
@@ -30,6 +34,9 @@ class PreviewState {
 
   /// True when the error occurred before the initial frame rendered.
   final bool failedToStart;
+
+  /// Failure left no rendered child (blank surface).
+  final bool guestBlankBuild;
 
   const PreviewState({
     this.appName = 'DartNative App',
@@ -47,12 +54,34 @@ class PreviewState {
     this.iconUrl,
     this.splashBackgroundColor,
     this.errorMessage,
+    this.errorType,
     this.errorStackTrace,
     this.errorDisplayMode = ErrorDisplayMode.overlay,
     this.guestEpoch = 0,
     this.failedToStart = false,
+    this.guestBlankBuild = false,
   });
 }
+
+/// True when the failure should show `InterpreterErrorView` (banner tap,
+/// failed-to-start, or persisted full-screen mode) rather than the overlay.
+bool previewStateNeedsFullScreenError(
+  PreviewState s, {
+  bool expanded = false,
+}) =>
+    s.errorMessage != null &&
+    (expanded ||
+        s.failedToStart ||
+        s.errorDisplayMode == ErrorDisplayMode.fullscreen);
+
+/// `popUntil` stop for `/preview` — match by name; `isFirst` is the backstop.
+///
+/// DartNative passes synthetic routes (not `PageRoute`), so `route is PageRoute`
+/// never matches and a naive pop runs past the preview to the launcher.
+bool stopAtHostPreviewRoute(
+  Route<dynamic> route, {
+  required bool Function(Route<dynamic>) byName,
+}) => route.isFirst || byName(route);
 
 /// The pushed route that launches and previews a guest project.
 ///
@@ -67,17 +96,10 @@ class PreviewScreen extends StatelessWidget {
   /// Resolves the guest-root `Element` for UI automation. Owned by the host.
   final GlobalKey probeKey;
 
-  final VoidCallback onGoHome;
-  final VoidCallback onRetry;
-  final VoidCallback onDismissError;
-
   const PreviewScreen({
     super.key,
     required this.state,
     required this.probeKey,
-    required this.onGoHome,
-    required this.onRetry,
-    required this.onDismissError,
   });
 
   @override
@@ -85,28 +107,8 @@ class PreviewScreen extends StatelessWidget {
     return ValueListenableBuilder<PreviewState>(
       valueListenable: state,
       builder: (context, s, _) {
-        // A guest failure fully takes over the route when there is no tree to
-        // keep behind it, or when the persisted mode asks for it.
-        final fullScreenError =
-            s.errorMessage != null &&
-            (s.widget == null ||
-                s.errorDisplayMode == ErrorDisplayMode.fullscreen);
-        if (fullScreenError) {
-          return InterpreterErrorView(
-            errorMessage: s.errorMessage!,
-            stackTrace: s.errorStackTrace,
-            onGoHome: onGoHome,
-            onRetry: onRetry,
-            // One general title for every failure; the subtitle says whether
-            // the project never loaded or crashed while running.
-            subtitle: s.failedToStart
-                ? 'The project did not finish loading'
-                : 'Runtime exception during execution',
-          );
-        }
-
         if (s.isAppMounted) {
-          final guest = KeyedSubtree(
+          return KeyedSubtree(
             key: probeKey,
             // `guestEpoch` changes only on a hot restart, so the wrapper is
             // stable across reloads (state/providers stay alive) but is
@@ -124,29 +126,11 @@ class PreviewScreen extends StatelessWidget {
               ),
             ),
           );
-          if (s.errorMessage != null && s.widget != null) {
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                guest,
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: GuestErrorBanner(
-                    errorMessage: s.errorMessage!,
-                    stackTrace: s.errorStackTrace,
-                    onDismiss: onDismissError,
-                    onRestart: onRetry,
-                  ),
-                ),
-              ],
-            );
-          }
-          return guest;
         }
 
         // Launch in progress (or failed before mounting): show the splash.
+        // Guest failures are rendered by the host shell's overlay layer, which
+        // stays above every route (see `_buildDevToolsOverlay`).
         return ProjectSplashScreen(
           appName: s.appName,
           splashUrl: s.splashUrl,

@@ -4,6 +4,17 @@ import '../interpreter/auto_import_parser.dart' show BreakpointInstrumenter;
 import 'ast_interpreter_runner.dart';
 import 'bundle_loader.dart';
 
+/// Reports a guest build that failed before it rendered any child.
+///
+/// [rebuildsInPlace] is false when the failed proxy has no `State` to mark
+/// dirty, so only a remount (not a hot reload) can repaint it.
+typedef GuestBlankBuildReporter =
+    void Function(
+      Object error,
+      StackTrace stack, {
+      required bool rebuildsInPlace,
+    });
+
 /// Factory for the host app shell to create an engine-specific [GuestRunner].
 typedef GuestRunnerBuilder =
     GuestRunner Function({
@@ -12,6 +23,8 @@ typedef GuestRunnerBuilder =
       String? currentServerUrl,
       bool useAst,
       void Function(Object error, StackTrace stack)? onGuestError,
+      GuestBlankBuildReporter? onGuestBlankBuild,
+      VoidCallback? onGuestRecovered,
     });
 
 /// The host-facing surface of a guest runtime.
@@ -20,6 +33,14 @@ abstract class GuestRunner {
   void Function(String message)? onLog;
   VoidCallback? onExit;
   void Function(Object error, StackTrace stack)? onGuestError;
+
+  /// Guest build failures that left no rendered child, so the host must take
+  /// over the whole screen instead of floating a banner over a blank surface.
+  GuestBlankBuildReporter? onGuestBlankBuild;
+
+  /// Fires when a previously blank guest surface builds a child again, so the
+  /// host can drop its full-screen error view without exposing a blank frame.
+  VoidCallback? onGuestRecovered;
 
   /// When true, [evaluateBundle] prefers pre-compiled AST bytes.
   bool get useAst;

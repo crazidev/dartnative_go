@@ -238,7 +238,11 @@ root:
    widget defined outside the entry module would never get a new generation.
 2. **A stable root.** The app root keeps a `guest_root` key so providers and
    state survive; overlapping reloads/restarts are ordered by monotonic
-   sequence tokens.
+   sequence tokens. The root sits inside a `guest_epoch_<n>` wrapper that only
+   changes on a **hot restart**: the epoch bump discards the mounted
+   elements/`State` (which belong to the interpreter that was just disposed)
+   instead of reconciling the restarted widgets onto them — otherwise a restart
+   would preserve state exactly like a reload.
 3. **Bottom sheets** live in their own reconciler outside the app root, so
    `NativeBottomSheetManager.notifyHotReload` rebinds them explicitly: the
    visitor advances, state fields carry over, and the unchanged child is
@@ -271,8 +275,10 @@ There are three gates, from the inside out:
    with nothing to show gets the error screen.
 3. **Proxy gate.** A guest `build` that starts throwing renders its last good
    child (`_lastGoodChild`) instead of failing the whole tree, and builds
-   fresh on the next successful reload. (First builds and `createState` still
-   throw — there's nothing to fall back to.)
+   fresh on the next successful reload. Before the first good child, a
+   monitored failure renders a neutral placeholder: the host is about to show
+   its error view, and rethrowing would flash the framework's own error screen
+   first. (`createState` still throws — there's no widget to fall back to.)
 
 Failures are surfaced, not swallowed. A guest build/lifecycle/callback error
 travels `onGuestError` → `DartGoLogger.error` → WebSocket → the CLI prints a
