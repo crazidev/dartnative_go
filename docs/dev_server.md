@@ -53,7 +53,7 @@ when a step is the one failing (see [Troubleshooting](troubleshooting.md)).
 9. **Kick off an initial AST build** in the background when `--rebuild-ast`
    is on (the default), so `/guest.ast` exists before the first client
    connects. Failures only log a warning — source mode is unaffected.
-10. **Install the stdin listener** (the interactive `r`/`v`/`q`/`c`/`h` keys).
+10. **Install the stdin listener** (the interactive `r`/`R`/`v`/`q`/`c`/`h` keys).
 11. **Start the file watchers** (Dart sources and `assets/`), then enter the
     request loop.
 
@@ -67,9 +67,10 @@ Two watchers feed reloads, both debounced by **150 ms**:
   matters: the device is told to reload only *after* fresh bytes exist, so it
   fetches new source and new AST together.
 - **Asset watcher** — `assets/` directory. It deliberately ignores changes
-  under `assets/bundles/` and `guest.ast`, because those are written by the
-  AST builder and are already covered by the code-change broadcast — reacting
-  to them would double-reload every device.
+  under `.dart_tool/` (where the AST builder writes `bundles/guest.ast`) and
+  the legacy `assets/bundles/` path, because those are written by the AST
+  builder and are already covered by the code-change broadcast — reacting to
+  them would double-reload every device.
 
 When `--rebuild-ast` is on, `_onCodeChanged` is also **serialized and
 coalesced**: if a rebuild is in flight when another save lands, the rebuild is
@@ -160,7 +161,7 @@ a `type` field.
 | `type` | Payload | Meaning |
 | :--- | :--- | :--- |
 | `reload` | `changedFile?`, `timestamp` | Re-fetch and re-evaluate, preserving state. Sent on save, on the `r` key, and on breakpoint changes. |
-| `restart` | `origin: "test"`, `timestamp` | Hot restart: drop interpreter state and evaluate fresh. Only relayed from test scripts. |
+| `restart` | `origin: "cli" \| "test"`, `timestamp` | Hot restart: drop interpreter state and evaluate fresh. Sent on the `R` key, and relayed from test scripts. |
 | `breakpoints` | `breakpoints: [...]` | The active breakpoint set (sent on connect and on change). |
 | `resume` | — | Continue execution after a breakpoint. |
 | `set_verbose` | `enabled: bool` | Sync verbose logging (from the `v` key or another device). |

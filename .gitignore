@@ -72,7 +72,8 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Generated AST bundles
+# Generated AST bundles (current builds land in .dart_tool/bundles/; these
+# entries only cover stale artifacts from older versions)
 *.ast
 *.ast.patch
 assets/bundles/

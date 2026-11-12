@@ -55,6 +55,20 @@ key? Pass it per run instead: `dn run --dart-define=DN_LICENSE_KEY=dnk_...`.)
 
 Always use **`dn`** for run/build/pub commands — not the underlying SDK CLI.
 
+### Release builds
+
+```sh
+dn build apk
+dn build ipa
+```
+
+Release apps ship the **full** icon fonts: icon-font tree shaking is disabled
+in [`android/app/build.gradle.kts`](android/app/build.gradle.kts) and
+[`ios/DartNative/*.xcconfig`](ios/DartNative/Release.xcconfig) because the
+interpreter creates `IconData` from code points in guest code at runtime, and
+the shaker only accepts `const IconData`. Leave it off — enabling it fails the
+release build, and a forced subset would draw interpreted icons as blank boxes.
+
 ## Make it yours
 
 - **Your UI** — edit `lib/main.dart`.

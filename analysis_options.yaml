@@ -10,6 +10,10 @@
 include: package:lints/recommended.yaml
 
 analyzer:
+  exclude:
+    # Vendored upstream package (see third_party/riverpod/pubspec.yaml); its
+    # lints are upstream's, not ours.
+    - third_party/**
   errors:
     depend_on_referenced_packages: ignore
     invalid_use_of_internal_member: ignore

@@ -78,7 +78,7 @@ dart --enable-asserts test/ast_builder_test.dart
 ```bash
 dart_go start
 ```
-The server will watch for changes and incrementally compile `assets/bundles/guest.ast`.
+The server will watch for changes and incrementally compile `.dart_tool/bundles/guest.ast`.
 
 ---
 

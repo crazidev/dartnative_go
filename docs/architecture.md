@@ -39,7 +39,8 @@ no native build step, no app store, no cable.
 
 | Path | What lives there |
 | :--- | :--- |
-| `lib/main.dart` | The shell app: launcher screen, project list, guest mounting, DevTool overlay. |
+| `lib/main.dart` | Product entrypoint (AST-only): plugins + theme bootstrap, then the shared `lib/src/app_shell.dart` host shell. |
+| `lib/main_source.dart` | Development entrypoint with the Source engine + analyzer linked (`dn run -t lib/main_source.dart`). |
 | `lib/src/cli/` | Everything the `dart_go` CLI uses: `server.dart` (HTTP/WS/file-watch), `broadcaster.dart` (UDP beacons), `dep_packager.dart` (dependency zips), `ast_builder.dart` (guest.ast builds), `pubspec_validator.dart`, `asset_detector.dart`, `qr_code.dart`. |
 | `lib/src/runner/` | Guest execution: `interpreter_runner.dart` (source mode), `ast_interpreter_runner.dart` (AST mode), `bundle_loader.dart` (fetch + unpack bundles, patch lineage), `ast_profile.dart` (structured bundle profile), `live_connection.dart` (WebSocket client), `runtime_mode.dart`, `ui_probe.dart` (UI automation), `dep_cache.dart`. |
 | `lib/src/interpreter/` | The bridge surface: `dartscript.b.dart` plus one `*_bridges.b.dart` per plugin (generated), `widget_proxies.dart`, `asset_bridge.dart`, `debug_controller.dart`. Subfolder `ast/` holds the AST-mode equivalents. |

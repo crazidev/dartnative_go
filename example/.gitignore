@@ -71,4 +71,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Generated AST bundles (now written to .dart_tool/bundles/, which is ignored;
+# kept for stale artifacts from older versions)
 assets/bundles/*

@@ -8,11 +8,12 @@
 # The declarative form below is for CI (`astgen build --config`):
 #   1. Copy this file into the guest project (or point --project at it).
 #   2. `entry` mirrors the dev server fallback: lib/main.dart, then guest_app/.
-#   3. `output` must land where the dev server serves it: assets/bundles/guest.ast
-#      (see `DartGoServer._resolveAstBundleFile`).
+#   3. `output` must land where the dev server serves it:
+#      .dart_tool/bundles/guest.ast (see `kAstBundleRelativePath` in
+#      `lib/src/cli/packaging/ast_artifact_paths.dart`).
 targets:
   guest_main:
     entry: lib/main.dart
-    output: assets/bundles/guest.ast
+    output: .dart_tool/bundles/guest.ast
     compression: gzip
     include_sources: false

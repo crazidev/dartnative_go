@@ -1,12 +1,8 @@
 {
-	"mcpServers": {
-		"dartnative": {
-			"type": "stdio",
-			"command": "/Users/mac/Dev/projects/dartnative_go/.dart_tool/dartnative_mcp",
-			"args": [],
-			"tools": [
-				"*"
-			]
-		}
-	}
+  "mcpServers": {
+    "dartnative": {
+      "command": "/Users/mac/Dev/projects/dartnative_go/.dart_tool/dartnative_mcp",
+      "args": []
+    }
+  }
 }

@@ -22,9 +22,10 @@ the launcher. The default is AST (`kDefaultRuntimeMode = RuntimeMode.ast` in
 
 The dev server (or `tool/build_ast_bundle.dart`) compiles your `lib/` tree —
 plus its pure-Dart dependencies — into a single `AstBundle`
-(`assets/bundles/guest.ast`) using the analyzer on your workstation. The
-device downloads those bytes and `tom_d4rt_ast` interprets the *already-parsed*
-AST directly, with no analyzer present.
+(`.dart_tool/bundles/guest.ast`) using the analyzer on your workstation. The
+bundle is a build artifact, kept in `.dart_tool/` so it is never committed.
+The device downloads those bytes and `tom_d4rt_ast` interprets the
+*already-parsed* AST directly, with no analyzer present.
 
 This is the mode hot reload is designed for: it uses the declaration-cell
 registry for exact, transactional state preservation and the decoded-bundle /

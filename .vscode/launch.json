@@ -17,6 +17,12 @@
       "args": ["--no-pub"]
     },
     {
+      "name": "dartnative_go (Source runtime)",
+      "request": "launch",
+      "type": "dart",
+      "args": ["--no-pub", "-t", "lib/main_source.dart"]
+    },
+    {
       "name": "dartnative_go --no-build",
       "request": "launch",
       "type": "dart",

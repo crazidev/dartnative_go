@@ -38,8 +38,9 @@ file change -> debounce (120 ms) -> batch
 
 - A failed AST build keeps the previous `guest.ast` and broadcasts nothing.
 - Only one rebuild runs at a time; changes arriving meanwhile are queued.
-- Writes under `assets/bundles` are ignored by the asset watcher (the code
-  change already triggered the reload).
+- Bundle writes under `.dart_tool/bundles/` (and the legacy `assets/bundles/`)
+  are ignored by the asset watcher (the code change already triggered the
+  reload).
 - Only `origin: test` reload/restart messages are relayed from sockets.
 - `user-code.zip` is byte-stable for unchanged sources: entries are sorted and
   timestamps pinned, so `userCodeHash` only changes when the code does.

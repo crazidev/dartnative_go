@@ -15,6 +15,58 @@ Then run `dart_go <command>` from anywhere. Without a global install, use
 
 ---
 
+## `dart_go open`
+
+Hands a project to the app through a `dartnativego://` deep link, so it opens
+without scanning for a server or typing a URL.
+
+```sh
+dart_go open --url=<host:port> [--name=<app>] [--device] [--qr]
+dart_go open dartnativego://open?url=…
+```
+
+### Options
+
+| Flag | Default | Description |
+| :--- | :--- | :--- |
+| `--url=<host:port>` | — | Dev server address to open. A bare `host:port` is normalized to `http://`. |
+| `--name=<app>` | — | App name shown on the splash while the project loads. |
+| `--device` | off | Deliver the link with `xcrun simctl openurl booted` (iOS simulator) or `adb shell am start` (emulator/physical device). |
+| `--qr` | off | Render the link as a terminal QR code for a physical device. |
+
+The link is always printed, so a device without tooling can still be opened by
+tapping it. `dart_go start` prints the same link for the server it just bound.
+
+### Link format
+
+```text
+dartnativego://open?url=http%3A%2F%2F192.168.1.10%3A8088&name=My%20App
+dartnativego://open?url=192.168.1.10:8088      # bare address is normalized
+dartnativego://192.168.1.10:8088               # authority form
+```
+
+Parsing lives in `lib/src/client/deep_link.dart` (`DartGoDeepLink.build` /
+`tryParse`). Unknown schemes, non-`http(s)` targets and links without a target
+are ignored, so the app never opens something it cannot serve.
+
+### Platform setup
+
+The scheme is registered in `ios/Runner/Info.plist` (`CFBundleURLTypes`) and
+`android/app/src/main/AndroidManifest.xml` (a `VIEW` intent filter, with
+`launchMode="singleTop"` so a warm link reaches `onNewIntent`). Incoming links
+are delivered by the `app_links_kit` plugin — it hooks DartNative's scene
+delegate and activity intents itself, so no Swift/Kotlin code is needed.
+
+### Examples
+
+```sh
+dart_go open --url=192.168.1.10:8088 --device     # open on a simulator
+dart_go open --url=192.168.1.10:8088 --qr         # scan from a phone
+dart_go open dartnativego://open?url=10.0.0.5%3A8088
+```
+
+---
+
 ## `dart_go start`
 
 Starts the live dev server: HTTP bundle serving, WebSocket hot reload, UDP
@@ -33,7 +85,7 @@ dart_go start [options] [project-directory]
 | `--port-range=<min-max>` | `8088-8098` | Range of ports to scan and broadcast across. |
 | `--project=<path>` | current directory | The DartNative project to serve. A positional directory argument also works. |
 | `--host=<ip>` | auto-detected | Custom host IP/interface to advertise to devices. Use when auto-detection picks the wrong network interface (VPNs, multiple NICs). |
-| `--rebuild-ast` | **on** | Rebuild `assets/bundles/guest.ast` on every Dart change (AST hot reload). Unchanged sources skip the analyzer via content fingerprinting. |
+| `--rebuild-ast` | **on** | Rebuild `.dart_tool/bundles/guest.ast` on every Dart change (AST hot reload). Unchanged sources skip the analyzer via content fingerprinting. |
 | `--no-rebuild-ast` | — | Disable AST rebuild. Use only for source-mode testing. |
 | `--no-broadcast` | broadcast on | Disable the UDP discovery beacon. Devices must connect by QR code or manual URL. |
 | `--no-qrcode` | QR on | Disable terminal QR code rendering. |
@@ -56,7 +108,8 @@ While the server runs, type into its terminal:
 
 | Key | Action |
 | :--- | :--- |
-| `r` | Trigger a manual hot reload on all connected devices |
+| `r` | Trigger a manual hot reload on all connected devices (state preserved) |
+| `R` | Trigger a hot restart: drop interpreter state and re-evaluate the current bundle from scratch |
 | `v` | Toggle verbose mode (bi-directional: also flips the in-app DevTool switch) |
 | `q` | Reprint the connection QR code |
 | `c` | Clear the terminal |

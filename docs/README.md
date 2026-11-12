@@ -18,6 +18,7 @@ under 50 ms — no native recompilation.
 | [Hot Reload](hot_reload.md) | How state survives a reload: declaration cells, generations, module reuse. |
 | [Testing](testing.md) | The test lab layout, how to run suites, and the UI automation protocol. |
 | [Tools & Code Generation](tools.md) | Bridge generation, AST bundling, app assets, theme tokens. |
+| [App Configuration](app_config.md) | Proposed `dartnative.yaml` + `dn prebuild`: app name, bundle id, icons, splash, and plugin permission defaults. |
 | [Troubleshooting](troubleshooting.md) | Common errors and how to fix them. |
 
 ## Other key documents
