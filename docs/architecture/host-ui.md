@@ -8,12 +8,16 @@ The shell app around the interpreted guest.
 | :--- | :--- |
 | `lib/main.dart` | Product entrypoint: plugins + theme bootstrap, then the shared shell with an AST-only guest runner. Links no analyzer/source runtime, so profile/release compiles stay small. |
 | `lib/main_source.dart` | Development entrypoint that also links the Source engine (`tom_d4rt`) and analyzer; use `dn run -t lib/main_source.dart` when testing Source mode. |
-| `lib/src/app_shell.dart` | Shared host shell: launcher is the `App` home route; opening a project pushes the preview route; mount/reload/restart orchestration, probe handler. Takes a `GuestRunnerBuilder`. |
+| `lib/host_api.dart` | Re-export of the host API (`package:dartnative_go_api`). Interpreted guests can import this URI; the shell bridges it. |
+| `lib/src/app_shell.dart` | Shared host shell: binds `DartGoHost`, embeds `HostLauncher` as the home route; opening a project pushes the preview route; mount/reload/restart orchestration, probe handler. Takes a `GuestRunnerBuilder`. |
+| `pkgs/dartnative_go_api` | Host API: `discover`, `refresh`, `openProject`, `openWithLink`, `toggleTheme`, `openDevTools`, `verbose`, `reload`, `goHome`. No Flutter. |
+| `pkgs/dartnative_go_ui` | Launcher UI. Calls the API. `dart_go start` in this package previews it inside the host. |
 | `lib/src/runner/guest_runner.dart` | Host-facing runtime interface + builder typedef implemented by `AstGuestRunner` and `InterpreterRunner`. |
 | `lib/src/preview/` | `PreviewScreen` + `PreviewState`: the pushed launch/preview route (splash → mounted guest). Error surfaces are drawn by the shell layer, not here. |
-| `lib/src/launcher/` | Launcher route: recent projects, server URL entry, discovery. |
+| `pkgs/dartnative_go_ui/lib/src/launcher/` | Launcher route: recent projects, server URL entry, discovery. Calls `DartGoHost`. |
+| `pkgs/dartnative_go_ui/lib/src/devtool/` | Editable DevTools pill (`HostDevToolButton`) and sheet (`HostDevToolSheet`). The shell embeds these; a previewed UI renders its own copy. |
 | `lib/src/client/` | Persistence (`ProjectStorage`, `ThemeStorage`, `ErrorDisplayStorage`, `RuntimeModeStorage`), HTTP client, LAN scanner. |
-| `lib/src/devtool/` | Floating DevTools button, sheet (verbose, cache, error mode, theme), shake detector. |
+| `lib/src/devtool/` | Shell DevTools overlay (`DevToolOverlay`): shake detector, host-owned sheet, AST profile panel. Pill/sheet widgets come from `pkgs/dartnative_go_ui`. |
 | `lib/src/widgets/` | `GuestErrorBanner`, `InterpreterErrorView`, splash, breakpoint overlay. |
 | `lib/src/theme/` | shadcn tokens -> `ThemeData`; `themePreferenceProvider`. |
 
@@ -54,6 +58,11 @@ The shell app around the interpreted guest.
 - **Only restart/launch shows the splash**; hot reload keeps the live tree and
   adds no extra frame. `_restartApp` clears `isAppMounted`, paints splash, then
   evaluates (old tree torn down while its interpreter is still alive).
+- **Patch bundles keep the manifest metadata.** The fast AST hot-reload path
+  fetches `/guest.ast.patch` without `/manifest.json`, so
+  `ProjectBundle.withMetadataFrom` copies app name, version, splash, icon, and
+  `profileEnabled` from the bundle being updated. Without it DevTools shows the
+  "DartNative App" placeholder after the first reload.
 - **Pre-first-frame failures are load failures** → full-screen
   `InterpreterErrorView` via `_failGuestLoad` (idempotent; drops the broken
   widget). `_guestRendered` flips two frames after publish.
@@ -95,6 +104,33 @@ The shell app around the interpreted guest.
   - Every pushed route needs its own scope: a native route is a separate screen
     and inherits nothing. `ThemeController` hydrates from `ThemeStorage` when its
     cache is cold rather than defaulting to `system`.
+- **Host API.** The launcher does not take shell callbacks. It calls
+  `DartGoHost` (`package:dartnative_go_api/host_api.dart`, re-exported as
+  `package:dartnative_go/host_api.dart`). The shell installs a
+  `ShellHostBinding` in `initState`. Both interpreter engines bridge those
+  library URIs (`kDartGoHostApiUris`), and the AST bundler skips them, so a
+  guest that imports the API hits the shell instead of an empty binding.
+  The UI package cannot depend on `dartnative_go` — the shell depends on
+  the UI — so it imports `dartnative_go_api` directly.
+- **Preview the UI without a native rebuild.** From `pkgs/dartnative_go_ui`,
+  run `dart_go start` and open that server in the already-built host. Saves
+  hot-reload the launcher. Theme, discovery, open, DevTools, verbose,
+  reload, and go-home call the shell through the bridge.
+- **DevTools follow the UI that draws them.** `HostLauncher` renders the pill
+  and sheet from `pkgs/dartnative_go_ui`, and the launcher app bar carries no
+  host actions (rescan, theme, mode, verbose, cache, reload, home live in the
+  sheet). It renders them only while it is previewed: the shell's home route
+  shows no pill, exactly as before, because `DartGoHost.isPreviewed` is `false`
+  in the compiled facade and `true` through both bridges. The pill sits in a
+  full-screen `Stack` above the launcher's `Scaffold`, not in its body: it
+  positions itself with `MediaQuery` screen coordinates, and the body's origin
+  sits below the app bar, which pushed the default bottom-right corner past the
+  body's bottom edge (the pill never showed). A previewing launcher calls
+  `claimDevTools()` in `initState` and `releaseDevTools()` in `dispose`; the
+  shell sets `_guestOwnsDevTools` (post-frame, because `initState` runs inside
+  the shell's build) and hides its pill, sheet, and shake detector. The shell
+  overlay remains the DevTools for other guest projects. Teardown resets the
+  flag so the next project gets the shell overlay back.
 - Settings storages (`ThemeStorage`, `ErrorDisplayStorage`,
   `RuntimeModeStorage`) share one pattern; new settings should follow it.
 - Error display is a persisted mode: overlay banner (default) or full screen.

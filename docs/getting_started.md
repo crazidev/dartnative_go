@@ -124,6 +124,10 @@ Type these into the dev-server terminal:
 
 ## Next steps
 
+- **Preview the host UI**: `cd pkgs/dartnative_go_ui && dart_go start`,
+  then open that server in the host. UI edits hot-reload; the buttons call
+  the shell API (`discover`, `openProject`, `toggleTheme`, …) so you do not
+  rebuild the native app to change the launcher.
 - **Use your own project**: `dart_go start --project=/path/to/my_app`. Check
   compatibility first with `dart_go doctor`.
 - **Full CLI options**: see the [CLI Reference](cli.md).
