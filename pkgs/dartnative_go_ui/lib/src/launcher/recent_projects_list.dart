@@ -1,14 +1,16 @@
 import 'package:dartnative/dartnative.dart';
+import 'package:dartnative_go_api/host_api.dart';
 
-import '../client/project_model.dart';
-import '../theme/shadcn_theme.dart';
+import '../theme/host_ui_theme.dart';
 import 'project_card.dart';
 
-/// Section rendering recent and scanned development projects styled per shadcn.
+/// Section rendering recent and scanned development projects.
 class RecentProjectsList extends StatelessWidget {
   final List<DartGoProject> projects;
   final bool isLoading;
-  final ValueChanged<DartGoProject> onSelectProject;
+
+  /// `Function`, not `ValueChanged`: guest closures are `dynamic Function()`.
+  final Function onSelectProject;
 
   const RecentProjectsList({
     super.key,
@@ -20,31 +22,24 @@ class RecentProjectsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = context.theme;
+    // print(projects);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Recent Projects',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-                color: theme.foreground,
-              ),
-            ),
-          ],
+        Text(
+          'Recent Projects',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            color: theme.foreground,
+          ),
         ),
         const SizedBox(height: 12),
         if (projects.isEmpty)
           Container(
             width: double.infinity,
-            padding: EdgeInsets.only(top: 70),
-            decoration: BoxDecoration(
-              borderRadius: theme.radius.lg,
-            ),
+            padding: const EdgeInsets.only(top: 70),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -79,30 +74,21 @@ class RecentProjectsList extends StatelessWidget {
                 ),
               ],
             ),
-          )
-        else
-          ...List.generate(
-            projects.length,
-            (index) {
-              var project = projects[index];
-              var isFirst = index == 0;
-              var divider = Divider(
-                color: context.theme.background,
-                height: 10,
-              );
-
-              return Column(
-                key: ValueKey(project.url),
-                children: [
-                  ?(!isFirst ? divider : null),
-                  ProjectCard(
-                    project: project,
-                    onTap: onSelectProject,
-                  ),
-                ],
-              );
-            },
           ),
+        ListView.separated(
+          itemCount: projects.length,
+          shrinkWrap: true,
+          separatorBuilder: (context, index) => Divider(
+            color: theme.background,
+            height: 10,
+          ),
+          itemBuilder: (context, index) => ProjectCard(
+            project: projects[index],
+            onTap: onSelectProject,
+          ),
+          
+        ),
+        
       ],
     );
   }

@@ -93,6 +93,38 @@ class ProjectBundle {
     this.iconFontsHash = '',
     this.customFonts = const [],
   });
+
+  /// This bundle's delta plus [previous]'s manifest metadata.
+  ///
+  /// The fast hot-reload path fetches `/guest.ast.patch` without
+  /// `/manifest.json`, so a patch bundle has no app name, version, splash or
+  /// icon. Replacing the active bundle with it would make DevTools (and any
+  /// other reader of `DartGoHost.appName`) fall back to the placeholder.
+  ProjectBundle withMetadataFrom(ProjectBundle previous) {
+    if (!isPatch) return this;
+    return ProjectBundle(
+      appName: previous.appName,
+      appVersion: previous.appVersion,
+      splashUrl: previous.splashUrl,
+      iconUrl: previous.iconUrl,
+      splashBackgroundColor: previous.splashBackgroundColor,
+      serverUrl: serverUrl,
+      sources: sources,
+      entrypointCode: entrypointCode,
+      entrypointLibrary: entrypointLibrary,
+      breakpoints: breakpoints,
+      assets: assets,
+      astBytes: astBytes,
+      astPatchBytes: astPatchBytes,
+      isPatch: isPatch,
+      astEntryPoint: astEntryPoint,
+      astModuleFingerprints: astModuleFingerprints,
+      profileEnabled: previous.profileEnabled,
+      iconFonts: iconFonts,
+      iconFontsHash: iconFontsHash,
+      customFonts: customFonts,
+    );
+  }
 }
 
 /// Service to fetch and parse project manifests and bundles from the dev server.

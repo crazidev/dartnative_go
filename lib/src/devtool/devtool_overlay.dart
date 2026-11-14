@@ -1,53 +1,60 @@
 import 'package:dartnative/dartnative.dart';
+import 'package:dartnative_go_ui/dartnative_go_ui.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 
-import '../client/error_display_storage.dart';
-import '../runner/ast_profile.dart';
-import '../runner/dep_cache.dart';
-import '../runner/runtime_mode.dart';
+import '../client/theme_storage.dart';
 import '../theme/theme_providers.dart';
-import 'devtool_sheet.dart';
-import 'floating_devtool_button.dart';
 import 'shake_detector.dart';
+
+/// Opens the DevTools sheet from the host API without a widget callback.
+class DevToolsHost {
+  static void Function()? _open;
+
+  static void register(void Function() open) => _open = open;
+
+  static void unregister(void Function() open) {
+    if (identical(_open, open)) _open = null;
+  }
+
+  static void open() => _open?.call();
+}
 
 /// Overlay widget wrapped around the mounted guest app.
 ///
 /// Provides:
-/// 1. A floating, draggable DevTool button that can be moved anywhere on screen.
+/// 1. A floating, draggable DevTools button that can be moved anywhere on screen.
 /// 2. Physical device shake detection to open the native DevTools bottomsheet.
 /// 3. Native bottomsheet powered by `native_bottomsheet` (`showBottomSheet`).
-class DevToolOverlay extends StatefulWidget {
+///
+/// The pill and sheet live in `dartnative_go_ui` so `dart_go start` can preview
+/// and hot-reload them. When the previewed UI claims DevTools for itself
+/// (`DartGoHost.claimDevTools`), the shell disables this overlay.
+class DevToolOverlay extends ConsumerStatefulWidget {
   final Widget child;
   final String appName;
   final String? appVersion;
   final String serverUrl;
   final bool isConnected;
-  final VoidCallback onGoHome;
-  final VoidCallback onReload;
-  final DepCache? depCache;
-  final VoidCallback? onClearCache;
+  final Function onGoHome;
+  final Function onReload;
+  final String? cacheLabel;
+  final Function? onClearCache;
 
-  /// Current engine mode label (e.g. "Source (tom_d4rt)").
-  final String runtimeModeLabel;
+  /// Runtime mode labels in selector order.
+  final List<String> runtimeModes;
 
-  /// True when testing AST bundles. Defaults to false (source).
-  final bool useAst;
-  final void Function(bool enabled)? onToggleAst;
-
-  final void Function()? onCycleMode;
-  final void Function(RuntimeMode mode)? onSelectMode;
+  /// Index into [runtimeModes] of the active mode.
+  final int selectedRuntimeModeIndex;
+  final Function? onSelectRuntimeMode;
 
   /// Whether verbose benchmark & diagnostic logs are enabled.
   final bool verboseLogs;
-  final void Function(bool enabled)? onToggleVerbose;
+  final Function? onToggleVerbose;
 
-  /// How guest failures surface on the device (overlay banner vs fullscreen).
-  final ErrorDisplayMode errorDisplayMode;
-  final void Function(ErrorDisplayMode mode)? onSelectErrorMode;
-
-  /// Structured snapshot of the last AST bundle evaluation for the viewer.
-  final AstProfileSnapshot? astProfile;
+  /// Shell-only section (the AST bundle explorer) rendered after the runtime
+  /// selector. Null for non-profile sessions.
+  final Widget? extraSection;
 
   /// Whether the floating controls are active (gated until guest app mounts).
   final bool isEnabled;
@@ -67,32 +74,29 @@ class DevToolOverlay extends StatefulWidget {
     required this.onGoHome,
     required this.onReload,
     this.isEnabled = true,
-    this.depCache,
+    this.cacheLabel,
     this.onClearCache,
-    this.runtimeModeLabel = 'Source (tom_d4rt)',
-    this.useAst = false,
-    this.onToggleAst,
-    this.onCycleMode,
-    this.onSelectMode,
+    this.runtimeModes = const ['AST'],
+    this.selectedRuntimeModeIndex = 0,
+    this.onSelectRuntimeMode,
     this.verboseLogs = false,
     this.onToggleVerbose,
-    this.errorDisplayMode = ErrorDisplayMode.overlay,
-    this.onSelectErrorMode,
-    this.astProfile,
+    this.extraSection,
     this.errorSurface,
   });
 
   @override
-  State<DevToolOverlay> createState() => _DevToolOverlayState();
+  ConsumerState<DevToolOverlay> createState() => _DevToolOverlayState();
 }
 
-class _DevToolOverlayState extends State<DevToolOverlay> {
+class _DevToolOverlayState extends ConsumerState<DevToolOverlay> {
   late ShakeDetector _shakeDetector;
   DNSheetController? _sheet;
 
   @override
   void initState() {
     super.initState();
+    DevToolsHost.register(_openFromHost);
     _shakeDetector = ShakeDetector(
       onShake: () {
         if (mounted) {
@@ -111,8 +115,9 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
       _shakeDetector.start();
     } else {
       _shakeDetector.stop();
-      // Leaving the guest (Go Home, teardown): close any open sheet so it
-      // cannot outlive the surface it belongs to.
+      // Leaving the guest (Go Home, teardown, or a previewed UI that owns
+      // DevTools): close any open sheet so it cannot outlive the surface it
+      // belongs to.
       _sheet?.dismiss();
       _sheet = null;
     }
@@ -120,13 +125,23 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
 
   @override
   void dispose() {
+    DevToolsHost.unregister(_openFromHost);
     _shakeDetector.dispose();
     super.dispose();
   }
 
+  void _openFromHost() {
+    if (!mounted) return;
+    showDevtools(context, force: true);
+  }
+
   /// Opens the native bottom sheet with DevTools controls.
-  void showDevtools(BuildContext context) {
-    if (!widget.isEnabled || _sheet != null) return;
+  ///
+  /// [force] skips the "guest is mounted" gate so the host API can open the
+  /// sheet from the launcher as well as from a previewed UI.
+  void showDevtools(BuildContext context, {bool force = false}) {
+    if (_sheet != null) return;
+    if (!force && !widget.isEnabled) return;
 
     _sheet = showBottomSheet(
       context,
@@ -134,31 +149,31 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
       initialDetent: DNSheetDetent.medium,
       showGrabber: true,
       builder: (ctx, controller) => Consumer(
-        builder: (ctx, ref, _) => DevToolSheet(
-          controller: controller,
-          appName: widget.appName,
-          appVersion: widget.appVersion,
-          serverUrl: widget.serverUrl,
-          isConnected: widget.isConnected,
-          runtimeModeLabel: widget.runtimeModeLabel,
-          useAst: widget.useAst,
-          onSelectMode: widget.onSelectMode,
-          onCycleMode: widget.onCycleMode,
-          onToggleAst: widget.onToggleAst,
-          depCache: widget.depCache,
-          onClearCache: widget.onClearCache,
-          verboseLogs: widget.verboseLogs,
-          onToggleVerbose: widget.onToggleVerbose,
-          errorDisplayMode: widget.errorDisplayMode,
-          onSelectErrorMode: widget.onSelectErrorMode,
-          themePreference: ref.watch(themePreferenceProvider),
-          onSelectTheme: (preference) => ref
-              .read(themePreferenceProvider.notifier)
-              .setPreference(preference),
-          onGoHome: widget.onGoHome,
-          onReload: widget.onReload,
-          astProfile: widget.astProfile,
-        ),
+        builder: (ctx, ref, _) {
+          final preference = ref.watch(themePreferenceProvider);
+          return HostDevToolSheet(
+            controller: controller,
+            appName: widget.appName,
+            appVersion: widget.appVersion,
+            serverUrl: widget.serverUrl,
+            isConnected: widget.isConnected,
+            runtimeModes: widget.runtimeModes,
+            selectedRuntimeModeIndex: widget.selectedRuntimeModeIndex,
+            onSelectRuntimeMode: widget.onSelectRuntimeMode,
+            themeModes: const ['System', 'Light', 'Dark'],
+            selectedThemeIndex: ThemePreference.values.indexOf(preference),
+            onSelectTheme: (index) => ref
+                .read(themePreferenceProvider.notifier)
+                .setPreference(ThemePreference.values[index]),
+            verbose: widget.verboseLogs,
+            onToggleVerbose: widget.onToggleVerbose,
+            cacheLabel: widget.cacheLabel,
+            onClearCache: widget.onClearCache,
+            onGoHome: widget.onGoHome,
+            onReload: widget.onReload,
+            extraSection: widget.extraSection,
+          );
+        },
       ),
       onDetentChanged: (detent) => print('settled at ${detent.label}'),
       onDismissed: () {
@@ -174,6 +189,8 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
 
   @override
   Widget build(BuildContext context) {
+    final preference = ref.watch(themePreferenceProvider);
+    final theme = HostUiThemeData.resolve(preference.name, context);
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -184,9 +201,10 @@ class _DevToolOverlayState extends State<DevToolOverlay> {
         //    the guest pushed is visible), below the button.
         ?widget.errorSurface,
 
-        // 3. Floating, draggable DevTool button (only once a guest is up)
+        // 3. Floating, draggable DevTools button (only once a guest is up)
         if (widget.isEnabled)
-          FloatingDevToolButton(
+          HostDevToolButton(
+            theme: theme,
             isConnected: widget.isConnected,
             onTap: () => showDevtools(context),
           ),

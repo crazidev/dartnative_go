@@ -227,17 +227,29 @@ class DartGoNetworkScanner {
     _emitProjects();
   }
 
-  /// Sorts projects: active projects with green dot are kept at the top,
-  /// followed by inactive recent projects, sorted by lastSeen descending.
+  /// Sorts projects for a stable list: online projects first, then by port.
+  ///
+  /// `lastSeen` refreshes on every probe, and the probes finish in parallel in
+  /// nondeterministic order, so ordering by it made two online projects trade
+  /// places after each scan. Port is stable, so the list never shuffles; the
+  /// URL breaks ties (two hosts can share a port).
   List<DartGoProject> _getSortedProjects() {
     final list = _projectsMap.values.toList();
     list.sort((a, b) {
       if (a.isActive != b.isActive) {
-        return a.isActive ? -1 : 1; // Active first
+        return a.isActive ? -1 : 1; // Online first
       }
-      return b.lastSeen.compareTo(a.lastSeen); // Newest first
+      final portCompare = _portOf(a).compareTo(_portOf(b));
+      if (portCompare != 0) return portCompare;
+      return a.url.compareTo(b.url);
     });
     return list;
+  }
+
+  /// The URL's port (the scheme default when omitted), or 0 if unparseable.
+  static int _portOf(DartGoProject project) {
+    final uri = Uri.tryParse(project.url);
+    return uri == null ? 0 : uri.port;
   }
 
   void _emitProjects() {

@@ -8,6 +8,7 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:analyzer/dart/analysis/utilities.dart';
+import 'package:dartnative_go_api/host_api.dart';
 import 'package:archive/archive.dart' show GZipEncoder;
 import 'package:path/path.dart' as p;
 import 'package:tom_ast_generator/tom_ast_generator.dart';
@@ -110,6 +111,10 @@ const kAstBridgedLibraries = {
   // guest bundles). Contrast package:dartnative_go/server.dart (the
   // dependency-free annotation), which IS bundled via explicitSources.
   'package:dartnative_go/server_component.dart',
+  // Host API (`DartGoHost`). Bridged so a guest UI — including
+  // `pkgs/dartnative_go_ui` under `dart_go start` — calls the shell instead
+  // of a bundled copy whose binding static is empty.
+  ...kDartGoHostApiUris,
 };
 
 /// Result of [buildGuestAstBundle].

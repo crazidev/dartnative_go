@@ -125,7 +125,10 @@ The shell app around the interpreted guest.
   full-screen `Stack` above the launcher's `Scaffold`, not in its body: it
   positions itself with `MediaQuery` screen coordinates, and the body's origin
   sits below the app bar, which pushed the default bottom-right corner past the
-  body's bottom edge (the pill never showed). A previewing launcher calls
+  body's bottom edge (the pill never showed). The pill tracks the finger 1:1,
+  stretches elastically past the safe area instead of stopping dead, and always
+  springs to the nearer side edge when released, keeping the height it was
+  dropped at. A previewing launcher calls
   `claimDevTools()` in `initState` and `releaseDevTools()` in `dispose`; the
   shell sets `_guestOwnsDevTools` (post-frame, because `initState` runs inside
   the shell's build) and hides its pill, sheet, and shake detector. The shell

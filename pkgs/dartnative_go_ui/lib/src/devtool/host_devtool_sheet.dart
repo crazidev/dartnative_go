@@ -1,137 +1,145 @@
+import 'dart:io';
+
 import 'package:dartnative/dartnative.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
 
-import '../client/error_display_storage.dart';
-import '../client/theme_storage.dart';
-import '../runner/ast_profile.dart';
-import '../runner/dep_cache.dart';
-import '../runner/runtime_mode.dart';
-import '../theme/shadcn_theme.dart';
-import 'ast_profile_panel.dart';
+import '../theme/host_ui_theme.dart';
 
-/// Content panel rendered inside the native bottom sheet for DartNative DevTools.
-class DevToolSheet extends StatefulWidget {
+/// Major component of an Apple version string such as
+/// `Version 26.4.1 (Build 23E254a)`. Returns `0` when none is present.
+int _majorVersion(String version) {
+  final match = RegExp(r'(\d+)').firstMatch(version);
+  if (match == null) return 0;
+  return int.tryParse(match.group(1)!) ?? 0;
+}
+
+/// Content panel rendered inside the native bottom sheet for DartNative
+/// DevTools.
+///
+/// Lives in this package (not the shell) so `dart_go start` can preview and
+/// hot-reload the DevTools UI. Every action is supplied by the caller: the
+/// shell wires its controllers, and a previewed UI wires `DartGoHost`.
+///
+/// Callbacks are `Function`, not typed typedefs: interpreted guest closures
+/// are `dynamic Function(...)` and the interpreter rejects them against a
+/// nominal function annotation.
+class HostDevToolSheet extends StatefulWidget {
   final DNSheetController controller;
+
   final String appName;
   final String? appVersion;
   final String serverUrl;
   final bool isConnected;
-  final String runtimeModeLabel;
-  final bool useAst;
-  final void Function(RuntimeMode mode)? onSelectMode;
-  final VoidCallback? onCycleMode;
-  final void Function(bool)? onToggleAst;
-  final DepCache? depCache;
-  final VoidCallback? onClearCache;
-  final bool verboseLogs;
-  final void Function(bool)? onToggleVerbose;
-  final ErrorDisplayMode errorDisplayMode;
-  final void Function(ErrorDisplayMode mode)? onSelectErrorMode;
-  final ThemePreference themePreference;
-  final void Function(ThemePreference preference)? onSelectTheme;
-  final VoidCallback onGoHome;
-  final VoidCallback onReload;
 
-  /// Structured snapshot of the last AST bundle evaluation, or null before
-  /// the first evaluation. Rendered in the AST BUNDLE explorer section.
-  final AstProfileSnapshot? astProfile;
+  /// Runtime mode labels in selector order.
+  final List<String> runtimeModes;
+  final int selectedRuntimeModeIndex;
+  final Function? onSelectRuntimeMode;
 
-  const DevToolSheet({
+  /// Theme labels in selector order (`System`, `Light`, `Dark`).
+  final List<String> themeModes;
+  final int selectedThemeIndex;
+  final Function? onSelectTheme;
+
+  final bool verbose;
+  final Function? onToggleVerbose;
+
+  /// Formatted dependency cache summary, or null to hide the section.
+  final String? cacheLabel;
+  final Function? onClearCache;
+
+  /// Rescans the local network for dev servers. Null hides the action.
+  final Function? onRescan;
+
+  final Function onGoHome;
+  final Function onReload;
+
+  /// Shell-only section (the AST bundle explorer) rendered after the runtime
+  /// selector. Null in a previewed UI.
+  final Widget? extraSection;
+
+  const HostDevToolSheet({
     super.key,
     required this.controller,
     required this.appName,
     this.appVersion,
     required this.serverUrl,
     required this.isConnected,
-    required this.runtimeModeLabel,
-    this.useAst = false,
-    this.onSelectMode,
-    this.onCycleMode,
-    this.onToggleAst,
-    this.depCache,
-    this.onClearCache,
-    this.verboseLogs = false,
-    this.onToggleVerbose,
-    this.errorDisplayMode = ErrorDisplayMode.overlay,
-    this.onSelectErrorMode,
-    this.themePreference = ThemePreference.system,
+    this.runtimeModes = const ['AST'],
+    this.selectedRuntimeModeIndex = 0,
+    this.onSelectRuntimeMode,
+    this.themeModes = const ['System', 'Light', 'Dark'],
+    this.selectedThemeIndex = 0,
     this.onSelectTheme,
+    this.verbose = false,
+    this.onToggleVerbose,
+    this.cacheLabel,
+    this.onClearCache,
+    this.onRescan,
     required this.onGoHome,
     required this.onReload,
-    this.astProfile,
+    this.extraSection,
   });
 
   @override
-  State<DevToolSheet> createState() => _DevToolSheetState();
+  State<HostDevToolSheet> createState() => _HostDevToolSheetState();
 }
 
-class _DevToolSheetState extends State<DevToolSheet> {
+class _HostDevToolSheetState extends State<HostDevToolSheet> {
+  // ignore: unused_field, prefer_final_fields
   bool _isCacheCleared = false;
   late bool _verbose;
   late int _selectedModeIndex;
-  late int _selectedErrorModeIndex;
   late int _selectedThemeIndex;
-
-  static int _modeToIndex(bool useAst) {
-    final mode = runtimeModeFromBool(useAst);
-    final index = selectableRuntimeModes.indexOf(mode);
-    return index < 0 ? 0 : index;
-  }
-
-  static RuntimeMode _indexToMode(int index) {
-    final modes = selectableRuntimeModes;
-    if (index < 0 || index >= modes.length) return kDefaultRuntimeMode;
-    return modes[index];
-  }
-
-  static int _errorModeToIndex(ErrorDisplayMode mode) =>
-      mode == ErrorDisplayMode.fullscreen ? 1 : 0;
-
-  static ErrorDisplayMode _indexToErrorMode(int index) =>
-      index == 1 ? ErrorDisplayMode.fullscreen : ErrorDisplayMode.overlay;
-
-  static int _themeToIndex(ThemePreference preference) =>
-      ThemePreference.values.indexOf(preference);
-
-  static ThemePreference _indexToTheme(int index) {
-    final values = ThemePreference.values;
-    if (index < 0 || index >= values.length) return ThemePreference.system;
-    return values[index];
-  }
 
   @override
   void initState() {
     super.initState();
-    _verbose = widget.verboseLogs;
-    _selectedModeIndex = _modeToIndex(widget.useAst);
-    _selectedErrorModeIndex = _errorModeToIndex(widget.errorDisplayMode);
-    _selectedThemeIndex = _themeToIndex(widget.themePreference);
+    _verbose = widget.verbose;
+    _selectedModeIndex = widget.selectedRuntimeModeIndex;
+    _selectedThemeIndex = widget.selectedThemeIndex;
   }
 
   @override
-  void didUpdateWidget(covariant DevToolSheet oldWidget) {
+  void didUpdateWidget(covariant HostDevToolSheet oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.useAst != widget.useAst) {
-      _selectedModeIndex = _modeToIndex(widget.useAst);
+    if (oldWidget.selectedRuntimeModeIndex != widget.selectedRuntimeModeIndex) {
+      _selectedModeIndex = widget.selectedRuntimeModeIndex;
     }
-    if (oldWidget.verboseLogs != widget.verboseLogs) {
-      _verbose = widget.verboseLogs;
+    if (oldWidget.verbose != widget.verbose) {
+      _verbose = widget.verbose;
     }
-    if (oldWidget.errorDisplayMode != widget.errorDisplayMode) {
-      _selectedErrorModeIndex = _errorModeToIndex(widget.errorDisplayMode);
+    if (oldWidget.selectedThemeIndex != widget.selectedThemeIndex) {
+      _selectedThemeIndex = widget.selectedThemeIndex;
     }
-    if (oldWidget.themePreference != widget.themePreference) {
-      _selectedThemeIndex = _themeToIndex(widget.themePreference);
+  }
+
+  /// Palette for the current selection, resolved from [HostDevToolSheet.themeModes].
+  ///
+  /// Resolving here (instead of taking a fixed palette) means changing the
+  /// theme inside the sheet repaints the sheet itself, not just the screen
+  /// behind it. The sheet is its own native surface and cannot read the
+  /// ambient `HostUiTheme` scope.
+  HostUiThemeData _resolveTheme(BuildContext context) {
+    if (widget.themeModes.isEmpty) return HostUiThemeData.light;
+    var index = _selectedThemeIndex;
+    if (index < 0) index = 0;
+    if (index >= widget.themeModes.length) {
+      index = widget.themeModes.length - 1;
     }
+    return HostUiThemeData.resolve(
+      widget.themeModes[index].toLowerCase(),
+      context,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // The sheet follows the shell theme, so it flips with light/dark mode
-    // instead of being a fixed dark surface.
-    final theme = context.theme;
+    final theme = _resolveTheme(context);
+    final isIOS26 =
+        Platform.isIOS && _majorVersion(Platform.operatingSystemVersion) >= 26;
     return Container(
-      color: theme.background,
+      color: !isIOS26 ? theme.background : null,
       child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
@@ -163,7 +171,7 @@ class _DevToolSheetState extends State<DevToolSheet> {
                                 horizontal: 6,
                                 vertical: 2,
                               ),
-                              margin: EdgeInsets.only(left: 10),
+                              margin: const EdgeInsets.only(left: 10),
                               decoration: BoxDecoration(
                                 color: widget.isConnected
                                     ? const Color(0x2234C759)
@@ -217,7 +225,10 @@ class _DevToolSheetState extends State<DevToolSheet> {
                   GlassEffectContainer(
                     borderRadius: BorderRadius.circular(100),
                     child: IconButton(
-                      icon: Icon(CupertinoIcons.xmark_1),
+                      icon: Icon(
+                        CupertinoIcons.xmark_1,
+                        color: theme.foreground,
+                      ),
                       onPressed: () {
                         widget.controller.dismiss();
                       },
@@ -294,7 +305,7 @@ class _DevToolSheetState extends State<DevToolSheet> {
               const SizedBox(height: 16),
 
               // Runtime mode segment (hidden in single-engine product builds).
-              if (selectableRuntimeModes.length > 1) ...[
+              if (widget.runtimeModes.length > 1) ...[
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
@@ -317,30 +328,17 @@ class _DevToolSheetState extends State<DevToolSheet> {
                               letterSpacing: 0.5,
                             ),
                           ),
-                          SizedBox(width: 10),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: SegmentedControl(
-                              segments: selectableRuntimeModes
-                                  .map(
-                                    (m) => m == RuntimeMode.source
-                                        ? 'Source'
-                                        : 'AST',
-                                  )
-                                  .toList(),
+                              segments: widget.runtimeModes,
                               selectedIndex: _selectedModeIndex,
                               onValueChanged: (index) {
                                 if (index == _selectedModeIndex) return;
                                 setState(() {
                                   _selectedModeIndex = index;
                                 });
-                                final mode = _indexToMode(index);
-                                if (widget.onSelectMode != null) {
-                                  widget.onSelectMode!(mode);
-                                } else if (widget.onCycleMode != null) {
-                                  widget.onCycleMode!();
-                                } else if (widget.onToggleAst != null) {
-                                  widget.onToggleAst!(mode == RuntimeMode.ast);
-                                }
+                                widget.onSelectRuntimeMode?.call(index);
                               },
                             ),
                           ),
@@ -352,60 +350,11 @@ class _DevToolSheetState extends State<DevToolSheet> {
                 const SizedBox(height: 16),
               ],
 
-              // AST bundle explorer (packages, modules, classes, loads).
-              // Shown only when the server runs with `--profile` (the app
-              // passes a snapshot only then); an empty section would just be
-              // noise for non-profiling sessions.
-              if (widget.astProfile != null) ...[
-                AstProfilePanel(profile: widget.astProfile),
+              // AST bundle explorer (shell only).
+              if (widget.extraSection != null) ...[
+                widget.extraSection!,
                 const SizedBox(height: 16),
               ],
-
-              // Error Display
-              // Container(
-              //   width: double.infinity,
-              //   padding: const EdgeInsets.all(12),
-              //   decoration: BoxDecoration(
-              //     color: const Color(0xFF2C2C2E),
-              //     borderRadius: BorderRadius.circular(12),
-              //   ),
-              //   child: Column(
-              //     crossAxisAlignment: CrossAxisAlignment.start,
-              //     children: [
-              //       Row(
-              //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              //         children: [
-              //           const Text(
-              //             'ERROR DISPLAY',
-              //             style: TextStyle(
-              //               color: Colors.white38,
-              //               fontSize: 10,
-              //               fontWeight: FontWeight.bold,
-              //               letterSpacing: 0.5,
-              //             ),
-              //           ),
-              //           SizedBox(width: 10),
-              //           Expanded(
-              //             child: SegmentedControl(
-              //               segments: const ['Overlay', 'Full screen'],
-              //               selectedIndex: _selectedErrorModeIndex,
-              //               onValueChanged: (index) {
-              //                 if (index == _selectedErrorModeIndex) return;
-              //                 setState(() {
-              //                   _selectedErrorModeIndex = index;
-              //                 });
-              //                 widget.onSelectErrorMode?.call(
-              //                   _indexToErrorMode(index),
-              //                 );
-              //               },
-              //             ),
-              //           ),
-              //         ],
-              //       ),
-              //     ],
-              //   ),
-              // ),
-              // const SizedBox(height: 16),
 
               // Theme
               Container(
@@ -415,42 +364,37 @@ class _DevToolSheetState extends State<DevToolSheet> {
                   color: theme.secondary,
                   borderRadius: theme.radius.lg,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'THEME',
-                          style: TextStyle(
-                            color: theme.mutedForeground,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: SegmentedControl(
-                            segments: const [
-                              'System',
-                              'Light',
-                              'Dark',
-                            ],
-                            selectedIndex: _selectedThemeIndex,
-                            onValueChanged: (index) {
-                              if (index == _selectedThemeIndex) return;
-                              setState(() {
-                                _selectedThemeIndex = index;
-                              });
-                              widget.onSelectTheme?.call(
-                                _indexToTheme(index),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'THEME',
+                      style: TextStyle(
+                        color: theme.mutedForeground,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: SegmentedControl(
+                        segments: widget.themeModes,
+                        selectedIndex: _selectedThemeIndex,
+                        // labelFontStyle: TextStyle(
+                        //   color: theme.foreground,
+                        // ),
+                        // selectedLabelFontStyle: TextStyle(
+                        //   color: _selectedThemeIndex == 2 ? theme.background : null,
+                        // ),
+                        onValueChanged: (index) {
+                          if (index == _selectedThemeIndex) return;
+                          setState(() {
+                            _selectedThemeIndex = index;
+                          });
+                          widget.onSelectTheme?.call(index);
+                        },
+                      ),
                     ),
                   ],
                 ),
@@ -458,65 +402,62 @@ class _DevToolSheetState extends State<DevToolSheet> {
               const SizedBox(height: 16),
 
               // Dependency Cache
-              if (widget.depCache != null) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.secondary,
-                    borderRadius: theme.radius.lg,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'DEPENDENCY CACHE',
-                              style: TextStyle(
-                                color: theme.mutedForeground,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _isCacheCleared
-                                  ? '0 B (0 packages)'
-                                  : '${widget.depCache!.getFormattedCacheSize()} (${widget.depCache!.getCachedPackageCount()} packages)',
-                              style: TextStyle(
-                                color: theme.foreground,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (!_isCacheCleared)
-                        Button(
-                          child: Icon(CupertinoIcons.trash_1, size: 20),
-                          variant: ButtonVariant.plain,
-                          padding: EdgeInsets.zero,
-                          foregroundColor: theme.destructive,
-                          onPressed: _isCacheCleared
-                              ? null
-                              : () async {
-                                  await widget.depCache!.clearCache();
-                                  widget.onClearCache?.call();
-                                  if (mounted) {
-                                    setState(() {
-                                      _isCacheCleared = true;
-                                    });
-                                  }
-                                },
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
+              // if (widget.cacheLabel != null) ...[
+              //   Container(
+              //     width: double.infinity,
+              //     padding: const EdgeInsets.all(12),
+              //     decoration: BoxDecoration(
+              //       color: theme.secondary,
+              //       borderRadius: theme.radius.lg,
+              //     ),
+              //     child: Row(
+              //       children: [
+              //         Expanded(
+              //           child: Column(
+              //             crossAxisAlignment: CrossAxisAlignment.start,
+              //             children: [
+              //               Text(
+              //                 'DEPENDENCY CACHE',
+              //                 style: TextStyle(
+              //                   color: theme.mutedForeground,
+              //                   fontSize: 10,
+              //                   fontWeight: FontWeight.bold,
+              //                   letterSpacing: 0.5,
+              //                 ),
+              //               ),
+              //               const SizedBox(height: 4),
+              //               Text(
+              //                 _isCacheCleared
+              //                     ? '0 B (0 packages)'
+              //                     : widget.cacheLabel!,
+              //                 style: TextStyle(
+              //                   color: theme.foreground,
+              //                   fontSize: 13,
+              //                 ),
+              //               ),
+              //             ],
+              //           ),
+              //         ),
+              //         if (!_isCacheCleared)
+              //           Button(
+              //             child: const Icon(CupertinoIcons.trash_1, size: 20),
+              //             variant: ButtonVariant.plain,
+              //             padding: EdgeInsets.zero,
+              //             foregroundColor: theme.destructive,
+              //             onPressed: () async {
+              //               widget.onClearCache?.call();
+              //               if (mounted) {
+              //                 setState(() {
+              //                   _isCacheCleared = true;
+              //                 });
+              //               }
+              //             },
+              //           ),
+              //       ],
+              //     ),
+              //   ),
+              //   const SizedBox(height: 16),
+              // ],
 
               // Verbose logs toggle
               GestureDetector(
@@ -553,12 +494,13 @@ class _DevToolSheetState extends State<DevToolSheet> {
                           ],
                         ),
                       ),
-
                       Switch(
                         value: _verbose,
                         onChanged: (v) {
+                          setState(() {
+                            _verbose = v;
+                          });
                           widget.onToggleVerbose?.call(v);
-                          setState(() {});
                         },
                       ),
                     ],

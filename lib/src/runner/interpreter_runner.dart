@@ -9,6 +9,7 @@ import '../interpreter/breakpoint_instrumenter.dart';
 import '../interpreter/d4rt_flutter_application.dart';
 import '../interpreter/debug_controller.dart';
 import '../interpreter/dn_bridge.dart';
+import '../interpreter/host_api_bridge.dart';
 import '../interpreter/server_component_source_bridge.dart';
 import '../widgets/server_component_loader.dart';
 import 'ast_interpreter_runner.dart';
@@ -172,6 +173,7 @@ class InterpreterRunner implements GuestRunner {
 
     // 2b. Host ServerComponentView (`package:dartnative_go/server_component.dart`).
     // Components are AST bundles, so they mount through the embedded AST runner.
+    registerSourceHostApiBridge(interpreter);
     registerSourceServerComponentBridge(
       interpreter,
       loaderProvider: () => _sourceComponentLoader ??= ServerComponentLoader(
@@ -720,6 +722,7 @@ class InterpreterRunner implements GuestRunner {
     try {
       _interpreter?.dispose();
     } catch (_) {}
+    detachSourceHostApiListeners();
     _interpreter = null;
     _astRunner?.dispose();
     _astRunner = null;

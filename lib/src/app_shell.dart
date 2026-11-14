@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:app_links_kit/app_links_kit.dart';
 import 'package:dartnative/dartnative.dart';
+import 'package:dartnative_go_api/host_api.dart' hide DartGoProject;
+import 'package:dartnative_go_ui/dartnative_go_ui.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 
 import 'client/deep_link.dart';
@@ -10,9 +12,11 @@ import 'client/network_scanner.dart';
 import 'client/project_model.dart';
 import 'client/project_storage.dart';
 import 'client/runtime_mode_storage.dart';
+import 'client/theme_storage.dart';
+import 'devtool/ast_profile_panel.dart';
 import 'devtool/devtool_overlay.dart';
+import 'host_api/shell_binding.dart';
 import 'interpreter/widget_generation_tracker.dart';
-import 'launcher/launcher_screen.dart';
 import 'preview/preview_route.dart';
 import 'runner/bundle_loader.dart';
 import 'runner/guest_error_format.dart';
@@ -45,6 +49,8 @@ class _DartNativeGoState extends State<DartNativeGo> {
     storage: ProjectStorage(),
   );
   final TextEditingController _urlController = TextEditingController();
+  late final ShellHostBinding _hostBinding;
+  void Function()? _stopThemeListen;
   StreamSubscription<List<DartGoProject>>? _scannerSub;
   List<DartGoProject> _projects = [];
   bool _isLoading = false;
@@ -59,12 +65,14 @@ class _DartNativeGoState extends State<DartNativeGo> {
   );
 
   /// True in AOT/release builds (`--release`/`--profile`), false under the JIT.
+  // ignore: unused_field
   static const bool _isProductBuild = bool.fromEnvironment('dart.vm.product');
 
   bool get _autoConnectEnabled {
     if (_autoConnectOverride == 'true') return true;
     if (_autoConnectOverride == 'false') return false;
-    return !_isProductBuild;
+    return false;
+    // return !_isProductBuild;
   }
 
   /// Guards [_maybeAutoConnect] so one app launch connects at most once.
@@ -152,6 +160,12 @@ class _DartNativeGoState extends State<DartNativeGo> {
   /// True while the preview route is active on the navigator.
   bool _previewRouteOpen = false;
 
+  /// True when the previewed UI renders its own DevTools (the UI package).
+  ///
+  /// The guest claims them through `DartGoHost.claimDevTools()`; the shell then
+  /// hides its floating pill and sheet so only the guest's editable copy shows.
+  bool _guestOwnsDevTools = false;
+
   /// Timestamp when the preview route was pushed, used to await splash settle.
   DateTime? _previewRoutePushedAt;
 
@@ -161,6 +175,36 @@ class _DartNativeGoState extends State<DartNativeGo> {
   @override
   void initState() {
     super.initState();
+    _hostBinding = ShellHostBinding(
+      readProjects: () => _projects,
+      readScanning: () => _isLoading,
+      discoverProjects: _discoverForApi,
+      refreshProjects: _refreshForApi,
+      openProjectAt: _openProjectForApi,
+      openLink: _openWithLinkForApi,
+      cycleTheme: _toggleThemeForApi,
+      readTheme: _readThemeForApi,
+      writeTheme: _setThemeForApi,
+      showDevTools: DevToolsHost.open,
+      setGuestDevTools: _setGuestDevTools,
+      readVerboseFlag: () => _verboseLogs,
+      writeVerbose: _setVerbose,
+      restartGuest: _reloadForApi,
+      leavePreview: _unmountApp,
+      readRuntimeMode: () => runtimeModeFromBool(_useAst).label,
+      readRuntimeModes: () => [
+        for (final mode in selectableRuntimeModes) mode.label,
+      ],
+      selectMode: _setModeByLabel,
+      cycleMode: _cycleMode,
+      readAppName: () => _activeBundle?.appName ?? 'DartNative App',
+      readAppVersion: () => _activeBundle?.appVersion,
+      readServerUrl: () => _activeBundle?.serverUrl ?? '',
+      readConnected: () => _liveConnection?.isConnected ?? false,
+      readCacheLabel: _dependencyCacheLabel,
+      clearCache: _clearDependencyCache,
+    );
+    DartGoHost.bind(_hostBinding);
     DartGoLogger.logSink = (msg, {level = 'INFO'}) {
       _liveConnection?.sendDeviceLog(msg, level: level);
     };
@@ -433,13 +477,6 @@ class _DartNativeGoState extends State<DartNativeGo> {
     setState(() => _errorViewExpanded = false);
   }
 
-  /// Sets how guest failures surface on the device and persists the choice.
-  void _setErrorDisplayMode(ErrorDisplayMode mode) {
-    _errorDisplayMode = mode;
-    ErrorDisplayStorage.saveMode(mode);
-    _publishPreview();
-  }
-
   Future<void> _initScanner() async {
     _scannerSub = _scanner.projectsStream.listen((projects) {
       if (mounted) {
@@ -448,6 +485,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
           _isLoading = false;
         });
         _maybeAutoConnect(projects);
+        _hostBinding.notify();
       }
     });
 
@@ -458,7 +496,107 @@ class _DartNativeGoState extends State<DartNativeGo> {
         _isLoading = false;
       });
       _maybeAutoConnect(_scanner.currentProjects);
+      _hostBinding.notify();
     }
+  }
+
+  Future<List<DartGoProject>> _discoverForApi() async {
+    return _scanner.currentProjects;
+  }
+
+  Future<List<DartGoProject>> _refreshForApi() async {
+    if (mounted) setState(() => _isLoading = true);
+    _hostBinding.notify();
+    await _scanner.scanNow();
+    if (!mounted) return _scanner.currentProjects;
+    setState(() {
+      _projects = _scanner.currentProjects;
+      _isLoading = false;
+    });
+    return _scanner.currentProjects;
+  }
+
+  void _openProjectForApi(String url, {String? appName}) {
+    final alreadyOpen = _previewRouteOpen && _activeBundle?.serverUrl == url;
+    if (alreadyOpen) return;
+    if (_previewRouteOpen) _teardownPreview();
+    _urlController.text = url;
+    _startProject(url, fallbackAppName: appName);
+  }
+
+  Future<void> _openWithLinkForApi(String link) async {
+    final trimmed = link.trim();
+    if (trimmed.isEmpty) return;
+    if (trimmed.toLowerCase().startsWith('dartnativego:')) {
+      final parsed = DartGoDeepLink.tryParse(Uri.parse(trimmed));
+      if (parsed != null) {
+        _openDeepLink(parsed);
+        return;
+      }
+    }
+    final project = await _scanner.addManualProject(trimmed);
+    if (!mounted) return;
+    _openProjectForApi(project.url, appName: project.appName);
+  }
+
+  Future<String> _toggleThemeForApi() async {
+    final container = ProviderScope.containerOf(context);
+    await container.read(themePreferenceProvider.notifier).cycle();
+    return container.read(themePreferenceProvider).name;
+  }
+
+  /// Selects a theme preference by name from the DevTools sheet.
+  Future<String> _setThemeForApi(String mode) async {
+    final preference =
+        ThemePreference.values.asNameMap()[mode] ?? ThemePreference.system;
+    final container = ProviderScope.containerOf(context);
+    await container
+        .read(themePreferenceProvider.notifier)
+        .setPreference(
+          preference,
+        );
+    return container.read(themePreferenceProvider).name;
+  }
+
+  /// Shows or hides the shell DevTools while a previewed UI owns its own.
+  ///
+  /// The guest claims from its `initState`, which runs inside the shell's
+  /// build; `setState` there would throw, so the flag lands after the frame.
+  void _setGuestDevTools(bool owns) {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _guestOwnsDevTools == owns) return;
+      setState(() => _guestOwnsDevTools = owns);
+    });
+  }
+
+  /// Human-readable dependency-cache summary for the DevTools sheet.
+  String _dependencyCacheLabel() {
+    final cache = _bundleLoader.depCache;
+    if (cache == null) return '0 B (0 packages)';
+    return '${cache.getFormattedCacheSize()} '
+        '(${cache.getCachedPackageCount()} packages)';
+  }
+
+  /// Empties the dependency cache from the DevTools sheet.
+  Future<void> _clearDependencyCache() async {
+    await _bundleLoader.depCache?.clearCache();
+    if (mounted) _hostBinding.notify();
+  }
+
+  String _readThemeForApi() {
+    try {
+      return ProviderScope.containerOf(
+        context,
+      ).read(themePreferenceProvider).name;
+    } catch (_) {
+      return 'system';
+    }
+  }
+
+  Future<void> _reloadForApi() async {
+    if (_isLoadingBundle) return;
+    await _restartApp();
   }
 
   /// Launches the first online project discovered by the scanner, bypassing the
@@ -479,7 +617,19 @@ class _DartNativeGoState extends State<DartNativeGo> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_stopThemeListen != null) return;
+    final subscription = ProviderScope.containerOf(
+      context,
+    ).listen(themePreferenceProvider, (_, _) => _hostBinding.notify());
+    _stopThemeListen = subscription.close;
+  }
+
+  @override
   void dispose() {
+    _stopThemeListen?.call();
+    DartGoHost.unbind(_hostBinding);
     _deepLinkSub?.cancel();
     _scannerSub?.cancel();
     _scanner.dispose();
@@ -942,7 +1092,9 @@ class _DartNativeGoState extends State<DartNativeGo> {
       );
       final fetchMs = fetchSw.elapsedMilliseconds;
       if (!mounted || seq != _reloadSeq) return;
-      _activeBundle = updatedBundle;
+      // A patch has no manifest: keep the app name/version/splash the previous
+      // bundle carried, or DevTools falls back to the placeholder name.
+      _activeBundle = updatedBundle.withMetadataFrom(_activeBundle!);
       await _syncIconFonts(updatedBundle);
       if (!mounted || seq != _reloadSeq) return;
 
@@ -1156,6 +1308,16 @@ class _DartNativeGoState extends State<DartNativeGo> {
     _setMode(current.next);
   }
 
+  /// Selects a runtime mode by label from the DevTools sheet.
+  void _setModeByLabel(String label) {
+    for (final mode in selectableRuntimeModes) {
+      if (mode.label.toLowerCase() == label.toLowerCase()) {
+        _setMode(mode);
+        return;
+      }
+    }
+  }
+
   /// Sets the active runtime mode directly and persists choice.
   void _setMode(RuntimeMode mode) {
     mode = supportedRuntimeMode(mode);
@@ -1166,6 +1328,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
     RuntimeModeStorage.saveMode(mode);
     // The launcher app bar shows the active mode label; rebuild it.
     if (mounted) setState(() {});
+    _hostBinding.notify();
     if (_isAppMounted) {
       _restartApp();
     }
@@ -1177,6 +1340,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
     DartGoLogger.verbose = enabled;
     _liveConnection?.sendSetVerbose(enabled);
     _publishPreview();
+    _hostBinding.notify();
   }
 
   /// Pops every guest-pushed screen, leaving the preview route on top.
@@ -1262,6 +1426,9 @@ class _DartNativeGoState extends State<DartNativeGo> {
     _pendingBlankNeedsRemount = false;
     _activeBundle = null;
     _iconFontManager = null;
+    // A previewed UI that crashed before its dispose still must not leave the
+    // shell DevTools hidden for the next project.
+    _guestOwnsDevTools = false;
     _statusMessage = 'Connecting to project...';
     _downloadProgress = null;
     _downloadedCount = null;
@@ -1284,13 +1451,18 @@ class _DartNativeGoState extends State<DartNativeGo> {
         final errorSurface = _buildGuestErrorSurface(s);
         // The floating pill defaults to the bottom-right, where it would sit on
         // top of the full-screen error view's actions and steal their taps. The
-        // error view owns Home/Reload, so hide the pill while it is up.
+        // error view owns Home/Reload, so hide the pill while it is up. A
+        // previewed UI that claimed DevTools renders its own editable copy.
         final devToolsEnabled =
             s.isAppMounted &&
+            !_guestOwnsDevTools &&
             !previewStateNeedsFullScreenError(
               s,
               expanded: _errorViewExpanded,
             );
+        final runtimeModeIndex = selectableRuntimeModes.indexOf(
+          runtimeModeFromBool(_useAst),
+        );
         // Overlay stays mounted; floating button and shake are gated by isAppMounted.
         return ShellThemeScope(
           child: DevToolOverlay(
@@ -1304,17 +1476,20 @@ class _DartNativeGoState extends State<DartNativeGo> {
               if (_isLoadingBundle) return;
               _restartApp();
             },
-            depCache: _bundleLoader.depCache,
-            runtimeModeLabel: runtimeModeFromBool(_useAst).label,
-            useAst: _useAst,
-            onSelectMode: _setMode,
-            onCycleMode: _cycleMode,
+            cacheLabel: _dependencyCacheLabel(),
+            onClearCache: _clearDependencyCache,
+            runtimeModes: [
+              for (final mode in selectableRuntimeModes) mode.label,
+            ],
+            selectedRuntimeModeIndex: runtimeModeIndex < 0
+                ? 0
+                : runtimeModeIndex,
+            onSelectRuntimeMode: (index) =>
+                _setMode(selectableRuntimeModes[index]),
             verboseLogs: _verboseLogs,
             onToggleVerbose: _setVerbose,
-            errorDisplayMode: _errorDisplayMode,
-            onSelectErrorMode: _setErrorDisplayMode,
-            astProfile: _useAst && _astProfileEnabled
-                ? _interpreterRunner.astRunner?.lastAstProfile
+            extraSection: _useAst && _astProfileEnabled
+                ? _buildAstProfileSection()
                 : null,
             // A guest failure is drawn above the routes, below the button.
             errorSurface: errorSurface,
@@ -1324,6 +1499,13 @@ class _DartNativeGoState extends State<DartNativeGo> {
         );
       },
     );
+  }
+
+  /// The AST bundle explorer section, or null before the first evaluation.
+  Widget? _buildAstProfileSection() {
+    final profile = _interpreterRunner.astRunner?.lastAstProfile;
+    if (profile == null) return null;
+    return AstProfilePanel(profile: profile);
   }
 
   /// The guest failure surface for [s], or null when there is nothing to show.
@@ -1395,25 +1577,8 @@ class _DartNativeGoState extends State<DartNativeGo> {
     return App(
       key: _navKey,
       builder: _buildDevToolsOverlay,
-      home: ShellThemeScope(
-        child: LauncherScreen(
-          projects: _projects,
-          isLoading: _isLoading,
-          urlController: _urlController,
-          onUrlSubmitted: (value) async {
-            if (value.trim().isEmpty) return;
-            final project = await _scanner.addManualProject(value);
-            _urlController.clear();
-            _startProject(project.url, fallbackAppName: project.appName);
-          },
-          onSelectProject: (project) {
-            _urlController.text = project.url;
-            _startProject(project.url, fallbackAppName: project.appName);
-          },
-          onRescan: () => _scanner.scanNow(),
-          onCycleMode: selectableRuntimeModes.length > 1 ? _cycleMode : null,
-          runtimeModeLabel: runtimeModeFromBool(_useAst).label,
-        ),
+      home: const ShellThemeScope(
+        child: HostLauncher(),
       ),
     );
   }

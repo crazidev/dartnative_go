@@ -1,12 +1,14 @@
 import 'package:dartnative/dartnative.dart';
+import 'package:dartnative_go_api/host_api.dart';
 
-import '../client/project_model.dart';
-import '../theme/shadcn_theme.dart';
+import '../theme/host_ui_theme.dart';
 
-/// Card item representing a discovered or recent project styled per shadcn.
+/// Card item representing a discovered or recent project.
 class ProjectCard extends StatelessWidget {
   final DartGoProject project;
-  final ValueChanged<DartGoProject> onTap;
+
+  /// `Function`, not `ValueChanged`: guest closures are `dynamic Function()`.
+  final Function onTap;
 
   const ProjectCard({
     super.key,
@@ -24,7 +26,7 @@ class ProjectCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
-          color: context.theme.secondary,
+          color: theme.secondary,
         ),
         child: Row(
           children: [
@@ -33,8 +35,7 @@ class ProjectCard extends StatelessWidget {
               height: 42,
               decoration: BoxDecoration(
                 color: theme.accent,
-                borderRadius: theme.radius.md,  
-                // border: Border.all(color: theme.border, width: 0.5),
+                borderRadius: theme.radius.md,
               ),
               child: Image.asset(
                 'assets/dn-logo.png',
@@ -46,22 +47,16 @@ class ProjectCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          project.appName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                            color: theme.cardForeground,
-                            letterSpacing: -0.1,
-                          ),
-                        ),
-                      ),
-                    ],
+                  Text(
+                    project.appName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: theme.cardForeground,
+                      letterSpacing: -0.1,
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Text(

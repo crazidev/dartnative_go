@@ -10,6 +10,7 @@ import 'guest_runner.dart';
 import 'logger.dart';
 import '../cli/server_components/server_annotation_scanner.dart';
 import '../interpreter/ast/ast_asset_bridge.dart';
+import '../interpreter/ast/host_api_bridge.dart';
 import '../interpreter/ast/ast_widget_proxies.dart';
 import '../interpreter/ast/dartscript.b.dart' as ast_bridges;
 import '../interpreter/ast/isolate_compute_bridge.dart';
@@ -200,6 +201,8 @@ class AstInterpreterRunner {
     // (`package:dartnative_go/server_component.dart`). The loader reads the
     // live server URL per fetch, so URL changes after init are picked up.
     registerServerComponentBridge(runner, loader: componentLoader);
+    // Host API for interpreted UI (`package:dartnative_go_api/host_api.dart`).
+    registerAstHostApiBridge(runner);
 
     Object? captureRunApp(
       ast.InterpreterVisitor visitor,
@@ -717,6 +720,7 @@ class AstInterpreterRunner {
     try {
       _runner?.dispose();
     } catch (_) {}
+    detachAstHostApiListeners();
     _runner = null;
     _capturedApp = null;
   }

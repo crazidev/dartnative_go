@@ -1,11 +1,13 @@
 import 'package:dartnative/dartnative.dart';
 
-import '../theme/shadcn_theme.dart';
+import '../theme/host_ui_theme.dart';
 
-/// Text field for manually typing or pasting a dev server URL styled per shadcn.
+/// Text field for manually typing or pasting a dev server URL or deep link.
 class ServerUrlInput extends StatelessWidget {
   final TextEditingController controller;
-  final ValueChanged<String> onSubmitted;
+
+  /// `Function`, not `ValueChanged`: guest closures are `dynamic Function()`.
+  final Function onSubmitted;
 
   const ServerUrlInput({
     super.key,
@@ -30,7 +32,7 @@ class ServerUrlInput extends StatelessWidget {
         ),
         cursorColor: theme.primary,
         decoration: InputDecoration(
-          hintText: 'Enter URL (e.g. 192.168.1.100:8088)',
+          hintText: 'Enter URL or DartNative Go link',
           hintStyle: TextStyle(
             fontSize: 13,
             color: theme.mutedForeground,
@@ -50,7 +52,7 @@ class ServerUrlInput extends StatelessWidget {
         clearButtonMode: ClearButtonMode.whileEditing,
         keyboardType: TextInputType.url,
         textInputAction: TextInputAction.go,
-        onSubmitted: onSubmitted,
+        onSubmitted: (value) => onSubmitted(value),
       ),
     );
   }
