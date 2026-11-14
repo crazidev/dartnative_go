@@ -1,4 +1,4 @@
-import 'package:dartnative_go/src/theme/shadcn_converter.dart';
+import 'package:dartnative_go_ui/src/theme/shadcn_converter.dart';
 import 'package:test/test.dart';
 
 const _sampleCss = '''
@@ -170,11 +170,9 @@ void main() {
     test('derived onError contrasts with destructive in both themes', () {
       // Light destructive is dark red → light on-color; dark destructive
       // is salmon → dark on-color.
-      final lightOnError =
-          RegExp(r'error: destructive,\n\s*onError: Color\((0x[0-9A-F]+)\)')
-              .allMatches(dart)
-              .map((m) => int.parse(m.group(1)!))
-              .toList();
+      final lightOnError = RegExp(
+        r'error: destructive,\n\s*onError: Color\((0x[0-9A-F]+)\)',
+      ).allMatches(dart).map((m) => int.parse(m.group(1)!)).toList();
       expect(lightOnError, hasLength(2));
       expect(
         relativeLuminance(lightOnError[0]),

@@ -3,7 +3,7 @@
 // Regenerate with: dart run tool/shadcn_to_dart.dart
 
 import 'package:dartnative/dartnative.dart';
-import '../client/theme_storage.dart';
+import 'theme_storage.dart';
 
 /// shadcn `light` tokens as Dart colors.
 abstract final class ShadcnLight {
@@ -297,10 +297,12 @@ class ShadcnRadius {
   const ShadcnRadius([this.base = 7.2]);
 
   BorderRadius get none => BorderRadius.zero;
-  BorderRadius get sm =>
-      BorderRadius.all(Radius.circular((base - 4.0).clamp(0.0, double.infinity)));
-  BorderRadius get md =>
-      BorderRadius.all(Radius.circular((base - 2.0).clamp(0.0, double.infinity)));
+  BorderRadius get sm => BorderRadius.all(
+    Radius.circular((base - 4.0).clamp(0.0, double.infinity)),
+  );
+  BorderRadius get md => BorderRadius.all(
+    Radius.circular((base - 2.0).clamp(0.0, double.infinity)),
+  );
   BorderRadius get lg => BorderRadius.all(Radius.circular(base));
   BorderRadius get xl => BorderRadius.all(Radius.circular(base + 4.0));
   BorderRadius get full => const BorderRadius.all(Radius.circular(9999.0));
@@ -517,9 +519,11 @@ class ShadcnThemeData {
       sidebar: sidebar ?? this.sidebar,
       sidebarForeground: sidebarForeground ?? this.sidebarForeground,
       sidebarPrimary: sidebarPrimary ?? this.sidebarPrimary,
-      sidebarPrimaryForeground: sidebarPrimaryForeground ?? this.sidebarPrimaryForeground,
+      sidebarPrimaryForeground:
+          sidebarPrimaryForeground ?? this.sidebarPrimaryForeground,
       sidebarAccent: sidebarAccent ?? this.sidebarAccent,
-      sidebarAccentForeground: sidebarAccentForeground ?? this.sidebarAccentForeground,
+      sidebarAccentForeground:
+          sidebarAccentForeground ?? this.sidebarAccentForeground,
       sidebarBorder: sidebarBorder ?? this.sidebarBorder,
       sidebarRing: sidebarRing ?? this.sidebarRing,
       chart1: chart1 ?? this.chart1,
@@ -538,16 +542,16 @@ enum ShadcnAppearanceMode {
   dark;
 
   ThemeMode toThemeMode() => switch (this) {
-        ShadcnAppearanceMode.system => ThemeMode.system,
-        ShadcnAppearanceMode.light => ThemeMode.light,
-        ShadcnAppearanceMode.dark => ThemeMode.dark,
-      };
+    ShadcnAppearanceMode.system => ThemeMode.system,
+    ShadcnAppearanceMode.light => ThemeMode.light,
+    ShadcnAppearanceMode.dark => ThemeMode.dark,
+  };
 
   Brightness? toNativeBrightness() => switch (this) {
-        ShadcnAppearanceMode.light => Brightness.light,
-        ShadcnAppearanceMode.dark => Brightness.dark,
-        ShadcnAppearanceMode.system => null,
-      };
+    ShadcnAppearanceMode.light => Brightness.light,
+    ShadcnAppearanceMode.dark => Brightness.dark,
+    ShadcnAppearanceMode.system => null,
+  };
 }
 
 /// Root or subtree theme controller.
@@ -574,28 +578,28 @@ class ShadcnTheme extends StatefulWidget {
       ShadcnTheme(key: key, data: ShadcnThemeData.light, child: child);
 
   static ShadcnThemeData of(BuildContext context) {
-    final inherited =
-        context.dependOnInheritedWidgetOfExactType<_ShadcnInheritedTheme>();
+    final inherited = context
+        .dependOnInheritedWidgetOfExactType<_ShadcnInheritedTheme>();
     if (inherited != null) return inherited.data;
     final brightness = Theme.of(context).brightness;
     return ShadcnThemeData.fromBrightness(brightness);
   }
 
   static void setAppearance(BuildContext context, ShadcnAppearanceMode mode) {
-    final scope =
-        context.dependOnInheritedWidgetOfExactType<_ShadcnInheritedTheme>();
+    final scope = context
+        .dependOnInheritedWidgetOfExactType<_ShadcnInheritedTheme>();
     scope?.onSetMode(mode);
   }
 
   static void cycleAppearance(BuildContext context) {
-    final scope =
-        context.dependOnInheritedWidgetOfExactType<_ShadcnInheritedTheme>();
+    final scope = context
+        .dependOnInheritedWidgetOfExactType<_ShadcnInheritedTheme>();
     scope?.onCycleMode();
   }
 
   static ShadcnAppearanceMode getAppearance(BuildContext context) {
-    final scope =
-        context.dependOnInheritedWidgetOfExactType<_ShadcnInheritedTheme>();
+    final scope = context
+        .dependOnInheritedWidgetOfExactType<_ShadcnInheritedTheme>();
     return scope?.mode ?? ShadcnAppearanceMode.system;
   }
 
@@ -614,7 +618,8 @@ class _ShadcnThemeState extends State<ShadcnTheme> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _mode = widget.mode ??
+    _mode =
+        widget.mode ??
         widget.initialMode ??
         _prefToMode(ThemeStorage.currentPreference);
   }
@@ -682,7 +687,8 @@ class _ShadcnThemeState extends State<ShadcnTheme> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveData = widget.data ??
+    final effectiveData =
+        widget.data ??
         ShadcnThemeData.fromBrightness(_resolveBrightness(context));
     return _ShadcnInheritedTheme(
       data: effectiveData,
@@ -695,16 +701,16 @@ class _ShadcnThemeState extends State<ShadcnTheme> with WidgetsBindingObserver {
 }
 
 ThemePreference _modeToPref(ShadcnAppearanceMode mode) => switch (mode) {
-      ShadcnAppearanceMode.system => ThemePreference.system,
-      ShadcnAppearanceMode.light => ThemePreference.light,
-      ShadcnAppearanceMode.dark => ThemePreference.dark,
-    };
+  ShadcnAppearanceMode.system => ThemePreference.system,
+  ShadcnAppearanceMode.light => ThemePreference.light,
+  ShadcnAppearanceMode.dark => ThemePreference.dark,
+};
 
 ShadcnAppearanceMode _prefToMode(ThemePreference pref) => switch (pref) {
-      ThemePreference.system => ShadcnAppearanceMode.system,
-      ThemePreference.light => ShadcnAppearanceMode.light,
-      ThemePreference.dark => ShadcnAppearanceMode.dark,
-    };
+  ThemePreference.system => ShadcnAppearanceMode.system,
+  ThemePreference.light => ShadcnAppearanceMode.light,
+  ThemePreference.dark => ShadcnAppearanceMode.dark,
+};
 
 class _ShadcnInheritedTheme extends InheritedWidget {
   final ShadcnThemeData data;
@@ -807,9 +813,11 @@ extension ShadcnThemeContextExtension on BuildContext {
   ShadcnColor get sidebar => ShadcnTokens.sidebar;
   ShadcnColor get sidebarForeground => ShadcnTokens.sidebarForeground;
   ShadcnColor get sidebarPrimary => ShadcnTokens.sidebarPrimary;
-  ShadcnColor get sidebarPrimaryForeground => ShadcnTokens.sidebarPrimaryForeground;
+  ShadcnColor get sidebarPrimaryForeground =>
+      ShadcnTokens.sidebarPrimaryForeground;
   ShadcnColor get sidebarAccent => ShadcnTokens.sidebarAccent;
-  ShadcnColor get sidebarAccentForeground => ShadcnTokens.sidebarAccentForeground;
+  ShadcnColor get sidebarAccentForeground =>
+      ShadcnTokens.sidebarAccentForeground;
   ShadcnColor get sidebarBorder => ShadcnTokens.sidebarBorder;
   ShadcnColor get sidebarRing => ShadcnTokens.sidebarRing;
   ShadcnColor get chart1 => ShadcnTokens.chart1;
@@ -818,4 +826,3 @@ extension ShadcnThemeContextExtension on BuildContext {
   ShadcnColor get chart4 => ShadcnTokens.chart4;
   ShadcnColor get chart5 => ShadcnTokens.chart5;
 }
-

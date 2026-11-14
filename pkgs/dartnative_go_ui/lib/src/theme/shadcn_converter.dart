@@ -214,7 +214,7 @@ String generateThemeDart({
   out.writeln('// Regenerate with: dart run tool/shadcn_to_dart.dart');
   out.writeln();
   out.writeln("import 'package:dartnative/dartnative.dart';");
-  out.writeln("import '../client/theme_storage.dart';");
+  out.writeln("import 'theme_storage.dart';");
   out.writeln();
 
   final radiusVal = parseRadius(

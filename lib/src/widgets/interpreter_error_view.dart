@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:dartnative/dartnative.dart';
 
 import '../runner/guest_error_format.dart';
-import '../theme/shadcn_theme.dart';
+import 'package:dartnative_go_ui/dartnative_go_ui.dart';
 
 /// Full-screen error display for guest runtime and evaluation failures.
 ///

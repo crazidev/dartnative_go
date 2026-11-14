@@ -3,7 +3,7 @@ import 'package:dartnative_go/dartnative_plugin_registrant.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 
 import 'src/app_shell.dart';
-import 'src/client/theme_storage.dart';
+import 'package:dartnative_go_ui/dartnative_go_ui.dart';
 import 'src/runner/ast_guest_runner.dart';
 import 'src/theme/theme_providers.dart';
 

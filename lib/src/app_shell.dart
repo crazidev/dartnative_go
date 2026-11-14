@@ -12,7 +12,6 @@ import 'client/network_scanner.dart';
 import 'client/project_model.dart';
 import 'client/project_storage.dart';
 import 'client/runtime_mode_storage.dart';
-import 'client/theme_storage.dart';
 import 'devtool/ast_profile_panel.dart';
 import 'devtool/devtool_overlay.dart';
 import 'host_api/shell_binding.dart';

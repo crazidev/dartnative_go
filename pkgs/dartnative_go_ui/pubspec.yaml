@@ -14,9 +14,12 @@ dependencies:
     path: ../dartnative_go_api
   native_bottomsheet:
     path: ../../../dartnative_bottomsheet
+  # The generated theme persists its appearance via `ThemeStorage`.
+  dartnative_shared_preferences: ^1.0.0
 
 dev_dependencies:
   lints: ^6.0.0
+  test: any
 
 dartnative:
   assets:

@@ -1,7 +1,7 @@
 import 'package:dartnative/dartnative.dart';
 
 import '../runner/ast_profile.dart';
-import '../theme/shadcn_theme.dart';
+import 'package:dartnative_go_ui/dartnative_go_ui.dart';
 
 /// In-app AST bundle explorer for the DevTools sheet.
 ///

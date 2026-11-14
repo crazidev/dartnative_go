@@ -127,7 +127,7 @@ class _HostDevToolSheetState extends State<HostDevToolSheet> {
     if (index >= widget.themeModes.length) {
       index = widget.themeModes.length - 1;
     }
-    return HostUiThemeData.resolve(
+    return resolveHostUiTheme(
       widget.themeModes[index].toLowerCase(),
       context,
     );

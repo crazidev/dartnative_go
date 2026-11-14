@@ -1,6 +1,6 @@
 import 'package:dartnative/dartnative.dart';
 
-import '../theme/shadcn_theme.dart';
+import 'package:dartnative_go_ui/dartnative_go_ui.dart';
 import '../interpreter/debug_controller.dart';
 
 /// Top-centered on-screen overlay displayed when execution is paused at a breakpoint.

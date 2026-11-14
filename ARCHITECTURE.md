@@ -175,12 +175,15 @@ guest build / lifecycle / button handler throws
   3. **Startup Flag**: CLI supports `-v` and `--verbose` flags on `dart_go start`.
 
 ### 4.5 Host Theme (shadcn tokens + Riverpod)
-* **Tokens**: `tool/shadcn_tokens.css` holds the `:root`/`.dark` shadcn
-  custom properties. `dart run tool/shadcn_to_dart.dart` converts every
-  `oklch(...)` token to sRGB and emits `lib/src/theme/shadcn_theme.dart`
-  (`ShadcnLight`/`ShadcnDark` bags + `ThemeData` with a shadcn→ColorScheme
+* **Location**: the theme lives in `pkgs/dartnative_go_ui` (`lib/src/theme/`).
+  Tokens: `pkgs/dartnative_go_ui/tool/shadcn_tokens.css` holds the
+  `:root`/`.dark` shadcn custom properties. From `pkgs/dartnative_go_ui/`,
+  `dart run tool/shadcn_to_dart.dart` converts every `oklch(...)` token to
+  sRGB and emits `lib/src/theme/shadcn_theme.dart` (`ShadcnLight`/`ShadcnDark`
+  bags + `ThemeData` with a shadcn→ColorScheme
   mapping; `destructive` has no `-foreground` token, so `onError` is derived
-  as the highest-contrast theme neutral).
+  as the highest-contrast theme neutral). `host_ui_theme.dart` aliases the
+  generated data as `HostUiThemeData`/`HostUiRadius`.
 * **State**: `ThemePreference {system, light, dark}` persists via
   `ThemeStorage` (same pattern as `ErrorDisplayStorage`) and is owned at
   runtime by `themePreferenceProvider` (`NotifierProvider<ThemeController, …>`

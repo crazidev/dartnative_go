@@ -44,8 +44,6 @@ dependencies:
   tom_ast_model: any
   analyzer: any
   yaml: ^3.1.2
-  dartnative_shadcn:
-    path: ../dartnative_shadcn
   dartnative_go_api:
     path: pkgs/dartnative_go_api
   dartnative_go_ui:

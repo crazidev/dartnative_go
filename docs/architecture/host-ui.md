@@ -137,5 +137,8 @@ The shell app around the interpreted guest.
 - Settings storages (`ThemeStorage`, `ErrorDisplayStorage`,
   `RuntimeModeStorage`) share one pattern; new settings should follow it.
 - Error display is a persisted mode: overlay banner (default) or full screen.
-- Theme tokens live in `tool/shadcn_tokens.css`; regenerate
-  `shadcn_theme.dart` with `tool/shadcn_to_dart.dart`, never hand-edit.
+- Theme tokens live in `pkgs/dartnative_go_ui/tool/shadcn_tokens.css`; from
+  `pkgs/dartnative_go_ui/` regenerate `lib/src/theme/shadcn_theme.dart` with
+  `dart run tool/shadcn_to_dart.dart`, never hand-edit. The UI package is the
+  single source of truth: `host_ui_theme.dart` aliases the generated
+  `ShadcnThemeData` as `HostUiThemeData`.

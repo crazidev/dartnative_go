@@ -3,7 +3,6 @@ import 'package:dartnative_go_ui/dartnative_go_ui.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 
-import '../client/theme_storage.dart';
 import '../theme/theme_providers.dart';
 import 'shake_detector.dart';
 
@@ -190,7 +189,7 @@ class _DevToolOverlayState extends ConsumerState<DevToolOverlay> {
   @override
   Widget build(BuildContext context) {
     final preference = ref.watch(themePreferenceProvider);
-    final theme = HostUiThemeData.resolve(preference.name, context);
+    final theme = resolveHostUiTheme(preference.name, context);
     return Stack(
       fit: StackFit.expand,
       children: [
