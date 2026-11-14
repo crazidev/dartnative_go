@@ -79,12 +79,11 @@ class _PluginsScreenState extends State<PluginsScreen> {
         title: const Text(
           'Plugin List',
           style: TextStyle(
-            fontSize: 17, 
-            fontWeight: .bold,
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [
-        ],
+        actions: [],
       ),
       body: Padding(
         padding: const EdgeInsets.only(top: 15),

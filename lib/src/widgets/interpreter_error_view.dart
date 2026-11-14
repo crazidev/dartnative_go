@@ -119,7 +119,7 @@ class _InterpreterErrorViewState extends State<InterpreterErrorView> {
           ),
         ),
         title: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Row(
               children: [
@@ -132,11 +132,15 @@ class _InterpreterErrorViewState extends State<InterpreterErrorView> {
                 ),
               ],
             ),
-            Text(
-              // The exception type is the subtitle: it says what failed, while
-              // the card below says why.
-              widget.errorType ?? widget.subtitle,
-              style: TextStyle(fontSize: 12, color: theme.mutedForeground),
+            Row(
+              children: [
+                Text(
+                  // The exception type is the subtitle: it says what failed,
+                  // while the card below says why.
+                  widget.errorType ?? widget.subtitle,
+                  style: TextStyle(fontSize: 12, color: theme.mutedForeground),
+                ),
+              ],
             ),
           ],
         ),
