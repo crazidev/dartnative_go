@@ -121,8 +121,8 @@ class TestConsumerScreen extends ConsumerWidget {
             Text('Status: \${counter.status}'),
             Text('Doubled: \$doubled'),
             Text(statusMsg),
-            Text('Async: \${asyncConfig.valueOrNull ?? "loading"}'),
-            Text('Stream: \${streamNum.valueOrNull ?? "no_stream"}'),
+            Text('Async: \${asyncConfig.value ?? "loading"}'),
+            Text('Stream: \${streamNum.value ?? "no_stream"}'),
             Button(
               title: 'Increment',
               onPressed: () => notifier.increment(),
