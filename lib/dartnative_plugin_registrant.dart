@@ -17,7 +17,6 @@
 //   • dartnative_connectivity
 //   • dartnative_media_picker
 //   • dartnative_notifications
-//   • dartnative_passkeys
 //   • dartnative_share
 //   • dartnative_shared_preferences
 //   • dartnative_system
@@ -35,7 +34,6 @@ import 'package:dartnative_connectivity/connectivity.dart';
 import 'package:dartnative_media_picker/dartnative_media_picker.dart';
 import 'package:dartnative_media_picker/gallery.dart';
 import 'package:dartnative_notifications/dartnative_notifications.dart';
-import 'package:dartnative_passkeys/dartnative_passkeys.dart';
 import 'package:dartnative_share/dartnative_share.dart';
 import 'package:dartnative_shared_preferences/dartnative_shared_preferences.dart';
 import 'package:dartnative_system/dartnative_system.dart';
@@ -65,7 +63,6 @@ abstract final class DartNativePluginRegistrant {
       'dartnative_connectivity',
       'dartnative_media_picker',
       'dartnative_notifications',
-      'dartnative_passkeys',
       'dartnative_path_provider',
       'dartnative_share',
       'dartnative_shared_preferences',
@@ -93,9 +90,6 @@ abstract final class DartNativePluginRegistrant {
     });
     _load('dartnative_notifications', () {
       NotificationsFFIBindings.loadSymbols();
-    });
-    _load('dartnative_passkeys', () {
-      PasskeysFFIBindings.loadSymbols();
     });
     _load('dartnative_share', () {
       ShareFFIBindings.loadSymbols();

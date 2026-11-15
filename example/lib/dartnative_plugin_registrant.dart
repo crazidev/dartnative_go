@@ -13,6 +13,7 @@
 // overwriting it.
 //
 // Plugins loaded:
+//   • app_links_kit
 //   • dartnative_connectivity
 //   • dartnative_media_picker
 //   • dartnative_notifications
@@ -28,6 +29,7 @@ import 'dart:io' show Platform;
 import 'package:dartnative/dartnative.dart';
 import 'package:dartnative_ios/dartnative_ios.dart';
 import 'package:dartnative_android/dartnative_android.dart';
+import 'package:app_links_kit/app_links_kit.dart';
 import 'package:dartnative_connectivity/connectivity.dart';
 import 'package:dartnative_media_picker/dartnative_media_picker.dart';
 import 'package:dartnative_media_picker/gallery.dart';
@@ -56,6 +58,7 @@ abstract final class DartNativePluginRegistrant {
       DartNativeLicense.instance.noteTrialEnded();
     }
     DartNativeLicense.instance.reportPluginUsage(const <String>[
+      'app_links_kit',
       'dartnative_background',
       'dartnative_connectivity',
       'dartnative_media_picker',
@@ -75,6 +78,9 @@ abstract final class DartNativePluginRegistrant {
           ? AndroidNativeBindings.instance
           : IOSNativeBindings.instance,
     );
+    _load('app_links_kit', () {
+      AppLinksFFIBindings.loadSymbols();
+    });
     _load('dartnative_connectivity', () {
       ConnectivityFFIBindings.loadSymbols();
     });
