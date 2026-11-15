@@ -1,4 +1,4 @@
-// Generated: 2026-11-15T01:18:11.331156 by tom_d4rt_generator 1.26.2
+// Generated: 2026-11-15T14:26:13.577191 by tom_d4rt_generator 1.26.2
 /// D4rt GEN-079 Relaxer Wrappers for dartnative_go_ast
 ///
 /// Auto-generated wrapper classes and factory functions for generic
