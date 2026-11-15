@@ -20,6 +20,43 @@ void main(List<String> args) async {
   }
 
   _applyBridgePostFixes();
+  await _formatGeneratedBridges(isAst: false);
+}
+
+/// Formats the generated bridge set as the final generation step.
+///
+/// The generator emits its own layout and the `DN-PATCH` rewrites above splice
+/// text in verbatim, so without this step a regeneration reformats the whole
+/// file and every run shows up as an unrelated whitespace diff in review. By
+/// formatting here, the committed output is already canonical: re-running
+/// `dart run tool/d4rtgen.dart` against unchanged sources produces no diff.
+///
+/// Kept in sync with `tool/d4rtgen_ast.dart`.
+Future<void> _formatGeneratedBridges({required bool isAst}) async {
+  final dir = Directory(
+    isAst ? 'lib/src/interpreter/ast' : 'lib/src/interpreter',
+  );
+  if (!dir.existsSync()) return;
+
+  final paths = <String>[
+    for (final entity in dir.listSync())
+      if (entity is File && entity.path.endsWith('.b.dart')) entity.path,
+    // Source set only: the AST set has `generateBarrel: false`.
+    if (!isAst) 'lib/d4rt_bridges.b.dart',
+  ]..sort();
+
+  if (paths.isEmpty) return;
+
+  final result = await Process.run(
+    Platform.resolvedExecutable,
+    ['format', '--output=write', ...paths],
+  );
+  if (result.exitCode != 0) {
+    stderr.writeln('dart format failed on generated bridges:');
+    stderr.writeln(result.stdout);
+    stderr.writeln(result.stderr);
+    exitCode = 1;
+  }
 }
 
 void _applyBridgePostFixes() {
@@ -29,11 +66,15 @@ void _applyBridgePostFixes() {
     // Alias-agnostic (regex): import alias numbers shift whenever the
     // framework gains files. DN-PATCH.
     content = content.replaceAllMapped(
-      RegExp(r':\s*const\s*\[\];\s*return\s+(\$dartnative_\d+\.showActionSheet)'),
+      RegExp(
+        r':\s*const\s*\[\];\s*return\s+(\$dartnative_\d+\.showActionSheet)',
+      ),
       (m) => ': const <int>[];\n        return ${m[1]}',
     );
     content = content.replaceAllMapped(
-      RegExp(r'required\s+(\$dartnative_\d+\.Curve)\s+curve,\s*int\s+durationMs\s*=\s*0'),
+      RegExp(
+        r'required\s+(\$dartnative_\d+\.Curve)\s+curve,\s*int\s+durationMs\s*=\s*0',
+      ),
       (m) {
         final prefix = m[1]!.split('.')[0];
         return '${m[1]} curve = $prefix.Curves.linear, int durationMs = 0';
@@ -42,14 +83,18 @@ void _applyBridgePostFixes() {
     dnBridgesFile.writeAsStringSync(content);
   }
 
-  final sqliteFile = File('lib/src/interpreter/dartnative_sqlite_bridges.b.dart');
+  final sqliteFile = File(
+    'lib/src/interpreter/dartnative_sqlite_bridges.b.dart',
+  );
   if (sqliteFile.existsSync()) {
     var content = sqliteFile.readAsStringSync();
     content = content.replaceAll('??>', '?>');
     sqliteFile.writeAsStringSync(content);
   }
 
-  final supabaseFile = File('lib/src/interpreter/dartnative_supabase_bridges.b.dart');
+  final supabaseFile = File(
+    'lib/src/interpreter/dartnative_supabase_bridges.b.dart',
+  );
   if (supabaseFile.existsSync()) {
     var content = supabaseFile.readAsStringSync();
     content = content.replaceAll(
@@ -130,7 +175,9 @@ void _patchFlutterCompatBridges(File file) {
     (m) => ': const <int>[];\n        return ${m[1]}',
   );
   content = content.replaceAllMapped(
-    RegExp(r'required\s+(\$dartnative_\d+\.Curve)\s+curve,\s*int\s+durationMs\s*=\s*0'),
+    RegExp(
+      r'required\s+(\$dartnative_\d+\.Curve)\s+curve,\s*int\s+durationMs\s*=\s*0',
+    ),
     (m) {
       final prefix = m[1]!.split('.')[0];
       return '${m[1]} curve = $prefix.Curves.linear, int durationMs = 0';
@@ -208,11 +255,15 @@ void _patchRiverpodBridges(File file, {required bool isAst}) {
 
   // 2. Remove from extension source map
   content = content.replaceAll(
-    RegExp(r"[\x27\x22]ClassBaseX@AnyNotifier[\x27\x22]:\s*['\x22][^'\x22]+['\x22],\s*\n?"),
+    RegExp(
+      r"[\x27\x22]ClassBaseX@AnyNotifier[\x27\x22]:\s*['\x22][^'\x22]+['\x22],\s*\n?",
+    ),
     '',
   );
   content = content.replaceAll(
-    RegExp(r"r?[\x27\x22]\$RefArg@Ref[\x27\x22]:\s*['\x22][^'\x22]+['\x22],\s*\n?"),
+    RegExp(
+      r"r?[\x27\x22]\$RefArg@Ref[\x27\x22]:\s*['\x22][^'\x22]+['\x22],\s*\n?",
+    ),
     '',
   );
 
@@ -221,7 +272,9 @@ void _patchRiverpodBridges(File file, {required bool isAst}) {
   content = content.replaceAll(r"'\${", r"'${");
 
   // 4. Ensure ProviderScope & UncontrolledProviderScope extract child as Widget
-  if (!content.contains("import 'package:dartnative/dartnative.dart' as \$flutter_widgets;")) {
+  if (!content.contains(
+    "import 'package:dartnative/dartnative.dart' as \$flutter_widgets;",
+  )) {
     content = content.replaceFirst(
       "import 'dart:async';",
       "import 'dart:async';\nimport 'package:dartnative/dartnative.dart' as \$flutter_widgets;",
@@ -255,7 +308,9 @@ void _patchRiverpodBridges(File file, {required bool isAst}) {
   );
 
   // 5. Proxy import for Notifier bridging
-  final proxyImport = isAst ? "import 'ast_widget_proxies.dart';" : "import 'widget_proxies.dart';";
+  final proxyImport = isAst
+      ? "import 'ast_widget_proxies.dart';"
+      : "import 'widget_proxies.dart';";
   if (!content.contains(proxyImport)) {
     content = content.replaceFirst(
       "import 'package:dartnative/dartnative.dart' as \$flutter_widgets;",
@@ -339,11 +394,22 @@ void _patchRiverpodBridges(File file, {required bool isAst}) {
           D4.validateTarget<TARGET_TYPE>(target, 'TARGET_NAME').hasError,
       'hashCode':""";
 
-    for (final name in ['AsyncValue', 'AsyncData', 'AsyncLoading', 'AsyncError']) {
+    for (final name in [
+      'AsyncValue',
+      'AsyncData',
+      'AsyncLoading',
+      'AsyncError',
+    ]) {
       final targetType = '\$riverpod_5.$name';
-      final snippet = asyncGetters.replaceAll('TARGET_TYPE', targetType).replaceAll('TARGET_NAME', name);
-      final search = "      'hashCode': (visitor, target) => D4\n          .validateTarget<$targetType>(target, '$name')\n          .hashCode,";
-      content = content.replaceFirst(search, snippet + search.substring(search.indexOf(" (visitor, target)")));
+      final snippet = asyncGetters
+          .replaceAll('TARGET_TYPE', targetType)
+          .replaceAll('TARGET_NAME', name);
+      final search =
+          "      'hashCode': (visitor, target) => D4\n          .validateTarget<$targetType>(target, '$name')\n          .hashCode,";
+      content = content.replaceFirst(
+        search,
+        snippet + search.substring(search.indexOf(" (visitor, target)")),
+      );
     }
   }
 
@@ -353,21 +419,25 @@ void _patchRiverpodBridges(File file, {required bool isAst}) {
   // so it aliases `.value` (nullable there) like the original patch.
   // DN-PATCH.
   if (!content.contains("'valueOrNull':")) {
-    for (final name in ['AsyncValue', 'AsyncData', 'AsyncLoading', 'AsyncError']) {
+    for (final name in [
+      'AsyncValue',
+      'AsyncData',
+      'AsyncLoading',
+      'AsyncError',
+    ]) {
       final targetType = '\$riverpod_5.$name';
       content = content.replaceFirst(
         "      'hashCode': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hashCode,",
         "      'valueOrNull': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').value,\n"
-        "      'isLoading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isLoading,\n"
-        "      'isRefreshing': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isRefreshing,\n"
-        "      'isReloading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isReloading,\n"
-        "      'hasValue': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hasValue,\n"
-        "      'hasError': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hasError,\n"
-        "      'hashCode': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hashCode,",
+            "      'isLoading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isLoading,\n"
+            "      'isRefreshing': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isRefreshing,\n"
+            "      'isReloading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isReloading,\n"
+            "      'hasValue': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hasValue,\n"
+            "      'hasError': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hasError,\n"
+            "      'hashCode': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hashCode,",
       );
     }
   }
 
   file.writeAsStringSync(content);
 }
-

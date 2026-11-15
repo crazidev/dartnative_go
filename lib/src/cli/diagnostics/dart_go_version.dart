@@ -139,6 +139,13 @@ const List<SupportedPlugin> kSupportedNativePlugins = [
         'Background task scheduling over WorkManager / BGTaskScheduler',
   ),
   SupportedPlugin(
+    name: 'dartnative_passkeys',
+    supportedConstraint: '^0.1.0',
+    isCore: false,
+    description:
+        'Android restore credentials (restore keys) for Zero-Tap Sign-In',
+  ),
+  SupportedPlugin(
     name: 'native_bottomsheet',
     supportedConstraint: '^0.1.0',
     isCore: false,

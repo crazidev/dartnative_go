@@ -137,16 +137,21 @@ void main() {
       expect(resolveBundleEntry(bundle, null), equals(bundle.entryPointUri));
     });
 
-    test('harness AST engine evaluates typed bundles (guest.ast path)', () async {
-      final bundler = AstBundler();
-      final bundle = await bundler.createFromSource(
-        _logic,
-        sourcePath: 'parity.dart',
-      );
-      final astRunner = AstInterpreterRunner(onLog: (_) {});
-      final result = await astRunner.evaluateAstBundleAs<int>(bundle.toBytes());
-      expect(result, equals(42));
-      astRunner.dispose();
-    });
+    test(
+      'harness AST engine evaluates typed bundles (guest.ast path)',
+      () async {
+        final bundler = AstBundler();
+        final bundle = await bundler.createFromSource(
+          _logic,
+          sourcePath: 'parity.dart',
+        );
+        final astRunner = AstInterpreterRunner(onLog: (_) {});
+        final result = await astRunner.evaluateAstBundleAs<int>(
+          bundle.toBytes(),
+        );
+        expect(result, equals(42));
+        astRunner.dispose();
+      },
+    );
   });
 }

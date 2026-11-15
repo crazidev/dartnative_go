@@ -26,7 +26,8 @@ void main() {
 StickyNote makeNote() => const StickyNote(label: 'v1');
 ''';
 
-String _note(String label) => '''
+String _note(String label) =>
+    '''
 import 'package:dartnative/dartnative.dart';
 
 class StickyNote extends StatefulWidget {
@@ -70,8 +71,9 @@ void main() {
       tmp = Directory.systemTemp.createTempSync('dn_covariant_');
       projectDir = Directory('${tmp.path}/covariant_guest')
         ..createSync(recursive: true);
-      File('${projectDir.path}/pubspec.yaml')
-          .writeAsStringSync('name: covariant_guest\n');
+      File(
+        '${projectDir.path}/pubspec.yaml',
+      ).writeAsStringSync('name: covariant_guest\n');
       Directory('${projectDir.path}/lib').createSync();
       runner = AstInterpreterRunner(onLog: logs.add);
     });
@@ -87,8 +89,9 @@ void main() {
       String label,
     ) async {
       File('${projectDir.path}/lib/main.dart').writeAsStringSync(_main(label));
-      File('${projectDir.path}/lib/sticky_note.dart')
-          .writeAsStringSync(_note(label));
+      File(
+        '${projectDir.path}/lib/sticky_note.dart',
+      ).writeAsStringSync(_note(label));
       final out = File('${projectDir.path}/$label.ast');
       final result = await buildGuestAstBundle(
         projectDir,
@@ -119,14 +122,13 @@ void main() {
       final state = stateProxy.stateInstance;
       final method = state.klass.findInstanceMethod('didUpdateWidget');
       expect(method, isNotNull);
-      state
-          .bindMethodCached(method!)
-          .call(stateProxy.visitor, [oldWidget], {});
+      state.bindMethodCached(method!).call(stateProxy.visitor, [oldWidget], {});
 
       expect(
         logs.where((l) => l.startsWith('didUpdateWidget')).toList(),
         ['didUpdateWidget old=v1 taps=2'],
-        reason: 'the covariant parameter must accept the host proxy, and the '
+        reason:
+            'the covariant parameter must accept the host proxy, and the '
             'body must be able to read interpreted fields off it',
       );
 
@@ -143,7 +145,8 @@ void main() {
             contains("is not a subtype of type 'StickyNote'"),
           ),
         ),
-        reason: 'the argument check must stay in force for values that are not '
+        reason:
+            'the argument check must stay in force for values that are not '
             'a StickyNote',
       );
     });

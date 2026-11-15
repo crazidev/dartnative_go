@@ -48,11 +48,14 @@ void main() {
       tmp = Directory.systemTemp.createTempSync('dn_gen_tracker_');
       projectDir = Directory('${tmp.path}/gen_tracker_guest')
         ..createSync(recursive: true);
-      File('${projectDir.path}/pubspec.yaml')
-          .writeAsStringSync('name: gen_tracker_guest\n');
+      File(
+        '${projectDir.path}/pubspec.yaml',
+      ).writeAsStringSync('name: gen_tracker_guest\n');
       Directory('${projectDir.path}/lib').createSync();
       File('${projectDir.path}/lib/main.dart').writeAsStringSync(_main());
-      File('${projectDir.path}/lib/sticky_note.dart').writeAsStringSync(_note());
+      File(
+        '${projectDir.path}/lib/sticky_note.dart',
+      ).writeAsStringSync(_note());
       runner = AstInterpreterRunner(onLog: (_) {});
     });
 
@@ -64,35 +67,37 @@ void main() {
       } catch (_) {}
     });
 
-    test('a widget declared outside the entry module bumps its generation',
-        () async {
-      final out = File('${projectDir.path}/app.ast');
-      final result = await buildGuestAstBundle(
-        projectDir,
-        outputArg: out.path,
-        force: true,
-      );
-      expect(result.success, isTrue, reason: result.error);
+    test(
+      'a widget declared outside the entry module bumps its generation',
+      () async {
+        final out = File('${projectDir.path}/app.ast');
+        final result = await buildGuestAstBundle(
+          projectDir,
+          outputArg: out.path,
+          force: true,
+        );
+        expect(result.success, isTrue, reason: result.error);
 
-      await runner.evaluateAstBundleAs<Widget>(
-        await out.readAsBytes(),
-        moduleFingerprints: result.moduleFingerprints,
-      );
+        await runner.evaluateAstBundleAs<Widget>(
+          await out.readAsBytes(),
+          moduleFingerprints: result.moduleFingerprints,
+        );
 
-      final classFiles = runner.classFileMap;
-      expect(
-        classFiles['StickyNote'],
-        contains('sticky_note.dart'),
-        reason: 'precondition: the class map comes from the decoded bundle',
-      );
+        final classFiles = runner.classFileMap;
+        expect(
+          classFiles['StickyNote'],
+          contains('sticky_note.dart'),
+          reason: 'precondition: the class map comes from the decoded bundle',
+        );
 
-      WidgetGenerationTracker.registerClassFiles(classFiles);
-      final before = WidgetGenerationTracker.getGeneration('StickyNote');
-      final bumped = WidgetGenerationTracker.notifyFilesChanged({
-        'lib/sticky_note.dart',
-      });
-      expect(bumped, contains('StickyNote'));
-      expect(WidgetGenerationTracker.getGeneration('StickyNote'), before + 1);
-    });
+        WidgetGenerationTracker.registerClassFiles(classFiles);
+        final before = WidgetGenerationTracker.getGeneration('StickyNote');
+        final bumped = WidgetGenerationTracker.notifyFilesChanged({
+          'lib/sticky_note.dart',
+        });
+        expect(bumped, contains('StickyNote'));
+        expect(WidgetGenerationTracker.getGeneration('StickyNote'), before + 1);
+      },
+    );
   });
 }

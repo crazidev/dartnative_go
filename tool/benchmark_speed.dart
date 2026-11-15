@@ -57,11 +57,15 @@ Future<void> benchmarkDeclarationRegistry() async {
 
   final jsonMs = swJson.elapsedMicroseconds / 1000.0;
   final fnvMs = swFnv.elapsedMicroseconds / 1000.0;
-  final speedupHasher = (jsonMs / (fnvMs > 0 ? fnvMs : 0.001)).toStringAsFixed(1);
+  final speedupHasher = (jsonMs / (fnvMs > 0 ? fnvMs : 0.001)).toStringAsFixed(
+    1,
+  );
 
   print('   • Variable Initializer Hasher ($iterations iterations):');
   print('     - jsonEncode baseline:       ${jsonMs.toStringAsFixed(2)} ms');
-  print('     - Structural FNV hasher:     ${fnvMs.toStringAsFixed(2)} ms ($speedupHasher x faster)');
+  print(
+    '     - Structural FNV hasher:     ${fnvMs.toStringAsFixed(2)} ms ($speedupHasher x faster)',
+  );
 
   // Benchmark B: Class member retirement with 1,000 cells
   final registry = DeclarationRegistry();
@@ -96,20 +100,26 @@ Future<void> benchmarkDeclarationRegistry() async {
   }
   swRetire.stop();
 
-  print('   • O(1) Class Member Retirements (1,000 cells across $classCount classes):');
-  print('     - Time to retire all classes: ${(swRetire.elapsedMicroseconds / 1000.0).toStringAsFixed(2)} ms\n');
+  print(
+    '   • O(1) Class Member Retirements (1,000 cells across $classCount classes):',
+  );
+  print(
+    '     - Time to retire all classes: ${(swRetire.elapsedMicroseconds / 1000.0).toStringAsFixed(2)} ms\n',
+  );
 }
 
 /// 2. Benchmark Parallel Incremental AST Build
 Future<void> benchmarkAstBundler(Directory tmp) async {
   print('📊 2. Incremental AST Bundler Benchmark:');
-  final projectDir = Directory('${tmp.path}/ast_proj')..createSync(recursive: true);
+  final projectDir = Directory('${tmp.path}/ast_proj')
+    ..createSync(recursive: true);
   File('${projectDir.path}/pubspec.yaml').writeAsStringSync('''
 name: ast_proj
 environment:
   sdk: '>=3.0.0 <4.0.0'
 ''');
-  final libDir = Directory('${projectDir.path}/lib')..createSync(recursive: true);
+  final libDir = Directory('${projectDir.path}/lib')
+    ..createSync(recursive: true);
 
   // Generate 15 multi-file modules
   for (var i = 0; i < 15; i++) {
@@ -120,8 +130,14 @@ class Service$i {
 ''');
   }
   final mainFile = File('${libDir.path}/main.dart');
-  final imports = List.generate(15, (i) => "import 'module_$i.dart';").join('\n');
-  final uses = List.generate(15, (i) => "Service$i().compute($i);").join('\n  ');
+  final imports = List.generate(
+    15,
+    (i) => "import 'module_$i.dart';",
+  ).join('\n');
+  final uses = List.generate(
+    15,
+    (i) => "Service$i().compute($i);",
+  ).join('\n  ');
   mainFile.writeAsStringSync('''
 $imports
 
@@ -172,9 +188,15 @@ class Service0 {
   final speedup = (coldMs / (incMs > 0 ? incMs : 1)).toStringAsFixed(1);
 
   print('   • 16-Module AST Project:');
-  print('     - Cold build (analyzer parse):     $coldMs ms (${coldResult.moduleCount} modules, ${coldResult.byteSize} bytes)');
-  print('     - Incremental (1 file edited):      $incMs ms ($speedup x faster! patch=${incResult.patchBytes?.length ?? 0}B)');
-  print('     - No-op rebuild (0 files edited):   $noOpMs ms (cached: ${noOpResult.cached})\n');
+  print(
+    '     - Cold build (analyzer parse):     $coldMs ms (${coldResult.moduleCount} modules, ${coldResult.byteSize} bytes)',
+  );
+  print(
+    '     - Incremental (1 file edited):      $incMs ms ($speedup x faster! patch=${incResult.patchBytes?.length ?? 0}B)',
+  );
+  print(
+    '     - No-op rebuild (0 files edited):   $noOpMs ms (cached: ${noOpResult.cached})\n',
+  );
 }
 
 /// 3. Benchmark ETag & 304 Not Modified Caching
@@ -220,15 +242,20 @@ Future<void> benchmarkEtagTransfer(Directory tmp) async {
   final speedup = (coldMs / (cacheMs > 0 ? cacheMs : 0.001)).toStringAsFixed(1);
 
   print('   • 250 KB AST Bundle Transfer:');
-  print('     - Cold 200 OK Download:             ${coldMs.toStringAsFixed(2)} ms (${coldBytes?.length} bytes downloaded)');
-  print('     - 304 Not Modified (Cached):        ${cacheMs.toStringAsFixed(2)} ms (${cachedBytes?.length ?? 0} bytes in memory, $speedup x faster)\n');
+  print(
+    '     - Cold 200 OK Download:             ${coldMs.toStringAsFixed(2)} ms (${coldBytes?.length} bytes downloaded)',
+  );
+  print(
+    '     - 304 Not Modified (Cached):        ${cacheMs.toStringAsFixed(2)} ms (${cachedBytes?.length ?? 0} bytes in memory, $speedup x faster)\n',
+  );
 }
 
 /// 4. Benchmark Background Dart Isolate vs Main Thread
 Future<void> benchmarkIsolateParallelism(Directory tmp) async {
   print('📊 4. Dart Isolate Worker vs Main Thread Execution:');
 
-  final projectDir = Directory('${tmp.path}/iso_proj')..createSync(recursive: true);
+  final projectDir = Directory('${tmp.path}/iso_proj')
+    ..createSync(recursive: true);
   File('${projectDir.path}/pubspec.yaml').writeAsStringSync('''
 name: iso_proj
 environment:
@@ -266,7 +293,9 @@ void main() {}
   swIsolate.stop();
 
   print('   • Heavy CPU Task (Fibonacci $iterations iterations):');
-  print('     - Executed in Background Dart Isolate: ${(swIsolate.elapsedMicroseconds / 1000.0).toStringAsFixed(2)} ms');
+  print(
+    '     - Executed in Background Dart Isolate: ${(swIsolate.elapsedMicroseconds / 1000.0).toStringAsFixed(2)} ms',
+  );
   print('     - Result: $isoResult');
   print('     - Main Thread UI Frametime Impact:    0.00 ms (Zero jank)');
 }

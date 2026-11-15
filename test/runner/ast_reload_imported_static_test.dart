@@ -89,7 +89,8 @@ void configure() {
 String describeRepo() => 'repo=${locator.get<UserRepository>()}';
 ''';
 
-String _main2(String tag) => '''
+String _main2(String tag) =>
+    '''
 import 'package:dartnative/dartnative.dart';
 import 'package:static_guest/deps.dart';
 
@@ -113,7 +114,8 @@ void main() {
 }
 ''';
 
-String _main(String tag) => '''
+String _main(String tag) =>
+    '''
 import 'package:dartnative/dartnative.dart';
 import 'package:static_guest/store.dart';
 
@@ -169,8 +171,9 @@ void main() {
       logs = <String>[];
       projectDir = Directory('${tmp.path}/imported_guest')
         ..createSync(recursive: true);
-      File('${projectDir.path}/pubspec.yaml')
-          .writeAsStringSync('name: static_guest\n');
+      File(
+        '${projectDir.path}/pubspec.yaml',
+      ).writeAsStringSync('name: static_guest\n');
       Directory('${projectDir.path}/lib').createSync();
       File('${projectDir.path}/lib/store.dart').writeAsStringSync(_storeLib);
     });
@@ -211,7 +214,8 @@ void main() {
       expect(
         logs.last,
         'v2 boots=2 len=2 api=v1',
-        reason: 'statics declared in an imported library must survive '
+        reason:
+            'statics declared in an imported library must survive '
             '(logs: $logs)',
       );
     });
@@ -238,7 +242,8 @@ void main() {
       expect(
         logs.last,
         startsWith("v2 repo=<instance of UserRepository"),
-        reason: 'a Type-keyed registration must survive the reload '
+        reason:
+            'a Type-keyed registration must survive the reload '
             '(logs: $logs)',
       );
     });

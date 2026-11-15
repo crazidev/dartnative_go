@@ -13,7 +13,8 @@ import 'package:dartnative_go/src/cli/packaging/ast_builder.dart';
 import 'package:dartnative_go/src/runner/ast_interpreter_runner.dart';
 import 'package:test/test.dart';
 
-String _guest(String tag, {required String hitsInit, String extra = ''}) => '''
+String _guest(String tag, {required String hitsInit, String extra = ''}) =>
+    '''
 import 'package:dartnative/dartnative.dart';
 
 class Registry {
@@ -83,8 +84,9 @@ void main() {
       logs = <String>[];
       projectDir = Directory('${tmp.path}/static_guest')
         ..createSync(recursive: true);
-      File('${projectDir.path}/pubspec.yaml')
-          .writeAsStringSync('name: static_guest\n');
+      File(
+        '${projectDir.path}/pubspec.yaml',
+      ).writeAsStringSync('name: static_guest\n');
       Directory('${projectDir.path}/lib').createSync();
     });
 
@@ -162,31 +164,36 @@ void main() {
       );
     });
 
-    test('a new static field is added without disturbing the old ones',
-        () async {
-      final runner = AstInterpreterRunner(onLog: logs.add);
-      addTearDown(runner.dispose);
+    test(
+      'a new static field is added without disturbing the old ones',
+      () async {
+        final runner = AstInterpreterRunner(onLog: logs.add);
+        addTearDown(runner.dispose);
 
-      final v1Bytes = await build(_guest('v1', hitsInit: '1'), 'n1');
-      final rootV1 = await runner.evaluateAstBundleAs<Widget>(v1Bytes);
-      tap(rootV1, 1);
-      expect(logs.last, 'v1 hits=2 entries=1 lazy=0');
+        final v1Bytes = await build(_guest('v1', hitsInit: '1'), 'n1');
+        final rootV1 = await runner.evaluateAstBundleAs<Widget>(v1Bytes);
+        tap(rootV1, 1);
+        expect(logs.last, 'v1 hits=2 entries=1 lazy=0');
 
-      final v2Bytes = await build(
-        _guest('v2', hitsInit: '1', extra: 'static int misses = 5;'),
-        'n2',
-      );
-      final rootV2 = await runner.evaluateAstBundleAs<Widget>(
-        v2Bytes,
-        isHotReload: true,
-      );
-      tap(rootV2, 2);
-      expect(
-        logs.last,
-        'v2 hits=2 entries=1 total=20',
-        reason: 'adding a static keeps the existing cells',
-      );
-      expect(runner.declarationRegistry.stats['var_cells'], greaterThanOrEqualTo(4));
-    });
+        final v2Bytes = await build(
+          _guest('v2', hitsInit: '1', extra: 'static int misses = 5;'),
+          'n2',
+        );
+        final rootV2 = await runner.evaluateAstBundleAs<Widget>(
+          v2Bytes,
+          isHotReload: true,
+        );
+        tap(rootV2, 2);
+        expect(
+          logs.last,
+          'v2 hits=2 entries=1 total=20',
+          reason: 'adding a static keeps the existing cells',
+        );
+        expect(
+          runner.declarationRegistry.stats['var_cells'],
+          greaterThanOrEqualTo(4),
+        );
+      },
+    );
   });
 }

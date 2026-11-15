@@ -17,14 +17,14 @@ import 'package:tom_d4rt_ast/runtime.dart' show AstBundle;
 /// - `card_detail.dart` — server-only code (`detail`), shared by two comps.
 /// - `badge.dart` — `@Server(id: 'badge')`, imports `card_detail.dart`.
 Map<String, String> demoComponentSources() => {
-      'main.dart': '''
+  'main.dart': '''
 import 'helper.dart';
 void main() {}
 ''',
-      'helper.dart': '''
+  'helper.dart': '''
 String greeting(String name) => 'hi \$name';
 ''',
-      'card.dart': '''
+  'card.dart': '''
 import 'package:flutter/widgets.dart';
 import 'helper.dart';
 import 'card_detail.dart';
@@ -44,10 +44,10 @@ class ProfileCard extends StatelessWidget {
   }
 }
 ''',
-      'card_detail.dart': '''
+  'card_detail.dart': '''
 String detail() => 'detail!';
 ''',
-      'badge.dart': '''
+  'badge.dart': '''
 import 'package:flutter/widgets.dart';
 import 'card_detail.dart';
 class Server {
@@ -65,7 +65,7 @@ class Badge extends StatelessWidget {
   }
 }
 ''',
-    };
+};
 
 /// A built demo project: client bundle + index + per-component delta bundles.
 class ComponentDemoProject {
@@ -91,8 +91,7 @@ class ComponentDemoProject {
   static Future<ComponentDemoProject> create({
     String packageName = 'demo_app',
   }) async {
-    final dir =
-        Directory.systemTemp.createTempSync('dn_server_comp_fixture_');
+    final dir = Directory.systemTemp.createTempSync('dn_server_comp_fixture_');
     final lib = Directory('${dir.path}/lib')..createSync(recursive: true);
     File('${dir.path}/pubspec.yaml').writeAsStringSync('name: $packageName\n');
     for (final entry in demoComponentSources().entries) {
@@ -105,8 +104,7 @@ class ComponentDemoProject {
       projectRoot: dir.path,
       converter: SafeAstConverter(),
     );
-    final clientBundle =
-        await bundler.createFromFile('${lib.path}/main.dart');
+    final clientBundle = await bundler.createFromFile('${lib.path}/main.dart');
     final clientIndex = ClientModuleIndex.fromBundle(
       clientBundle,
       bridgedUris: kAstBridgedLibraries,
@@ -117,8 +115,7 @@ class ComponentDemoProject {
     // server-only modules. This mirrors the Phase-5 dev-server watch.)
     final annotated = <AnnotatedComponent>{};
     for (final entry in ['card.dart', 'badge.dart']) {
-      final entryBundle =
-          await bundler.createFromFile('${lib.path}/$entry');
+      final entryBundle = await bundler.createFromFile('${lib.path}/$entry');
       annotated.addAll(ServerAnnotationScanner.scanBundle(entryBundle));
     }
 

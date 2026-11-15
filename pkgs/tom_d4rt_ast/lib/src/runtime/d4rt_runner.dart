@@ -1850,7 +1850,8 @@ class D4rtRunner {
       // chains back the same way, so a later component resolves through
       // earlier components to the client loader, which terminates the chain
       // with a null fallback.
-      final fallback = _lastModuleLoader ??
+      final fallback =
+          _lastModuleLoader ??
           (_componentLoaders.isNotEmpty ? _componentLoaders.last : null);
 
       // Same shared-bridge-env wiring as [_executeBundleInGeneration] so a

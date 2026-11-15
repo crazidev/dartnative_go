@@ -156,28 +156,30 @@ void main() {
       );
     });
 
-    test('dispose drops the core runner; the next evaluation builds a new one',
-        () async {
-      final runner = AstInterpreterRunner(onLog: logs.add);
-      addTearDown(runner.dispose);
+    test(
+      'dispose drops the core runner; the next evaluation builds a new one',
+      () async {
+        final runner = AstInterpreterRunner(onLog: logs.add);
+        addTearDown(runner.dispose);
 
-      final v1Bytes = await build(_v1, 'restart_v1');
-      await runner.evaluateAstBundleAs<Widget>(v1Bytes);
-      expect(runner.coreRunnerGeneration, 1);
+        final v1Bytes = await build(_v1, 'restart_v1');
+        await runner.evaluateAstBundleAs<Widget>(v1Bytes);
+        expect(runner.coreRunnerGeneration, 1);
 
-      runner.dispose();
-      expect(runner.coreRunnerGeneration, 1);
-      expect(runner.evaluationCount, 1);
+        runner.dispose();
+        expect(runner.coreRunnerGeneration, 1);
+        expect(runner.evaluationCount, 1);
 
-      final root = await runner.evaluateAstBundleAs<Widget>(v1Bytes);
-      expect((_columnOf(root).children[0] as Text).data, 'Gen: v1');
-      expect(
-        runner.coreRunnerGeneration,
-        2,
-        reason: 'a post-dispose evaluation must build a fresh core runner',
-      );
-      expect(runner.evaluationCount, 2);
-    });
+        final root = await runner.evaluateAstBundleAs<Widget>(v1Bytes);
+        expect((_columnOf(root).children[0] as Text).data, 'Gen: v1');
+        expect(
+          runner.coreRunnerGeneration,
+          2,
+          reason: 'a post-dispose evaluation must build a fresh core runner',
+        );
+        expect(runner.evaluationCount, 2);
+      },
+    );
 
     test('a failed hot reload keeps the runner and the state intact', () async {
       final runner = AstInterpreterRunner(onLog: logs.add);
@@ -212,7 +214,11 @@ void main() {
       );
       expect((_columnOf(recovered).children[0] as Text).data, 'Gen: v1');
       (_columnOf(recovered).children[1] as Button).onPressed!();
-      expect(logs.last, 'taps=2', reason: 'statics kept counting after recovery');
+      expect(
+        logs.last,
+        'taps=2',
+        reason: 'statics kept counting after recovery',
+      );
     });
   });
 }

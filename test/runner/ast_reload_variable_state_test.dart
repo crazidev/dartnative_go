@@ -20,7 +20,8 @@ import 'package:dartnative_go/src/cli/packaging/ast_builder.dart';
 import 'package:dartnative_go/src/runner/ast_interpreter_runner.dart';
 import 'package:test/test.dart';
 
-String _guest(String tag, {required String counterInit, String extra = ''}) => '''
+String _guest(String tag, {required String counterInit, String extra = ''}) =>
+    '''
 import 'package:dartnative/dartnative.dart';
 
 int counter = $counterInit;
@@ -86,9 +87,11 @@ void main() {
 
     setUp(() {
       logs = <String>[];
-      projectDir = Directory('${tmp.path}/var_guest')..createSync(recursive: true);
-      File('${projectDir.path}/pubspec.yaml')
-          .writeAsStringSync('name: var_guest\n');
+      projectDir = Directory('${tmp.path}/var_guest')
+        ..createSync(recursive: true);
+      File(
+        '${projectDir.path}/pubspec.yaml',
+      ).writeAsStringSync('name: var_guest\n');
       Directory('${projectDir.path}/lib').createSync();
     });
 
@@ -108,37 +111,39 @@ void main() {
       (_columnOf(root).children[index] as Button).onPressed!();
     }
 
-    test('unchanged initializers keep the live value across a reload',
-        () async {
-      final runner = AstInterpreterRunner(onLog: logs.add);
-      addTearDown(runner.dispose);
+    test(
+      'unchanged initializers keep the live value across a reload',
+      () async {
+        final runner = AstInterpreterRunner(onLog: logs.add);
+        addTearDown(runner.dispose);
 
-      final v1Bytes = await build(_guest('v1', counterInit: '1'), 'v1');
-      final rootV1 = await runner.evaluateAstBundleAs<Widget>(v1Bytes);
-      tap(rootV1, 1);
-      expect(logs.last, 'v1 counter=101 lazy=42 final=7 history=1');
+        final v1Bytes = await build(_guest('v1', counterInit: '1'), 'v1');
+        final rootV1 = await runner.evaluateAstBundleAs<Widget>(v1Bytes);
+        tap(rootV1, 1);
+        expect(logs.last, 'v1 counter=101 lazy=42 final=7 history=1');
 
-      // Only the UI text changes: every initializer is byte-identical.
-      final v2Bytes = await build(_guest('v2', counterInit: '1'), 'v2');
-      final rootV2 = await runner.evaluateAstBundleAs<Widget>(
-        v2Bytes,
-        isHotReload: true,
-      );
-      expect((_columnOf(rootV2).children[0] as Text).data, 'Gen: v2');
+        // Only the UI text changes: every initializer is byte-identical.
+        final v2Bytes = await build(_guest('v2', counterInit: '1'), 'v2');
+        final rootV2 = await runner.evaluateAstBundleAs<Widget>(
+          v2Bytes,
+          isHotReload: true,
+        );
+        expect((_columnOf(rootV2).children[0] as Text).data, 'Gen: v2');
 
-      // New generation sees the SAME state — the whole point of Phase 3.
-      tap(rootV2, 2);
-      expect(
-        logs.last,
-        'v2 counter=101 lazy=42 final=7 history=1',
-        reason: 'top-level state must survive the reload (logs: $logs)',
-      );
-      // ...and the old generation's closure mutates that same state.
-      tap(rootV1, 1);
-      expect(logs.last, 'v1 counter=201 lazy=42 final=7 history=2');
-      tap(rootV2, 2);
-      expect(logs.last, 'v2 counter=201 lazy=42 final=7 history=2');
-    });
+        // New generation sees the SAME state — the whole point of Phase 3.
+        tap(rootV2, 2);
+        expect(
+          logs.last,
+          'v2 counter=101 lazy=42 final=7 history=1',
+          reason: 'top-level state must survive the reload (logs: $logs)',
+        );
+        // ...and the old generation's closure mutates that same state.
+        tap(rootV1, 1);
+        expect(logs.last, 'v1 counter=201 lazy=42 final=7 history=2');
+        tap(rootV2, 2);
+        expect(logs.last, 'v2 counter=201 lazy=42 final=7 history=2');
+      },
+    );
 
     test('a changed initializer re-runs (Dart VM rule)', () async {
       final runner = AstInterpreterRunner(onLog: logs.add);

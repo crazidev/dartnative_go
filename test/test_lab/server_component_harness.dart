@@ -31,7 +31,7 @@ class ServerComponentHarness {
   final Map<String, String> _componentClassNames = {};
 
   ServerComponentHarness({AstInterpreterRunner? runner})
-      : runner = runner ?? AstInterpreterRunner();
+    : runner = runner ?? AstInterpreterRunner();
 
   /// Pre-loads the client bundle's modules without running any entry point.
   Future<void> loadClientBundle(

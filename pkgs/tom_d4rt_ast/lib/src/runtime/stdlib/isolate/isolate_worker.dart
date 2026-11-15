@@ -208,13 +208,15 @@ class D4rtIsolateWorkerBridge {
     isAssignable: (v) => v is D4rtIsolateWorker,
     staticMethods: {
       'run': (visitor, positionalArgs, namedArgs, _) {
-        final entryFunction = namedArgs.get<String?>('entryFunction') ??
+        final entryFunction =
+            namedArgs.get<String?>('entryFunction') ??
             (positionalArgs.isNotEmpty ? positionalArgs[0].toString() : null);
         if (entryFunction == null) {
           throw ArgumentError('D4rtIsolateWorker.run requires entryFunction');
         }
         final args = namedArgs.get<Map<String, Object?>?>('args');
-        final pos = namedArgs.get<List<Object?>?>('positionalArgs') ??
+        final pos =
+            namedArgs.get<List<Object?>?>('positionalArgs') ??
             (positionalArgs.length > 1 ? positionalArgs.sublist(1) : null);
         return D4rtIsolateWorker.run(
           entryFunction: entryFunction,

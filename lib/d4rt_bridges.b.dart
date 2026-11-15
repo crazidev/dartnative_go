@@ -1,4 +1,4 @@
-// Generated: 2026-11-06T23:47:34.082272 by tom_d4rt_generator 1.26.2
+// Generated: 2026-11-15T01:15:42.495707 by tom_d4rt_generator 1.26.2
 /// D4rt Bridges for dartnative_go
 library;
 
@@ -19,3 +19,4 @@ export 'src/interpreter/dartnative_system_bridges.b.dart';
 export 'src/interpreter/dartnative_connectivity_bridges.b.dart';
 export 'src/interpreter/dartnative_media_picker_bridges.b.dart';
 export 'src/interpreter/dartnative_background_bridges.b.dart';
+export 'src/interpreter/dartnative_passkeys_bridges.b.dart';

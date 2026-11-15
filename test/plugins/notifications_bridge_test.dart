@@ -118,18 +118,17 @@ void main() {
 void main() {
   group('Notifications bridge surface', () {
     test('source bridges register API + FFI bindings', () {
-      final classes =
-          src_bridges.DartnativeNotificationsBridge.bridgeClasses();
+      final classes = src_bridges.DartnativeNotificationsBridge.bridgeClasses();
       final names = classes.map((c) => c.name).toSet();
       expect(names, contains('DartNativeNotifications'));
       expect(names, contains('NotificationsFFIBindings'));
     });
 
     test('source bridge exposes the full notifications API', () {
-      final classes =
-          src_bridges.DartnativeNotificationsBridge.bridgeClasses();
-      final api =
-          classes.firstWhere((c) => c.name == 'DartNativeNotifications');
+      final classes = src_bridges.DartnativeNotificationsBridge.bridgeClasses();
+      final api = classes.firstWhere(
+        (c) => c.name == 'DartNativeNotifications',
+      );
       expect(
         api.staticMethodSignatures.keys,
         containsAll([
@@ -152,8 +151,7 @@ void main() {
       final astByName = {for (final c in ast) c.name: c};
       for (final entry in srcByName.entries) {
         final astClass = astByName[entry.key];
-        expect(astClass, isNotNull,
-            reason: 'AST bridge missing ${entry.key}');
+        expect(astClass, isNotNull, reason: 'AST bridge missing ${entry.key}');
         expect(
           astClass!.methodSignatures.keys.toSet(),
           equals(entry.value.methodSignatures.keys.toSet()),
@@ -230,23 +228,26 @@ void main() {
   });
 
   group('Notifications native limitation (documents headless scope)', () {
-    test('real FFI requestPermission throws on host without native lib',
-        () async {
-      // The host fake works headless; the REAL native class needs the
-      // compiled DartNative runtime. This test pins that boundary so future
-      // failures are classified as native-missing, not bridge-missing.
-      // Skipped on device runs, where the real center exists.
-      if (_isDeviceRun) return;
-      try {
-        await DartNativeNotifications.requestPermission()
-            .timeout(const Duration(seconds: 5));
-      } catch (e) {
-        expect(e, isNotNull);
-        return;
-      }
-      // If a native lib ever lands on the host, the call succeeds — fine.
-      expect(true, isTrue);
-    });
+    test(
+      'real FFI requestPermission throws on host without native lib',
+      () async {
+        // The host fake works headless; the REAL native class needs the
+        // compiled DartNative runtime. This test pins that boundary so future
+        // failures are classified as native-missing, not bridge-missing.
+        // Skipped on device runs, where the real center exists.
+        if (_isDeviceRun) return;
+        try {
+          await DartNativeNotifications.requestPermission().timeout(
+            const Duration(seconds: 5),
+          );
+        } catch (e) {
+          expect(e, isNotNull);
+          return;
+        }
+        // If a native lib ever lands on the host, the call succeeds — fine.
+        expect(true, isTrue);
+      },
+    );
   });
 
   group(
@@ -272,6 +273,6 @@ void main() {
     skip: _isDeviceRun
         ? false
         : 'needs a device runtime: dn test -d <device-id> '
-            '--dart-define=DN_DEVICE_TEST=true test/plugins/notifications_bridge_test.dart',
+              '--dart-define=DN_DEVICE_TEST=true test/plugins/notifications_bridge_test.dart',
   );
 }

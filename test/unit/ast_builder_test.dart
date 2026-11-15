@@ -44,8 +44,9 @@ void main() {
     test('resolves entry with lib/ preferred over guest_app/', () {
       expect(resolveGuestEntry(tmp), isNull);
       Directory('${tmp.path}/guest_app').createSync();
-      File('${tmp.path}/guest_app/main.dart')
-          .writeAsStringSync('void main() {}\n');
+      File(
+        '${tmp.path}/guest_app/main.dart',
+      ).writeAsStringSync('void main() {}\n');
       expect(resolveGuestEntry(tmp)!.path, endsWith('guest_app/main.dart'));
       Directory('${tmp.path}/lib').createSync();
       File('${tmp.path}/lib/main.dart').writeAsStringSync('void main() {}\n');
@@ -112,10 +113,14 @@ void main() {
       );
       expect(result.success, isTrue, reason: result.error);
       expect(result.moduleFingerprints.length, result.moduleCount);
-      expect(result.moduleFingerprints.keys.any((k) => k.contains('main.dart')),
-          isTrue);
-      expect(result.moduleFingerprints.keys.any((k) => k.contains('helper.dart')),
-          isTrue);
+      expect(
+        result.moduleFingerprints.keys.any((k) => k.contains('main.dart')),
+        isTrue,
+      );
+      expect(
+        result.moduleFingerprints.keys.any((k) => k.contains('helper.dart')),
+        isTrue,
+      );
       expect(
         result.moduleFingerprints.values.every((v) => v.isNotEmpty),
         isTrue,
@@ -160,52 +165,54 @@ void main() {
       }
     });
 
-    test('incremental build discovers a new file imported by an edited file',
-        () async {
-      // Regression: creating lib/extra.dart and editing helper.dart to
-      // import it must land the new module in both the full bundle and the
-      // hot-reload patch. Previously the seed DFS skipped changed modules'
-      // new imports, so the device failed with
-      // `Package module ... not found in bundle` until a full restart.
-      final guest = _makeGuestProject(tmp, 'new_file_guest');
-      final outPath = '${tmp.path}/new_file_guest.ast';
-      final first = await buildGuestAstBundle(
-        guest,
-        outputArg: outPath,
-        force: true,
-      );
-      expect(first.success, isTrue, reason: first.error);
+    test(
+      'incremental build discovers a new file imported by an edited file',
+      () async {
+        // Regression: creating lib/extra.dart and editing helper.dart to
+        // import it must land the new module in both the full bundle and the
+        // hot-reload patch. Previously the seed DFS skipped changed modules'
+        // new imports, so the device failed with
+        // `Package module ... not found in bundle` until a full restart.
+        final guest = _makeGuestProject(tmp, 'new_file_guest');
+        final outPath = '${tmp.path}/new_file_guest.ast';
+        final first = await buildGuestAstBundle(
+          guest,
+          outputArg: outPath,
+          force: true,
+        );
+        expect(first.success, isTrue, reason: first.error);
 
-      final extra = File('${guest.path}/lib/extra.dart')
-        ..writeAsStringSync('int tripleIt(int x) => x * 3;\n');
-      final helper = File('${guest.path}/lib/helper.dart');
-      helper.writeAsStringSync(
-        'import \'package:new_file_guest/extra.dart\';\n'
-        'int doubleIt(int x) => tripleIt(x) - x;\n',
-      );
-      final second = await buildGuestAstBundle(
-        guest,
-        outputArg: outPath,
-        changedFiles: {extra.path, helper.path},
-      );
-      expect(second.success, isTrue, reason: second.error);
+        final extra = File('${guest.path}/lib/extra.dart')
+          ..writeAsStringSync('int tripleIt(int x) => x * 3;\n');
+        final helper = File('${guest.path}/lib/helper.dart');
+        helper.writeAsStringSync(
+          'import \'package:new_file_guest/extra.dart\';\n'
+          'int doubleIt(int x) => tripleIt(x) - x;\n',
+        );
+        final second = await buildGuestAstBundle(
+          guest,
+          outputArg: outPath,
+          changedFiles: {extra.path, helper.path},
+        );
+        expect(second.success, isTrue, reason: second.error);
 
-      const newUri = 'package:new_file_guest/extra.dart';
-      final bundle = cachedBundleForProject(guest);
-      expect(bundle, isNotNull);
-      expect(
-        bundle!.modules.keys,
-        contains(newUri),
-        reason: 'full bundle must include the new file',
-      );
-      final patch = patchBundleForProject(guest);
-      expect(patch, isNotNull);
-      expect(
-        patch!.modules.keys,
-        contains(newUri),
-        reason: 'hot-reload patch must ship the new file',
-      );
-    });
+        const newUri = 'package:new_file_guest/extra.dart';
+        final bundle = cachedBundleForProject(guest);
+        expect(bundle, isNotNull);
+        expect(
+          bundle!.modules.keys,
+          contains(newUri),
+          reason: 'full bundle must include the new file',
+        );
+        final patch = patchBundleForProject(guest);
+        expect(patch, isNotNull);
+        expect(
+          patch!.modules.keys,
+          contains(newUri),
+          reason: 'hot-reload patch must ship the new file',
+        );
+      },
+    );
 
     test('unchanged sources hit the incremental cache', () async {
       final guest = _makeGuestProject(tmp, 'cache_hit_guest');
@@ -231,7 +238,8 @@ void main() {
       expect(out.existsSync(), isTrue);
     });
 
-    test('hot-reload patches chain base fingerprints across builds', () async {      // Regression: devices apply patch deltas onto their last-evaluated
+    test('hot-reload patches chain base fingerprints across builds', () async {
+      // Regression: devices apply patch deltas onto their last-evaluated
       // bundle. Without base lineage a skipped intermediate reload yields a
       // franken-bundle (stale modules, no error). Each hot build must record
       // which generation its patch applies to.

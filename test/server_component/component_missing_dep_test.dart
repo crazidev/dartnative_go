@@ -32,8 +32,9 @@ void main() {
       final tmp = Directory.systemTemp.createTempSync('dn_server_missing_');
       try {
         final lib = Directory('${tmp.path}/lib')..createSync();
-        File('${tmp.path}/pubspec.yaml')
-            .writeAsStringSync('name: ${project.packageName}\n');
+        File(
+          '${tmp.path}/pubspec.yaml',
+        ).writeAsStringSync('name: ${project.packageName}\n');
         File('${lib.path}/ghost.dart').writeAsStringSync('''
 class ServerComponent {
   final String id;
@@ -66,8 +67,9 @@ class Ghost {
         final ghostBundle = await delta.buildComponentBundle(
           ghost,
           allSources: {
-            'package:${project.packageName}/ghost.dart':
-                File('${lib.path}/ghost.dart').readAsStringSync(),
+            'package:${project.packageName}/ghost.dart': File(
+              '${lib.path}/ghost.dart',
+            ).readAsStringSync(),
           },
         );
         expect(ghostBundle, isNotNull);

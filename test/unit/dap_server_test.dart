@@ -95,8 +95,14 @@ void main() {
 
       final children = store.getChildVariables(ref);
       expect(children.length, 2);
-      expect(children.any((c) => c['name'] == 'title' && c['value'] == '"Buy milk"'), isTrue);
-      expect(children.any((c) => c['name'] == 'count' && c['value'] == '3'), isTrue);
+      expect(
+        children.any((c) => c['name'] == 'title' && c['value'] == '"Buy milk"'),
+        isTrue,
+      );
+      expect(
+        children.any((c) => c['name'] == 'count' && c['value'] == '3'),
+        isTrue,
+      );
     });
 
     test('creates expandable List variables and retrieves children', () {
@@ -179,13 +185,17 @@ void main() {
       expect(messages.length, greaterThanOrEqualTo(2));
 
       // 1. Response to initialize
-      final initResponse = messages.firstWhere((m) => m['type'] == 'response' && m['command'] == 'initialize');
+      final initResponse = messages.firstWhere(
+        (m) => m['type'] == 'response' && m['command'] == 'initialize',
+      );
       expect(initResponse['success'], isTrue);
       expect(initResponse['body']['supportsRestartRequest'], isTrue);
       expect(initResponse['body']['supportsEvaluateForHovers'], isTrue);
 
       // 2. Event initialized
-      final initEvent = messages.firstWhere((m) => m['type'] == 'event' && m['event'] == 'initialized');
+      final initEvent = messages.firstWhere(
+        (m) => m['type'] == 'event' && m['event'] == 'initialized',
+      );
       expect(initEvent, isNotNull);
     });
 
@@ -204,7 +214,10 @@ void main() {
         'command': 'setBreakpoints',
         'arguments': {
           'source': {'path': '/test/lib/todo_screen.dart'},
-          'breakpoints': [{'line': 355}, {'line': 360}],
+          'breakpoints': [
+            {'line': 355},
+            {'line': 360},
+          ],
         },
       });
 
@@ -220,14 +233,18 @@ void main() {
 
       final messages = parseOutboundMessages();
 
-      final bpResponse = messages.firstWhere((m) => m['type'] == 'response' && m['command'] == 'setBreakpoints');
+      final bpResponse = messages.firstWhere(
+        (m) => m['type'] == 'response' && m['command'] == 'setBreakpoints',
+      );
       expect(bpResponse['success'], isTrue);
       final bps = bpResponse['body']['breakpoints'] as List;
       expect(bps.length, 2);
       expect(bps[0]['verified'], isTrue);
       expect(bps[0]['line'], 355);
 
-      final threadsResponse = messages.firstWhere((m) => m['type'] == 'response' && m['command'] == 'threads');
+      final threadsResponse = messages.firstWhere(
+        (m) => m['type'] == 'response' && m['command'] == 'threads',
+      );
       expect(threadsResponse['success'], isTrue);
       final threads = threadsResponse['body']['threads'] as List;
       expect(threads.length, 1);

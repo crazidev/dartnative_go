@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Dartscript registration for dartnative_go
-// Generated: 2026-11-06T23:47:34.093514 by tom_d4rt_generator 1.26.2
+// Generated: 2026-11-15T01:15:42.501797 by tom_d4rt_generator 1.26.2
 
 /// D4rt Bridge Registration for dartnative_go
 library;
@@ -30,6 +30,7 @@ import 'dartnative_connectivity_bridges.b.dart'
 import 'dartnative_media_picker_bridges.b.dart'
     as dartnative_media_picker_bridges;
 import 'dartnative_background_bridges.b.dart' as dartnative_background_bridges;
+import 'dartnative_passkeys_bridges.b.dart' as dartnative_passkeys_bridges;
 import 'relaxers.b.dart' as relaxer_factories;
 
 /// Combined bridge registration for dartnative_go.
@@ -235,6 +236,19 @@ class DartnativeGoBridges {
         barrel,
       );
     }
+    dartnative_passkeys_bridges.DartnativePasskeysBridge.registerBridges(
+      d4rt,
+      'package:dartnative_passkeys/dartnative_passkeys.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in dartnative_passkeys_bridges
+            .DartnativePasskeysBridge.subPackageBarrels()) {
+      dartnative_passkeys_bridges.DartnativePasskeysBridge.registerBridges(
+        d4rt,
+        barrel,
+      );
+    }
 
     // RC-2: Register generic constructor factories
     relaxer_factories.registerGenericConstructors();
@@ -294,6 +308,9 @@ class DartnativeGoBridges {
     );
     buffer.writeln(
       dartnative_background_bridges.DartnativeBackgroundBridge.getImportBlock(),
+    );
+    buffer.writeln(
+      dartnative_passkeys_bridges.DartnativePasskeysBridge.getImportBlock(),
     );
     return buffer.toString();
   }

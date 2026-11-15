@@ -80,26 +80,30 @@ void main() {
       } catch (_) {}
     });
 
-    test('D4rtIsolateWorker.run executes top-level function in background isolate',
-        () async {
-      final result = await D4rtIsolateWorker.run(
-        entryFunction: 'heavyTask',
-        positionalArgs: [100],
-        bundleBytes: astBytes,
-      );
-      // 1 + 2 + ... + 100 = 5050
-      expect(result, equals(5050));
-    });
+    test(
+      'D4rtIsolateWorker.run executes top-level function in background isolate',
+      () async {
+        final result = await D4rtIsolateWorker.run(
+          entryFunction: 'heavyTask',
+          positionalArgs: [100],
+          bundleBytes: astBytes,
+        );
+        // 1 + 2 + ... + 100 = 5050
+        expect(result, equals(5050));
+      },
+    );
 
-    test('D4rtIsolateWorker.run handles string arguments and returns string',
-        () async {
-      final result = await D4rtIsolateWorker.run(
-        entryFunction: 'greet',
-        positionalArgs: ['World'],
-        bundleBytes: astBytes,
-      );
-      expect(result, equals('Hello, World!'));
-    });
+    test(
+      'D4rtIsolateWorker.run handles string arguments and returns string',
+      () async {
+        final result = await D4rtIsolateWorker.run(
+          entryFunction: 'greet',
+          positionalArgs: ['World'],
+          bundleBytes: astBytes,
+        );
+        expect(result, equals('Hello, World!'));
+      },
+    );
 
     test('guest code compute() runs in worker isolate', () async {
       final runner = AstInterpreterRunner();
@@ -113,16 +117,18 @@ void main() {
       expect(res, equals(55));
     });
 
-    test('guest code Isolate.run() executes named top-level function in worker isolate',
-        () async {
-      final runner = AstInterpreterRunner();
-      final resFuture = await runner.evaluateAstBundleAs<dynamic>(
-        astBytes,
-        name: 'runIsolate',
-      );
-      final res = await resFuture;
-      expect(res, equals('Isolate.run completed'));
-    });
+    test(
+      'guest code Isolate.run() executes named top-level function in worker isolate',
+      () async {
+        final runner = AstInterpreterRunner();
+        final resFuture = await runner.evaluateAstBundleAs<dynamic>(
+          astBytes,
+          name: 'runIsolate',
+        );
+        final res = await resFuture;
+        expect(res, equals('Isolate.run completed'));
+      },
+    );
 
     test('guest code Isolate.run() falls back smoothly on closures', () async {
       final runner = AstInterpreterRunner();

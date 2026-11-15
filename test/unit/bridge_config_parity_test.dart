@@ -13,7 +13,8 @@ Map _loadKit(String path) {
   ];
   for (final cand in candidates) {
     final f = File(cand);
-    if (f.existsSync()) return (loadYaml(f.readAsStringSync()) as Map)['d4rtgen'] as Map;
+    if (f.existsSync())
+      return (loadYaml(f.readAsStringSync()) as Map)['d4rtgen'] as Map;
   }
   throw StateError('not found: $path (cwd=${Directory.current.path})');
 }

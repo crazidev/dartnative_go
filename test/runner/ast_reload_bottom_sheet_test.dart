@@ -23,7 +23,8 @@ import 'package:dartnative_go/src/runner/native_bottomsheet_manager.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
 import 'package:test/test.dart';
 
-String _main(String tag) => '''
+String _main(String tag) =>
+    '''
 import 'package:dartnative/dartnative.dart';
 import 'panel.dart';
 
@@ -32,7 +33,8 @@ void main() {
 }
 ''';
 
-String _statefulPanel(String label) => '''
+String _statefulPanel(String label) =>
+    '''
 import 'package:dartnative/dartnative.dart';
 
 class CreateNotePanel extends StatefulWidget {
@@ -59,7 +61,8 @@ class _CreateNotePanelState extends State<CreateNotePanel> {
 }
 ''';
 
-String _statelessPanel(String label) => '''
+String _statelessPanel(String label) =>
+    '''
 import 'package:dartnative/dartnative.dart';
 
 class CreateNotePanel extends StatelessWidget {
@@ -97,8 +100,9 @@ void main() {
       tmp = Directory.systemTemp.createTempSync('dn_sheet_reload_');
       projectDir = Directory('${tmp.path}/sheet_guest')
         ..createSync(recursive: true);
-      File('${projectDir.path}/pubspec.yaml')
-          .writeAsStringSync('name: sheet_guest\n');
+      File(
+        '${projectDir.path}/pubspec.yaml',
+      ).writeAsStringSync('name: sheet_guest\n');
       Directory('${projectDir.path}/lib').createSync();
       runner = AstInterpreterRunner(onLog: logs.add);
       panelSource = _statefulPanel;
@@ -115,8 +119,9 @@ void main() {
       String tag,
     ) async {
       File('${projectDir.path}/lib/main.dart').writeAsStringSync(_main(tag));
-      File('${projectDir.path}/lib/panel.dart')
-          .writeAsStringSync(panelSource(tag));
+      File(
+        '${projectDir.path}/lib/panel.dart',
+      ).writeAsStringSync(panelSource(tag));
       final out = File('${projectDir.path}/$tag.ast');
       final result = await buildGuestAstBundle(
         projectDir,
@@ -146,52 +151,55 @@ void main() {
       return state;
     }
 
-    test('an edited sheet panel rebuilds with new code and keeps its state',
-        () async {
-      final v1 = await build('v1');
-      final rootV1 = await runner.evaluateAstBundleAs<Widget>(
-        v1.bytes,
-        moduleFingerprints: v1.fingerprints,
-      );
-      final visitorV1 = runner.visitor;
-      expect(rootV1, isA<InterpretedStatefulWidget>());
+    test(
+      'an edited sheet panel rebuilds with new code and keeps its state',
+      () async {
+        final v1 = await build('v1');
+        final rootV1 = await runner.evaluateAstBundleAs<Widget>(
+          v1.bytes,
+          moduleFingerprints: v1.fingerprints,
+        );
+        final visitorV1 = runner.visitor;
+        expect(rootV1, isA<InterpretedStatefulWidget>());
 
-      final scopeState = openSheet(rootV1);
-      final stateProxy = (rootV1 as InterpretedStatefulWidget).createState()
-          as InterpretedStateProxy;
-      scopeState.registerProxy(stateProxy);
+        final scopeState = openSheet(rootV1);
+        final stateProxy =
+            (rootV1 as InterpretedStatefulWidget).createState()
+                as InterpretedStateProxy;
+        scopeState.registerProxy(stateProxy);
 
-      expect(
-        _labels(stateProxy.build(_FakeContext())),
-        ['v1', 'taps=0'],
-        reason: 'precondition: the sheet renders generation 1',
-      );
-      stateProxy.stateInstance.set('taps', 3);
+        expect(
+          _labels(stateProxy.build(_FakeContext())),
+          ['v1', 'taps=0'],
+          reason: 'precondition: the sheet renders generation 1',
+        );
+        stateProxy.stateInstance.set('taps', 3);
 
-      final v2 = await build('v2');
-      await runner.evaluateAstBundleAs<Widget>(
-        v2.bytes,
-        isHotReload: true,
-        moduleFingerprints: v2.fingerprints,
-      );
-      expect(identical(visitorV1, runner.visitor), isFalse);
+        final v2 = await build('v2');
+        await runner.evaluateAstBundleAs<Widget>(
+          v2.bytes,
+          isHotReload: true,
+          moduleFingerprints: v2.fingerprints,
+        );
+        expect(identical(visitorV1, runner.visitor), isFalse);
 
-      NativeBottomSheetManager.notifyHotReload(
-        runner.visitor,
-        changedFile: 'panel.dart',
-      );
+        NativeBottomSheetManager.notifyHotReload(
+          runner.visitor,
+          changedFile: 'panel.dart',
+        );
 
-      expect(
-        identical(stateProxy.visitor, runner.visitor),
-        isTrue,
-        reason: 'the sheet proxy must run on the new generation',
-      );
-      expect(
-        _labels(stateProxy.build(_FakeContext())),
-        ['v2', 'taps=3'],
-        reason: 'edited panel code must render while state fields survive',
-      );
-    });
+        expect(
+          identical(stateProxy.visitor, runner.visitor),
+          isTrue,
+          reason: 'the sheet proxy must run on the new generation',
+        );
+        expect(
+          _labels(stateProxy.build(_FakeContext())),
+          ['v2', 'taps=3'],
+          reason: 'edited panel code must render while state fields survive',
+        );
+      },
+    );
 
     test('a stateless sheet panel is rebound to the new code', () async {
       panelSource = _statelessPanel;

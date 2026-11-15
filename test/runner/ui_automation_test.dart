@@ -31,10 +31,10 @@ class FakeElement extends Element {
     required Widget widget,
     List<Element> children = const [],
     ViewId? viewId,
-  })  : _fakeWidget = widget,
-        _fakeChildren = children,
-        _fakeViewId = viewId,
-        super(widget);
+  }) : _fakeWidget = widget,
+       _fakeChildren = children,
+       _fakeViewId = viewId,
+       super(widget);
 
   @override
   Widget get widget => _fakeWidget;
@@ -92,15 +92,15 @@ class FakeNativeElement extends FakeElement implements NativeElement {
 }
 
 Scaffold _sampleApp({VoidCallback? onPing}) => Scaffold(
-      body: Center(
-        child: Column(
-          children: [
-            const Text('Hello'),
-            Button(title: 'Ping', onPressed: onPing ?? () {}),
-          ],
-        ),
-      ),
-    );
+  body: Center(
+    child: Column(
+      children: [
+        const Text('Hello'),
+        Button(title: 'Ping', onPressed: onPing ?? () {}),
+      ],
+    ),
+  ),
+);
 
 void main() {
   group('Level 1 — widget walk', () {
@@ -372,11 +372,15 @@ void main() {
         resolveTarget(widgetRoot: app, spec: const TargetSpec()).error,
         contains('empty target'),
       );
-      final byKey =
-          resolveTarget(widgetRoot: app, spec: const TargetSpec(key: 'hi'));
+      final byKey = resolveTarget(
+        widgetRoot: app,
+        spec: const TargetSpec(key: 'hi'),
+      );
       expect(byKey.target?.widget, isA<Text>());
-      final byTitle =
-          resolveTarget(widgetRoot: app, spec: const TargetSpec(title: 'Go'));
+      final byTitle = resolveTarget(
+        widgetRoot: app,
+        spec: const TargetSpec(title: 'Go'),
+      );
       expect(byTitle.target?.widget, isA<Button>());
       expect(
         resolveTarget(
@@ -459,58 +463,69 @@ void main() {
       );
     });
 
-    test('tapTarget dispatches to GestureDetector, BarButtonItem, and nested Icons', () {
-      var gestureTapped = 0;
-      var barButtonTapped = 0;
+    test(
+      'tapTarget dispatches to GestureDetector, BarButtonItem, and nested Icons',
+      () {
+        var gestureTapped = 0;
+        var barButtonTapped = 0;
 
-      final app = Scaffold(
-        appBar: AppBar(
-          actions: [
-            BarButtonItem(
-              fontIcon: const IconData(62601, fontFamily: 'CupertinoIcons'),
-              onPressed: () => barButtonTapped++,
-            ),
-          ],
-        ),
-        body: Center(
-          child: Column(
-            children: [
-              GestureDetector(
-                onTap: () => gestureTapped++,
-                child: const Icon(IconData(62409, fontFamily: 'CupertinoIcons')),
+        final app = Scaffold(
+          appBar: AppBar(
+            actions: [
+              BarButtonItem(
+                fontIcon: const IconData(62601, fontFamily: 'CupertinoIcons'),
+                onPressed: () => barButtonTapped++,
               ),
             ],
           ),
-        ),
-      );
+          body: Center(
+            child: Column(
+              children: [
+                GestureDetector(
+                  onTap: () => gestureTapped++,
+                  child: const Icon(
+                    IconData(62409, fontFamily: 'CupertinoIcons'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
 
-      // 1. Tap nested icon inside GestureDetector by icon code point
-      final res1 = tapTarget(
-        widgetRoot: app,
-        spec: const TargetSpec(iconCodePoint: 62409, iconFontFamily: 'CupertinoIcons'),
-      );
-      expect(res1.ok, isTrue);
-      expect(gestureTapped, equals(1));
+        // 1. Tap nested icon inside GestureDetector by icon code point
+        final res1 = tapTarget(
+          widgetRoot: app,
+          spec: const TargetSpec(
+            iconCodePoint: 62409,
+            iconFontFamily: 'CupertinoIcons',
+          ),
+        );
+        expect(res1.ok, isTrue);
+        expect(gestureTapped, equals(1));
 
-      // 2. Tap BarButtonItem by fontIcon code point
-      final res2 = tapTarget(
-        widgetRoot: app,
-        spec: const TargetSpec(iconCodePoint: 62601, iconFontFamily: 'CupertinoIcons'),
-      );
-      expect(res2.ok, isTrue);
-      expect(barButtonTapped, equals(1));
+        // 2. Tap BarButtonItem by fontIcon code point
+        final res2 = tapTarget(
+          widgetRoot: app,
+          spec: const TargetSpec(
+            iconCodePoint: 62601,
+            iconFontFamily: 'CupertinoIcons',
+          ),
+        );
+        expect(res2.ok, isTrue);
+        expect(barButtonTapped, equals(1));
 
-      // 3. Tap element with no tap handler reports clear failure
-      final unclickable = const Scaffold(
-        body: Center(child: Text('Just text')),
-      );
-      final res3 = tapTarget(
-        widgetRoot: unclickable,
-        spec: const TargetSpec(text: 'Just text'),
-      );
-      expect(res3.ok, isFalse);
-      expect(res3.error, contains('has no tappable ancestor'));
-    });
+        // 3. Tap element with no tap handler reports clear failure
+        final unclickable = const Scaffold(
+          body: Center(child: Text('Just text')),
+        );
+        final res3 = tapTarget(
+          widgetRoot: unclickable,
+          spec: const TargetSpec(text: 'Just text'),
+        );
+        expect(res3.ok, isFalse);
+        expect(res3.error, contains('has no tappable ancestor'));
+      },
+    );
 
     test('scrollTarget jumps controller and degrades gracefully', () {
       final controller = ScrollController();
@@ -539,170 +554,186 @@ void main() {
       expect(resNone.error, contains('no scrollable widget'));
     });
 
-    test('named icon resolution supports CupertinoIcons and FontAwesome5 across probe and tap', () {
-      // 1. IconRegistry resolves names
-      final plus = resolveIcon('CupertinoIcons.plus');
-      expect(plus, isNotNull);
-      expect(plus!.codePoint, equals(62601));
-      expect(plus.fontFamily, equals('CupertinoIcons'));
+    test(
+      'named icon resolution supports CupertinoIcons and FontAwesome5 across probe and tap',
+      () {
+        // 1. IconRegistry resolves names
+        final plus = resolveIcon('CupertinoIcons.plus');
+        expect(plus, isNotNull);
+        expect(plus!.codePoint, equals(62601));
+        expect(plus.fontFamily, equals('CupertinoIcons'));
 
-      final gear = resolveIcon('FontAwesome5.gear');
-      expect(gear, isNotNull);
-      expect(gear!.codePoint, equals(0xf013));
-      expect(gear.fontFamily, equals('FontAwesome5'));
+        final gear = resolveIcon('FontAwesome5.gear');
+        expect(gear, isNotNull);
+        expect(gear!.codePoint, equals(0xf013));
+        expect(gear.fontFamily, equals('FontAwesome5'));
 
-      // 2. TargetSpec resolves named icon map
-      final spec = TargetSpec.fromJson({'icon': 'CupertinoIcons.plus'});
-      expect(spec.iconCodePoint, equals(62601));
-      expect(spec.iconFontFamily, equals('CupertinoIcons'));
+        // 2. TargetSpec resolves named icon map
+        final spec = TargetSpec.fromJson({'icon': 'CupertinoIcons.plus'});
+        expect(spec.iconCodePoint, equals(62601));
+        expect(spec.iconFontFamily, equals('CupertinoIcons'));
 
-      // 3. Tree serialization and expectIcon assertion
-      var iconTapped = 0;
-      final app = Scaffold(
-        body: Center(
-          child: GestureDetector(
-            onTap: () => iconTapped++,
-            child: const Icon(IconData(62601, fontFamily: 'CupertinoIcons')),
+        // 3. Tree serialization and expectIcon assertion
+        var iconTapped = 0;
+        final app = Scaffold(
+          body: Center(
+            child: GestureDetector(
+              onTap: () => iconTapped++,
+              child: const Icon(IconData(62601, fontFamily: 'CupertinoIcons')),
+            ),
           ),
-        ),
-      );
-      final tree = serializeTree(app);
-      UiAutomator.expectIcon(tree, icon: 'CupertinoIcons.plus');
+        );
+        final tree = serializeTree(app);
+        UiAutomator.expectIcon(tree, icon: 'CupertinoIcons.plus');
 
-      // 4. Tap via TargetSpec with named icon
-      final tapRes = tapTarget(widgetRoot: app, spec: spec);
-      expect(tapRes.ok, isTrue);
-      expect(iconTapped, equals(1));
-    });
+        // 4. Tap via TargetSpec with named icon
+        final tapRes = tapTarget(widgetRoot: app, spec: spec);
+        expect(tapRes.ok, isTrue);
+        expect(iconTapped, equals(1));
+      },
+    );
 
-    test('NativeBottomSheet integration discovers sheet components and dispatches taps', () {
-      var sheetBtnTapped = 0;
-      final controller = DNSheetController.create(
-        sheetId: 101,
-        detents: const [DNSheetDetent.medium, DNSheetDetent.large],
-        initialDetent: DNSheetDetent.medium,
-      );
-      final sheetWidget = Container(
-        child: Column(
+    test(
+      'NativeBottomSheet integration discovers sheet components and dispatches taps',
+      () {
+        var sheetBtnTapped = 0;
+        final controller = DNSheetController.create(
+          sheetId: 101,
+          detents: const [DNSheetDetent.medium, DNSheetDetent.large],
+          initialDetent: DNSheetDetent.medium,
+        );
+        final sheetWidget = Container(
+          child: Column(
+            children: [
+              const Text('New note modal'),
+              Button(
+                title: 'Save Note',
+                onPressed: () => sheetBtnTapped++,
+              ),
+            ],
+          ),
+        );
+        final scope = NativeBottomSheetScope(
+          controller: controller,
+          child: sheetWidget,
+        );
+        final state = scope.createState();
+        state.initState();
+
+        try {
+          final mainApp = Scaffold(
+            body: const Center(child: Text('Main Screen Content')),
+          );
+
+          // 1. probeGuest includes both main screen and bottom sheet
+          final probed = probeGuest(widgetRoot: mainApp);
+          expect(
+            findTextNodes(probed.tree, 'Main Screen Content'),
+            hasLength(1),
+          );
+          expect(findTextNodes(probed.tree, 'New note modal'), hasLength(1));
+          // Substring match works too
+          expect(findTextNodes(probed.tree, 'New note'), hasLength(1));
+          expect(findButtonNodes(probed.tree, 'Save Note'), hasLength(1));
+
+          // 2. tapTarget resolves into the bottom sheet
+          final res = tapTarget(
+            widgetRoot: mainApp,
+            spec: const TargetSpec(title: 'Save Note'),
+          );
+          expect(res.ok, isTrue);
+          expect(sheetBtnTapped, equals(1));
+        } finally {
+          state.dispose();
+        }
+
+        // 3. After dispose, sheet is no longer present
+        final afterDispose = probeGuest(
+          widgetRoot: Scaffold(body: const Text('Back')),
+        );
+        expect(findTextNodes(afterDispose.tree, 'New note modal'), isEmpty);
+      },
+    );
+
+    test(
+      'typeIntoTarget types text, notifies controller listeners, and fires onChanged',
+      () {
+        final titleController = TextEditingController();
+        final descController = TextEditingController();
+        String? changed;
+        int listenerCallCount = 0;
+        bool hasListenerSupport = false;
+        try {
+          titleController.addListener(() => listenerCallCount++);
+          hasListenerSupport = true;
+        } catch (_) {}
+
+        final form = Column(
           children: [
-            const Text('New note modal'),
-            Button(
-              title: 'Save Note',
-              onPressed: () => sheetBtnTapped++,
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(hintText: 'Note title'),
+              onChanged: (val) => changed = val,
+            ),
+            TextField(
+              controller: descController,
+              decoration: const InputDecoration(
+                hintText: 'Add a description...',
+              ),
+            ),
+            TextField(
+              decoration: const InputDecoration(hintText: 'No controller note'),
+              onChanged: (val) => changed = 'onChangedOnly:$val',
             ),
           ],
-        ),
-      );
-      final scope = NativeBottomSheetScope(
-        controller: controller,
-        child: sheetWidget,
-      );
-      final state = scope.createState();
-      state.initState();
-
-      try {
-        final mainApp = Scaffold(
-          body: const Center(child: Text('Main Screen Content')),
         );
 
-        // 1. probeGuest includes both main screen and bottom sheet
-        final probed = probeGuest(widgetRoot: mainApp);
-        expect(findTextNodes(probed.tree, 'Main Screen Content'), hasLength(1));
-        expect(findTextNodes(probed.tree, 'New note modal'), hasLength(1));
-        // Substring match works too
-        expect(findTextNodes(probed.tree, 'New note'), hasLength(1));
-        expect(findButtonNodes(probed.tree, 'Save Note'), hasLength(1));
-
-        // 2. tapTarget resolves into the bottom sheet
-        final res = tapTarget(
-          widgetRoot: mainApp,
-          spec: const TargetSpec(title: 'Save Note'),
+        // 1. Type into title via placeholder
+        final r1 = typeIntoTarget(
+          widgetRoot: form,
+          spec: const TargetSpec(placeholder: 'Note title'),
+          text: 'Buy groceries',
         );
-        expect(res.ok, isTrue);
-        expect(sheetBtnTapped, equals(1));
-      } finally {
-        state.dispose();
-      }
+        expect(r1.ok, isTrue);
+        try {
+          expect(titleController.text, equals('Buy groceries'));
+        } catch (_) {}
+        expect(changed, equals('Buy groceries'));
+        if (hasListenerSupport) {
+          expect(listenerCallCount, greaterThan(0));
+        }
 
-      // 3. After dispose, sheet is no longer present
-      final afterDispose = probeGuest(widgetRoot: Scaffold(body: const Text('Back')));
-      expect(findTextNodes(afterDispose.tree, 'New note modal'), isEmpty);
-    });
+        // 2. Type into description via TargetSpec.fromJson({into: ...})
+        final r2 = typeIntoTarget(
+          widgetRoot: form,
+          spec: TargetSpec.fromJson({'into': 'description'}),
+          text: 'Milk, eggs, and bread',
+        );
+        expect(r2.ok, isTrue);
+        try {
+          expect(descController.text, equals('Milk, eggs, and bread'));
+        } catch (_) {}
 
-    test('typeIntoTarget types text, notifies controller listeners, and fires onChanged', () {
-      final titleController = TextEditingController();
-      final descController = TextEditingController();
-      String? changed;
-      int listenerCallCount = 0;
-      bool hasListenerSupport = false;
-      try {
-        titleController.addListener(() => listenerCallCount++);
-        hasListenerSupport = true;
-      } catch (_) {}
+        // 3. Type into field with onChanged only (no controller)
+        final r3 = typeIntoTarget(
+          widgetRoot: form,
+          spec: const TargetSpec(placeholder: 'No controller note'),
+          text: 'pure onChanged text',
+        );
+        expect(r3.ok, isTrue);
+        expect(changed, equals('onChangedOnly:pure onChanged text'));
 
-      final form = Column(
-        children: [
-          TextField(
-            controller: titleController,
-            decoration: const InputDecoration(hintText: 'Note title'),
-            onChanged: (val) => changed = val,
-          ),
-          TextField(
-            controller: descController,
-            decoration: const InputDecoration(hintText: 'Add a description...'),
-          ),
-          TextField(
-            decoration: const InputDecoration(hintText: 'No controller note'),
-            onChanged: (val) => changed = 'onChangedOnly:$val',
-          ),
-        ],
-      );
-
-      // 1. Type into title via placeholder
-      final r1 = typeIntoTarget(
-        widgetRoot: form,
-        spec: const TargetSpec(placeholder: 'Note title'),
-        text: 'Buy groceries',
-      );
-      expect(r1.ok, isTrue);
-      try {
-        expect(titleController.text, equals('Buy groceries'));
-      } catch (_) {}
-      expect(changed, equals('Buy groceries'));
-      if (hasListenerSupport) {
-        expect(listenerCallCount, greaterThan(0));
-      }
-
-      // 2. Type into description via TargetSpec.fromJson({into: ...})
-      final r2 = typeIntoTarget(
-        widgetRoot: form,
-        spec: TargetSpec.fromJson({'into': 'description'}),
-        text: 'Milk, eggs, and bread',
-      );
-      expect(r2.ok, isTrue);
-      try {
-        expect(descController.text, equals('Milk, eggs, and bread'));
-      } catch (_) {}
-
-      // 3. Type into field with onChanged only (no controller)
-      final r3 = typeIntoTarget(
-        widgetRoot: form,
-        spec: const TargetSpec(placeholder: 'No controller note'),
-        text: 'pure onChanged text',
-      );
-      expect(r3.ok, isTrue);
-      expect(changed, equals('onChangedOnly:pure onChanged text'));
-
-      // 4. Type with empty spec targets first TextField
-      final r4 = typeIntoTarget(
-        widgetRoot: form,
-        spec: const TargetSpec(),
-        text: 'Updated Title',
-      );
-      expect(r4.ok, isTrue);
-      try {
-        expect(titleController.text, equals('Updated Title'));
-      } catch (_) {}
-    });
+        // 4. Type with empty spec targets first TextField
+        final r4 = typeIntoTarget(
+          widgetRoot: form,
+          spec: const TargetSpec(),
+          text: 'Updated Title',
+        );
+        expect(r4.ok, isTrue);
+        try {
+          expect(titleController.text, equals('Updated Title'));
+        } catch (_) {}
+      },
+    );
   });
 }

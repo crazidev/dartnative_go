@@ -311,7 +311,6 @@ class _GalleryDemoState extends State<GalleryDemo> {
   }
 
   Widget _albumBar() {
-    
     return Container(
       // The row reads as part of the bar above it, not as content.
       color: const Color(0xFF1C1C1E),

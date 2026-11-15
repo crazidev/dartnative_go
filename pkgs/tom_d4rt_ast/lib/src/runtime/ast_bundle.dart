@@ -157,8 +157,7 @@ class AstBundleManifest {
     AstBundleFormat.keyEntryPoint: entryPoint,
     AstBundleFormat.keyFiles: files,
     if (sourceFiles != null) AstBundleFormat.keySources: sourceFiles,
-    if (moduleSizes != null)
-      AstBundleFormat.keyModuleSizes: moduleSizes,
+    if (moduleSizes != null) AstBundleFormat.keyModuleSizes: moduleSizes,
     if (classSizes != null) AstBundleFormat.keyClassSizes: classSizes,
     if (sourceSizes != null) AstBundleFormat.keySourceSizes: sourceSizes,
   };
@@ -406,8 +405,7 @@ class AstBundle {
       (uri, cu) => MapEntry(uri, cu.toJson()),
     ),
     if (sources != null) AstBundleFormat.keySources: sources,
-    if (moduleAstBytes != null)
-      AstBundleFormat.keyModuleSizes: moduleAstBytes,
+    if (moduleAstBytes != null) AstBundleFormat.keyModuleSizes: moduleAstBytes,
     if (classAstBytes != null) AstBundleFormat.keyClassSizes: classAstBytes,
     if (sourceBytes != null) AstBundleFormat.keySourceSizes: sourceBytes,
   };

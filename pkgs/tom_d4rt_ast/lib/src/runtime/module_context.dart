@@ -119,7 +119,8 @@ class NoOpModuleContext implements ModuleContext {
   }
 
   @override
-  (int line, int column) getLineAndColumn(String moduleUri, int offset) => (0, 0);
+  (int line, int column) getLineAndColumn(String moduleUri, int offset) =>
+      (0, 0);
 
   @override
   LoadedModule loadModule(

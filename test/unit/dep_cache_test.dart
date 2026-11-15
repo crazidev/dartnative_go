@@ -36,7 +36,10 @@ void main() {
 
       final sources = cache.loadAllSources(deps);
       expect(sources.containsKey('package:riverpod/riverpod.dart'), isTrue);
-      expect(sources['package:riverpod/riverpod.dart'], contains('class Provider'));
+      expect(
+        sources['package:riverpod/riverpod.dart'],
+        contains('class Provider'),
+      );
       expect(sources.containsKey('package:riverpod/src/notifier.dart'), isTrue);
 
       // Prune

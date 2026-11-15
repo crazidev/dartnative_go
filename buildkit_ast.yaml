@@ -105,5 +105,10 @@ d4rtgen:
         - package:dartnative_background/dartnative_background.dart
       barrelImport: package:dartnative_background/dartnative_background.dart
       outputPath: lib/src/interpreter/ast/dartnative_background_bridges.b.dart
+    - name: dartnative_passkeys
+      barrelFiles:
+        - package:dartnative_passkeys/dartnative_passkeys.dart
+      barrelImport: package:dartnative_passkeys/dartnative_passkeys.dart
+      outputPath: lib/src/interpreter/ast/dartnative_passkeys_bridges.b.dart
 
 

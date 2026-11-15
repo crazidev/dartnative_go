@@ -64,21 +64,24 @@ Future<void> main() async {
 
 void main() {
   group('dartnative_system bridge surface', () {
-    test('source bridges register PackageInfo + AppBadgePlus + FFI bindings',
-        () {
-      final classes =
-          src_bridges.DartnativeSystemBridge.bridgeClasses();
-      final names = classes.map((c) => c.name).toSet();
-      expect(names, containsAll(<String>[
-        'PackageInfo',
-        'AppBadgePlus',
-        'SystemFFIBindings',
-      ]));
-    });
+    test(
+      'source bridges register PackageInfo + AppBadgePlus + FFI bindings',
+      () {
+        final classes = src_bridges.DartnativeSystemBridge.bridgeClasses();
+        final names = classes.map((c) => c.name).toSet();
+        expect(
+          names,
+          containsAll(<String>[
+            'PackageInfo',
+            'AppBadgePlus',
+            'SystemFFIBindings',
+          ]),
+        );
+      },
+    );
 
     test('source bridge exposes the full dartnative_system API', () {
-      final classes =
-          src_bridges.DartnativeSystemBridge.bridgeClasses();
+      final classes = src_bridges.DartnativeSystemBridge.bridgeClasses();
       final byName = {for (final c in classes) c.name: c};
 
       final info = byName['PackageInfo']!;
@@ -114,8 +117,7 @@ void main() {
       final astByName = {for (final c in ast) c.name: c};
       for (final entry in srcByName.entries) {
         final astClass = astByName[entry.key];
-        expect(astClass, isNotNull,
-            reason: 'AST bridge missing ${entry.key}');
+        expect(astClass, isNotNull, reason: 'AST bridge missing ${entry.key}');
         expect(
           astClass!.methodSignatures.keys.toSet(),
           equals(entry.value.methodSignatures.keys.toSet()),
@@ -161,8 +163,11 @@ void main() {
       expect(findText(root, 'supported:true'), isNotNull);
       expect(findText(root, 'afterSet:true'), isNotNull);
 
-      expect(fakeHost.badgeCalls, equals(<int>[3, 0, 7]),
-          reason: 'badge writes must be recorded in order');
+      expect(
+        fakeHost.badgeCalls,
+        equals(<int>[3, 0, 7]),
+        reason: 'badge writes must be recorded in order',
+      );
       expect(fakeHost.badge, equals(7));
     });
   });
@@ -191,6 +196,6 @@ void main() {
     skip: _isDeviceRun
         ? false
         : 'needs a device runtime: dn test -d <device-id> '
-            '--dart-define=DN_DEVICE_TEST=true test/plugins/system_bridge_test.dart',
+              '--dart-define=DN_DEVICE_TEST=true test/plugins/system_bridge_test.dart',
   );
 }

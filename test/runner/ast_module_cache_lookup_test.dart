@@ -26,8 +26,9 @@ void main() {
       final tmp = Directory.systemTemp.createTempSync('lookup_guest_');
       try {
         Directory('${tmp.path}/lib').createSync();
-        File('${tmp.path}/pubspec.yaml')
-            .writeAsStringSync('name: lookup_guest\n');
+        File(
+          '${tmp.path}/pubspec.yaml',
+        ).writeAsStringSync('name: lookup_guest\n');
         // helper2 is imported (not re-exported) by helper: its class never
         // merges into the entry environment — like a pushed-route screen.
         File('${tmp.path}/lib/helper2.dart').writeAsStringSync(
@@ -83,7 +84,8 @@ void main() {
         expect(
           findUserClassInVisitor(visitor, 'DeepWidget'),
           isNotNull,
-          reason: 'transitively imported class must resolve from the '
+          reason:
+              'transitively imported class must resolve from the '
               'loaded module cache (pushed-route rebind)',
         );
       } finally {

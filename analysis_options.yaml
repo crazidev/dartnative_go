@@ -19,6 +19,12 @@ analyzer:
     invalid_use_of_internal_member: ignore
 
 formatter:
+  # Canonical layout for the whole workspace; keep this pinned so a machine with
+  # different defaults cannot reformat the tree.
+  page_width: 80
+  # Respect the author's trailing-comma choice instead of the formatter's
+  # "add a comma to force a split" heuristic. Without this, an incidental
+  # comma turns into a whole-block reformat in the diff.
   trailing_commas: preserve
 
 linter:

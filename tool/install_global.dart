@@ -60,6 +60,8 @@ void main() async {
     print('  dart_go doctor');
     print('  dart_go version');
   } else {
-    print('Warning: No target directory in ~/.local/bin or ~/.pub-cache/bin was found.');
+    print(
+      'Warning: No target directory in ~/.local/bin or ~/.pub-cache/bin was found.',
+    );
   }
 }

@@ -136,7 +136,7 @@ class _WebViewDemoScreenState extends State<WebViewDemoScreen> {
         border: Border(top: BorderSide(color: Color(0x22000000), width: 0.5)),
       ),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(13, 4, 13,inset),
+        padding: EdgeInsets.fromLTRB(13, 4, 13, inset),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -187,7 +187,7 @@ class _WebViewDemoScreenState extends State<WebViewDemoScreen> {
       opacity: enabled ? 1.0 : 0.25,
       child: Padding(
         padding: const EdgeInsets.all(10),
-        child: Icon(icon, size: 24, color:  Colors.white),
+        child: Icon(icon, size: 24, color: Colors.white),
       ),
     ),
   );

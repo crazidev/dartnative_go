@@ -69,8 +69,12 @@ Future<void> main() async {
     }
 
     print('Applying post fixes to flutter_compat bridges...');
-    _applyPostFixes(File('lib/src/interpreter/dartnative_flutter_compat_bridges.b.dart'));
-    _applyPostFixes(File('lib/src/interpreter/ast/dartnative_flutter_compat_bridges.b.dart'));
+    _applyPostFixes(
+      File('lib/src/interpreter/dartnative_flutter_compat_bridges.b.dart'),
+    );
+    _applyPostFixes(
+      File('lib/src/interpreter/ast/dartnative_flutter_compat_bridges.b.dart'),
+    );
 
     print('Done generating flutter_compat bridges!');
   } finally {
@@ -86,7 +90,9 @@ void _applyPostFixes(File file) {
     (m) => ': const <int>[];\n        return ${m[1]}',
   );
   content = content.replaceAllMapped(
-    RegExp(r'required\s+(\$dartnative_\d+\.Curve)\s+curve,\s*int\s+durationMs\s*=\s*0'),
+    RegExp(
+      r'required\s+(\$dartnative_\d+\.Curve)\s+curve,\s*int\s+durationMs\s*=\s*0',
+    ),
     (m) {
       final prefix = m[1]!.split('.')[0];
       return '${m[1]} curve = $prefix.Curves.linear, int durationMs = 0';

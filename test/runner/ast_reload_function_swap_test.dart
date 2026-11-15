@@ -175,47 +175,53 @@ void main() {
       return out.readAsBytes();
     }
 
-    test('a live instance runs the reloaded method body with its own state',
-        () async {
-      final runner = AstInterpreterRunner(onLog: logs.add);
-      addTearDown(runner.dispose);
+    test(
+      'a live instance runs the reloaded method body with its own state',
+      () async {
+        final runner = AstInterpreterRunner(onLog: logs.add);
+        addTearDown(runner.dispose);
 
-      final v1Bytes = await build(_v1, 'v1');
-      final rootV1 = await runner.evaluateAstBundleAs<Widget>(v1Bytes);
-      expect((_columnOf(rootV1).children[0] as Text).data, 'Gen: v1');
+        final v1Bytes = await build(_v1, 'v1');
+        final rootV1 = await runner.evaluateAstBundleAs<Widget>(v1Bytes);
+        expect((_columnOf(rootV1).children[0] as Text).data, 'Gen: v1');
 
-      // Mutate the generation-1 instance: value 0 -> 5.
-      (_columnOf(rootV1).children[1] as Button).onPressed!();
-      expect(logs, contains('value=5'));
-      expect(runner.declarationRegistry.stats['swaps'], 0);
+        // Mutate the generation-1 instance: value 0 -> 5.
+        (_columnOf(rootV1).children[1] as Button).onPressed!();
+        expect(logs, contains('value=5'));
+        expect(runner.declarationRegistry.stats['swaps'], 0);
 
-      final v2Bytes = await build(_v2, 'v2');
-      final rootV2 = await runner.evaluateAstBundleAs<Widget>(
-        v2Bytes,
-        isHotReload: true,
-      );
+        final v2Bytes = await build(_v2, 'v2');
+        final rootV2 = await runner.evaluateAstBundleAs<Widget>(
+          v2Bytes,
+          isHotReload: true,
+        );
 
-      // Edited code is live for new callers.
-      expect((_columnOf(rootV2).children[0] as Text).data, 'Gen: v2');
-      final stats = runner.declarationRegistry.stats;
-      expect(stats['swaps'], greaterThan(0), reason: 'bodies must be swapped');
-      expect(stats['generation'], 2);
+        // Edited code is live for new callers.
+        expect((_columnOf(rootV2).children[0] as Text).data, 'Gen: v2');
+        final stats = runner.declarationRegistry.stats;
+        expect(
+          stats['swaps'],
+          greaterThan(0),
+          reason: 'bodies must be swapped',
+        );
+        expect(stats['generation'], 2);
 
-      // The button captured from generation 1 still owns the generation-1
-      // Counter (value == 5). Its closure body is generation-1 code (closures
-      // become stable in Phase 3), but the method it calls is a stable shell,
-      // so the reload's `bump` body runs against the OLD instance: 5 + 5 * 10.
-      (_columnOf(rootV1).children[1] as Button).onPressed!();
-      expect(
-        logs.last,
-        'value=55',
-        reason: 'live instance + reloaded method body (logs: $logs)',
-      );
+        // The button captured from generation 1 still owns the generation-1
+        // Counter (value == 5). Its closure body is generation-1 code (closures
+        // become stable in Phase 3), but the method it calls is a stable shell,
+        // so the reload's `bump` body runs against the OLD instance: 5 + 5 * 10.
+        (_columnOf(rootV1).children[1] as Button).onPressed!();
+        expect(
+          logs.last,
+          'value=55',
+          reason: 'live instance + reloaded method body (logs: $logs)',
+        );
 
-      // The generation-2 widget uses its own instance and the same new body.
-      (_columnOf(rootV2).children[1] as Button).onPressed!();
-      expect(logs.last, 'value=50');
-    });
+        // The generation-2 widget uses its own instance and the same new body.
+        (_columnOf(rootV2).children[1] as Button).onPressed!();
+        expect(logs.last, 'value=50');
+      },
+    );
 
     test('a signature change retires the cell instead of swapping', () async {
       final runner = AstInterpreterRunner(onLog: logs.add);
@@ -245,16 +251,21 @@ void main() {
       expect(logs.last, 'value=10');
     });
 
-    test('an added member is visible to instances from earlier generations',
-        () async {
-      final runner = AstInterpreterRunner(onLog: logs.add);
-      addTearDown(runner.dispose);
+    test(
+      'an added member is visible to instances from earlier generations',
+      () async {
+        final runner = AstInterpreterRunner(onLog: logs.add);
+        addTearDown(runner.dispose);
 
-      // The call site (the stale closure) stays identical across the reload;
-      // only `report` gains the call to the method that v1 did not have. The
-      // instance it receives was created by v1.
-      String guest(String tag, {required String reportBody, String extra = ''}) =>
-          '''
+        // The call site (the stale closure) stays identical across the reload;
+        // only `report` gains the call to the method that v1 did not have. The
+        // instance it receives was created by v1.
+        String guest(
+          String tag, {
+          required String reportBody,
+          String extra = '',
+        }) =>
+            '''
 import 'package:dartnative/dartnative.dart';
 
 class Counter {
@@ -294,67 +305,69 @@ void main() {
 }
 ''';
 
-      Future<List<int>> build(String source, String tag) async {
-        File('${projectDir.path}/lib/main.dart').writeAsStringSync(source);
-        final out = File('${projectDir.path}/$tag.ast');
-        final result = await buildGuestAstBundle(
-          projectDir,
-          outputArg: out.path,
-          force: true,
+        Future<List<int>> build(String source, String tag) async {
+          File('${projectDir.path}/lib/main.dart').writeAsStringSync(source);
+          final out = File('${projectDir.path}/$tag.ast');
+          final result = await buildGuestAstBundle(
+            projectDir,
+            outputArg: out.path,
+            force: true,
+          );
+          expect(result.success, isTrue, reason: result.error);
+          return out.readAsBytes();
+        }
+
+        final v1Bytes = await build(
+          guest('v1', reportBody: "print('value=\${counter.value}');"),
+          'add1',
         );
-        expect(result.success, isTrue, reason: result.error);
-        return out.readAsBytes();
-      }
+        final rootV1 = await runner.evaluateAstBundleAs<Widget>(v1Bytes);
+        (_columnOf(rootV1).children[1] as Button).onPressed!();
+        expect(logs.last, 'value=5');
 
-      final v1Bytes = await build(
-        guest('v1', reportBody: "print('value=\${counter.value}');"),
-        'add1',
-      );
-      final rootV1 = await runner.evaluateAstBundleAs<Widget>(v1Bytes);
-      (_columnOf(rootV1).children[1] as Button).onPressed!();
-      expect(logs.last, 'value=5');
+        // v2 adds `doubled()` and teaches the (stable) `report` shell to call it.
+        final v2Bytes = await build(
+          guest(
+            'v2',
+            reportBody:
+                "print('value=\${counter.value} doubled=\${counter.doubled()}');",
+            extra: '\n  int doubled() => value * 2;',
+          ),
+          'add2',
+        );
+        final rootV2 = await runner.evaluateAstBundleAs<Widget>(
+          v2Bytes,
+          isHotReload: true,
+        );
+        expect((_columnOf(rootV2).children[0] as Text).data, 'Gen: v2');
+        expect(
+          runner.declarationRegistry.stats['retirements'],
+          0,
+          reason: 'adding a member is additive: the class cell is kept',
+        );
 
-      // v2 adds `doubled()` and teaches the (stable) `report` shell to call it.
-      final v2Bytes = await build(
-        guest(
-          'v2',
-          reportBody:
-              "print('value=\${counter.value} doubled=\${counter.doubled()}');",
-          extra: '\n  int doubled() => value * 2;',
-        ),
-        'add2',
-      );
-      final rootV2 = await runner.evaluateAstBundleAs<Widget>(
-        v2Bytes,
-        isHotReload: true,
-      );
-      expect((_columnOf(rootV2).children[0] as Text).data, 'Gen: v2');
-      expect(
-        runner.declarationRegistry.stats['retirements'],
-        0,
-        reason: 'adding a member is additive: the class cell is kept',
-      );
+        // New instance: 0 -> 5.
+        (_columnOf(rootV2).children[1] as Button).onPressed!();
+        expect(logs.last, 'value=5 doubled=10');
 
-      // New instance: 0 -> 5.
-      (_columnOf(rootV2).children[1] as Button).onPressed!();
-      expect(logs.last, 'value=5 doubled=10');
-
-      // The generation-1 instance (value 5) resolves `doubled`, a method that
-      // did not exist when it was created, through the reloaded class version.
-      (_columnOf(rootV1).children[1] as Button).onPressed!();
-      expect(
-        logs.last,
-        'value=10 doubled=20',
-        reason: 'old instance must see members added by the reload',
-      );
-    });
+        // The generation-1 instance (value 5) resolves `doubled`, a method that
+        // did not exist when it was created, through the reloaded class version.
+        (_columnOf(rootV1).children[1] as Button).onPressed!();
+        expect(
+          logs.last,
+          'value=10 doubled=20',
+          reason: 'old instance must see members added by the reload',
+        );
+      },
+    );
 
     test('a swapped function accepts an old-generation instance at a '
         'user-typed parameter (Phase 4)', () async {
       final runner = AstInterpreterRunner(onLog: logs.add);
       addTearDown(runner.dispose);
 
-      String guest(String tag) => '''
+      String guest(String tag) =>
+          '''
 import 'package:dartnative/dartnative.dart';
 
 class Counter {
@@ -424,26 +437,28 @@ void main() {
       expect(runner.declarationRegistry.stats['class_cells'], 1);
     });
 
-    test('dispose clears the registry so a restart rebuilds every shell',
-        () async {
-      final runner = AstInterpreterRunner(onLog: logs.add);
-      addTearDown(runner.dispose);
+    test(
+      'dispose clears the registry so a restart rebuilds every shell',
+      () async {
+        final runner = AstInterpreterRunner(onLog: logs.add);
+        addTearDown(runner.dispose);
 
-      final v1Bytes = await build(_v1, 'restart1');
-      await runner.evaluateAstBundleAs<Widget>(v1Bytes);
-      expect(runner.declarationRegistry.cellCount, greaterThan(0));
+        final v1Bytes = await build(_v1, 'restart1');
+        await runner.evaluateAstBundleAs<Widget>(v1Bytes);
+        expect(runner.declarationRegistry.cellCount, greaterThan(0));
 
-      runner.dispose();
-      expect(runner.declarationRegistry.cellCount, 0);
-      expect(runner.declarationRegistry.stats['swaps'], 0);
+        runner.dispose();
+        expect(runner.declarationRegistry.cellCount, 0);
+        expect(runner.declarationRegistry.stats['swaps'], 0);
 
-      final root = await runner.evaluateAstBundleAs<Widget>(v1Bytes);
-      expect((_columnOf(root).children[0] as Text).data, 'Gen: v1');
-      expect(
-        runner.declarationRegistry.stats['misses'],
-        greaterThan(0),
-        reason: 'post-restart declarations are all first sightings again',
-      );
-    });
+        final root = await runner.evaluateAstBundleAs<Widget>(v1Bytes);
+        expect((_columnOf(root).children[0] as Text).data, 'Gen: v1');
+        expect(
+          runner.declarationRegistry.stats['misses'],
+          greaterThan(0),
+          reason: 'post-restart declarations are all first sightings again',
+        );
+      },
+    );
   });
 }

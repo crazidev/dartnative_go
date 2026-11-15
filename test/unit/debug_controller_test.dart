@@ -44,12 +44,14 @@ void main() {
 
     test('programmatic debugger() snapshots variables', () async {
       final interpreter = D4rt();
-      interpreter.execute(source: '''
+      interpreter.execute(
+        source: '''
 var testCounter = 99;
 void main() {
   testCounter = 100;
 }
-''');
+''',
+      );
       controller.activeInterpreter = interpreter;
 
       BreakpointHitEvent? capturedEvent;
@@ -82,9 +84,11 @@ void main() {
     test('pause blocks execution until resume', () async {
       controller.pauseOnHit = true;
       var resumed = false;
-      final future = controller.handleDebuggerCall('Pausing for test').then(
-        (_) => resumed = true,
-      );
+      final future = controller
+          .handleDebuggerCall('Pausing for test')
+          .then(
+            (_) => resumed = true,
+          );
 
       expect(controller.isPaused, isTrue);
       expect(resumed, isFalse);

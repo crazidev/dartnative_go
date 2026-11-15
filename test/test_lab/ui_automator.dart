@@ -76,7 +76,8 @@ class UiAutomator {
     );
   }
 
-  String _requestId() => 'ui_${DateTime.now().millisecondsSinceEpoch}_${_nextRequestId++}';
+  String _requestId() =>
+      'ui_${DateTime.now().millisecondsSinceEpoch}_${_nextRequestId++}';
 
   void _send(Map<String, dynamic> data) {
     final socket = _socket;
@@ -318,10 +319,13 @@ class UiAutomator {
       final okButton =
           button == null || findButtonNodes(last, button).isNotEmpty;
       final okKey = key == null || findKeyNodes(last, key).isNotEmpty;
-      final okIcon = iconCodePoint == null && iconFontFamily == null ||
-          findIconNodes(last,
-                  codePoint: iconCodePoint, fontFamily: iconFontFamily)
-              .isNotEmpty;
+      final okIcon =
+          iconCodePoint == null && iconFontFamily == null ||
+          findIconNodes(
+            last,
+            codePoint: iconCodePoint,
+            fontFamily: iconFontFamily,
+          ).isNotEmpty;
       if (okText && okAbsent && okButton && okKey && okIcon) return last;
       await Future<void>.delayed(interval);
     }
@@ -415,10 +419,14 @@ class UiAutomator {
     }
     if (codePoint == null && fontFamily == null) {
       throw UiAutomationFailure(
-          'expectIcon needs icon, code_point and/or font_family');
+        'expectIcon needs icon, code_point and/or font_family',
+      );
     }
-    if (findIconNodes(tree, codePoint: codePoint, fontFamily: fontFamily)
-        .isEmpty) {
+    if (findIconNodes(
+      tree,
+      codePoint: codePoint,
+      fontFamily: fontFamily,
+    ).isEmpty) {
       final desc = icon != null
           ? '$icon (codePoint: $codePoint, fontFamily: $fontFamily)'
           : 'Icon(codePoint: $codePoint, fontFamily: $fontFamily)';

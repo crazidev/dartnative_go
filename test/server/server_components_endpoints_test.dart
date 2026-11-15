@@ -23,8 +23,9 @@ void main() {
       proj = Directory('${tmp.path}/app')..createSync();
       final lib = Directory('${proj.path}/lib')..createSync(recursive: true);
       File('${proj.path}/pubspec.yaml').writeAsStringSync('name: demo_app\n');
-      File('${lib.path}/helper.dart')
-          .writeAsStringSync('int doubleIt(int x) => x * 2;\n');
+      File(
+        '${lib.path}/helper.dart',
+      ).writeAsStringSync('int doubleIt(int x) => x * 2;\n');
       File('${lib.path}/card.dart').writeAsStringSync(
         "import 'helper.dart';\n"
         'class ServerComponent {\n'
@@ -78,8 +79,7 @@ void main() {
     });
 
     Future<HttpClientResponse> get(String path) async {
-      final req =
-          await client.getUrl(Uri.parse('http://127.0.0.1:$port$path'));
+      final req = await client.getUrl(Uri.parse('http://127.0.0.1:$port$path'));
       return req.close();
     }
 
@@ -90,8 +90,7 @@ void main() {
     }
 
     test('/server-components/manifest.json lists the component', () async {
-      final manifest =
-          await getJson('/server-components/manifest.json') as Map;
+      final manifest = await getJson('/server-components/manifest.json') as Map;
       final components = manifest['components'] as Map;
       expect(components.keys, contains('profile_card'));
       final entry = components['profile_card'] as Map;
@@ -102,8 +101,7 @@ void main() {
     test('/server-components/<id>.ast serves the delta bundle', () async {
       final res = await get('/server-components/profile_card.ast');
       expect(res.statusCode, equals(HttpStatus.ok));
-      final bytes =
-          await res.fold<List<int>>([], (a, b) => a..addAll(b));
+      final bytes = await res.fold<List<int>>([], (a, b) => a..addAll(b));
       expect(bytes, isNotEmpty);
     });
 
@@ -133,36 +131,37 @@ void main() {
       expect((entry['url'] as String).startsWith('http'), isTrue);
     });
 
-    test('BundleLoader fetches manifest + component bytes (device path)',
-        () async {
-      // This is exactly what the host app runs on a live device.
-      final loader = BundleLoader();
-      try {
-        final baseUrl = 'http://127.0.0.1:$port';
-        final manifest =
-            await loader.fetchServerComponentsManifest(baseUrl);
-        expect(manifest.keys, contains('profile_card'));
-        expect(manifest['profile_card']!['fingerprint'], isNotEmpty);
+    test(
+      'BundleLoader fetches manifest + component bytes (device path)',
+      () async {
+        // This is exactly what the host app runs on a live device.
+        final loader = BundleLoader();
+        try {
+          final baseUrl = 'http://127.0.0.1:$port';
+          final manifest = await loader.fetchServerComponentsManifest(baseUrl);
+          expect(manifest.keys, contains('profile_card'));
+          expect(manifest['profile_card']!['fingerprint'], isNotEmpty);
 
-        final bytes = await loader.fetchServerComponentBytes(
-          baseUrl,
-          'profile_card',
-        );
-        expect(bytes, isNotNull);
-        expect(bytes, isNotEmpty);
+          final bytes = await loader.fetchServerComponentBytes(
+            baseUrl,
+            'profile_card',
+          );
+          expect(bytes, isNotNull);
+          expect(bytes, isNotEmpty);
 
-        expect(
-          await loader.fetchServerComponentBytes(baseUrl, 'nope'),
-          isNull,
-        );
-        expect(
-          await loader.fetchServerComponentBytes(baseUrl, '../guest'),
-          isNull,
-          reason: 'bad ids never reach the network',
-        );
-      } finally {
-        loader.close();
-      }
-    });
+          expect(
+            await loader.fetchServerComponentBytes(baseUrl, 'nope'),
+            isNull,
+          );
+          expect(
+            await loader.fetchServerComponentBytes(baseUrl, '../guest'),
+            isNull,
+            reason: 'bad ids never reach the network',
+          );
+        } finally {
+          loader.close();
+        }
+      },
+    );
   });
 }

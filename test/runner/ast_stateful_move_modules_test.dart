@@ -21,7 +21,8 @@ void main() {
 }
 ''';
 
-String _todo({required bool localNote}) => '''
+String _todo({required bool localNote}) =>
+    '''
 import 'package:dartnative/dartnative.dart';
 import 'sticky.dart';
 
@@ -53,7 +54,8 @@ class _NoteState extends State<Note> {
 Widget buildGrid() => const Note(label: 'n');
 ''';
 
-String _sticky({required bool defineNote}) => '''
+String _sticky({required bool defineNote}) =>
+    '''
 import 'package:dartnative/dartnative.dart';
 import 'todo.dart';
 
@@ -103,8 +105,9 @@ void main() {
       tmp = Directory.systemTemp.createTempSync('dn_move_stateful_');
       projectDir = Directory('${tmp.path}/move_stateful_guest')
         ..createSync(recursive: true);
-      File('${projectDir.path}/pubspec.yaml')
-          .writeAsStringSync('name: move_stateful_guest\n');
+      File(
+        '${projectDir.path}/pubspec.yaml',
+      ).writeAsStringSync('name: move_stateful_guest\n');
       Directory('${projectDir.path}/lib').createSync();
       File('${projectDir.path}/lib/main.dart').writeAsStringSync(_main);
       runner = AstInterpreterRunner(onLog: logs.add);
@@ -122,10 +125,12 @@ void main() {
       required bool defineNote,
       required String name,
     }) async {
-      File('${projectDir.path}/lib/todo.dart')
-          .writeAsStringSync(_todo(localNote: localNote));
-      File('${projectDir.path}/lib/sticky.dart')
-          .writeAsStringSync(_sticky(defineNote: defineNote));
+      File(
+        '${projectDir.path}/lib/todo.dart',
+      ).writeAsStringSync(_todo(localNote: localNote));
+      File(
+        '${projectDir.path}/lib/sticky.dart',
+      ).writeAsStringSync(_sticky(defineNote: defineNote));
       final out = File('${projectDir.path}/$name.ast');
       final result = await buildGuestAstBundle(
         projectDir,

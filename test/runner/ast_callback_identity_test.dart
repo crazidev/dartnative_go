@@ -69,8 +69,9 @@ void main() {
       final tmp = Directory.systemTemp.createTempSync('cbid_guest_');
       try {
         Directory('${tmp.path}/lib').createSync();
-        File('${tmp.path}/pubspec.yaml')
-            .writeAsStringSync('name: cbid_guest\n');
+        File(
+          '${tmp.path}/pubspec.yaml',
+        ).writeAsStringSync('name: cbid_guest\n');
         File('${tmp.path}/lib/main.dart').writeAsStringSync(_guestMain);
         final out = File('${tmp.path}/cbid.ast');
         final result = await buildGuestAstBundle(
@@ -90,16 +91,33 @@ void main() {
         expect(texts, hasLength(1));
         final report = texts.single;
         expect(report, contains('eq=0'), reason: '== must not invoke: $report');
-        expect(report, contains('neq=0'), reason: '!= must not invoke: $report');
-        expect(report, contains('async=0'),
-            reason: 'async tear-off must not run: $report');
-        expect(report, contains('arg=0'),
-            reason: 'arg passing must not invoke: $report');
+        expect(
+          report,
+          contains('neq=0'),
+          reason: '!= must not invoke: $report',
+        );
+        expect(
+          report,
+          contains('async=0'),
+          reason: 'async tear-off must not run: $report',
+        );
+        expect(
+          report,
+          contains('arg=0'),
+          reason: 'arg passing must not invoke: $report',
+        );
         expect(report, contains('n1=false'), reason: 'fn != null: $report');
         expect(report, contains('nn=true'), reason: 'fn != null: $report');
-        expect(report, contains('same=true'),
-            reason: 'same closure is identical: $report');
-        expect(report, contains('an=false'), reason: 'async fn != null: $report');
+        expect(
+          report,
+          contains('same=true'),
+          reason: 'same closure is identical: $report',
+        );
+        expect(
+          report,
+          contains('an=false'),
+          reason: 'async fn != null: $report',
+        );
       } finally {
         try {
           tmp.deleteSync(recursive: true);

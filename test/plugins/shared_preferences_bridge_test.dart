@@ -121,16 +121,16 @@ void main() {
 void main() {
   group('SharedPreferences bridge surface', () {
     test('source bridges register SharedPreferences + PrefsBindings', () {
-      final classes = src_bridges.DartnativeSharedPreferencesBridge
-          .bridgeClasses();
+      final classes =
+          src_bridges.DartnativeSharedPreferencesBridge.bridgeClasses();
       final names = classes.map((c) => c.name).toSet();
       expect(names, contains('SharedPreferences'));
       expect(names, contains('PrefsBindings'));
     });
 
     test('source SharedPreferences exposes the full prefs API', () {
-      final classes = src_bridges.DartnativeSharedPreferencesBridge
-          .bridgeClasses();
+      final classes =
+          src_bridges.DartnativeSharedPreferencesBridge.bridgeClasses();
       final prefs = classes.firstWhere((c) => c.name == 'SharedPreferences');
       expect(
         prefs.methodSignatures.keys,
@@ -155,10 +155,8 @@ void main() {
     });
 
     test('AST bridges mirror the source bridge surface (parity)', () {
-      final src = src_bridges.DartnativeSharedPreferencesBridge
-          .bridgeClasses();
-      final ast = ast_bridges.DartnativeSharedPreferencesBridge
-          .bridgeClasses();
+      final src = src_bridges.DartnativeSharedPreferencesBridge.bridgeClasses();
+      final ast = ast_bridges.DartnativeSharedPreferencesBridge.bridgeClasses();
       final srcPrefs = src.firstWhere((c) => c.name == 'SharedPreferences');
       final astPrefs = ast.firstWhere((c) => c.name == 'SharedPreferences');
       expect(
@@ -184,8 +182,7 @@ void main() {
       harness = DnHarness(
         onLog: (_) {},
         bridgeOverrides: [
-          (interpreter) =>
-              installFakeSharedPreferences(interpreter, fakeHost),
+          (interpreter) => installFakeSharedPreferences(interpreter, fakeHost),
         ],
       );
     });
@@ -238,8 +235,9 @@ void main() {
       // Skipped on device runs, where the real store exists.
       if (_isDeviceRun) return;
       try {
-        await SharedPreferences.getInstance()
-            .timeout(const Duration(seconds: 5));
+        await SharedPreferences.getInstance().timeout(
+          const Duration(seconds: 5),
+        );
       } catch (e) {
         expect(e, isNotNull);
         return;
@@ -288,6 +286,6 @@ void main() {
     skip: _isDeviceRun
         ? false
         : 'needs a device runtime: dn test -d <device-id> '
-            '--dart-define=DN_DEVICE_TEST=true test/plugins/shared_preferences_bridge_test.dart',
+              '--dart-define=DN_DEVICE_TEST=true test/plugins/shared_preferences_bridge_test.dart',
   );
 }

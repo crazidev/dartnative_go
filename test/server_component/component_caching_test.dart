@@ -26,8 +26,7 @@ void main() {
         componentBundle: bundle,
       );
       expect(first, isNotNull);
-      final cellsBefore =
-          harness.runner.declarationRegistry.classCellCount;
+      final cellsBefore = harness.runner.declarationRegistry.classCellCount;
 
       final second = await harness.loadComponent(
         componentId: 'profile_card',

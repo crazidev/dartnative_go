@@ -60,12 +60,15 @@ class IsolateIsolate {
             'Isolate.run requires a Function for computation.',
           );
         }
-        final fnName = computation.codeCell?.key.qualifiedName ??
+        final fnName =
+            computation.codeCell?.key.qualifiedName ??
             computation.currentCode.name;
         final moduleUri = computation.codeCell?.key.moduleUri;
-        final bytes = D4rtIsolateWorker.activeBundleBytes ??
+        final bytes =
+            D4rtIsolateWorker.activeBundleBytes ??
             D4rtIsolateWorker.bundleBytesProvider?.call();
-        final isTopLevel = computation.codeCell != null &&
+        final isTopLevel =
+            computation.codeCell != null &&
             !computation.codeCell!.key.qualifiedName.contains('#');
 
         if (fnName != null && isTopLevel && bytes != null && bytes.isNotEmpty) {

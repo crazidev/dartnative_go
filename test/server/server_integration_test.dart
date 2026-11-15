@@ -91,13 +91,15 @@ void main() {
       expect(
         manifest['astPending'],
         isA<bool>(),
-        reason: 'AST-mode clients wait for an in-flight build instead of '
+        reason:
+            'AST-mode clients wait for an in-flight build instead of '
             'falling back to source mode',
       );
       expect(
         manifest['profile'],
         isFalse,
-        reason: 'the AST BUNDLE explorer stays hidden unless the server '
+        reason:
+            'the AST BUNDLE explorer stays hidden unless the server '
             'starts with --profile',
       );
       for (final key in [
@@ -113,7 +115,9 @@ void main() {
     });
 
     test('/guest.bc is gone', () async {
-      final req = await client.getUrl(Uri.parse('http://127.0.0.1:9120/guest.bc'));
+      final req = await client.getUrl(
+        Uri.parse('http://127.0.0.1:9120/guest.bc'),
+      );
       final res = await req.close();
       await res.drain();
       expect(
@@ -141,8 +145,7 @@ void main() {
 
     test('/asset?path= serves by query parameter', () async {
       expect(
-        await getBytes('/asset?path=assets/dn-logo.png',
-            mimeType: 'image/png'),
+        await getBytes('/asset?path=assets/dn-logo.png', mimeType: 'image/png'),
         isNotEmpty,
       );
     });

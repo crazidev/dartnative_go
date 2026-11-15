@@ -27,8 +27,7 @@ BridgedEnum _flavorEnum([List<_Flavor>? values]) {
 // re-exporting `dart:collection`) must not throw a spurious conflict for
 // two distinct-but-equivalent bridge instances of one declaration.
 void main() {
-  test('export merge accepts the same class rebuilt in another generation',
-      () {
+  test('export merge accepts the same class rebuilt in another generation', () {
     final target = Environment();
     target.defineBridge(
       BridgedClass(nativeType: _WidgetA, name: 'Widget'),
@@ -47,8 +46,7 @@ void main() {
     expect(target.findBridgedClassByName('Widget')?.nativeType, _WidgetA);
   });
 
-  test('export merge still rejects genuinely different same-named classes',
-      () {
+  test('export merge still rejects genuinely different same-named classes', () {
     final target = Environment();
     target.defineBridge(
       BridgedClass(nativeType: _WidgetA, name: 'Widget'),
@@ -66,8 +64,7 @@ void main() {
     );
   });
 
-  test('Function-typed typedef placeholders keep the legacy identity rule',
-      () {
+  test('Function-typed typedef placeholders keep the legacy identity rule', () {
     final target = Environment();
     target.defineBridge(BridgedClass(nativeType: Function, name: 'Callback'));
     final source = Environment();
@@ -81,8 +78,7 @@ void main() {
     );
   });
 
-  test('import merge of the same class keeps the first binding, no shadow',
-      () {
+  test('import merge of the same class keeps the first binding, no shadow', () {
     final first = BridgedClass(nativeType: _WidgetA, name: 'Widget');
     final target = Environment();
     target.defineBridge(first, sourceUri: 'dart:collection');
@@ -103,8 +99,7 @@ void main() {
     expect(identical(target.findBridgedClassByName('Widget'), first), isTrue);
   });
 
-  test('export merge accepts the same enum rebuilt in another generation',
-      () {
+  test('export merge accepts the same enum rebuilt in another generation', () {
     final target = Environment();
     target.defineBridgedEnum(_flavorEnum());
     final source = Environment();
@@ -116,8 +111,7 @@ void main() {
     );
   });
 
-  test('export merge still rejects same-named enums with different values',
-      () {
+  test('export merge still rejects same-named enums with different values', () {
     final target = Environment();
     target.defineBridgedEnum(_flavorEnum());
     final source = Environment();

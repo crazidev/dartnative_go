@@ -78,10 +78,12 @@ class FakeDevServer {
       }
       final socket = await WebSocketTransformer.upgrade(request);
       _sockets.add(socket);
-      socket.add(jsonEncode({
-        'type': 'set_verbose',
-        'enabled': initialVerbose,
-      }));
+      socket.add(
+        jsonEncode({
+          'type': 'set_verbose',
+          'enabled': initialVerbose,
+        }),
+      );
       socket.listen(
         (message) {
           try {
@@ -131,21 +133,25 @@ class FakeDevServer {
     switch (path) {
       case '/manifest.json':
         request.response.headers.contentType = ContentType.json;
-        request.response.write(jsonEncode({
-          'protocol': 'dart_go',
-          'appName': appName,
-          'appVersion': '1.0.0',
-          'serverUrl': baseUrl,
-          'hasAstBundle': astBytes != null,
-          'astPending': astPending,
-        }));
+        request.response.write(
+          jsonEncode({
+            'protocol': 'dart_go',
+            'appName': appName,
+            'appVersion': '1.0.0',
+            'serverUrl': baseUrl,
+            'hasAstBundle': astBytes != null,
+            'astPending': astPending,
+          }),
+        );
         await request.response.close();
       case '/bundle.json':
         request.response.headers.contentType = ContentType.json;
-        request.response.write(jsonEncode({
-          'manifest': {'appName': appName, 'appVersion': '1.0.0'},
-          'files': files,
-        }));
+        request.response.write(
+          jsonEncode({
+            'manifest': {'appName': appName, 'appVersion': '1.0.0'},
+            'files': files,
+          }),
+        );
         await request.response.close();
       case '/guest.ast':
         if (astBytes != null) {
@@ -156,16 +162,23 @@ class FakeDevServer {
           if (bundleFp != null && bundleFp!.isNotEmpty) {
             request.response.headers.set('X-Ast-Bundle', bundleFp!);
             request.response.headers.set(
-                'Access-Control-Expose-Headers', 'ETag, X-Ast-Bundle');
+              'Access-Control-Expose-Headers',
+              'ETag, X-Ast-Bundle',
+            );
           }
-          final ifNoneMatch = request.headers.value(HttpHeaders.ifNoneMatchHeader)?.trim();
-          if (ifNoneMatch != null && (ifNoneMatch == etag || ifNoneMatch == '${astBytes.hashCode}')) {
+          final ifNoneMatch = request.headers
+              .value(HttpHeaders.ifNoneMatchHeader)
+              ?.trim();
+          if (ifNoneMatch != null &&
+              (ifNoneMatch == etag || ifNoneMatch == '${astBytes.hashCode}')) {
             request.response.statusCode = HttpStatus.notModified;
             await request.response.close();
             return;
           }
-          request.response.headers.contentType =
-              ContentType('application', 'octet-stream');
+          request.response.headers.contentType = ContentType(
+            'application',
+            'octet-stream',
+          );
           request.response.add(astBytes!);
           await request.response.close();
         } else {
@@ -182,17 +195,23 @@ class FakeDevServer {
               patchBaseFp!.isNotEmpty &&
               base != patchBaseFp) {
             request.response.statusCode = HttpStatus.notFound;
-            request.response.write('Patch base mismatch; fetch full /guest.ast.');
+            request.response.write(
+              'Patch base mismatch; fetch full /guest.ast.',
+            );
             await request.response.close();
             return;
           }
           if (patchBundleFp != null && patchBundleFp!.isNotEmpty) {
             request.response.headers.set('X-Ast-Bundle', patchBundleFp!);
             request.response.headers.set(
-                'Access-Control-Expose-Headers', 'X-Ast-Bundle');
+              'Access-Control-Expose-Headers',
+              'X-Ast-Bundle',
+            );
           }
-          request.response.headers.contentType =
-              ContentType('application', 'octet-stream');
+          request.response.headers.contentType = ContentType(
+            'application',
+            'octet-stream',
+          );
           request.response.add(patch);
           await request.response.close();
         } else {
@@ -202,12 +221,14 @@ class FakeDevServer {
         }
       case '/health':
         request.response.headers.contentType = ContentType.json;
-        request.response.write(jsonEncode({
-          'status': 'ok',
-          'protocol': 'dart_go',
-          'appName': appName,
-          'clients': _sockets.length,
-        }));
+        request.response.write(
+          jsonEncode({
+            'status': 'ok',
+            'protocol': 'dart_go',
+            'appName': appName,
+            'clients': _sockets.length,
+          }),
+        );
         await request.response.close();
       default:
         request.response.statusCode = HttpStatus.notFound;
@@ -227,32 +248,32 @@ class FakeDevServer {
 
   /// Emits a `reload` event like the real server's file-watcher broadcast.
   void emitReload([String? changedFile]) => _broadcast({
-        'type': 'reload',
-        'changedFile': changedFile,
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-      });
+    'type': 'reload',
+    'changedFile': changedFile,
+    'timestamp': DateTime.now().millisecondsSinceEpoch,
+  });
 
   /// Emits a `set_verbose` event like the server's `v` stdin command.
   void emitVerbose(bool enabled) => _broadcast({
-        'type': 'set_verbose',
-        'enabled': enabled,
-      });
+    'type': 'set_verbose',
+    'enabled': enabled,
+  });
 
   /// Emits a `breakpoints` event.
   void emitBreakpoints(List<Map<String, dynamic>> breakpoints) => _broadcast({
-        'type': 'breakpoints',
-        'breakpoints': breakpoints,
-      });
+    'type': 'breakpoints',
+    'breakpoints': breakpoints,
+  });
 
   /// Emits a `resume` event.
   void emitResume() => _broadcast({'type': 'resume'});
 
   /// Emits a `restart` event like a test-originated restart relay.
   void emitRestart() => _broadcast({
-        'type': 'restart',
-        'origin': 'test',
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-      });
+    'type': 'restart',
+    'origin': 'test',
+    'timestamp': DateTime.now().millisecondsSinceEpoch,
+  });
 
   Future<void> stop() async {
     for (final ws in List.of(_sockets)) {

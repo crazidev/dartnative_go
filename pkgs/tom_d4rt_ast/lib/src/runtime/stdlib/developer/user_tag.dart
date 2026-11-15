@@ -40,7 +40,9 @@ class UserTagDeveloper {
         if (target is UserTag) {
           return target.label;
         }
-        throw RuntimeD4rtException("Target is not a UserTag for getter 'label'.");
+        throw RuntimeD4rtException(
+          "Target is not a UserTag for getter 'label'.",
+        );
       },
       'hashCode': (visitor, target) => (target as UserTag).hashCode,
       'runtimeType': (visitor, target) => (target as UserTag).runtimeType,

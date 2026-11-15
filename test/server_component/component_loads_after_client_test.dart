@@ -20,10 +20,14 @@ void main() {
     });
 
     test('component bundle exists for the annotated class', () {
-      expect(project.annotated.map((c) => c.componentId),
-          containsAll(['profile_card', 'badge']));
-      expect(project.componentBundles.keys,
-          containsAll(['profile_card', 'badge']));
+      expect(
+        project.annotated.map((c) => c.componentId),
+        containsAll(['profile_card', 'badge']),
+      );
+      expect(
+        project.componentBundles.keys,
+        containsAll(['profile_card', 'badge']),
+      );
     });
 
     test('client-only resolve misses before component load', () {

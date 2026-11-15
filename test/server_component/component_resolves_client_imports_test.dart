@@ -46,8 +46,11 @@ void main() {
 
     test('interpreted method reaches the delta-local module', () async {
       final cls = harness.runner.resolveTopLevel('Badge');
-      expect(cls, isNull,
-          reason: 'badge must not resolve before its bundle loads');
+      expect(
+        cls,
+        isNull,
+        reason: 'badge must not resolve before its bundle loads',
+      );
       await harness.loadComponent(
         componentId: 'badge',
         componentBundle: project.componentBundles['badge']!,
@@ -60,8 +63,7 @@ void main() {
         const <Object?>[],
         const <String, Object?>{},
       );
-      final describe =
-          (instance as dynamic).get('describe', visitor: visitor);
+      final describe = (instance as dynamic).get('describe', visitor: visitor);
       final result = (describe as dynamic).call(
         visitor,
         const <Object?>[],

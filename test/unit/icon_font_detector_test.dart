@@ -49,7 +49,8 @@ Icon(FontAwesomeIcons.gear);
         report.glyphsByFamily['Material Symbols Outlined'],
         contains('home'),
       );
-      final fa = report.glyphsByFamily['FontAwesome5'] ??
+      final fa =
+          report.glyphsByFamily['FontAwesome5'] ??
           report.glyphsByFamily['FontAwesome6'];
       expect(fa, contains('gear'));
     });

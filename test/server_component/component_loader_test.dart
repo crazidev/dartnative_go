@@ -32,16 +32,18 @@ void main() {
         if (path == '/server-components/manifest.json') {
           req.response
             ..headers.contentType = ContentType.json
-            ..write(jsonEncode({
-              'version': 1,
-              'components': {
-                for (final id in bytesById.keys)
-                  id: {
-                    'url': 'server_components/$id.ast',
-                    'fingerprint': 'fp-$id',
-                  },
-              },
-            }));
+            ..write(
+              jsonEncode({
+                'version': 1,
+                'components': {
+                  for (final id in bytesById.keys)
+                    id: {
+                      'url': 'server_components/$id.ast',
+                      'fingerprint': 'fp-$id',
+                    },
+                },
+              }),
+            );
           await req.response.close();
         } else if (path.startsWith('/server-components/') &&
             path.endsWith('.ast')) {
@@ -53,8 +55,7 @@ void main() {
           } else {
             astRequests++;
             req.response
-              ..headers.contentType =
-                  ContentType('application', 'octet-stream')
+              ..headers.contentType = ContentType('application', 'octet-stream')
               ..add(bytes);
             await req.response.close();
           }
@@ -72,9 +73,9 @@ void main() {
     });
 
     ServerComponentLoader newLoader() => ServerComponentLoader(
-          serverUrl: 'http://127.0.0.1:${http.port}',
-          runner: harness.runner,
-        );
+      serverUrl: 'http://127.0.0.1:${http.port}',
+      runner: harness.runner,
+    );
 
     test('loads a component over HTTP', () async {
       final loader = newLoader();

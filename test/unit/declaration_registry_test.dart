@@ -161,9 +161,17 @@ void main() {
       final freshSecond = _function(envB, _method('bump'));
       final second = registry.stabilizeFunction(key, freshSecond, home: envB);
 
-      expect(second, same(first), reason: 'body-only edit keeps shell identity');
+      expect(
+        second,
+        same(first),
+        reason: 'body-only edit keeps shell identity',
+      );
       expect(second.currentCode, same(freshSecond.currentCode));
-      expect(second.closure, same(envB), reason: 'new code resolves in the new env');
+      expect(
+        second.closure,
+        same(envB),
+        reason: 'new code resolves in the new env',
+      );
       expect(second.codeCell!.version, 1);
       expect(registry.stats['hits'], 1);
       expect(registry.stats['swaps'], 1);
@@ -177,7 +185,10 @@ void main() {
 
       final first = registry.stabilizeFunction(
         key,
-        _function(envA, _method('bump', parameters: [_requiredPositional('a')])),
+        _function(
+          envA,
+          _method('bump', parameters: [_requiredPositional('a')]),
+        ),
         home: envA,
       );
       final second = registry.stabilizeFunction(
@@ -208,10 +219,16 @@ void main() {
       );
       final env = Environment();
 
-      registry.stabilizeFunction(counter, _function(env, _method('bump')),
-          home: env);
-      registry.stabilizeFunction(other, _function(env, _method('bump')),
-          home: env);
+      registry.stabilizeFunction(
+        counter,
+        _function(env, _method('bump')),
+        home: env,
+      );
+      registry.stabilizeFunction(
+        other,
+        _function(env, _method('bump')),
+        home: env,
+      );
       registry.stabilizeFunction(
         sameNameOtherModule,
         _function(env, _method('bump')),
@@ -238,8 +255,11 @@ void main() {
       ]);
 
       registry.reconcileClassShape('pkg:a.dart', 'Counter', shape);
-      registry.stabilizeFunction(bump, _function(env, _method('bump')),
-          home: env);
+      registry.stabilizeFunction(
+        bump,
+        _function(env, _method('bump')),
+        home: env,
+      );
       expect(registry.cellCount, 1);
 
       // Same declared shape → cells survive (pure body edit).
@@ -271,7 +291,10 @@ void main() {
         _method('bump', parameters: [_requiredPositional('a')]),
       ]);
       final v2Retyped = classMemberShapeKeys([
-        _method('bump', parameters: [_requiredPositional('a'), _requiredPositional('b')]),
+        _method(
+          'bump',
+          parameters: [_requiredPositional('a'), _requiredPositional('b')],
+        ),
       ]);
       final v2Renamed = classMemberShapeKeys([_method('nope')]);
       expect(v1, v1Again);
@@ -286,8 +309,11 @@ void main() {
       final env = Environment();
       final shape = classMemberShapeKeys([_method('bump')]);
       registry.reconcileClassShape('pkg:a.dart', 'Counter', shape);
-      registry.stabilizeFunction(key, _function(env, _method('bump')),
-          home: env);
+      registry.stabilizeFunction(
+        key,
+        _function(env, _method('bump')),
+        home: env,
+      );
       registry.beginGeneration();
       registry.beginGeneration();
 

@@ -12,7 +12,8 @@ import 'package:dartnative_go/src/cli/packaging/ast_builder.dart';
 import 'package:dartnative_go/src/runner/ast_interpreter_runner.dart';
 import 'package:test/test.dart';
 
-String _guest(String tag, {required String baseInit, String constants = ''}) => '''
+String _guest(String tag, {required String baseInit, String constants = ''}) =>
+    '''
 import 'package:dartnative/dartnative.dart';
 
 enum Status {
@@ -82,8 +83,9 @@ void main() {
       logs = <String>[];
       projectDir = Directory('${tmp.path}/enum_guest')
         ..createSync(recursive: true);
-      File('${projectDir.path}/pubspec.yaml')
-          .writeAsStringSync('name: enum_guest\n');
+      File(
+        '${projectDir.path}/pubspec.yaml',
+      ).writeAsStringSync('name: enum_guest\n');
       Directory('${projectDir.path}/lib').createSync();
     });
 
@@ -140,41 +142,43 @@ void main() {
       );
     });
 
-    test('adding an enum constant keeps the preserved values (additive)',
-        () async {
-      final runner = AstInterpreterRunner(onLog: logs.add);
-      addTearDown(runner.dispose);
+    test(
+      'adding an enum constant keeps the preserved values (additive)',
+      () async {
+        final runner = AstInterpreterRunner(onLog: logs.add);
+        addTearDown(runner.dispose);
 
-      final v1Source = _guest('v1', baseInit: '5').replaceAll(
-        '  runApp(',
-        '  captured = Status.active;\n  runApp(',
-      );
-      final v1Bytes = await build(v1Source, 'x1');
-      final rootV1 = await runner.evaluateAstBundleAs<Widget>(v1Bytes);
-      tap(rootV1, 2);
-      expect(logs.last, 'v1 same=true seen=0 base=5');
+        final v1Source = _guest('v1', baseInit: '5').replaceAll(
+          '  runApp(',
+          '  captured = Status.active;\n  runApp(',
+        );
+        final v1Bytes = await build(v1Source, 'x1');
+        final rootV1 = await runner.evaluateAstBundleAs<Widget>(v1Bytes);
+        tap(rootV1, 2);
+        expect(logs.last, 'v1 same=true seen=0 base=5');
 
-      final v2Bytes = await build(
-        _guest('v2', baseInit: '5', constants: ',\n  pending'),
-        'x2',
-      );
-      final rootV2 = await runner.evaluateAstBundleAs<Widget>(
-        v2Bytes,
-        isHotReload: true,
-      );
-      // New generation works with the new constant list...
-      tap(rootV2, 2);
-      expect(logs.last, 'v2 same=true seen=0 base=5');
-      // ...and the generation-1 value is still the same object, so the enum
-      // statics were not rebuilt and nothing was retired.
-      tap(rootV1, 2);
-      expect(logs.last, 'v1 same=true seen=0 base=5');
-      expect(
-        runner.declarationRegistry.stats['retirements'],
-        0,
-        reason: 'appending a constant must not retire the enum value cells',
-      );
-    });
+        final v2Bytes = await build(
+          _guest('v2', baseInit: '5', constants: ',\n  pending'),
+          'x2',
+        );
+        final rootV2 = await runner.evaluateAstBundleAs<Widget>(
+          v2Bytes,
+          isHotReload: true,
+        );
+        // New generation works with the new constant list...
+        tap(rootV2, 2);
+        expect(logs.last, 'v2 same=true seen=0 base=5');
+        // ...and the generation-1 value is still the same object, so the enum
+        // statics were not rebuilt and nothing was retired.
+        tap(rootV1, 2);
+        expect(logs.last, 'v1 same=true seen=0 base=5');
+        expect(
+          runner.declarationRegistry.stats['retirements'],
+          0,
+          reason: 'appending a constant must not retire the enum value cells',
+        );
+      },
+    );
 
     test('removing an enum constant retires the preserved values', () async {
       final runner = AstInterpreterRunner(onLog: logs.add);

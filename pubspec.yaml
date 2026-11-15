@@ -29,6 +29,9 @@ dependencies:
   dartnative_connectivity: ^1.0.0
   dartnative_media_picker: ^1.1.0
   dartnative_background: ^1.0.0
+  dartnative_passkeys:
+    hosted: https://dartpub.dev
+    version: ^0.1.0
   app_links_kit:
     hosted: https://dartpub.dev
     version: ^0.1.0
@@ -48,6 +51,7 @@ dependencies:
     path: pkgs/dartnative_go_api
   dartnative_go_ui:
     path: pkgs/dartnative_go_ui
+  # dartnative_firebase: ^1.0.1
 
 dev_dependencies:
   lints: ^6.0.0

@@ -125,8 +125,7 @@ class ServiceProtocolInfoDeveloper {
           (target as ServiceProtocolInfo).serverUri,
       'serverWebSocketUri': (visitor, target) =>
           (target as ServiceProtocolInfo).serverWebSocketUri,
-      'hashCode': (visitor, target) =>
-          (target as ServiceProtocolInfo).hashCode,
+      'hashCode': (visitor, target) => (target as ServiceProtocolInfo).hashCode,
       'runtimeType': (visitor, target) =>
           (target as ServiceProtocolInfo).runtimeType,
     },

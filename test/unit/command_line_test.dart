@@ -52,20 +52,26 @@ void main() {
       expect(parsed.profile, isTrue);
     });
 
-    test('recognizes aliases without treating their arguments as start options', () {
-      expect(
-        DartGoCommandLine.parse(['debug_adapter', '--verbose'], currentDir: cwd).command,
-        DartGoCommand.dap,
-      );
-      expect(
-        DartGoCommandLine.parse(['--version'], currentDir: cwd).command,
-        DartGoCommand.version,
-      );
-      expect(
-        DartGoCommandLine.parse(['help'], currentDir: cwd).command,
-        DartGoCommand.help,
-      );
-    });
+    test(
+      'recognizes aliases without treating their arguments as start options',
+      () {
+        expect(
+          DartGoCommandLine.parse([
+            'debug_adapter',
+            '--verbose',
+          ], currentDir: cwd).command,
+          DartGoCommand.dap,
+        );
+        expect(
+          DartGoCommandLine.parse(['--version'], currentDir: cwd).command,
+          DartGoCommand.version,
+        );
+        expect(
+          DartGoCommandLine.parse(['help'], currentDir: cwd).command,
+          DartGoCommand.help,
+        );
+      },
+    );
 
     test('parses doctor project option', () {
       final parsed = DartGoCommandLine.parse(

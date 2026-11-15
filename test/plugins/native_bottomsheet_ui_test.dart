@@ -76,9 +76,8 @@ const _patchedBuilderExpr =
 /// Normalizes generated source for these assertions: the formatter re-wraps
 /// the emitted call across several lines and appends trailing commas before
 /// closing brackets, neither of which changes behavior.
-String _flat(String source) => source
-    .replaceAll(RegExp(r'\s+'), '')
-    .replaceAll(RegExp(r',(?=[)\]])'), '');
+String _flat(String source) =>
+    source.replaceAll(RegExp(r'\s+'), '').replaceAll(RegExp(r',(?=[)\]])'), '');
 
 void main() {
   group('native_bottomsheet bridge surface', () {

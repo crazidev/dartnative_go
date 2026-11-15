@@ -112,8 +112,7 @@ class MyCustomWidget extends StatelessWidget {
   Widget build(BuildContext context) => Container();
 }
 ''';
-      final processed =
-          AutoImportParser.processAndAutoImport(codeWithLibrary);
+      final processed = AutoImportParser.processAndAutoImport(codeWithLibrary);
       expect(
         processed.indexOf('library my_custom_lib;'),
         lessThan(

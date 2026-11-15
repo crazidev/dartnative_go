@@ -29,7 +29,8 @@ import '../test/test_lab/ui_automator.dart';
 
 void _usage([String? error]) {
   if (error != null) stderr.writeln('Error: $error\n');
-  stderr.writeln('''Usage: dart run tool/ui_test_run.dart --scenario <path> [options]
+  stderr.writeln(
+    '''Usage: dart run tool/ui_test_run.dart --scenario <path> [options]
 
 Options:
   --scenario <path>     YAML scenario file (required).
@@ -39,7 +40,8 @@ Options:
   --project-dir <dir>   Overrides the scenario's project_dir (reload edits).
   --step-timeout <s>    Default per-step timeout in seconds (default 10).
   --list-trees          Dump every probed tree as JSON.
-  -h, --help            Show this help.''');
+  -h, --help            Show this help.''',
+  );
 }
 
 Future<void> main(List<String> args) async {
@@ -248,8 +250,10 @@ class _ScenarioRunner {
         final sw = Stopwatch()..start();
         await _runStep(kind, arg);
         sw.stop();
-        print('  ✓ [$index] ${_describe(kind, arg)} '
-            '(${(sw.elapsedMilliseconds / 1000).toStringAsFixed(1)}s)');
+        print(
+          '  ✓ [$index] ${_describe(kind, arg)} '
+          '(${(sw.elapsedMilliseconds / 1000).toStringAsFixed(1)}s)',
+        );
       }
       print('✅ Scenario passed (${scenario.steps.length} steps)');
       return true;
@@ -302,8 +306,7 @@ class _ScenarioRunner {
       await _auto!.connect();
       final files = fake['files'];
       if (files is Map && files.isNotEmpty) {
-        _fakeSandbox =
-            Directory.systemTemp.createTempSync('ui_cli_sandbox_');
+        _fakeSandbox = Directory.systemTemp.createTempSync('ui_cli_sandbox_');
         for (final e in files.entries) {
           final f = File('${_fakeSandbox!.path}/${e.key}');
           f.parent.createSync(recursive: true);
@@ -324,7 +327,8 @@ class _ScenarioRunner {
       if (arg.isEmpty) return kind;
       if (kind == 'type') {
         final text = arg['text'];
-        final target = arg['into'] ??
+        final target =
+            arg['into'] ??
             arg['placeholder'] ??
             arg['hint'] ??
             arg['key'] ??
@@ -470,7 +474,8 @@ class _ScenarioRunner {
         _lastTree = null;
         if (arg != null) {
           final cond = _mapArg(arg);
-          final hasCond = cond['text'] != null ||
+          final hasCond =
+              cond['text'] != null ||
               cond['absent_text'] != null ||
               cond['button'] != null;
           if (hasCond) {
@@ -618,7 +623,8 @@ class _ScenarioRunner {
     if (spec['title'] != null) target['title'] = '${spec['title']}';
     if (spec['key'] != null) target['key'] = '${spec['key']}';
 
-    final placeholder = spec['placeholder'] ??
+    final placeholder =
+        spec['placeholder'] ??
         spec['hint'] ??
         (spec['into'] is String ? spec['into'] : null) ??
         (spec['target'] is String ? spec['target'] : null);
@@ -645,7 +651,8 @@ class _ScenarioRunner {
       target['icon_font_family'] = '${spec['icon_font_family']}';
     }
 
-    if (target.isEmpty && (kind == 'type' || kind == 'focus' || kind == 'submit')) {
+    if (target.isEmpty &&
+        (kind == 'type' || kind == 'focus' || kind == 'submit')) {
       target['any_text_field'] = true;
     }
 
@@ -697,7 +704,7 @@ class _ScenarioRunner {
     }
     final base = fakeMode
         ? (_fakeSandbox?.path ??
-            _configErrorExit('reload edit in fake mode needs fake: files:'))
+              _configErrorExit('reload edit in fake mode needs fake: files:'))
         : _projectDir;
     final file = File('$base/$relPath');
     if (!file.existsSync()) {
@@ -721,14 +728,21 @@ class _ScenarioRunner {
       if (file.existsSync() && file.readAsStringSync() != original) {
         throw UiAutomationFailure('reload edit: revert failed: $relPath');
       }
-      await _awaitSettle(spec['revert_settle'], 'revert_settle',
-          optional: true);
+      await _awaitSettle(
+        spec['revert_settle'],
+        'revert_settle',
+        optional: true,
+      );
     } else {
       print('  … edit kept (revert not requested): $relPath');
     }
   }
 
-  String _applyEdit(String original, String relPath, Map<String, dynamic> edit) {
+  String _applyEdit(
+    String original,
+    String relPath,
+    Map<String, dynamic> edit,
+  ) {
     if (edit.containsKey('append')) {
       return '$original\n${edit['append']}\n';
     }
@@ -744,8 +758,8 @@ class _ScenarioRunner {
       throw UiAutomationFailure(
         alreadyApplied
             ? 'reload edit: "$search" not found but "$replace" already present '
-                'in $relPath — leftover from an aborted run? Restore the file '
-                '(git checkout -- $relPath) and rerun.'
+                  'in $relPath — leftover from an aborted run? Restore the file '
+                  '(git checkout -- $relPath) and rerun.'
             : 'reload edit: search occurs $count× in $relPath (need exactly 1)',
       );
     }
@@ -828,8 +842,10 @@ class _ScenarioRunner {
             'require_clean: git restore failed: ${restored.stderr}'.trim(),
           );
         }
-        print('  … restored leftover edits: '
-            '${rawFiles.map((f) => '$f').join(', ')}');
+        print(
+          '  … restored leftover edits: '
+          '${rawFiles.map((f) => '$f').join(', ')}',
+        );
         return;
       }
       final names = await Process.run('git', [
@@ -840,7 +856,9 @@ class _ScenarioRunner {
         '--',
         ...rawFiles.map((f) => '$f'),
       ]);
-      final dirty = '${names.stdout}'.trim().split('\n')
+      final dirty = '${names.stdout}'
+          .trim()
+          .split('\n')
           .where((l) => l.trim().isNotEmpty)
           .join(', ');
       throw UiAutomationFailure(
@@ -850,8 +868,11 @@ class _ScenarioRunner {
     }
   }
 
-  Future<void> _awaitSettle(dynamic settle, String label,
-      {bool optional = false}) async {
+  Future<void> _awaitSettle(
+    dynamic settle,
+    String label, {
+    bool optional = false,
+  }) async {
     if (settle == null) {
       if (optional) return;
       throw UiAutomationFailure('reload: missing $label: condition');
@@ -920,7 +941,8 @@ class _CannedDevice {
           } else {
             tapKey = target?.toString() ?? '';
           }
-          final verdict = taps[tapKey] ??
+          final verdict =
+              taps[tapKey] ??
               (title != null ? taps[title] : null) ??
               (target is Map && target['icon_name'] != null
                   ? taps[target['icon_name']]

@@ -20,7 +20,8 @@ void main() {
 }
 ''';
 
-String _a(String tag) => '''
+String _a(String tag) =>
+    '''
 import 'package:dartnative/dartnative.dart';
 import 'b.dart';
 
@@ -31,7 +32,8 @@ class Shared {
 Widget buildGrid() => Note(label: Shared.tag);
 ''';
 
-String _b(String suffix) => '''
+String _b(String suffix) =>
+    '''
 import 'package:dartnative/dartnative.dart';
 import 'a.dart';
 
@@ -64,8 +66,9 @@ void main() {
       tmp = Directory.systemTemp.createTempSync('dn_cycle_');
       projectDir = Directory('${tmp.path}/cycle_guest')
         ..createSync(recursive: true);
-      File('${projectDir.path}/pubspec.yaml')
-          .writeAsStringSync('name: cycle_guest\n');
+      File(
+        '${projectDir.path}/pubspec.yaml',
+      ).writeAsStringSync('name: cycle_guest\n');
       Directory('${projectDir.path}/lib').createSync();
       File('${projectDir.path}/lib/main.dart').writeAsStringSync(_main);
       runner = AstInterpreterRunner(onLog: logs.add);
@@ -122,7 +125,11 @@ void main() {
       final visitorV2 = runner.visitor!;
       final gridFn = visitorV2.globalEnvironment.get('buildGrid');
       expect(gridFn, isNotNull);
-      final rebuilt = (gridFn as dynamic).call(visitorV2, [], <String, Object?>{});
+      final rebuilt = (gridFn as dynamic).call(
+        visitorV2,
+        [],
+        <String, Object?>{},
+      );
       final loaderV2 = (visitorV2 as dynamic).moduleContext;
       final cacheV2 = (loaderV2 as dynamic).moduleCache as Map;
       expect(
@@ -147,7 +154,11 @@ void main() {
       final visitorV3 = runner.visitor!;
       final gridFnV3 = visitorV3.globalEnvironment.get('buildGrid');
       expect(gridFnV3, isNotNull);
-      final rebuiltV3 = (gridFnV3 as dynamic).call(visitorV3, [], <String, Object?>{});
+      final rebuiltV3 = (gridFnV3 as dynamic).call(
+        visitorV3,
+        [],
+        <String, Object?>{},
+      );
       expect(
         _labels(
           buildRoot(

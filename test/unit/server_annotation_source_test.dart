@@ -53,50 +53,54 @@ void main() {
       } catch (_) {}
     });
 
-    test('annotated guest component is discovered with zero guest config',
-        () async {
-      final proj = Directory('${tmp.path}/annot_app')..createSync();
-      final lib = Directory('${proj.path}/lib')..createSync();
-      File('${proj.path}/pubspec.yaml')
-          .writeAsStringSync('name: annot_app\n');
-      File('${lib.path}/helper.dart')
-          .writeAsStringSync('int doubleIt(int x) => x * 2;\n');
-      File('${lib.path}/card.dart').writeAsStringSync(
-        "import 'package:dartnative_go/server.dart';\n"
-        "import 'helper.dart';\n"
-        "@ServerComponent(id: 'profile_card')\n"
-        'class ProfileCard {\n'
-        '  const ProfileCard();\n'
-        '  int answer() => doubleIt(21);\n'
-        '}\n',
-      );
-      File('${lib.path}/main.dart').writeAsStringSync(
-        "import 'card.dart';\n"
-        'void main() {\n'
-        '  ProfileCard();\n'
-        '}\n',
-      );
+    test(
+      'annotated guest component is discovered with zero guest config',
+      () async {
+        final proj = Directory('${tmp.path}/annot_app')..createSync();
+        final lib = Directory('${proj.path}/lib')..createSync();
+        File(
+          '${proj.path}/pubspec.yaml',
+        ).writeAsStringSync('name: annot_app\n');
+        File(
+          '${lib.path}/helper.dart',
+        ).writeAsStringSync('int doubleIt(int x) => x * 2;\n');
+        File('${lib.path}/card.dart').writeAsStringSync(
+          "import 'package:dartnative_go/server.dart';\n"
+          "import 'helper.dart';\n"
+          "@ServerComponent(id: 'profile_card')\n"
+          'class ProfileCard {\n'
+          '  const ProfileCard();\n'
+          '  int answer() => doubleIt(21);\n'
+          '}\n',
+        );
+        File('${lib.path}/main.dart').writeAsStringSync(
+          "import 'card.dart';\n"
+          'void main() {\n'
+          '  ProfileCard();\n'
+          '}\n',
+        );
 
-      final result = await buildGuestAstBundle(
-        proj,
-        outputArg: '${tmp.path}/annot_guest.ast',
-        force: true,
-      );
-      expect(result.success, isTrue, reason: result.error);
-      // The host annotation flowed through the client bundle…
-      expect(
-        result.clientModuleIndex!.modules,
-        contains('package:dartnative_go/server.dart'),
-      );
-      // …and the annotated class was discovered and split out.
-      expect(result.serverComponents, isNotNull);
-      expect(
-        result.serverComponents!.components.keys,
-        contains('profile_card'),
-      );
-      // Shared annotation modules stay out of the delta.
-      final delta = result.serverComponents!.components['profile_card']!;
-      expect(delta.moduleCount, greaterThanOrEqualTo(1));
-    });
+        final result = await buildGuestAstBundle(
+          proj,
+          outputArg: '${tmp.path}/annot_guest.ast',
+          force: true,
+        );
+        expect(result.success, isTrue, reason: result.error);
+        // The host annotation flowed through the client bundle…
+        expect(
+          result.clientModuleIndex!.modules,
+          contains('package:dartnative_go/server.dart'),
+        );
+        // …and the annotated class was discovered and split out.
+        expect(result.serverComponents, isNotNull);
+        expect(
+          result.serverComponents!.components.keys,
+          contains('profile_card'),
+        );
+        // Shared annotation modules stay out of the delta.
+        final delta = result.serverComponents!.components['profile_card']!;
+        expect(delta.moduleCount, greaterThanOrEqualTo(1));
+      },
+    );
   });
 }

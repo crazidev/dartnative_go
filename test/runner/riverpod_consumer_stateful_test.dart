@@ -251,18 +251,21 @@ void _expectStatefulScreenRoot(Widget root, String engine) {
 
 void main() {
   group('ConsumerStatefulWidget bridge surface', () {
-    test('source bridges expose ConsumerStatefulWidget + ConsumerState.ref', () {
-      final classes = src_bridges.RiverpodKitBridge.bridgeClasses();
-      final names = classes.map((c) => c.name).toSet();
-      expect(names, contains('ConsumerStatefulWidget'));
-      expect(names, contains('ConsumerState'));
-      final state = classes.firstWhere((c) => c.name == 'ConsumerState');
-      expect(
-        state.getterSignatures.keys,
-        contains('ref'),
-        reason: 'ConsumerState bridge must expose the ref getter',
-      );
-    });
+    test(
+      'source bridges expose ConsumerStatefulWidget + ConsumerState.ref',
+      () {
+        final classes = src_bridges.RiverpodKitBridge.bridgeClasses();
+        final names = classes.map((c) => c.name).toSet();
+        expect(names, contains('ConsumerStatefulWidget'));
+        expect(names, contains('ConsumerState'));
+        final state = classes.firstWhere((c) => c.name == 'ConsumerState');
+        expect(
+          state.getterSignatures.keys,
+          contains('ref'),
+          reason: 'ConsumerState bridge must expose the ref getter',
+        );
+      },
+    );
 
     test('AST bridges mirror the source consumer-stateful surface', () {
       final src = src_bridges.RiverpodKitBridge.bridgeClasses();
@@ -335,8 +338,9 @@ void main() {
     setUpAll(() async {
       tempDir = Directory.systemTemp.createTempSync('dn_csw_ast_');
       final projectDir = createRiverpodProjectShell(tempDir, 'csw_test_app');
-      File('${projectDir.path}/lib/main.dart')
-          .writeAsStringSync(_statefulGuest);
+      File(
+        '${projectDir.path}/lib/main.dart',
+      ).writeAsStringSync(_statefulGuest);
       final out = File('${projectDir.path}/test_app.ast');
       final build = await buildGuestAstBundle(
         projectDir,
@@ -420,13 +424,13 @@ void main() {
       final newRoot = await newHarness.evaluate({'main.dart': _reloadGuestV2});
 
       final oldScreen =
-          (oldRoot as ProviderScope).child as src_proxies
-              .InterpretedConsumerStatefulWidget;
+          (oldRoot as ProviderScope).child
+              as src_proxies.InterpretedConsumerStatefulWidget;
       final newScreen =
-          (newRoot as ProviderScope).child as src_proxies
-              .InterpretedConsumerStatefulWidget;
-      final proxy = oldScreen.createState()
-          as src_proxies.InterpretedConsumerStateProxy;
+          (newRoot as ProviderScope).child
+              as src_proxies.InterpretedConsumerStatefulWidget;
+      final proxy =
+          oldScreen.createState() as src_proxies.InterpretedConsumerStateProxy;
       final oldState = proxy.stateInstance;
 
       // Simulate user edits via setState before the reload.
@@ -466,8 +470,10 @@ void main() {
 
       // New details are reachable: v2-only method resolves on the rebound
       // instance through the new visitor.
-      final versionFn =
-          (rebound as dynamic).get('version', visitor: proxy.visitor);
+      final versionFn = (rebound as dynamic).get(
+        'version',
+        visitor: proxy.visitor,
+      );
       expect(
         (versionFn as dynamic).call(proxy.visitor, [], <String, Object?>{}),
         equals('v2'),
@@ -493,13 +499,13 @@ void main() {
       });
 
       final oldScreen =
-          (oldRoot as ProviderScope).child as src_proxies
-              .InterpretedConsumerStatefulWidget;
+          (oldRoot as ProviderScope).child
+              as src_proxies.InterpretedConsumerStatefulWidget;
       final brokenScreen =
-          (brokenRoot as ProviderScope).child as src_proxies
-              .InterpretedConsumerStatefulWidget;
-      final proxy = oldScreen.createState()
-          as src_proxies.InterpretedConsumerStateProxy;
+          (brokenRoot as ProviderScope).child
+              as src_proxies.InterpretedConsumerStatefulWidget;
+      final proxy =
+          oldScreen.createState() as src_proxies.InterpretedConsumerStateProxy;
 
       expect(
         () => src_proxies.rebindConsumerStateForReload(proxy, brokenScreen),
@@ -564,13 +570,13 @@ void main() {
 
     test('rebind carries setState fields to the new interpreter', () {
       final oldScreen =
-          (oldHarness.lastRoot! as ProviderScope).child as ast_proxies
-              .InterpretedConsumerStatefulWidget;
+          (oldHarness.lastRoot! as ProviderScope).child
+              as ast_proxies.InterpretedConsumerStatefulWidget;
       final newScreen =
-          (newHarness.lastRoot! as ProviderScope).child as ast_proxies
-              .InterpretedConsumerStatefulWidget;
-      final proxy = oldScreen.createState()
-          as ast_proxies.InterpretedConsumerStateProxy;
+          (newHarness.lastRoot! as ProviderScope).child
+              as ast_proxies.InterpretedConsumerStatefulWidget;
+      final proxy =
+          oldScreen.createState() as ast_proxies.InterpretedConsumerStateProxy;
       final oldState = proxy.stateInstance;
 
       (oldState as dynamic).set('mode', 'dark');
@@ -585,8 +591,10 @@ void main() {
         equals('dark'),
         reason: 'setState fields must survive the reload',
       );
-      final versionFn =
-          (rebound as dynamic).get('version', visitor: proxy.visitor);
+      final versionFn = (rebound as dynamic).get(
+        'version',
+        visitor: proxy.visitor,
+      );
       expect(
         (versionFn as dynamic).call(proxy.visitor, [], <String, Object?>{}),
         equals('v2'),
@@ -605,76 +613,81 @@ void main() {
   // element (host `State` members are stubs), so headless coverage stops
   // at resolution; the device group below owns invocation.
   group('ConsumerState inherited State members resolve', () {
-    test('setState/initState/didChangeDependencies/didUpdateWidget (source)',
-        () async {
-      final harness = DnHarness(onLog: (_) {});
-      try {
-        final root = await harness.evaluate({'main.dart': _reloadGuestV1});
-        final screen =
-            (root as ProviderScope).child as src_proxies
-                .InterpretedConsumerStatefulWidget;
-        final proxy = screen.createState()
-            as src_proxies.InterpretedConsumerStateProxy;
-        final state = proxy.stateInstance;
-        for (final member in [
-          'setState',
-          'initState',
-          'didChangeDependencies',
-          'didUpdateWidget',
-        ]) {
-          expect(
-            (state as dynamic).get(member, visitor: proxy.visitor),
-            isNotNull,
-            reason: 'source: ConsumerState member $member must resolve',
-          );
+    test(
+      'setState/initState/didChangeDependencies/didUpdateWidget (source)',
+      () async {
+        final harness = DnHarness(onLog: (_) {});
+        try {
+          final root = await harness.evaluate({'main.dart': _reloadGuestV1});
+          final screen =
+              (root as ProviderScope).child
+                  as src_proxies.InterpretedConsumerStatefulWidget;
+          final proxy =
+              screen.createState() as src_proxies.InterpretedConsumerStateProxy;
+          final state = proxy.stateInstance;
+          for (final member in [
+            'setState',
+            'initState',
+            'didChangeDependencies',
+            'didUpdateWidget',
+          ]) {
+            expect(
+              (state as dynamic).get(member, visitor: proxy.visitor),
+              isNotNull,
+              reason: 'source: ConsumerState member $member must resolve',
+            );
+          }
+        } finally {
+          harness.dispose();
         }
-      } finally {
-        harness.dispose();
-      }
-    });
+      },
+    );
 
-    test('setState/initState/didChangeDependencies/didUpdateWidget (AST)',
-        () async {
-      final tempDir = Directory.systemTemp.createTempSync('dn_csw_mem_');
-      final harness = DnHarness(onLog: (_) {});
-      try {
-        final projectDir = createRiverpodProjectShell(tempDir, 'csw_mem_app');
-        File('${projectDir.path}/lib/main.dart')
-            .writeAsStringSync(_reloadGuestV1);
-        final out = File('${projectDir.path}/test_app.ast');
-        final build = await buildGuestAstBundle(
-          projectDir,
-          outputArg: out.path,
-          force: true,
-        );
-        expect(build.success, isTrue);
-        await harness.evaluateAstBytes(
-          await out.readAsBytes(),
-          entryPoint: 'main',
-        );
-        final screen =
-            (harness.lastRoot! as ProviderScope).child as ast_proxies
-                .InterpretedConsumerStatefulWidget;
-        final proxy = screen.createState()
-            as ast_proxies.InterpretedConsumerStateProxy;
-        final state = proxy.stateInstance;
-        for (final member in [
-          'setState',
-          'initState',
-          'didChangeDependencies',
-          'didUpdateWidget',
-        ]) {
-          expect(
-            (state as dynamic).get(member, visitor: proxy.visitor),
-            isNotNull,
-            reason: 'ast: ConsumerState member $member must resolve',
+    test(
+      'setState/initState/didChangeDependencies/didUpdateWidget (AST)',
+      () async {
+        final tempDir = Directory.systemTemp.createTempSync('dn_csw_mem_');
+        final harness = DnHarness(onLog: (_) {});
+        try {
+          final projectDir = createRiverpodProjectShell(tempDir, 'csw_mem_app');
+          File(
+            '${projectDir.path}/lib/main.dart',
+          ).writeAsStringSync(_reloadGuestV1);
+          final out = File('${projectDir.path}/test_app.ast');
+          final build = await buildGuestAstBundle(
+            projectDir,
+            outputArg: out.path,
+            force: true,
           );
+          expect(build.success, isTrue);
+          await harness.evaluateAstBytes(
+            await out.readAsBytes(),
+            entryPoint: 'main',
+          );
+          final screen =
+              (harness.lastRoot! as ProviderScope).child
+                  as ast_proxies.InterpretedConsumerStatefulWidget;
+          final proxy =
+              screen.createState() as ast_proxies.InterpretedConsumerStateProxy;
+          final state = proxy.stateInstance;
+          for (final member in [
+            'setState',
+            'initState',
+            'didChangeDependencies',
+            'didUpdateWidget',
+          ]) {
+            expect(
+              (state as dynamic).get(member, visitor: proxy.visitor),
+              isNotNull,
+              reason: 'ast: ConsumerState member $member must resolve',
+            );
+          }
+        } finally {
+          harness.dispose();
+          deleteTempDir(tempDir);
         }
-      } finally {
-        harness.dispose();
-        deleteTempDir(tempDir);
-      }
-    });
+      },
+    );
   });
 
   group(
@@ -690,8 +703,7 @@ void main() {
         harness.dispose();
       });
 
-      test('ref.watch renders, Increment mutates, rebuild shows it',
-          () async {
+      test('ref.watch renders, Increment mutates, rebuild shows it', () async {
         final root = await harness.evaluate({'main.dart': _statefulGuest});
         _expectStatefulScreenRoot(root, 'device');
 
@@ -707,6 +719,6 @@ void main() {
     skip: _isDeviceRun
         ? false
         : 'needs a device runtime: dn test -d <device-id> '
-            '--dart-define=DN_DEVICE_TEST=true test/runner/riverpod_consumer_stateful_test.dart',
+              '--dart-define=DN_DEVICE_TEST=true test/runner/riverpod_consumer_stateful_test.dart',
   );
 }

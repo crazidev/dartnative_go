@@ -86,9 +86,7 @@ class RecentProjectsList extends StatelessWidget {
             project: projects[index],
             onTap: onSelectProject,
           ),
-          
         ),
-        
       ],
     );
   }

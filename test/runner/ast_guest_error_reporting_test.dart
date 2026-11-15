@@ -63,8 +63,9 @@ void main() {
       tmp = Directory.systemTemp.createTempSync('dn_guest_error_');
       projectDir = Directory('${tmp.path}/guest_error_guest')
         ..createSync(recursive: true);
-      File('${projectDir.path}/pubspec.yaml')
-          .writeAsStringSync('name: guest_error_guest\n');
+      File(
+        '${projectDir.path}/pubspec.yaml',
+      ).writeAsStringSync('name: guest_error_guest\n');
       Directory('${projectDir.path}/lib').createSync();
       runner = AstInterpreterRunner(
         onLog: logs.add,

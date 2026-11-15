@@ -43,6 +43,7 @@ Future<void> main(List<String> args) async {
       return;
     }
     _applyAstBridgePostFixes();
+    await _formatGeneratedBridges(isAst: true);
   } finally {
     primaryFile.writeAsStringSync(original);
     try {
@@ -51,20 +52,59 @@ Future<void> main(List<String> args) async {
   }
 }
 
+/// Formats the generated AST bridge set as the final generation step.
+///
+/// Mirrors `_formatGeneratedBridges` in `tool/d4rtgen.dart`: the generator's
+/// raw layout plus the `DN-PATCH` splices are not canonical, so formatting here
+/// keeps `dart run tool/d4rtgen_ast.dart` a no-op on unchanged sources instead
+/// of producing a whole-file whitespace diff.
+Future<void> _formatGeneratedBridges({required bool isAst}) async {
+  final dir = Directory(
+    isAst ? 'lib/src/interpreter/ast' : 'lib/src/interpreter',
+  );
+  if (!dir.existsSync()) return;
+
+  final paths = <String>[
+    for (final entity in dir.listSync())
+      if (entity is File && entity.path.endsWith('.b.dart')) entity.path,
+    // Source set only: the AST set has `generateBarrel: false`.
+    if (!isAst) 'lib/d4rt_bridges.b.dart',
+  ]..sort();
+
+  if (paths.isEmpty) return;
+
+  final result = await Process.run(
+    Platform.resolvedExecutable,
+    ['format', '--output=write', ...paths],
+  );
+  if (result.exitCode != 0) {
+    stderr.writeln('dart format failed on generated AST bridges:');
+    stderr.writeln(result.stdout);
+    stderr.writeln(result.stderr);
+    exitCode = 1;
+  }
+}
+
 /// Same generator-bug workarounds as `tool/d4rtgen.dart`, applied to the
 /// AST output dir. Kept in sync manually until the generator is fixed.
 void _applyAstBridgePostFixes() {
-  final dnBridgesFile = File('lib/src/interpreter/ast/dartnative_bridges.b.dart');
+  final dnBridgesFile = File(
+    'lib/src/interpreter/ast/dartnative_bridges.b.dart',
+  );
   if (dnBridgesFile.existsSync()) {
     var content = dnBridgesFile.readAsStringSync();
     // Alias-agnostic (regex): import alias numbers shift whenever the
     // framework gains files. DN-PATCH.
     content = content.replaceAllMapped(
-      RegExp(r':\s*const\s*\[\];\s*return\s+(\$dartnative_\d+\.showActionSheet)'),
+      RegExp(
+        r':\s*const\s*\[\];\s*return\s+(\$dartnative_\d+\.showActionSheet)',
+      ),
       (m) => ': const <int>[];\n        return ${m[1]}',
     );
     content = content.replaceAllMapped(
-      RegExp(r'required\s+(\$dartnative_\d+\.Curve)\s+curve,\s*int\s+durationMs\s*=\s*0'),
+      RegExp(
+        r'required\s+(\$dartnative_\d+\.Curve)\s+curve,\s*int\s+durationMs\s*=\s*0',
+      ),
       (m) {
         final prefix = m[1]!.split('.')[0];
         return '${m[1]} curve = $prefix.Curves.linear, int durationMs = 0';
@@ -73,9 +113,15 @@ void _applyAstBridgePostFixes() {
     dnBridgesFile.writeAsStringSync(content);
   }
 
-  _patchRiverpodBridges(File('lib/src/interpreter/ast/riverpod_kit_bridges.b.dart'));
-  _patchNativeBottomsheetBridges(File('lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart'));
-  _patchFlutterCompatBridges(File('lib/src/interpreter/ast/dartnative_flutter_compat_bridges.b.dart'));
+  _patchRiverpodBridges(
+    File('lib/src/interpreter/ast/riverpod_kit_bridges.b.dart'),
+  );
+  _patchNativeBottomsheetBridges(
+    File('lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart'),
+  );
+  _patchFlutterCompatBridges(
+    File('lib/src/interpreter/ast/dartnative_flutter_compat_bridges.b.dart'),
+  );
   _patchDioBridges(File('lib/src/interpreter/ast/dio_bridges.b.dart'));
 }
 
@@ -111,7 +157,9 @@ void _patchFlutterCompatBridges(File file) {
     (m) => ': const <int>[];\n        return ${m[1]}',
   );
   content = content.replaceAllMapped(
-    RegExp(r'required\s+(\$dartnative_\d+\.Curve)\s+curve,\s*int\s+durationMs\s*=\s*0'),
+    RegExp(
+      r'required\s+(\$dartnative_\d+\.Curve)\s+curve,\s*int\s+durationMs\s*=\s*0',
+    ),
     (m) {
       final prefix = m[1]!.split('.')[0];
       return '${m[1]} curve = $prefix.Curves.linear, int durationMs = 0';
@@ -185,11 +233,15 @@ void _patchRiverpodBridges(File file) {
 
   // 2. Remove from extension source map
   content = content.replaceAll(
-    RegExp(r"[\x27\x22]ClassBaseX@AnyNotifier[\x27\x22]:\s*['\x22][^'\x22]+['\x22],\s*\n?"),
+    RegExp(
+      r"[\x27\x22]ClassBaseX@AnyNotifier[\x27\x22]:\s*['\x22][^'\x22]+['\x22],\s*\n?",
+    ),
     '',
   );
   content = content.replaceAll(
-    RegExp(r"r?[\x27\x22]\$RefArg@Ref[\x27\x22]:\s*['\x22][^'\x22]+['\x22],\s*\n?"),
+    RegExp(
+      r"r?[\x27\x22]\$RefArg@Ref[\x27\x22]:\s*['\x22][^'\x22]+['\x22],\s*\n?",
+    ),
     '',
   );
 
@@ -198,7 +250,9 @@ void _patchRiverpodBridges(File file) {
   content = content.replaceAll(r"'\${", r"'${");
 
   // 4. Ensure ProviderScope & UncontrolledProviderScope extract child as Widget
-  if (!content.contains("import 'package:dartnative/dartnative.dart' as \$flutter_widgets;")) {
+  if (!content.contains(
+    "import 'package:dartnative/dartnative.dart' as \$flutter_widgets;",
+  )) {
     content = content.replaceFirst(
       "import 'dart:async';",
       "import 'dart:async';\nimport 'package:dartnative/dartnative.dart' as \$flutter_widgets;",
@@ -283,17 +337,22 @@ void _patchRiverpodBridges(File file) {
   // 9b. AsyncValue getters for single-line emission (see tool/d4rtgen.dart).
   // riverpod 3.x has no valueOrNull: alias `.value` (nullable there).
   if (!content.contains("'valueOrNull':")) {
-    for (final name in ['AsyncValue', 'AsyncData', 'AsyncLoading', 'AsyncError']) {
+    for (final name in [
+      'AsyncValue',
+      'AsyncData',
+      'AsyncLoading',
+      'AsyncError',
+    ]) {
       final targetType = '\$riverpod_5.$name';
       content = content.replaceFirst(
         "      'hashCode': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hashCode,",
         "      'valueOrNull': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').value,\n"
-        "      'isLoading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isLoading,\n"
-        "      'isRefreshing': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isRefreshing,\n"
-        "      'isReloading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isReloading,\n"
-        "      'hasValue': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hasValue,\n"
-        "      'hasError': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hasError,\n"
-        "      'hashCode': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hashCode,",
+            "      'isLoading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isLoading,\n"
+            "      'isRefreshing': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isRefreshing,\n"
+            "      'isReloading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isReloading,\n"
+            "      'hasValue': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hasValue,\n"
+            "      'hasError': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hasError,\n"
+            "      'hashCode': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hashCode,",
       );
     }
   }

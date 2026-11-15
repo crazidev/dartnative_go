@@ -30,8 +30,9 @@ void main() {
       tmp = Directory.systemTemp.createTempSync('dn_build_gate_');
       projectDir = Directory('${tmp.path}/gate_guest')
         ..createSync(recursive: true);
-      File('${projectDir.path}/pubspec.yaml')
-          .writeAsStringSync('name: gate_guest\n');
+      File(
+        '${projectDir.path}/pubspec.yaml',
+      ).writeAsStringSync('name: gate_guest\n');
       Directory('${projectDir.path}/lib').createSync();
       File('${projectDir.path}/lib/main.dart').writeAsStringSync(_main);
 
@@ -69,8 +70,7 @@ void main() {
       } catch (_) {}
     });
 
-    int reloadsSeen() =>
-        messages.where((m) => m['type'] == 'reload').length;
+    int reloadsSeen() => messages.where((m) => m['type'] == 'reload').length;
 
     Future<void> waitForReloads(int count) async {
       for (var i = 0; i < 200 && reloadsSeen() < count; i++) {
@@ -84,8 +84,9 @@ void main() {
     }
 
     test('failed build broadcasts nothing, fixed build broadcasts', () async {
-      File('${projectDir.path}/lib/main.dart')
-          .writeAsStringSync('$_main\n// touch\n');
+      File(
+        '${projectDir.path}/lib/main.dart',
+      ).writeAsStringSync('$_main\n// touch\n');
       await waitForReloads(1);
       final baseline = reloadsSeen();
 
@@ -105,8 +106,9 @@ void main() {
       final port = server.boundPort;
       final client = HttpClient();
       try {
-        final req = await client
-            .getUrl(Uri.parse('http://127.0.0.1:$port/manifest.json'));
+        final req = await client.getUrl(
+          Uri.parse('http://127.0.0.1:$port/manifest.json'),
+        );
         final res = await req.close();
         expect(res.statusCode, equals(HttpStatus.ok));
         final manifest =

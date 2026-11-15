@@ -22,7 +22,8 @@ void main() {
         expect(
           leaked,
           isEmpty,
-          reason: '${entry.key} must not re-bundle client modules; '
+          reason:
+              '${entry.key} must not re-bundle client modules; '
               'leaked: $leaked',
         );
       }

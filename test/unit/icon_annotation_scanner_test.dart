@@ -83,8 +83,9 @@ class Plain {
       try {
         final lib = Directory('${tmp.path}/lib')..createSync();
         File('${tmp.path}/pubspec.yaml').writeAsStringSync('name: demo_app\n');
-        File('${lib.path}/plain.dart')
-            .writeAsStringSync('class Plain {\n  const Plain();\n}\n');
+        File(
+          '${lib.path}/plain.dart',
+        ).writeAsStringSync('class Plain {\n  const Plain();\n}\n');
         File('${lib.path}/main.dart').writeAsStringSync(
           "import 'plain.dart';\nvoid main() {\n  Plain();\n}\n",
         );
@@ -117,8 +118,10 @@ class CustomIcons {}
 class Plain {}
 ''',
       });
-      expect(found['package:demo/icons.dart'],
-          equals({'FakeIcons', 'CustomIcons'}));
+      expect(
+        found['package:demo/icons.dart'],
+        equals({'FakeIcons', 'CustomIcons'}),
+      );
     });
 
     test('findIconFontFamily extracts the family argument', () {

@@ -44,11 +44,15 @@ Object? main() {
       expect(
         result,
         isA<Dio>(),
-        reason: 'guest must receive the compiled host Dio, not an '
+        reason:
+            'guest must receive the compiled host Dio, not an '
             'interpreted re-implementation',
       );
       expect((result! as Dio).options.baseUrl, 'http://127.0.0.1:9');
-      expect((result as Dio).options.connectTimeout, const Duration(seconds: 2));
+      expect(
+        (result as Dio).options.connectTimeout,
+        const Duration(seconds: 2),
+      );
     },
     timeout: const Timeout(Duration(seconds: 180)),
   );

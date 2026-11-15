@@ -27,40 +27,45 @@ void main() {}
 
 void main() {
   group('AST bundle size metadata', () {
-    test('toZip records module, class and source sizes in the manifest', () async {
-      final bundler = AstBundler();
-      final parsed = await bundler.createFromSource(
-        _source,
-        sourcePath: 'lib/main.dart',
-      );
-      final bundle = ast.AstBundle(
-        entryPointUri: parsed.entryPointUri,
-        modules: parsed.modules,
-        sources: {'lib/main.dart': _source},
-      );
+    test(
+      'toZip records module, class and source sizes in the manifest',
+      () async {
+        final bundler = AstBundler();
+        final parsed = await bundler.createFromSource(
+          _source,
+          sourcePath: 'lib/main.dart',
+        );
+        final bundle = ast.AstBundle(
+          entryPointUri: parsed.entryPointUri,
+          modules: parsed.modules,
+          sources: {'lib/main.dart': _source},
+        );
 
-      final moduleAstBytes = <String, int>{};
-      final classAstBytes = <String, Map<String, int>>{};
-      final zipBytes = bundle.toZip(
-        moduleAstBytes: moduleAstBytes,
-        classAstBytes: classAstBytes,
-      );
+        final moduleAstBytes = <String, int>{};
+        final classAstBytes = <String, Map<String, int>>{};
+        final zipBytes = bundle.toZip(
+          moduleAstBytes: moduleAstBytes,
+          classAstBytes: classAstBytes,
+        );
 
-      final expected = utf8.encode(jsonEncode(bundle.entryPoint.toJson())).length;
-      expect(moduleAstBytes['lib/main.dart'], equals(expected));
-      expect(classAstBytes['lib/main.dart'], contains('Counter'));
+        final expected = utf8
+            .encode(jsonEncode(bundle.entryPoint.toJson()))
+            .length;
+        expect(moduleAstBytes['lib/main.dart'], equals(expected));
+        expect(classAstBytes['lib/main.dart'], contains('Counter'));
 
-      final reloaded = decodeAstBundleBytes(zipBytes);
-      expect(reloaded.moduleAstBytes?['lib/main.dart'], equals(expected));
-      expect(
-        reloaded.classAstBytes?['lib/main.dart']?['Counter'],
-        equals(classAstBytes['lib/main.dart']!['Counter']),
-      );
-      expect(
-        reloaded.sourceBytes?['lib/main.dart'],
-        equals(utf8.encode(_source).length),
-      );
-    });
+        final reloaded = decodeAstBundleBytes(zipBytes);
+        expect(reloaded.moduleAstBytes?['lib/main.dart'], equals(expected));
+        expect(
+          reloaded.classAstBytes?['lib/main.dart']?['Counter'],
+          equals(classAstBytes['lib/main.dart']!['Counter']),
+        );
+        expect(
+          reloaded.sourceBytes?['lib/main.dart'],
+          equals(utf8.encode(_source).length),
+        );
+      },
+    );
 
     test('recorded sizes match a fresh serialization walk', () async {
       final bundler = AstBundler();

@@ -23,7 +23,8 @@ const _helperV2 = r'''
 int helperAdd(int a, int b) => a + b * 10;
 ''';
 
-String _main(String tag, {required String body, bool async = false}) => '''
+String _main(String tag, {required String body, bool async = false}) =>
+    '''
 import 'package:dartnative/dartnative.dart';
 import 'helper.dart';
 
@@ -42,7 +43,7 @@ void main() {
               child: Text('Go'),
               onPressed: ()${async ? ' async' : ''} {
 ${async ? '                await Future<void>.delayed('
-      'const Duration(milliseconds: 5));' : ''}
+              'const Duration(milliseconds: 5));' : ''}
                 final sum = helperAdd(topLevel, 4);
                 print('$tag sum=\$sum');
               },
@@ -80,8 +81,9 @@ void main() {
       logs = <String>[];
       projectDir = Directory('${tmp.path}/p5_guest')
         ..createSync(recursive: true);
-      File('${projectDir.path}/pubspec.yaml')
-          .writeAsStringSync('name: p5_guest\n');
+      File(
+        '${projectDir.path}/pubspec.yaml',
+      ).writeAsStringSync('name: p5_guest\n');
       Directory('${projectDir.path}/lib').createSync();
       File('${projectDir.path}/lib/helper.dart').writeAsStringSync(_helperV1);
     });
@@ -92,7 +94,9 @@ void main() {
       String tag,
     ) async {
       File('${projectDir.path}/lib/main.dart').writeAsStringSync(mainSource);
-      File('${projectDir.path}/lib/helper.dart').writeAsStringSync(helperSource);
+      File(
+        '${projectDir.path}/lib/helper.dart',
+      ).writeAsStringSync(helperSource);
       final out = File('${projectDir.path}/$tag.ast');
       final result = await buildGuestAstBundle(
         projectDir,
@@ -110,8 +114,7 @@ void main() {
       (_columnOf(root).children[index] as Button).onPressed!();
     }
 
-    test('an unchanged module is reused, a changed one is re-declared',
-        () async {
+    test('an unchanged module is reused, a changed one is re-declared', () async {
       final runner = AstInterpreterRunner(onLog: logs.add);
       addTearDown(runner.dispose);
 
@@ -121,7 +124,10 @@ void main() {
         _helperV1,
         'm1',
       );
-      expect(v1.fingerprints.keys.any((k) => k.contains('helper.dart')), isTrue);
+      expect(
+        v1.fingerprints.keys.any((k) => k.contains('helper.dart')),
+        isTrue,
+      );
 
       final rootV1 = await runner.evaluateAstBundleAs<Widget>(
         v1.bytes,
@@ -191,8 +197,7 @@ void main() {
       );
     });
 
-    test('a reverted module is re-declared, not resurrected from cache',
-        () async {
+    test('a reverted module is re-declared, not resurrected from cache', () async {
       final runner = AstInterpreterRunner(onLog: logs.add);
       addTearDown(runner.dispose);
 
@@ -240,7 +245,8 @@ void main() {
               .firstWhere((e) => e.key.contains('helper.dart'))
               .value,
         ),
-        reason: 'precondition: the reverted module has a historical fingerprint',
+        reason:
+            'precondition: the reverted module has a historical fingerprint',
       );
 
       final rootV3 = await runner.evaluateAstBundleAs<Widget>(
@@ -252,7 +258,8 @@ void main() {
       expect(
         logs.last,
         'v3 sum=7',
-        reason: 'a reverted module must run its reverted code, not the last edit',
+        reason:
+            'a reverted module must run its reverted code, not the last edit',
       );
     });
 

@@ -28,8 +28,7 @@ Map<String, Directory> _externalPackageProject() {
   final pkg = Directory('${tmp.path}/weather_icons')..createSync();
   final pkgLib = Directory('${pkg.path}/lib')..createSync();
   Directory('${pkg.path}/fonts').createSync();
-  File('${pkg.path}/pubspec.yaml')
-      .writeAsStringSync('name: weather_icons\n');
+  File('${pkg.path}/pubspec.yaml').writeAsStringSync('name: weather_icons\n');
   File('${pkgLib.path}/icons.dart').writeAsStringSync('''
 class IconFont {
   final String family;
@@ -46,8 +45,9 @@ abstract final class WeatherIcons {
   static const IconData moon = IconData(0xE002, fontFamily: 'WeatherIcons');
 }
 ''');
-  File('${pkg.path}/fonts/WeatherIcons.ttf')
-      .writeAsBytesSync([0, 1, 2, 3, 4, 5]);
+  File(
+    '${pkg.path}/fonts/WeatherIcons.ttf',
+  ).writeAsBytesSync([0, 1, 2, 3, 4, 5]);
   final dartTool = Directory('${proj.path}/.dart_tool')..createSync();
   File('${dartTool.path}/package_config.json').writeAsStringSync(
     jsonEncode({
@@ -73,15 +73,15 @@ abstract final class WeatherIcons {
 
 void main() {
   group('IconFontDetector external packages', () {
-    test('annotated registry in a dependency is discovered with font file',
-        () {
+    test('annotated registry in a dependency is discovered with font file', () {
       final dirs = _externalPackageProject();
       try {
         final report = IconFontDetector(dirs['proj']!).detect();
         expect(
           report.families,
           contains('WeatherIcons'),
-          reason: 'annotation must surface the external family; '
+          reason:
+              'annotation must surface the external family; '
               'families=${report.families}',
         );
         expect(report.annotatedFamilies, contains('WeatherIcons'));
@@ -90,10 +90,11 @@ void main() {
           equals('weather_icons'),
         );
         expect(report.fontFiles.keys, contains('WeatherIcons'));
-        final manifest =
-            report.toManifestJson('http://127.0.0.1:8088').firstWhere(
-                  (e) => e['family'] == 'WeatherIcons',
-                );
+        final manifest = report
+            .toManifestJson('http://127.0.0.1:8088')
+            .firstWhere(
+              (e) => e['family'] == 'WeatherIcons',
+            );
         expect(manifest['builtIn'], isFalse);
         expect(
           manifest['url'],

@@ -21,7 +21,8 @@ void main() {
 }
 ''';
 
-String _todo({required bool localNote}) => '''
+String _todo({required bool localNote}) =>
+    '''
 import 'package:dartnative/dartnative.dart';
 import 'sticky.dart';
 
@@ -52,7 +53,8 @@ class Grid extends StatelessWidget {
 Widget buildGrid() => const Grid(label: 'g');
 ''';
 
-String _sticky({required bool defineNote}) => '''
+String _sticky({required bool defineNote}) =>
+    '''
 import 'package:dartnative/dartnative.dart';
 import 'todo.dart';
 
@@ -93,8 +95,9 @@ void main() {
       tmp = Directory.systemTemp.createTempSync('dn_commit_broken_');
       projectDir = Directory('${tmp.path}/commit_broken_guest')
         ..createSync(recursive: true);
-      File('${projectDir.path}/pubspec.yaml')
-          .writeAsStringSync('name: commit_broken_guest\n');
+      File(
+        '${projectDir.path}/pubspec.yaml',
+      ).writeAsStringSync('name: commit_broken_guest\n');
       Directory('${projectDir.path}/lib').createSync();
       File('${projectDir.path}/lib/main.dart').writeAsStringSync(_main);
       runner = AstInterpreterRunner(onLog: logs.add);
@@ -112,10 +115,12 @@ void main() {
       required bool defineNote,
       required String name,
     }) async {
-      File('${projectDir.path}/lib/todo.dart')
-          .writeAsStringSync(_todo(localNote: localNote));
-      File('${projectDir.path}/lib/sticky.dart')
-          .writeAsStringSync(_sticky(defineNote: defineNote));
+      File(
+        '${projectDir.path}/lib/todo.dart',
+      ).writeAsStringSync(_todo(localNote: localNote));
+      File(
+        '${projectDir.path}/lib/sticky.dart',
+      ).writeAsStringSync(_sticky(defineNote: defineNote));
       final out = File('${projectDir.path}/$name.ast');
       final result = await buildGuestAstBundle(
         projectDir,
@@ -129,41 +134,45 @@ void main() {
       );
     }
 
-    test('a committed broken generation heals when the export appears',
-        () async {
-      final v1 = await build(localNote: true, defineNote: false, name: 'c1');
-      final rootV1 = await runner.evaluateAstBundleAs<Widget>(
-        v1.bytes,
-        moduleFingerprints: v1.fingerprints,
-      );
-      expect(_renderGrid(rootV1), 'local:g');
+    test(
+      'a committed broken generation heals when the export appears',
+      () async {
+        final v1 = await build(localNote: true, defineNote: false, name: 'c1');
+        final rootV1 = await runner.evaluateAstBundleAs<Widget>(
+          v1.bytes,
+          moduleFingerprints: v1.fingerprints,
+        );
+        expect(_renderGrid(rootV1), 'local:g');
 
-      final v2 = await build(localNote: false, defineNote: false, name: 'c2');
-      final rootV2 = await runner.evaluateAstBundleAs<Widget>(
-        v2.bytes,
-        isHotReload: true,
-        moduleFingerprints: v2.fingerprints,
-      );
-      expect(
-        () => _renderGrid(rootV2),
-        throwsA(anything),
-        reason: 'precondition: the broken generation commits (declarations '
-            'succeed) and only fails when the grid builds',
-      );
+        final v2 = await build(localNote: false, defineNote: false, name: 'c2');
+        final rootV2 = await runner.evaluateAstBundleAs<Widget>(
+          v2.bytes,
+          isHotReload: true,
+          moduleFingerprints: v2.fingerprints,
+        );
+        expect(
+          () => _renderGrid(rootV2),
+          throwsA(anything),
+          reason:
+              'precondition: the broken generation commits (declarations '
+              'succeed) and only fails when the grid builds',
+        );
 
-      final v3 = await build(localNote: false, defineNote: true, name: 'c3');
-      final rootV3 = await runner.evaluateAstBundleAs<Widget>(
-        v3.bytes,
-        isHotReload: true,
-        moduleFingerprints: v3.fingerprints,
-      );
-      expect(
-        _renderGrid(rootV3),
-        'moved:g',
-        reason: 'todo.dart is reused here, so the added export must still '
-            'become visible in its environment',
-      );
-    });
+        final v3 = await build(localNote: false, defineNote: true, name: 'c3');
+        final rootV3 = await runner.evaluateAstBundleAs<Widget>(
+          v3.bytes,
+          isHotReload: true,
+          moduleFingerprints: v3.fingerprints,
+        );
+        expect(
+          _renderGrid(rootV3),
+          'moved:g',
+          reason:
+              'todo.dart is reused here, so the added export must still '
+              'become visible in its environment',
+        );
+      },
+    );
   });
 }
 

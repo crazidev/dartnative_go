@@ -43,9 +43,11 @@ void main() {
     });
 
     test('evaluated set supports add/contains', () {
-      final set = _visitor().visitSetOrMapLiteral(
-        SSetOrMapLiteral(offset: 0, length: 0, isSet: true),
-      ) as Set;
+      final set =
+          _visitor().visitSetOrMapLiteral(
+                SSetOrMapLiteral(offset: 0, length: 0, isSet: true),
+              )
+              as Set;
       set.add('x');
       expect(set.contains('x'), isTrue);
     });

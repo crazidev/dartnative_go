@@ -122,8 +122,9 @@ void main() {
     setUp(() {
       projectDir = Directory('${tmp.path}/atomic_guest')
         ..createSync(recursive: true);
-      File('${projectDir.path}/pubspec.yaml')
-          .writeAsStringSync('name: atomic_guest\n');
+      File(
+        '${projectDir.path}/pubspec.yaml',
+      ).writeAsStringSync('name: atomic_guest\n');
       Directory('${projectDir.path}/lib').createSync();
     });
 
@@ -163,7 +164,8 @@ void main() {
       expect(
         logs.last,
         'report 15',
-        reason: 'a failed generation must not leak reloaded code '
+        reason:
+            'a failed generation must not leak reloaded code '
             '(logs: $logs)',
       );
 

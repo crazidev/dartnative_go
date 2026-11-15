@@ -26,15 +26,16 @@ import 'dart:io';
 import 'dart:math';
 
 const _injectedDir = '_scale_test';
-const _barrelFile  = '_scale_test.dart';
-const _marker      = '// scale_inject:auto-generated';
+const _barrelFile = '_scale_test.dart';
+const _marker = '// scale_inject:auto-generated';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Module templates: realistic widget / service / provider code
 // ──────────────────────────────────────────────────────────────────────────────
 
 /// Stateless widget (most common Flutter widget type).
-String _statelessWidget(int i) => '''$_marker
+String _statelessWidget(int i) =>
+    '''$_marker
 import 'package:dartnative/dartnative.dart';
 
 class ScaleWidget$i extends StatelessWidget {
@@ -89,7 +90,8 @@ class ScaleWidget$i extends StatelessWidget {
 ''';
 
 /// Stateful widget with local counter state.
-String _statefulWidget(int i) => '''$_marker
+String _statefulWidget(int i) =>
+    '''$_marker
 import 'package:dartnative/dartnative.dart';
 
 class ScaleStateful$i extends StatefulWidget {
@@ -139,7 +141,8 @@ class _ScaleStateful${i}State extends State<ScaleStateful$i> {
 ''';
 
 /// Pure Dart service / data model (no Flutter import needed).
-String _serviceModel(int i) => '''$_marker
+String _serviceModel(int i) =>
+    '''$_marker
 
 class ScaleModel$i {
   final int id;
@@ -158,7 +161,7 @@ class ScaleModel$i {
     id: $i,
     name: 'Model $i',
     description: 'Auto-generated model for scale test — v${_ver(i)}',
-    createdAt: DateTime(2024, 1, ${ (i % 28) + 1 }),
+    createdAt: DateTime(2024, 1, ${(i % 28) + 1}),
   );
 
   ScaleModel$i copyWith({String? name, String? description}) => ScaleModel$i(
@@ -199,7 +202,8 @@ class ScaleService$i {
 ''';
 
 /// A combined card + service (mixed, most representative).
-String _mixedModule(int i) => '''$_marker
+String _mixedModule(int i) =>
+    '''$_marker
 import 'package:dartnative/dartnative.dart';
 
 // ── Model ────────────────────────────────────────────────────────────────────
@@ -288,14 +292,17 @@ String _ver(int i) => '1.${i % 100}.$i';
 
 String _generateModule(int i, String type) {
   switch (type) {
-    case 'widget':    return _statelessWidget(i);
-    case 'stateful':  return _statefulWidget(i);
-    case 'service':   return _serviceModel(i);
+    case 'widget':
+      return _statelessWidget(i);
+    case 'stateful':
+      return _statefulWidget(i);
+    case 'service':
+      return _serviceModel(i);
     case 'mixed':
     default:
       // Mix: 40% mixed cards, 25% stateless, 20% stateful, 15% services
       final r = i % 20;
-      if (r < 8)  return _mixedModule(i);
+      if (r < 8) return _mixedModule(i);
       if (r < 13) return _statelessWidget(i);
       if (r < 17) return _statefulWidget(i);
       return _serviceModel(i);
@@ -307,25 +314,38 @@ String _generateModule(int i, String type) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 void main(List<String> args) async {
-  if (args.isEmpty) { _usage(); exit(1); }
+  if (args.isEmpty) {
+    _usage();
+    exit(1);
+  }
 
-  final cmd      = args[0];
-  final flags    = _parseFlags(args.skip(1).toList());
+  final cmd = args[0];
+  final flags = _parseFlags(args.skip(1).toList());
   final projPath = flags['project'] ?? 'example';
-  final count    = int.tryParse(flags['count']   ?? '500') ?? 500;
-  final changed  = int.tryParse(flags['changed'] ?? '10')  ?? 10;
-  final cycles   = int.tryParse(flags['cycles']  ?? '3')   ?? 3;
-  final type     = flags['type'] ?? 'mixed';
-  final proj     = Directory(projPath);
+  final count = int.tryParse(flags['count'] ?? '500') ?? 500;
+  final changed = int.tryParse(flags['changed'] ?? '10') ?? 10;
+  final cycles = int.tryParse(flags['cycles'] ?? '3') ?? 3;
+  final type = flags['type'] ?? 'mixed';
+  final proj = Directory(projPath);
 
-  if (!proj.existsSync()) { print('❌ Not found: $projPath'); exit(1); }
+  if (!proj.existsSync()) {
+    print('❌ Not found: $projPath');
+    exit(1);
+  }
 
   switch (cmd) {
-    case 'inject': await _inject(proj, count, type);
-    case 'clean':  await _clean(proj);
-    case 'reload': await _reload(proj, changed, cycles);
-    case 'bench':  await _bench(proj, count, changed, cycles, type);
-    default:       print('❌ Unknown: $cmd'); _usage(); exit(1);
+    case 'inject':
+      await _inject(proj, count, type);
+    case 'clean':
+      await _clean(proj);
+    case 'reload':
+      await _reload(proj, changed, cycles);
+    case 'bench':
+      await _bench(proj, count, changed, cycles, type);
+    default:
+      print('❌ Unknown: $cmd');
+      _usage();
+      exit(1);
   }
 }
 
@@ -337,32 +357,38 @@ Future<void> _inject(Directory proj, int count, String type) async {
   print('   Project: ${proj.path}');
   print('━' * 64);
 
-  final lib      = Directory('${proj.path}/lib');
+  final lib = Directory('${proj.path}/lib');
   final scaleDir = Directory('${lib.path}/$_injectedDir');
 
   if (scaleDir.existsSync()) {
-    print('⚠️  Already injected. Run "clean" first to re-inject.'); return;
+    print('⚠️  Already injected. Run "clean" first to re-inject.');
+    return;
   }
   scaleDir.createSync(recursive: true);
 
-  final sw        = Stopwatch()..start();
+  final sw = Stopwatch()..start();
   const chunkSize = 50;
   final numChunks = (count / chunkSize).ceil();
 
   // 1. Individual module files.
   print('\n🛠️  Generating $count module files...');
   for (var i = 0; i < count; i++) {
-    File('${scaleDir.path}/mod_$i.dart')
-        .writeAsStringSync(_generateModule(i, type));
+    File(
+      '${scaleDir.path}/mod_$i.dart',
+    ).writeAsStringSync(_generateModule(i, type));
   }
 
   // 2. Barrel chunks.
-  final topBarrel = StringBuffer('$_marker\n// Scale-test barrel — $count modules ($type)\n');
+  final topBarrel = StringBuffer(
+    '$_marker\n// Scale-test barrel — $count modules ($type)\n',
+  );
   for (var b = 0; b < numChunks; b++) {
     final start = b * chunkSize;
-    final end   = min(start + chunkSize, count);
-    final buf   = StringBuffer('$_marker\n');
-    for (var i = start; i < end; i++) { buf.writeln("export 'mod_$i.dart';"); }
+    final end = min(start + chunkSize, count);
+    final buf = StringBuffer('$_marker\n');
+    for (var i = start; i < end; i++) {
+      buf.writeln("export 'mod_$i.dart';");
+    }
     File('${scaleDir.path}/barrel_$b.dart').writeAsStringSync(buf.toString());
     topBarrel.writeln("export '$_injectedDir/barrel_$b.dart';");
   }
@@ -378,7 +404,10 @@ Future<void> _inject(Directory proj, int count, String type) async {
       for (var i = 0; i < lines.length; i++) {
         if (lines[i].trim().startsWith('import ')) last = i;
       }
-      lines.insert(last + 1, "// ignore: unused_import\nimport '$_barrelFile'; $_marker");
+      lines.insert(
+        last + 1,
+        "// ignore: unused_import\nimport '$_barrelFile'; $_marker",
+      );
       mainFile.writeAsStringSync(lines.join('\n'));
       print('   ✅ Patched lib/main.dart with scale barrel import');
     }
@@ -389,10 +418,18 @@ Future<void> _inject(Directory proj, int count, String type) async {
   print('   ✅ $totalFiles files in ${sw.elapsedMilliseconds} ms\n');
 
   // Breakdown of generated types.
-  final mixed     = (type == 'mixed') ? count * 8 ~/ 20 : (type == 'mixed' ? count : 0);
-  final stateless = (type == 'mixed') ? count * 5 ~/ 20 : (type == 'widget' ? count : 0);
-  final stateful  = (type == 'mixed') ? count * 4 ~/ 20 : (type == 'stateful' ? count : 0);
-  final services  = (type == 'mixed') ? count - mixed - stateless - stateful : (type == 'service' ? count : 0);
+  final mixed = (type == 'mixed')
+      ? count * 8 ~/ 20
+      : (type == 'mixed' ? count : 0);
+  final stateless = (type == 'mixed')
+      ? count * 5 ~/ 20
+      : (type == 'widget' ? count : 0);
+  final stateful = (type == 'mixed')
+      ? count * 4 ~/ 20
+      : (type == 'stateful' ? count : 0);
+  final services = (type == 'mixed')
+      ? count - mixed - stateless - stateful
+      : (type == 'service' ? count : 0);
 
   print('📦 Module breakdown:');
   if (type == 'mixed') {
@@ -407,8 +444,12 @@ Future<void> _inject(Directory proj, int count, String type) async {
 
   print('\n💡 Next steps:');
   print('   Start server:  dart_go start --project=${proj.path}');
-  print('   Reload test:   dart run tool/scale_inject.dart reload --project=${proj.path} --changed=10');
-  print('   Clean up:      dart run tool/scale_inject.dart clean  --project=${proj.path}');
+  print(
+    '   Reload test:   dart run tool/scale_inject.dart reload --project=${proj.path} --changed=10',
+  );
+  print(
+    '   Clean up:      dart run tool/scale_inject.dart clean  --project=${proj.path}',
+  );
 }
 
 // ── clean ─────────────────────────────────────────────────────────────────────
@@ -423,7 +464,10 @@ Future<void> _clean(Directory proj) async {
     print('   ✅ Removed lib/$_injectedDir/');
   }
   final barrel = File('${lib.path}/$_barrelFile');
-  if (barrel.existsSync()) { barrel.deleteSync(); print('   ✅ Removed lib/$_barrelFile'); }
+  if (barrel.existsSync()) {
+    barrel.deleteSync();
+    print('   ✅ Removed lib/$_barrelFile');
+  }
 
   final main = File('${lib.path}/main.dart');
   if (main.existsSync()) {
@@ -443,24 +487,30 @@ Future<void> _clean(Directory proj) async {
 Future<void> _reload(Directory proj, int changedCount, int cycles) async {
   final scaleDir = Directory('${proj.path}/lib/$_injectedDir');
   if (!scaleDir.existsSync()) {
-    print('❌ No scale modules found. Run "inject" first.'); exit(1);
+    print('❌ No scale modules found. Run "inject" first.');
+    exit(1);
   }
 
-  final modFiles = scaleDir.listSync().whereType<File>()
-      .where((f) => f.uri.pathSegments.last.startsWith('mod_')).toList();
+  final modFiles = scaleDir
+      .listSync()
+      .whereType<File>()
+      .where((f) => f.uri.pathSegments.last.startsWith('mod_'))
+      .toList();
   final total = modFiles.length;
 
   print('━' * 64);
-  print('⚡️  Reload Trigger  —  $changedCount/$total changed  ×  $cycles cycles');
+  print(
+    '⚡️  Reload Trigger  —  $changedCount/$total changed  ×  $cycles cycles',
+  );
   print('━' * 64);
 
-  final rng     = Random();
-  final allMs   = <int>[];
+  final rng = Random();
+  final allMs = <int>[];
 
   for (var c = 1; c <= cycles; c++) {
     modFiles.shuffle(rng);
     final batch = modFiles.take(changedCount).toList();
-    final sw    = Stopwatch()..start();
+    final sw = Stopwatch()..start();
 
     for (final f in batch) {
       final src = f.readAsStringSync();
@@ -477,7 +527,9 @@ Future<void> _reload(Directory proj, int changedCount, int cycles) async {
 
     final names = batch.take(4).map((f) => f.uri.pathSegments.last).join(', ');
     final types = _detectTypes(batch.take(4).toList());
-    print('\n   Cycle $c/$cycles  →  ${sw.elapsedMilliseconds} ms to write $changedCount files');
+    print(
+      '\n   Cycle $c/$cycles  →  ${sw.elapsedMilliseconds} ms to write $changedCount files',
+    );
     print('   Samples : $names${changedCount > 4 ? ' …' : ''}');
     print('   Types   : $types');
     print('   ⏱️  Check dart_go server log for actual rebuild latency.');
@@ -486,15 +538,27 @@ Future<void> _reload(Directory proj, int changedCount, int cycles) async {
   }
 
   final avg = allMs.reduce((a, b) => a + b) ~/ allMs.length;
-  print('\n📊 File-write timings: ${allMs.map((t) => '${t}ms').join(' | ')}  (avg: ${avg}ms)');
-  print('   Note: server rebuild latency is separate — visible in dart_go logs.');
+  print(
+    '\n📊 File-write timings: ${allMs.map((t) => '${t}ms').join(' | ')}  (avg: ${avg}ms)',
+  );
+  print(
+    '   Note: server rebuild latency is separate — visible in dart_go logs.',
+  );
 }
 
 // ── bench ─────────────────────────────────────────────────────────────────────
 
-Future<void> _bench(Directory proj, int count, int changed, int cycles, String type) async {
+Future<void> _bench(
+  Directory proj,
+  int count,
+  int changed,
+  int cycles,
+  String type,
+) async {
   print('━' * 64);
-  print('⚡️  Scale Bench  —  $count modules  ($changed changed / $cycles cycles)');
+  print(
+    '⚡️  Scale Bench  —  $count modules  ($changed changed / $cycles cycles)',
+  );
   print('   Project: ${proj.path}');
   print('━' * 64);
 
@@ -502,13 +566,16 @@ Future<void> _bench(Directory proj, int count, int changed, int cycles, String t
   if (!scaleDir.existsSync()) {
     await _inject(proj, count, type);
   } else {
-    print('\n✅ Scale modules already present (${scaleDir.listSync().length} files)');
+    print(
+      '\n✅ Scale modules already present (${scaleDir.listSync().length} files)',
+    );
   }
 
   print('\n📦 Cold build (dart_go build)...');
   final coldSw = Stopwatch()..start();
   final res = await Process.run(
-    'dart', ['run', 'bin/dart_go.dart', 'build', '--project=${proj.path}'],
+    'dart',
+    ['run', 'bin/dart_go.dart', 'build', '--project=${proj.path}'],
     workingDirectory: Directory.current.path,
   );
   coldSw.stop();
@@ -527,7 +594,9 @@ Future<void> _bench(Directory proj, int count, int changed, int cycles, String t
   print('   Injected modules : $count  (type: $type)');
   print('   Cold build       : ${coldSw.elapsedMilliseconds} ms');
   print('   Changed/cycle    : $changed');
-  print('\n🧹 Clean:  dart run tool/scale_inject.dart clean --project=${proj.path}');
+  print(
+    '\n🧹 Clean:  dart run tool/scale_inject.dart clean --project=${proj.path}',
+  );
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────

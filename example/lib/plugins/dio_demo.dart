@@ -68,7 +68,9 @@ class _DioDemoState extends State<DioDemo> {
       switch (path) {
         case '/json':
           r.headers.contentType = ContentType.json;
-          r.write('{"hello":"loopback","n":${req.uri.queryParameters['n'] ?? 0}}');
+          r.write(
+            '{"hello":"loopback","n":${req.uri.queryParameters['n'] ?? 0}}',
+          );
           break;
         case '/echo-query':
           r.headers.contentType = ContentType.json;
@@ -114,7 +116,10 @@ class _DioDemoState extends State<DioDemo> {
           break;
         case '/redirect':
           r.statusCode = 302;
-          r.headers.set(HttpHeaders.locationHeader, 'http://127.0.0.1:$_port/json');
+          r.headers.set(
+            HttpHeaders.locationHeader,
+            'http://127.0.0.1:$_port/json',
+          );
           break;
         default:
           r.statusCode = 404;
@@ -193,7 +198,10 @@ class _DioDemoState extends State<DioDemo> {
   });
 
   Future<void> _postJson() => _run('POST JSON body', () async {
-    final res = await _dio.post('/echo-json', data: <String, dynamic>{'k': 'v'});
+    final res = await _dio.post(
+      '/echo-json',
+      data: <String, dynamic>{'k': 'v'},
+    );
     return '${(res.data as Map)['received']}';
   });
 

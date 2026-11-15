@@ -43,8 +43,7 @@ void main() {
         equals('http://127.0.0.1:8088/assets/icon.png'),
       );
 
-      final reconstructed =
-          DartGoProject.fromJson(project.toJson());
+      final reconstructed = DartGoProject.fromJson(project.toJson());
       expect(reconstructed.appName, equals(project.appName));
       expect(reconstructed.url, equals(project.url));
       expect(reconstructed.isActive, equals(project.isActive));
@@ -106,12 +105,14 @@ void main() {
         if (req.uri.path == '/manifest.json') {
           req.response
             ..headers.contentType = ContentType.json
-            ..write(jsonEncode({
-              'protocol': 'dart_go',
-              'appName': 'Mock Live Dev Server',
-              'appVersion': '0.1.0',
-              'serverUrl': 'http://127.0.0.1:$port',
-            }))
+            ..write(
+              jsonEncode({
+                'protocol': 'dart_go',
+                'appName': 'Mock Live Dev Server',
+                'appVersion': '0.1.0',
+                'serverUrl': 'http://127.0.0.1:$port',
+              }),
+            )
             ..close();
         } else {
           req.response

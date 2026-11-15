@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 83 files
-// Generated: 2026-11-06T23:47:05.938724 by tom_d4rt_generator 1.26.2
+// Generated: 2026-11-15T01:15:01.178446 by tom_d4rt_generator 1.26.2
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, non_const_argument_for_const_parameter, unnecessary_import
 
@@ -122458,6 +122458,7 @@ BridgedClass _createSemanticsBridge() {
         final header = D4.getOptionalNamedArg<bool?>(named, 'header');
         final image = D4.getOptionalNamedArg<bool?>(named, 'image');
         final label = D4.getOptionalNamedArg<String?>(named, 'label');
+        final identifier = D4.getOptionalNamedArg<String?>(named, 'identifier');
         final value = D4.getOptionalNamedArg<String?>(named, 'value');
         final hint = D4.getOptionalNamedArg<String?>(named, 'hint');
         final onTapHint = D4.getOptionalNamedArg<String?>(named, 'onTapHint');
@@ -122479,6 +122480,7 @@ BridgedClass _createSemanticsBridge() {
           header: header,
           image: image,
           label: label,
+          identifier: identifier,
           value: value,
           hint: hint,
           onTapHint: onTapHint,
@@ -122528,6 +122530,9 @@ BridgedClass _createSemanticsBridge() {
       'label': (visitor, target) => D4
           .validateTarget<$dartnative_69.Semantics>(target, 'Semantics')
           .label,
+      'identifier': (visitor, target) => D4
+          .validateTarget<$dartnative_69.Semantics>(target, 'Semantics')
+          .identifier,
       'value': (visitor, target) => D4
           .validateTarget<$dartnative_69.Semantics>(target, 'Semantics')
           .value,
@@ -122547,7 +122552,7 @@ BridgedClass _createSemanticsBridge() {
           .onLongPress,
     },
     constructorSignatures: {
-      '': 'const Semantics({Key? key, Widget? child, bool container = false, bool excludeSemantics = false, bool? enabled, bool? selected, bool? button, bool? link, bool? header, bool? image, String? label, String? value, String? hint, String? onTapHint, String? onLongPressHint, VoidCallback? onTap, VoidCallback? onLongPress})',
+      '': 'const Semantics({Key? key, Widget? child, bool container = false, bool excludeSemantics = false, bool? enabled, bool? selected, bool? button, bool? link, bool? header, bool? image, String? label, String? identifier, String? value, String? hint, String? onTapHint, String? onLongPressHint, VoidCallback? onTap, VoidCallback? onLongPress})',
     },
     getterSignatures: {
       'key': 'Key? get key',
@@ -122561,6 +122566,7 @@ BridgedClass _createSemanticsBridge() {
       'header': 'bool? get header',
       'image': 'bool? get image',
       'label': 'String? get label',
+      'identifier': 'String? get identifier',
       'value': 'String? get value',
       'hint': 'String? get hint',
       'onTapHint': 'String? get onTapHint',
@@ -145493,7 +145499,12 @@ BridgedClass _createNativeBindingsBridge() {
           target,
           'NativeBindings',
         );
-        t.resetViews();
+        final reattach = D4.getNamedArgWithDefault<bool>(
+          named,
+          'reattach',
+          false,
+        );
+        t.resetViews(reattach: reattach);
         return null;
       },
       'dismissSplash': (visitor, target, positional, named, typeArgs) {
@@ -146497,7 +146508,7 @@ BridgedClass _createNativeBindingsBridge() {
       'reloadFastList': 'void reloadFastList(int id)',
       'fastListScrollToItem':
           'void fastListScrollToItem(int id, int index, {double alignment = 0.0, bool animated = false})',
-      'resetViews': 'void resetViews()',
+      'resetViews': 'void resetViews({bool reattach = false})',
       'dismissSplash': 'void dismissSplash()',
       'navigatorPush':
           'int navigatorPush({int transitionType = 1, int durationMs = 350, int zoomSourceViewId = 0})',

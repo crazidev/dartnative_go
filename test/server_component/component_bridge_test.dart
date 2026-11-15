@@ -26,8 +26,7 @@ void main() {
     setUpAll(() async {
       tmp = Directory.systemTemp.createTempSync('dn_server_bridge_');
       final lib = Directory('${tmp.path}/lib')..createSync();
-      File('${tmp.path}/pubspec.yaml')
-          .writeAsStringSync('name: bridge_app\n');
+      File('${tmp.path}/pubspec.yaml').writeAsStringSync('name: bridge_app\n');
       File('${lib.path}/main.dart').writeAsStringSync(
         "import 'package:dartnative/dartnative.dart';\n"
         "import 'package:dartnative_go/server_component.dart';\n"
@@ -63,8 +62,7 @@ void main() {
         projectRoot: tmp.path,
         converter: SafeAstConverter(),
       );
-      final bundle =
-          await bundler.createFromFile('${tmp.path}/lib/main.dart');
+      final bundle = await bundler.createFromFile('${tmp.path}/lib/main.dart');
       expect(
         bundle.modules.keys,
         isNot(contains('package:dartnative_go/server_component.dart')),
@@ -79,8 +77,7 @@ void main() {
         projectRoot: tmp.path,
         converter: SafeAstConverter(),
       );
-      final bundle =
-          await bundler.createFromFile('${tmp.path}/lib/main.dart');
+      final bundle = await bundler.createFromFile('${tmp.path}/lib/main.dart');
       final widget = await runner.evaluateAstBundleAs<Widget>(
         bundle.toBytes(),
       );
@@ -102,8 +99,9 @@ void main() {
         projectRoot: tmp.path,
         converter: SafeAstConverter(),
       );
-      final bundle =
-          await bundler.createFromFile('${tmp.path}/lib/main_getter.dart');
+      final bundle = await bundler.createFromFile(
+        '${tmp.path}/lib/main_getter.dart',
+      );
       final widget = await runner.evaluateAstBundleAs<Widget>(
         bundle.toBytes(),
       );
@@ -111,42 +109,47 @@ void main() {
       expect((widget as Text).data, equals('badge_x'));
     });
 
-    test('interpreted fallback and builder callbacks reach the host view',
-        () async {
-      File('${tmp.path}/lib/main_builders.dart').writeAsStringSync(
-        "import 'package:dartnative/dartnative.dart';\n"
-        "import 'package:dartnative_go/server_component.dart';\n"
-        'void main() {\n'
-        '  runApp(ServerComponentView(\n'
-        "    componentId: 'profile_card',\n"
-        "    fallback: Text('fallback'),\n"
-        "    loadingBuilder: (context) => Text('loading'),\n"
-        "    errorBuilder: (error) => Text('error'),\n"
-        '  ));\n'
-        '}\n',
-      );
-      final bundler = IncrementalAstBundler(
-        bridgedLibraries: kAstBridgedLibraries,
-        packageName: 'bridge_app',
-        projectRoot: tmp.path,
-        converter: SafeAstConverter(),
-      );
-      final bundle =
-          await bundler.createFromFile('${tmp.path}/lib/main_builders.dart');
-      final widget = await runner.evaluateAstBundleAs<Widget>(
-        bundle.toBytes(),
-      ) as ServerComponentView;
+    test(
+      'interpreted fallback and builder callbacks reach the host view',
+      () async {
+        File('${tmp.path}/lib/main_builders.dart').writeAsStringSync(
+          "import 'package:dartnative/dartnative.dart';\n"
+          "import 'package:dartnative_go/server_component.dart';\n"
+          'void main() {\n'
+          '  runApp(ServerComponentView(\n'
+          "    componentId: 'profile_card',\n"
+          "    fallback: Text('fallback'),\n"
+          "    loadingBuilder: (context) => Text('loading'),\n"
+          "    errorBuilder: (error) => Text('error'),\n"
+          '  ));\n'
+          '}\n',
+        );
+        final bundler = IncrementalAstBundler(
+          bridgedLibraries: kAstBridgedLibraries,
+          packageName: 'bridge_app',
+          projectRoot: tmp.path,
+          converter: SafeAstConverter(),
+        );
+        final bundle = await bundler.createFromFile(
+          '${tmp.path}/lib/main_builders.dart',
+        );
+        final widget =
+            await runner.evaluateAstBundleAs<Widget>(
+                  bundle.toBytes(),
+                )
+                as ServerComponentView;
 
-      expect((widget.fallback as Text).data, equals('fallback'));
-      expect(
-        ((widget.loadingBuilder!)(_FakeContext()) as Text).data,
-        equals('loading'),
-      );
-      expect(
-        ((widget.errorBuilder!)(StateError('boom')) as Text).data,
-        equals('error'),
-      );
-    });
+        expect((widget.fallback as Text).data, equals('fallback'));
+        expect(
+          ((widget.loadingBuilder!)(_FakeContext()) as Text).data,
+          equals('loading'),
+        );
+        expect(
+          ((widget.errorBuilder!)(StateError('boom')) as Text).data,
+          equals('error'),
+        );
+      },
+    );
 
     test('minimum delay in _load() prevents flash-to-error on fast 404', () {
       // The _load() method in ServerComponentView has a minimum 50ms delay

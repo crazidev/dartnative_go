@@ -325,8 +325,9 @@ class BundleLoader {
   }) async {
     final baseUrl = normalizeUrl(serverUrl);
     try {
-      final uri = Uri.parse('$baseUrl/guest.ast.patch')
-          .replace(queryParameters: {'base': baseFp ?? ''});
+      final uri = Uri.parse(
+        '$baseUrl/guest.ast.patch',
+      ).replace(queryParameters: {'base': baseFp ?? ''});
       final req = await _client.getUrl(uri);
       final res = await req.close();
       if (res.statusCode != HttpStatus.ok) return null;
@@ -880,7 +881,7 @@ class BundleLoader {
   /// reloads where `/manifest.json` is skipped: devices refresh fonts when
   /// the returned hash differs from [knownHash]. Never throws.
   Future<({String hash, List<Map<String, dynamic>> iconFonts})>
-      fetchIconFontsManifest(
+  fetchIconFontsManifest(
     String serverUrl, {
     String knownHash = '',
   }) async {
@@ -898,7 +899,8 @@ class BundleLoader {
       }
       final hash = decoded['hash']?.toString() ?? '';
       final raw = decoded['iconFonts'];
-      if (raw is! List) return (hash: hash, iconFonts: const <Map<String, dynamic>>[]);
+      if (raw is! List)
+        return (hash: hash, iconFonts: const <Map<String, dynamic>>[]);
       return (
         hash: hash,
         iconFonts: raw

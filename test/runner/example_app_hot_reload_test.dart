@@ -34,7 +34,8 @@ void main() {
     addTearDown(runner.dispose);
 
     final out = File('${Directory.systemTemp.path}/example_reload.ast');
-    Future<({List<int> bytes, Map<String, String> fingerprints})> build() async {
+    Future<({List<int> bytes, Map<String, String> fingerprints})>
+    build() async {
       final result = await buildGuestAstBundle(
         projectDir,
         outputArg: out.path,

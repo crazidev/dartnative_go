@@ -8,7 +8,9 @@ void main(List<String> args) async {
   final moduleCount = args.isNotEmpty ? int.tryParse(args[0]) ?? 500 : 500;
 
   print('================================================================');
-  print('⚡️ DartNative Go — Extreme Scale Hot Reload Benchmark ($moduleCount Modules)');
+  print(
+    '⚡️ DartNative Go — Extreme Scale Hot Reload Benchmark ($moduleCount Modules)',
+  );
   print('================================================================\n');
 
   final tmp = Directory.systemTemp.createTempSync('dn_scale_');
@@ -27,14 +29,16 @@ void main(List<String> args) async {
 }
 
 Future<void> runScaleBenchmark(Directory tmp, int moduleCount) async {
-  final projectDir = Directory('${tmp.path}/scale_project')..createSync(recursive: true);
+  final projectDir = Directory('${tmp.path}/scale_project')
+    ..createSync(recursive: true);
   File('${projectDir.path}/pubspec.yaml').writeAsStringSync('''
 name: scale_project
 environment:
   sdk: '>=3.0.0 <4.0.0'
 ''');
 
-  final libDir = Directory('${projectDir.path}/lib')..createSync(recursive: true);
+  final libDir = Directory('${projectDir.path}/lib')
+    ..createSync(recursive: true);
 
   print('🛠️ Step 1: Generating $moduleCount Dart modules...');
   final genSw = Stopwatch()..start();
@@ -47,7 +51,9 @@ environment:
     final barrelFile = File('${libDir.path}/barrel_$b.dart');
     final barrelImports = StringBuffer();
     final start = b * chunkSize;
-    final end = (start + chunkSize < moduleCount) ? start + chunkSize : moduleCount;
+    final end = (start + chunkSize < moduleCount)
+        ? start + chunkSize
+        : moduleCount;
 
     for (var i = start; i < end; i++) {
       final moduleFile = File('${libDir.path}/service_$i.dart');
@@ -86,7 +92,9 @@ void main() {}
 ''');
   mainFile.writeAsStringSync(mainBuf.toString());
   genSw.stop();
-  print('   ✅ Generated $moduleCount modules in ${genSw.elapsedMilliseconds} ms\n');
+  print(
+    '   ✅ Generated $moduleCount modules in ${genSw.elapsedMilliseconds} ms\n',
+  );
 
   final outFile = File('${projectDir.path}/guest.ast');
 
@@ -133,7 +141,9 @@ void main() {}
   // Test 3: Multi-File Batch Hot Reload (10 Modules Edited Simultaneously)
   // =========================================================================
   const smallBatchSize = 10;
-  print('⚡️ Step 4: Batch Hot Reload — Updating $smallBatchSize Modules Simultaneously...');
+  print(
+    '⚡️ Step 4: Batch Hot Reload — Updating $smallBatchSize Modules Simultaneously...',
+  );
   final batch1Files = <String>{};
 
   for (var i = 0; i < smallBatchSize; i++) {
@@ -166,7 +176,8 @@ class Service$i {
   final evalSw1 = Stopwatch()..start();
   // cachedBundleForProject returns the already-deserialized bundle from
   // the last build: zero disk I/O, zero ZIP decode, zero fromJson cost.
-  bundle = cachedBundleForProject(projectDir) ?? AstBundle.fromFile(outFile.path);
+  bundle =
+      cachedBundleForProject(projectDir) ?? AstBundle.fromFile(outFile.path);
   runner.executeBundle(
     bundle,
     name: 'main',
@@ -186,19 +197,34 @@ class Service$i {
     name: 'executeSample',
   );
 
-  final speedupRebuild = (coldMs / (buildSw1.elapsedMilliseconds > 0 ? buildSw1.elapsedMilliseconds : 1)).toStringAsFixed(1);
-  print('   • Modified files:       $smallBatchSize of $moduleCount (${moduleCount - smallBatchSize} modules skipped analyzer!)');
-  print('   • Rebuild time:         ${buildSw1.elapsedMilliseconds} ms (vs ${coldMs}ms cold build — ${speedupRebuild}x faster!)');
+  final speedupRebuild =
+      (coldMs /
+              (buildSw1.elapsedMilliseconds > 0
+                  ? buildSw1.elapsedMilliseconds
+                  : 1))
+          .toStringAsFixed(1);
+  print(
+    '   • Modified files:       $smallBatchSize of $moduleCount (${moduleCount - smallBatchSize} modules skipped analyzer!)',
+  );
+  print(
+    '   • Rebuild time:         ${buildSw1.elapsedMilliseconds} ms (vs ${coldMs}ms cold build — ${speedupRebuild}x faster!)',
+  );
   print('   • Client reload time:   ${evalSw1.elapsedMilliseconds} ms');
   print('   • Total Reload Latency: ${batch1Sw.elapsedMilliseconds} ms');
-  print('   • Swapped code check:   Service0.version() = "$vRes" (Expected: "v2_updated")');
-  print('   • State preserved:      Service0.counter = $countRes (Preserved count 1 + 10 = 11)\n');
+  print(
+    '   • Swapped code check:   Service0.version() = "$vRes" (Expected: "v2_updated")',
+  );
+  print(
+    '   • State preserved:      Service0.counter = $countRes (Preserved count 1 + 10 = 11)\n',
+  );
 
   // =========================================================================
   // Test 4: Heavy Concurrency Batch Reload (50 Modules Edited Simultaneously)
   // =========================================================================
   final largeBatchSize = (moduleCount >= 100) ? 50 : 20;
-  print('🔥 Step 5: Large Concurrency Batch — Updating $largeBatchSize Modules Simultaneously...');
+  print(
+    '🔥 Step 5: Large Concurrency Batch — Updating $largeBatchSize Modules Simultaneously...',
+  );
   final batch2Files = <String>{};
 
   for (var i = 10; i < 10 + largeBatchSize; i++) {
@@ -223,7 +249,8 @@ class Service$i {
     throw StateError('Rebuild 2 failed: ${rebuild2.error}');
   }
 
-  bundle = cachedBundleForProject(projectDir) ?? AstBundle.fromFile(outFile.path);
+  bundle =
+      cachedBundleForProject(projectDir) ?? AstBundle.fromFile(outFile.path);
   runner.executeBundle(
     bundle,
     name: 'main',
@@ -233,7 +260,9 @@ class Service$i {
 
   print('   • Modified files:       $largeBatchSize simultaneous files');
   print('   • Total Rebuild+Reload: ${batch2Sw.elapsedMilliseconds} ms');
-  print('   • Average per module:   ${(batch2Sw.elapsedMilliseconds / largeBatchSize).toStringAsFixed(2)} ms / updated module\n');
+  print(
+    '   • Average per module:   ${(batch2Sw.elapsedMilliseconds / largeBatchSize).toStringAsFixed(2)} ms / updated module\n',
+  );
 
   // =========================================================================
   // Test 5: No-Op Multi-Save Fast Path (0 Content Changes)

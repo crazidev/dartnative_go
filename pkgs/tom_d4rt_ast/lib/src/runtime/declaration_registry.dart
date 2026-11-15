@@ -147,7 +147,8 @@ class FunctionCode {
   /// Identity of the *callable shape*. Equal shapes may share a cell across
   /// generations; unequal shapes must get a fresh one.
   String? _cachedSignatureKey;
-  String get signatureKey => _cachedSignatureKey ??= parameterShapeKey(parameters);
+  String get signatureKey =>
+      _cachedSignatureKey ??= parameterShapeKey(parameters);
 }
 
 /// Stable, swappable holder for one function declaration.
@@ -659,7 +660,8 @@ class DeclarationRegistry {
       final prefix = '$className#';
       final stale = _cells.keys
           .where(
-            (k) => k.moduleUri == moduleUri && k.qualifiedName.startsWith(prefix),
+            (k) =>
+                k.moduleUri == moduleUri && k.qualifiedName.startsWith(prefix),
           )
           .toList();
       for (final key in stale) {
@@ -683,7 +685,9 @@ class DeclarationRegistry {
     final memberKeys = _classVariableKeys[classKey];
     final prefix = '$className#';
     final stale = <DeclarationKey>[];
-    final candidates = memberKeys != null ? List<DeclarationKey>.of(memberKeys) : _variableCells.keys.toList();
+    final candidates = memberKeys != null
+        ? List<DeclarationKey>.of(memberKeys)
+        : _variableCells.keys.toList();
     for (final key in candidates) {
       if (key.moduleUri != moduleUri ||
           key.kind != kind ||
@@ -724,7 +728,9 @@ class DeclarationRegistry {
       cell.publish(fresh.currentCode, home: home, generation: generation);
       _cells[key] = cell;
       if (owner != null) {
-        _classFunctionKeys.putIfAbsent('${key.moduleUri}#$owner', () => {}).add(key);
+        _classFunctionKeys
+            .putIfAbsent('${key.moduleUri}#$owner', () => {})
+            .add(key);
       }
       misses++;
       return fresh;
@@ -737,7 +743,9 @@ class DeclarationRegistry {
       cell.publish(fresh.currentCode, home: home, generation: generation);
       _cells[key] = cell;
       if (owner != null) {
-        _classFunctionKeys.putIfAbsent('${key.moduleUri}#$owner', () => {}).add(key);
+        _classFunctionKeys
+            .putIfAbsent('${key.moduleUri}#$owner', () => {})
+            .add(key);
       }
       retirements++;
       return fresh;
@@ -841,7 +849,9 @@ class DeclarationRegistry {
     _variableCells[key] = cell;
     final owner = key.ownerClassName;
     if (owner != null) {
-      _classVariableKeys.putIfAbsent('${key.moduleUri}#$owner', () => {}).add(key);
+      _classVariableKeys
+          .putIfAbsent('${key.moduleUri}#$owner', () => {})
+          .add(key);
     }
     journalUndo(() {
       _variableCells.remove(key);
@@ -949,7 +959,8 @@ class DeclarationRegistry {
       final prefix = '$className#';
       final stale = _variableCells.keys
           .where(
-            (k) => k.moduleUri == moduleUri && k.qualifiedName.startsWith(prefix),
+            (k) =>
+                k.moduleUri == moduleUri && k.qualifiedName.startsWith(prefix),
           )
           .toList();
       for (final key in stale) {

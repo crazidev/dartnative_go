@@ -86,8 +86,9 @@ BridgedClass buildFakeSharedPreferencesBridge(FakeSharedPreferencesHost host) {
         return Future.value(true);
       },
       'setStringList': (visitor, target, positional, named, typeArgs) {
-        targetOf(target).store[keyOf(positional)] =
-            List<String>.from(positional[1] as List);
+        targetOf(target).store[keyOf(positional)] = List<String>.from(
+          positional[1] as List,
+        );
         return Future.value(true);
       },
       'remove': (visitor, target, positional, named, typeArgs) {
@@ -116,7 +117,8 @@ BridgedClass buildFakeSharedPreferencesBridge(FakeSharedPreferencesHost host) {
       'setInt': 'Future<bool> setInt(String key, int value)',
       'setDouble': 'Future<bool> setDouble(String key, double value)',
       'setBool': 'Future<bool> setBool(String key, bool value)',
-      'setStringList': 'Future<bool> setStringList(String key, List<String> value)',
+      'setStringList':
+          'Future<bool> setStringList(String key, List<String> value)',
       'remove': 'Future<bool> remove(String key)',
       'clear': 'Future<bool> clear()',
       'reload': 'Future<void> reload()',
