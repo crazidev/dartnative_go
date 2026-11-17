@@ -1,6 +1,6 @@
 # dartnative_go
 
-A **dartnative** client runtime and development shell (similar to *Expo Go* for React Native), powered by `tom_d4rt`. It allows authoring, interpreting, and live hot-reloading multi-file DartNative apps dynamically over Wi-Fi / localhost.
+A **dartnative** client runtime and development shell (similar to _Expo Go_ for React Native), powered by `tom_d4rt`. It allows authoring, interpreting, and live hot-reloading multi-file DartNative apps dynamically over Wi-Fi / localhost.
 
 > 📖 **Architecture & Technical Details**: See [ARCHITECTURE.md](ARCHITECTURE.md) for a deep dive into the bridge architecture, widget proxies, lifecycle management, and dev server protocol.
 
@@ -9,6 +9,7 @@ A **dartnative** client runtime and development shell (similar to *Expo Go* for 
 The `dart_go` CLI is the universal tool to start projects, validate native plugin compatibility, detect assets, and broadcast discovery beacons for the mobile app.
 
 ### Install Globally
+
 Install the standalone `dart_go` binary globally so you can use it in any terminal and project:
 
 ```sh
@@ -16,6 +17,7 @@ dart run tool/install_global.dart
 ```
 
 Once installed, use `dart_go` directly anywhere:
+
 ```sh
 # Start the dev server in any DartNative project
 dart_go start
@@ -28,6 +30,7 @@ dart_go version
 ```
 
 ### Key Features
+
 - **Plugin Version Validation**: Validates that all native plugins in `pubspec.yaml` match the versions compiled into DartNative Go runtime (e.g. `dartnative`, `dartnative_share`, `dartnative_webview` at `^1.0.0`).
 - **DartNative Compatibility Layer**: Built-in bridge support for `package:dartnative/flutter_compat.dart` enabling drop-in compatibility for common DartNative widgets and paradigms.
 - **VS Code Debug Adapter (DAP)**: Start with `dart_go start --dap` to enable IDE breakpoints, stepping, variable inspection, and stack trace navigation directly in VS Code.

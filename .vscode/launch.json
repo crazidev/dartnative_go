@@ -3,18 +3,12 @@
   // Hover to view descriptions of existing attributes.
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "DartNative: Attach to Dev Server",
-      "type": "dartnative",
-      "request": "attach",
-      "port": 8088
-    },
+  "configurations": [ 
     {
       "name": "dartnative_go",
       "request": "launch",
       "type": "dart",
-      "args": ["--no-pub"]
+      "args": ["--no-pub", "--device-timeout", "30" ]
     },
     {
       "name": "dartnative_go (Source runtime)",
@@ -26,7 +20,7 @@
       "name": "dartnative_go --no-build",
       "request": "launch",
       "type": "dart",
-      "args": ["--no-pub", "--use-application-binary=/Users/mac/Dev/projects/dartnative_go/build/ios/Debug-iphoneos/Runner.app"]
+      "args": ["--no-pub", "--use-application-binary=/Users/mac/Dev/projects/dartnative_go/build/ios/Debug-iphoneos/Runner.app",  "--device-timeout", "10"]
     },
     {
       "name": "dartnative_go (profile mode)",

@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Native bottomsheet tutorial guide**: Added interactive lesson guide for `package:native_bottomsheet` (`example/lib/tutorials/native_bottomsheet.md`).
 - **`local_auth_kit` and `quick_actions_kit` plugin integrations**:
   - Bridged `LocalAuthentication` and biometric enums for AST and source runtimes.
   - Bridged `QuickActions` and `ShortcutItem` for home screen shortcuts and action handlers.
