@@ -5,6 +5,8 @@ import 'package:tom_build_base/tom_build_base_v2.dart';
 import 'package:tom_d4rt_generator/src/v2/d4rtgen_executor.dart';
 import 'package:tom_d4rt_generator/src/v2/d4rtgen_tool.dart';
 
+import 'd4rtgen_select.dart';
+
 /// Regenerates the AST bridge set (`lib/src/interpreter/ast/`) targeting
 /// `tom_d4rt_ast` (analyzer-free runtime).
 ///
@@ -30,26 +32,121 @@ Future<void> main(List<String> args) async {
   }
 
   final original = primaryFile.readAsStringSync();
+  final select = parseBridgeSelectArgs(args);
+  if (select.runnerArgs.contains('--help') ||
+      select.runnerArgs.contains('-h')) {
+    stdout.writeln(bridgeSelectHelp);
+  }
+  final projectDir = Directory.current.path;
   try {
     File(astConfig).copySync(primary);
+    final plan = _prepareAstSelection(
+      buildkitPath: primary,
+      projectDir: projectDir,
+      options: select,
+    );
+    if (plan != null && plan.selected.isEmpty) {
+      stdout.writeln('No AST bridge modules need generation.');
+      _recordAstStamps(
+        projectDir: projectDir,
+        buildkitPath: primary,
+        plan: SelectionPlan(
+          selected: [
+            for (final module in readBridgeModules(primary))
+              if (select.selectors.isEmpty ||
+                  select.selectors.any(module.matches))
+                module,
+          ],
+          skipped: plan.skipped,
+          partial: true,
+        ),
+      );
+      return;
+    }
     final runner = ToolRunner(
       tool: d4rtgenTool,
       executors: createD4rtgenExecutors(),
     );
-    final runArgs = args.isEmpty ? ['--project=.'] : args;
+    final runArgs = select.runnerArgs.isEmpty
+        ? ['--project=.']
+        : select.runnerArgs;
     final result = await runner.run(runArgs);
     if (!result.success) {
       exitCode = 1;
       return;
     }
-    _applyAstBridgePostFixes();
-    await _formatGeneratedBridges(isAst: true);
+    final only = plan == null
+        ? null
+        : plan.selected.map((module) => module.outputPath).toSet();
+    _applyAstBridgePostFixes(only: only);
+    await _formatGeneratedBridges(isAst: true, only: only);
+    _recordAstStamps(
+      projectDir: projectDir,
+      buildkitPath: primary,
+      plan: plan,
+    );
   } finally {
     primaryFile.writeAsStringSync(original);
+    deletePartialRelaxer(projectDir);
     try {
       File(backup).deleteSync();
     } catch (_) {}
   }
+}
+
+SelectionPlan? _prepareAstSelection({
+  required String buildkitPath,
+  required String projectDir,
+  required BridgeSelectOptions options,
+}) {
+  if (!options.restricts) return null;
+  final modules = readBridgeModules(buildkitPath);
+  final plan = planSelection(
+    modules: modules,
+    options: options,
+    isChanged: (module) => moduleSourcesChanged(
+      module: module,
+      projectDir: projectDir,
+      stampKey: 'ast:${module.name}',
+    ),
+  );
+  if (plan.selected.isEmpty) {
+    stdout.writeln(
+      'Skipping ${plan.skipped.length} unchanged AST module(s): '
+      '${plan.skipped.join(', ')}',
+    );
+    return plan;
+  }
+  stdout.writeln(
+    'Generating ${plan.selected.length} AST module(s): '
+    '${plan.selected.map((module) => module.name).join(', ')}',
+  );
+  if (plan.skipped.isNotEmpty) {
+    stdout.writeln(
+      'Skipping unchanged or unselected: ${plan.skipped.join(', ')}',
+    );
+  }
+  if (plan.partial)
+    writePartialBuildkit(buildkitPath: buildkitPath, plan: plan);
+  return plan;
+}
+
+void _recordAstStamps({
+  required String projectDir,
+  required String buildkitPath,
+  required SelectionPlan? plan,
+}) {
+  final modules = plan?.selected ?? readBridgeModules(buildkitPath);
+  final roots = loadPackageRoots(projectDir);
+  final edition = readFrameworkEdition();
+  writeStamps(projectDir, {
+    for (final module in modules)
+      'ast:${module.name}': moduleFingerprint(
+        module: module,
+        packageRoots: roots,
+        frameworkEdition: edition,
+      ),
+  });
 }
 
 /// Formats the generated AST bridge set as the final generation step.
@@ -58,17 +155,23 @@ Future<void> main(List<String> args) async {
 /// raw layout plus the `DN-PATCH` splices are not canonical, so formatting here
 /// keeps `dart run tool/d4rtgen_ast.dart` a no-op on unchanged sources instead
 /// of producing a whole-file whitespace diff.
-Future<void> _formatGeneratedBridges({required bool isAst}) async {
+Future<void> _formatGeneratedBridges({
+  required bool isAst,
+  Set<String>? only,
+}) async {
   final dir = Directory(
     isAst ? 'lib/src/interpreter/ast' : 'lib/src/interpreter',
   );
   if (!dir.existsSync()) return;
 
   final paths = <String>[
-    for (final entity in dir.listSync())
-      if (entity is File && entity.path.endsWith('.b.dart')) entity.path,
-    // Source set only: the AST set has `generateBarrel: false`.
-    if (!isAst) 'lib/d4rt_bridges.b.dart',
+    if (only == null) ...[
+      for (final entity in dir.listSync())
+        if (entity is File && entity.path.endsWith('.b.dart')) entity.path,
+      // Source set only: the AST set has `generateBarrel: false`.
+      if (!isAst) 'lib/d4rt_bridges.b.dart',
+    ] else
+      ...only,
   ]..sort();
 
   if (paths.isEmpty) return;
@@ -87,11 +190,13 @@ Future<void> _formatGeneratedBridges({required bool isAst}) async {
 
 /// Same generator-bug workarounds as `tool/d4rtgen.dart`, applied to the
 /// AST output dir. Kept in sync manually until the generator is fixed.
-void _applyAstBridgePostFixes() {
+void _applyAstBridgePostFixes({Set<String>? only}) {
+  bool want(String path) => only == null || only.contains(path);
+
   final dnBridgesFile = File(
     'lib/src/interpreter/ast/dartnative_bridges.b.dart',
   );
-  if (dnBridgesFile.existsSync()) {
+  if (want(dnBridgesFile.path) && dnBridgesFile.existsSync()) {
     var content = dnBridgesFile.readAsStringSync();
     // Alias-agnostic (regex): import alias numbers shift whenever the
     // framework gains files. DN-PATCH.
@@ -113,16 +218,26 @@ void _applyAstBridgePostFixes() {
     dnBridgesFile.writeAsStringSync(content);
   }
 
-  _patchRiverpodBridges(
-    File('lib/src/interpreter/ast/riverpod_kit_bridges.b.dart'),
-  );
-  _patchNativeBottomsheetBridges(
-    File('lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart'),
-  );
-  _patchFlutterCompatBridges(
-    File('lib/src/interpreter/ast/dartnative_flutter_compat_bridges.b.dart'),
-  );
-  _patchDioBridges(File('lib/src/interpreter/ast/dio_bridges.b.dart'));
+  if (want('lib/src/interpreter/ast/riverpod_kit_bridges.b.dart')) {
+    _patchRiverpodBridges(
+      File('lib/src/interpreter/ast/riverpod_kit_bridges.b.dart'),
+    );
+  }
+  if (want('lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart')) {
+    _patchNativeBottomsheetBridges(
+      File('lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart'),
+    );
+  }
+  if (want(
+    'lib/src/interpreter/ast/dartnative_flutter_compat_bridges.b.dart',
+  )) {
+    _patchFlutterCompatBridges(
+      File('lib/src/interpreter/ast/dartnative_flutter_compat_bridges.b.dart'),
+    );
+  }
+  if (want('lib/src/interpreter/ast/dio_bridges.b.dart')) {
+    _patchDioBridges(File('lib/src/interpreter/ast/dio_bridges.b.dart'));
+  }
 }
 
 /// dio's `FormData.fromMap` defaults `boundaryName` to the private top-level
@@ -212,10 +327,12 @@ void _patchRiverpodBridges(File file) {
   if (!file.existsSync()) return;
   var content = file.readAsStringSync();
 
-  content = content.replaceFirst(
-    '// ignore_for_file: ',
-    '// ignore_for_file: experimental_member_use, ',
-  );
+  if (!content.contains('experimental_member_use')) {
+    content = content.replaceFirst(
+      '// ignore_for_file: ',
+      '// ignore_for_file: experimental_member_use, ',
+    );
+  }
 
   // 1. Remove internal ClassBaseX and $RefArg extension blocks cleanly
   content = content.replaceAll(
@@ -335,8 +452,8 @@ void _patchRiverpodBridges(File file) {
   );
 
   // 9b. AsyncValue getters for single-line emission (see tool/d4rtgen.dart).
-  // riverpod 3.x has no valueOrNull: alias `.value` (nullable there).
-  if (!content.contains("'valueOrNull':")) {
+  // Do not alias `valueOrNull`; riverpod 3 removed it.
+  if (!content.contains("'isLoading':")) {
     for (final name in [
       'AsyncValue',
       'AsyncData',
@@ -346,8 +463,7 @@ void _patchRiverpodBridges(File file) {
       final targetType = '\$riverpod_5.$name';
       content = content.replaceFirst(
         "      'hashCode': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hashCode,",
-        "      'valueOrNull': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').value,\n"
-            "      'isLoading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isLoading,\n"
+        "      'isLoading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isLoading,\n"
             "      'isRefreshing': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isRefreshing,\n"
             "      'isReloading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isReloading,\n"
             "      'hasValue': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hasValue,\n"
@@ -357,5 +473,89 @@ void _patchRiverpodBridges(File file) {
     }
   }
 
+  content = _patchRiverpodGeneratorSkew(content);
+
   file.writeAsStringSync(content);
+}
+
+/// Same generator skew as `tool/d4rtgen.dart`. Kept in sync manually. DN-PATCH.
+String _patchRiverpodGeneratorSkew(String content) {
+  final stateNotifierAlias = RegExp(
+    r"import 'package:state_notifier/state_notifier\.dart' as (\$state_notifier_\d+);",
+  ).firstMatch(content)?.group(1);
+  if (stateNotifierAlias != null) {
+    content = content.replaceAll(
+      RegExp(r'\$aux_riverpod_\d+\.StateNotifier'),
+      '$stateNotifierAlias.StateNotifier',
+    );
+  }
+
+  final frameworkAlias = RegExp(
+    r"import 'package:riverpod/src/framework\.dart' as (\$riverpod_\d+);",
+  ).firstMatch(content)?.group(1);
+  if (frameworkAlias != null) {
+    content = content.replaceAll(
+      "D4.coerceList<dynamic>(named['overrides'], 'overrides')",
+      "D4.coerceList<$frameworkAlias.Override>(named['overrides'], 'overrides')",
+    );
+    content = content.replaceAll(
+      "? D4.coerceList<$frameworkAlias.Override>(named['overrides'], 'overrides')\n            : const <dynamic>[];",
+      "? D4.coerceList<$frameworkAlias.Override>(named['overrides'], 'overrides')\n            : const <$frameworkAlias.Override>[];",
+    );
+    content = content.replaceAll(
+      'D4.coerceListOrNull<dynamic>(\n          named[\'observers\'],\n          \'observers\',\n        )',
+      'D4.coerceListOrNull<$frameworkAlias.ProviderObserver>(\n          named[\'observers\'],\n          \'observers\',\n        )',
+    );
+    content = content.replaceAll(
+      "D4.coerceListOrNull<dynamic>(named['observers'], 'observers')",
+      "D4.coerceListOrNull<$frameworkAlias.ProviderObserver>(named['observers'], 'observers')",
+    );
+    // Riverpod 3 removed `valueOrNull`. Strip it if a previous patch or a
+    // stale generation left it, even when guest code still calls it.
+    content = content.replaceAll(
+      RegExp(
+        r"\n\s*'valueOrNull': \(visitor, target\) =>[\s\S]*?\.value,",
+      ),
+      '',
+    );
+    if (!content.contains("'isLoading':")) {
+      const extra = [
+        'isLoading',
+        'isRefreshing',
+        'isReloading',
+        'hasValue',
+        'hasError',
+      ];
+      for (final name in [
+        'AsyncValue',
+        'AsyncData',
+        'AsyncLoading',
+        'AsyncError',
+      ]) {
+        final member = {
+          'isLoading': 'isLoading',
+          'isRefreshing': 'isRefreshing',
+          'isReloading': 'isReloading',
+          'hasValue': 'hasValue',
+          'hasError': 'hasError',
+        };
+        final multi =
+            "      'hashCode': (visitor, target) => D4\n"
+            "          .validateTarget<$frameworkAlias.$name>(target, '$name')\n"
+            "          .hashCode,";
+        final single =
+            "      'hashCode': (visitor, target) => D4.validateTarget<$frameworkAlias.$name>(target, '$name').hashCode,";
+        final inserted = [
+          for (final key in extra)
+            "      '$key': (visitor, target) => D4.validateTarget<$frameworkAlias.$name>(target, '$name').${member[key]},",
+        ].join('\n');
+        if (content.contains(multi)) {
+          content = content.replaceFirst(multi, '$inserted\n$multi');
+        } else if (content.contains(single)) {
+          content = content.replaceFirst(single, '$inserted\n$single');
+        }
+      }
+    }
+  }
+  return content;
 }

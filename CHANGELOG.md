@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Selective bridge regeneration (`--package`, `--module`, `--changed`)**:
+  - Added `tool/d4rtgen_select.dart` allowing `tool/d4rtgen.dart` and `tool/d4rtgen_ast.dart` to target specific packages or modules instead of full regeneration.
+  - Implemented fingerprint stamp tracking to skip unchanged packages and avoid rewriting shared barrels during partial runs.
+  - Added generator post-fixes for Riverpod 3 skew (`StateNotifier`, `ProviderScope` type coercion, and member getters).
 - **Deep links (`dartnativego://open?url=<host:port>&name=<app>`)**: Launches the app directly into a guest project via `app_links_kit`, registered on iOS and Android. Added `dart_go open` CLI command with `--device` (simctl/adb dispatch) and `--qr` flags.
 - **`R` hot-restart key in CLI dev server**: Uppercase `R` in `dart_go start` broadcasts a hot restart, dropping interpreter state and re-evaluating the current bundle from scratch.
 - **Split app entrypoints for AST vs Source runtimes**: `lib/main.dart` links only the AST runtime, keeping ~690k lines of `package:analyzer` and source bridges out of release AOT compiles. Developer source runtime is accessible via `lib/main_source.dart`.

@@ -5,22 +5,136 @@ import 'package:tom_build_base/tom_build_base_v2.dart';
 import 'package:tom_d4rt_generator/src/v2/d4rtgen_executor.dart';
 import 'package:tom_d4rt_generator/src/v2/d4rtgen_tool.dart';
 
+import 'd4rtgen_select.dart';
+
+/// Regenerates the source bridge set.
+///
+/// Pass `--package` or `--module` to regenerate one package instead of every
+/// module, and `--changed` to skip packages whose sources have not moved.
+/// See [bridgeSelectHelp].
 void main(List<String> args) async {
-  final runner = ToolRunner(
-    tool: d4rtgenTool,
-    executors: createD4rtgenExecutors(),
-  );
-
-  final runArgs = args.isEmpty ? ['--project=.'] : args;
-  final result = await runner.run(runArgs);
-
-  if (!result.success) {
-    exitCode = 1;
-    return;
+  final select = parseBridgeSelectArgs(args);
+  if (select.runnerArgs.contains('--help') ||
+      select.runnerArgs.contains('-h')) {
+    stdout.writeln(bridgeSelectHelp);
   }
 
-  _applyBridgePostFixes();
-  await _formatGeneratedBridges(isAst: false);
+  const buildkit = 'buildkit.yaml';
+  final projectDir = Directory.current.path;
+  final original = File(buildkit).readAsStringSync();
+  SelectionPlan? plan;
+  try {
+    plan = _prepareSelection(
+      buildkitPath: buildkit,
+      projectDir: projectDir,
+      options: select,
+      stampPrefix: 'source',
+    );
+    if (plan != null && plan.selected.isEmpty) {
+      stdout.writeln('No bridge modules need generation.');
+      _recordSelectionStamps(
+        projectDir: projectDir,
+        buildkitPath: buildkit,
+        stampPrefix: 'source',
+        plan: SelectionPlan(
+          selected: [
+            for (final module in readBridgeModules(buildkit))
+              if (select.selectors.isEmpty ||
+                  select.selectors.any(module.matches))
+                module,
+          ],
+          skipped: plan.skipped,
+          partial: true,
+        ),
+      );
+      return;
+    }
+
+    final runner = ToolRunner(
+      tool: d4rtgenTool,
+      executors: createD4rtgenExecutors(),
+    );
+    final runArgs = select.runnerArgs.isEmpty
+        ? ['--project=.']
+        : select.runnerArgs;
+    final result = await runner.run(runArgs);
+    if (!result.success) {
+      exitCode = 1;
+      return;
+    }
+
+    final only = plan == null
+        ? null
+        : plan.selected.map((module) => module.outputPath).toSet();
+    _applyBridgePostFixes(only: only);
+    await _formatGeneratedBridges(isAst: false, only: only);
+    _recordSelectionStamps(
+      projectDir: projectDir,
+      buildkitPath: buildkit,
+      stampPrefix: 'source',
+      plan: plan,
+    );
+  } finally {
+    File(buildkit).writeAsStringSync(original);
+    deletePartialRelaxer(projectDir);
+  }
+}
+
+SelectionPlan? _prepareSelection({
+  required String buildkitPath,
+  required String projectDir,
+  required BridgeSelectOptions options,
+  required String stampPrefix,
+}) {
+  if (!options.restricts) return null;
+  final modules = readBridgeModules(buildkitPath);
+  final plan = planSelection(
+    modules: modules,
+    options: options,
+    isChanged: (module) => moduleSourcesChanged(
+      module: module,
+      projectDir: projectDir,
+      stampKey: '$stampPrefix:${module.name}',
+    ),
+  );
+  if (plan.selected.isEmpty) {
+    stdout.writeln(
+      'Skipping ${plan.skipped.length} unchanged module(s): '
+      '${plan.skipped.join(', ')}',
+    );
+    return plan;
+  }
+  stdout.writeln(
+    'Generating ${plan.selected.length} module(s): '
+    '${plan.selected.map((module) => module.name).join(', ')}',
+  );
+  if (plan.skipped.isNotEmpty) {
+    stdout.writeln(
+      'Skipping unchanged or unselected: ${plan.skipped.join(', ')}',
+    );
+  }
+  if (plan.partial)
+    writePartialBuildkit(buildkitPath: buildkitPath, plan: plan);
+  return plan;
+}
+
+void _recordSelectionStamps({
+  required String projectDir,
+  required String buildkitPath,
+  required String stampPrefix,
+  required SelectionPlan? plan,
+}) {
+  final modules = plan?.selected ?? readBridgeModules(buildkitPath);
+  final roots = loadPackageRoots(projectDir);
+  final edition = readFrameworkEdition();
+  writeStamps(projectDir, {
+    for (final module in modules)
+      '$stampPrefix:${module.name}': moduleFingerprint(
+        module: module,
+        packageRoots: roots,
+        frameworkEdition: edition,
+      ),
+  });
 }
 
 /// Formats the generated bridge set as the final generation step.
@@ -32,17 +146,23 @@ void main(List<String> args) async {
 /// `dart run tool/d4rtgen.dart` against unchanged sources produces no diff.
 ///
 /// Kept in sync with `tool/d4rtgen_ast.dart`.
-Future<void> _formatGeneratedBridges({required bool isAst}) async {
+Future<void> _formatGeneratedBridges({
+  required bool isAst,
+  Set<String>? only,
+}) async {
   final dir = Directory(
     isAst ? 'lib/src/interpreter/ast' : 'lib/src/interpreter',
   );
   if (!dir.existsSync()) return;
 
   final paths = <String>[
-    for (final entity in dir.listSync())
-      if (entity is File && entity.path.endsWith('.b.dart')) entity.path,
-    // Source set only: the AST set has `generateBarrel: false`.
-    if (!isAst) 'lib/d4rt_bridges.b.dart',
+    if (only == null) ...[
+      for (final entity in dir.listSync())
+        if (entity is File && entity.path.endsWith('.b.dart')) entity.path,
+      // Source set only: the AST set has `generateBarrel: false`.
+      if (!isAst) 'lib/d4rt_bridges.b.dart',
+    ] else
+      ...only,
   ]..sort();
 
   if (paths.isEmpty) return;
@@ -59,9 +179,11 @@ Future<void> _formatGeneratedBridges({required bool isAst}) async {
   }
 }
 
-void _applyBridgePostFixes() {
+void _applyBridgePostFixes({Set<String>? only}) {
+  bool want(String path) => only == null || only.contains(path);
+
   final dnBridgesFile = File('lib/src/interpreter/dartnative_bridges.b.dart');
-  if (dnBridgesFile.existsSync()) {
+  if (want(dnBridgesFile.path) && dnBridgesFile.existsSync()) {
     var content = dnBridgesFile.readAsStringSync();
     // Alias-agnostic (regex): import alias numbers shift whenever the
     // framework gains files. DN-PATCH.
@@ -86,7 +208,7 @@ void _applyBridgePostFixes() {
   final sqliteFile = File(
     'lib/src/interpreter/dartnative_sqlite_bridges.b.dart',
   );
-  if (sqliteFile.existsSync()) {
+  if (want(sqliteFile.path) && sqliteFile.existsSync()) {
     var content = sqliteFile.readAsStringSync();
     content = content.replaceAll('??>', '?>');
     sqliteFile.writeAsStringSync(content);
@@ -95,7 +217,7 @@ void _applyBridgePostFixes() {
   final supabaseFile = File(
     'lib/src/interpreter/dartnative_supabase_bridges.b.dart',
   );
-  if (supabaseFile.existsSync()) {
+  if (want(supabaseFile.path) && supabaseFile.existsSync()) {
     var content = supabaseFile.readAsStringSync();
     content = content.replaceAll(
       "        name: 'ToSnakeCase',\n        onTypeName: 'Enum',\n        getters: {\n          'snakeCase': (visitor, target) => (target as Enum).snakeCase,",
@@ -116,31 +238,49 @@ void _applyBridgePostFixes() {
     supabaseFile.writeAsStringSync(content);
   }
 
-  _patchRiverpodBridges(
-    File('lib/src/interpreter/riverpod_kit_bridges.b.dart'),
-    isAst: false,
-  );
-  _patchRiverpodBridges(
-    File('lib/src/interpreter/ast/riverpod_kit_bridges.b.dart'),
-    isAst: true,
-  );
+  if (want('lib/src/interpreter/riverpod_kit_bridges.b.dart')) {
+    _patchRiverpodBridges(
+      File('lib/src/interpreter/riverpod_kit_bridges.b.dart'),
+      isAst: false,
+    );
+  }
+  if (want('lib/src/interpreter/ast/riverpod_kit_bridges.b.dart')) {
+    _patchRiverpodBridges(
+      File('lib/src/interpreter/ast/riverpod_kit_bridges.b.dart'),
+      isAst: true,
+    );
+  }
 
-  _patchNativeBottomsheetBridges(
-    File('lib/src/interpreter/native_bottomsheet_bridges.b.dart'),
-  );
-  _patchNativeBottomsheetBridges(
-    File('lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart'),
-  );
+  if (want('lib/src/interpreter/native_bottomsheet_bridges.b.dart')) {
+    _patchNativeBottomsheetBridges(
+      File('lib/src/interpreter/native_bottomsheet_bridges.b.dart'),
+    );
+  }
+  if (want('lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart')) {
+    _patchNativeBottomsheetBridges(
+      File('lib/src/interpreter/ast/native_bottomsheet_bridges.b.dart'),
+    );
+  }
 
-  _patchFlutterCompatBridges(
-    File('lib/src/interpreter/dartnative_flutter_compat_bridges.b.dart'),
-  );
-  _patchFlutterCompatBridges(
-    File('lib/src/interpreter/ast/dartnative_flutter_compat_bridges.b.dart'),
-  );
+  if (want('lib/src/interpreter/dartnative_flutter_compat_bridges.b.dart')) {
+    _patchFlutterCompatBridges(
+      File('lib/src/interpreter/dartnative_flutter_compat_bridges.b.dart'),
+    );
+  }
+  if (want(
+    'lib/src/interpreter/ast/dartnative_flutter_compat_bridges.b.dart',
+  )) {
+    _patchFlutterCompatBridges(
+      File('lib/src/interpreter/ast/dartnative_flutter_compat_bridges.b.dart'),
+    );
+  }
 
-  _patchDioBridges(File('lib/src/interpreter/dio_bridges.b.dart'));
-  _patchDioBridges(File('lib/src/interpreter/ast/dio_bridges.b.dart'));
+  if (want('lib/src/interpreter/dio_bridges.b.dart')) {
+    _patchDioBridges(File('lib/src/interpreter/dio_bridges.b.dart'));
+  }
+  if (want('lib/src/interpreter/ast/dio_bridges.b.dart')) {
+    _patchDioBridges(File('lib/src/interpreter/ast/dio_bridges.b.dart'));
+  }
 }
 
 /// dio's `FormData.fromMap` defaults `boundaryName` to the private top-level
@@ -234,10 +374,12 @@ void _patchRiverpodBridges(File file, {required bool isAst}) {
   if (!file.existsSync()) return;
   var content = file.readAsStringSync();
 
-  content = content.replaceFirst(
-    '// ignore_for_file: ',
-    '// ignore_for_file: experimental_member_use, ',
-  );
+  if (!content.contains('experimental_member_use')) {
+    content = content.replaceFirst(
+      '// ignore_for_file: ',
+      '// ignore_for_file: experimental_member_use, ',
+    );
+  }
 
   // 1. Remove internal ClassBaseX and $RefArg extension blocks cleanly
   content = content.replaceAll(
@@ -378,11 +520,10 @@ void _patchRiverpodBridges(File file, {required bool isAst}) {
     "        return _unwrapInterpretedProxy(t.watch(listenable));",
   );
 
-  // 9. Patch AsyncValue / AsyncData / AsyncLoading / AsyncError getters if missing valueOrNull
-  if (!content.contains("'valueOrNull':")) {
-    const asyncGetters = """      'valueOrNull': (visitor, target) =>
-          D4.validateTarget<TARGET_TYPE>(target, 'TARGET_NAME').value,
-      'isLoading': (visitor, target) =>
+  // 9. Riverpod still has these AsyncValue getters; the generator sometimes
+  // omits them. Do not reintroduce `valueOrNull` — riverpod 3 removed it.
+  if (!content.contains("'isLoading':")) {
+    const asyncGetters = """      'isLoading': (visitor, target) =>
           D4.validateTarget<TARGET_TYPE>(target, 'TARGET_NAME').isLoading,
       'isRefreshing': (visitor, target) =>
           D4.validateTarget<TARGET_TYPE>(target, 'TARGET_NAME').isRefreshing,
@@ -413,12 +554,9 @@ void _patchRiverpodBridges(File file, {required bool isAst}) {
     }
   }
 
-  // 9b. Same AsyncValue getters for single-line emission: the multi-line
-  // hashCode anchor above misses current output, so valueOrNull etc. were
-  // silently dropped (AsyncLoading crash). riverpod 3.x has no valueOrNull,
-  // so it aliases `.value` (nullable there) like the original patch.
-  // DN-PATCH.
-  if (!content.contains("'valueOrNull':")) {
+  // 9b. Same AsyncValue getters for single-line emission. Do not alias
+  // `valueOrNull`; riverpod 3 removed it. DN-PATCH.
+  if (!content.contains("'isLoading':")) {
     for (final name in [
       'AsyncValue',
       'AsyncData',
@@ -428,8 +566,7 @@ void _patchRiverpodBridges(File file, {required bool isAst}) {
       final targetType = '\$riverpod_5.$name';
       content = content.replaceFirst(
         "      'hashCode': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hashCode,",
-        "      'valueOrNull': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').value,\n"
-            "      'isLoading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isLoading,\n"
+        "      'isLoading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isLoading,\n"
             "      'isRefreshing': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isRefreshing,\n"
             "      'isReloading': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').isReloading,\n"
             "      'hasValue': (visitor, target) => D4.validateTarget<$targetType>(target, '$name').hasValue,\n"
@@ -439,5 +576,95 @@ void _patchRiverpodBridges(File file, {required bool isAst}) {
     }
   }
 
+  content = _patchRiverpodGeneratorSkew(content);
+
   file.writeAsStringSync(content);
+}
+
+/// Generator skew that shows up after a riverpod regeneration. DN-PATCH.
+///
+/// - `$aux_riverpod_N.StateNotifier` is emitted with no import for that prefix.
+///   `state_notifier` is already imported as `$state_notifier_N`.
+/// - `ProviderScope` overrides/observers are emitted as `List<dynamic>`, but the
+///   constructor requires `List<Override>` / `List<ProviderObserver>` from
+///   `package:riverpod/src/framework.dart`. Alias numbers shift, so resolve them.
+String _patchRiverpodGeneratorSkew(String content) {
+  final stateNotifierAlias = RegExp(
+    r"import 'package:state_notifier/state_notifier\.dart' as (\$state_notifier_\d+);",
+  ).firstMatch(content)?.group(1);
+  if (stateNotifierAlias != null) {
+    content = content.replaceAll(
+      RegExp(r'\$aux_riverpod_\d+\.StateNotifier'),
+      '$stateNotifierAlias.StateNotifier',
+    );
+  }
+
+  final frameworkAlias = RegExp(
+    r"import 'package:riverpod/src/framework\.dart' as (\$riverpod_\d+);",
+  ).firstMatch(content)?.group(1);
+  if (frameworkAlias != null) {
+    content = content.replaceAll(
+      "D4.coerceList<dynamic>(named['overrides'], 'overrides')",
+      "D4.coerceList<$frameworkAlias.Override>(named['overrides'], 'overrides')",
+    );
+    content = content.replaceAll(
+      "? D4.coerceList<$frameworkAlias.Override>(named['overrides'], 'overrides')\n            : const <dynamic>[];",
+      "? D4.coerceList<$frameworkAlias.Override>(named['overrides'], 'overrides')\n            : const <$frameworkAlias.Override>[];",
+    );
+    content = content.replaceAll(
+      'D4.coerceListOrNull<dynamic>(\n          named[\'observers\'],\n          \'observers\',\n        )',
+      'D4.coerceListOrNull<$frameworkAlias.ProviderObserver>(\n          named[\'observers\'],\n          \'observers\',\n        )',
+    );
+    content = content.replaceAll(
+      "D4.coerceListOrNull<dynamic>(named['observers'], 'observers')",
+      "D4.coerceListOrNull<$frameworkAlias.ProviderObserver>(named['observers'], 'observers')",
+    );
+    // Riverpod 3 removed `valueOrNull`. Strip it if a previous patch or a
+    // stale generation left it, even when guest code still calls it.
+    content = content.replaceAll(
+      RegExp(
+        r"\n\s*'valueOrNull': \(visitor, target\) =>[\s\S]*?\.value,",
+      ),
+      '',
+    );
+    if (!content.contains("'isLoading':")) {
+      const extra = [
+        'isLoading',
+        'isRefreshing',
+        'isReloading',
+        'hasValue',
+        'hasError',
+      ];
+      for (final name in [
+        'AsyncValue',
+        'AsyncData',
+        'AsyncLoading',
+        'AsyncError',
+      ]) {
+        final member = {
+          'isLoading': 'isLoading',
+          'isRefreshing': 'isRefreshing',
+          'isReloading': 'isReloading',
+          'hasValue': 'hasValue',
+          'hasError': 'hasError',
+        };
+        final multi =
+            "      'hashCode': (visitor, target) => D4\n"
+            "          .validateTarget<$frameworkAlias.$name>(target, '$name')\n"
+            "          .hashCode,";
+        final single =
+            "      'hashCode': (visitor, target) => D4.validateTarget<$frameworkAlias.$name>(target, '$name').hashCode,";
+        final inserted = [
+          for (final key in extra)
+            "      '$key': (visitor, target) => D4.validateTarget<$frameworkAlias.$name>(target, '$name').${member[key]},",
+        ].join('\n');
+        if (content.contains(multi)) {
+          content = content.replaceFirst(multi, '$inserted\n$multi');
+        } else if (content.contains(single)) {
+          content = content.replaceFirst(single, '$inserted\n$single');
+        }
+      }
+    }
+  }
+  return content;
 }
