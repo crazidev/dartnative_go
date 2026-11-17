@@ -29,14 +29,10 @@ dependencies:
   dartnative_connectivity: ^1.0.0
   dartnative_media_picker: ^1.1.0
   dartnative_background: ^1.0.0
-  app_links_kit:
-    hosted: https://dartpub.dev
-    version: ^0.1.0
+  app_links_kit: ^0.1.0
   crypto: ^3.0.0
   dio: ^5.0.0
-  riverpod_kit:
-    hosted: https://dartpub.dev
-    version: ^0.1.0
+  riverpod_kit: ^0.1.0
   riverpod: ^3.3.2
   # == Supported plugins ends ===
   tom_d4rt: any
@@ -48,7 +44,10 @@ dependencies:
     path: pkgs/dartnative_go_api
   dartnative_go_ui:
     path: pkgs/dartnative_go_ui
-  # dartnative_firebase: ^1.0.1
+  dartnative_live_activities: ^0.1.0
+  quick_actions_kit: ^0.1.0
+  local_auth_kit: ^0.2.0
+  # dartnative_home_widget: ^0.1.0
 
 dev_dependencies:
   lints: ^6.0.0

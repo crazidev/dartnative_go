@@ -1,12 +1,15 @@
 import 'package:dartnative/dartnative.dart';
 import 'package:example/plugins/dartnative_connectivity.dart';
+import 'package:example/plugins/dartnative_live_activities.dart';
 import 'package:example/plugins/dartnative_media_picker.dart';
 import 'package:example/plugins/dartnative_notification.dart';
 import 'package:example/plugins/dartnative_share.dart';
 import 'package:example/plugins/dartnative_webview.dart';
 import 'package:example/plugins/dio_demo.dart';
+import 'package:example/plugins/local_auth_demo.dart';
 import 'package:equatable/equatable.dart';
 import 'package:example/plugins/native_bottomsheet.dart';
+import 'package:example/plugins/quick_actions_demo.dart';
 
 class Plugins extends Equatable {
   final Widget widget;
@@ -54,6 +57,21 @@ List<Plugins> plugins = [
     name: "dio (headless interpreter)",
     widget: DioDemo(),
     version: '5.11.1',
+  ),
+  Plugins(
+    name: "Dartnative Live Activities",
+    widget: LiveActivitiesDemo(),
+    version: '0.1.0',
+  ),
+  Plugins(
+    name: "Local Auth Kit",
+    widget: LocalAuthDemo(),
+    version: '0.2.0',
+  ),
+  Plugins(
+    name: "Quick Actions Kit",
+    widget: QuickActionsDemo(),
+    version: '0.1.0',
   ),
 ];
 

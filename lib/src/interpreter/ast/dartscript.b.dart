@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Dartscript registration for dartnative_go_ast
-// Generated: 2026-11-15T14:26:13.518676 by tom_d4rt_generator 1.26.2
+// Generated: 2026-11-16T04:51:32.072606 by tom_d4rt_generator 1.26.2
 
 /// D4rt Bridge Registration for dartnative_go_ast
 library;
@@ -30,6 +30,10 @@ import 'dartnative_connectivity_bridges.b.dart'
 import 'dartnative_media_picker_bridges.b.dart'
     as dartnative_media_picker_bridges;
 import 'dartnative_background_bridges.b.dart' as dartnative_background_bridges;
+import 'dartnative_live_activities_bridges.b.dart'
+    as dartnative_live_activities_bridges;
+import 'local_auth_kit_bridges.b.dart' as local_auth_kit_bridges;
+import 'quick_actions_kit_bridges.b.dart' as quick_actions_kit_bridges;
 import 'relaxers.b.dart' as relaxer_factories;
 
 /// Combined bridge registration for dartnative_go_ast.
@@ -235,6 +239,40 @@ class DartnativeGoAstBridges {
         barrel,
       );
     }
+    dartnative_live_activities_bridges
+        .DartnativeLiveActivitiesBridge.registerBridges(
+      d4rt,
+      'package:dartnative_live_activities/dartnative_live_activities.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in dartnative_live_activities_bridges
+            .DartnativeLiveActivitiesBridge.subPackageBarrels()) {
+      dartnative_live_activities_bridges
+          .DartnativeLiveActivitiesBridge.registerBridges(d4rt, barrel);
+    }
+    local_auth_kit_bridges.LocalAuthKitBridge.registerBridges(
+      d4rt,
+      'package:local_auth_kit/local_auth_kit.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in local_auth_kit_bridges.LocalAuthKitBridge.subPackageBarrels()) {
+      local_auth_kit_bridges.LocalAuthKitBridge.registerBridges(d4rt, barrel);
+    }
+    quick_actions_kit_bridges.QuickActionsKitBridge.registerBridges(
+      d4rt,
+      'package:quick_actions_kit/quick_actions_kit.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in quick_actions_kit_bridges
+            .QuickActionsKitBridge.subPackageBarrels()) {
+      quick_actions_kit_bridges.QuickActionsKitBridge.registerBridges(
+        d4rt,
+        barrel,
+      );
+    }
 
     // RC-2: Register generic constructor factories
     relaxer_factories.registerGenericConstructors();
@@ -294,6 +332,14 @@ class DartnativeGoAstBridges {
     );
     buffer.writeln(
       dartnative_background_bridges.DartnativeBackgroundBridge.getImportBlock(),
+    );
+    buffer.writeln(
+      dartnative_live_activities_bridges
+          .DartnativeLiveActivitiesBridge.getImportBlock(),
+    );
+    buffer.writeln(local_auth_kit_bridges.LocalAuthKitBridge.getImportBlock());
+    buffer.writeln(
+      quick_actions_kit_bridges.QuickActionsKitBridge.getImportBlock(),
     );
     return buffer.toString();
   }

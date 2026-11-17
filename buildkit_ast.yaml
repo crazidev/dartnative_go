@@ -105,5 +105,20 @@ d4rtgen:
         - package:dartnative_background/dartnative_background.dart
       barrelImport: package:dartnative_background/dartnative_background.dart
       outputPath: lib/src/interpreter/ast/dartnative_background_bridges.b.dart
+    - name: dartnative_live_activities
+      barrelFiles:
+        - package:dartnative_live_activities/dartnative_live_activities.dart
+      barrelImport: package:dartnative_live_activities/dartnative_live_activities.dart
+      outputPath: lib/src/interpreter/ast/dartnative_live_activities_bridges.b.dart
+    - name: local_auth_kit
+      barrelFiles:
+        - package:local_auth_kit/local_auth_kit.dart
+      barrelImport: package:local_auth_kit/local_auth_kit.dart
+      outputPath: lib/src/interpreter/ast/local_auth_kit_bridges.b.dart
+    - name: quick_actions_kit
+      barrelFiles:
+        - package:quick_actions_kit/quick_actions_kit.dart
+      barrelImport: package:quick_actions_kit/quick_actions_kit.dart
+      outputPath: lib/src/interpreter/ast/quick_actions_kit_bridges.b.dart
 
 

@@ -12,9 +12,7 @@ resolution: workspace
 dependencies:
   ffi: ^2.1.4
   meta: ^1.17.0
-  riverpod_kit:
-    hosted: https://dartpub.dev
-    version: ^0.1.0
+  riverpod_kit: ^0.1.0
   native_bottomsheet:
     path: ../../dartnative_bottomsheet
   dartnative_go:
@@ -25,6 +23,9 @@ dependencies:
   dartnative_connectivity: ^1.0.0
   dartnative_media_picker: ^1.1.0
   dartnative_background: ^1.0.0
+  dartnative_live_activities: ^0.1.0
+  local_auth_kit: ^0.2.0
+  quick_actions_kit: ^0.1.0
 
 dev_dependencies:
   lints: ^6.0.0
