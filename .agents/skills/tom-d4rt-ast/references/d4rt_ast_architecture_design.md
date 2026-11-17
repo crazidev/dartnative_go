@@ -29,8 +29,8 @@ graph TB
         APP[User Code]
     end
     
-    subgraph "DartNative Application"
-        FAPP[DartNative App<br/>No analyzer available]
+    subgraph "Flutter Application"
+        FAPP[Flutter App<br/>No analyzer available]
     end
     
     subgraph "tom_d4rt_exec"

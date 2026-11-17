@@ -76,13 +76,13 @@ final result = await runner.executeBundleAsAsync<Map<String, dynamic>>(bundle);
 throwing `D4UnwrapException` (carrying `expectedType` / `actualType`) on a
 mismatch — so consumers get a native `T`, never a `BridgedInstance`.
 
-## The DartNative / web deployment model
+## The Flutter / web deployment model
 
 This is the reason the package exists. The analyzer is a build-time concern; the
 device only ever sees pre-compiled bundles:
 
 ```
-Developer machine / CI                         End-user device (DartNative app)
+Developer machine / CI                         End-user device (Flutter app)
 ──────────────────────                         ─────────────────────────────
 Dart source  ──►  tom_ast_generator            tom_d4rt_ast  (embedded, no analyzer)
                   (analyzer → SAstNode)              │

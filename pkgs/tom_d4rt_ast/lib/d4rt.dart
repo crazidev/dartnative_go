@@ -5,7 +5,7 @@
 /// resolves entirely within `tom_d4rt_ast` — the zero-dependency,
 /// analyzer-free core. It carries **no** dependency on `tom_d4rt_exec`,
 /// `tom_ast_generator`, or the `analyzer` package, so any consumer that only
-/// needs to *run* pre-compiled `AstBundle`s (e.g. a DartNative app, including on
+/// needs to *run* pre-compiled `AstBundle`s (e.g. a Flutter app, including on
 /// web) can depend on it without pulling in `dart:io`.
 ///
 /// For source parsing (`String` → `AstBundle`), use `tom_d4rt_exec`, which is
