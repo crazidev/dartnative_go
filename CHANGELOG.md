@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`local_auth_kit` and `quick_actions_kit` plugin integrations**:
+  - Bridged `LocalAuthentication` and biometric enums for AST and source runtimes.
+  - Bridged `QuickActions` and `ShortcutItem` for home screen shortcuts and action handlers.
+  - Added demo screens (`LocalAuthDemo`, `QuickActionsDemo`) and headless test suite with `FakeLocalAuthHost`.
 - **`dartnative_live_activities` plugin integration**:
   - Bridged `LiveActivities` and `LiveActivity` for both AST and source runtimes with full preset and custom layout support.
   - Added native iOS WidgetKit extension (`DartNativeWidgets`) and App Intents package for iOS 16.1+ Live Activities.
