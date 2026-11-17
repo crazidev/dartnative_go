@@ -1,6 +1,6 @@
 /// Pure-Dart JSON helpers for serialized widget trees.
 ///
-/// No `dart:ui`, no Flutter — importable from `tool/` scripts run with plain
+/// No `dart:ui`, no DartNative UI — importable from `tool/` scripts run with plain
 /// `dart run` as well as from tests. Node shape (see
 /// `lib/src/runner/ui_probe.dart`): `{'type': 'Text', 'text': …}`,
 /// `{'type': 'Button', 'title': …, 'tappable': …}`, optional `'viewId'` /

@@ -107,7 +107,7 @@ const kAstBridgedLibraries = {
   'package:flutter/services.dart',
   // Host `ServerComponentView` for guest code. The URI resolves at runtime
   // to the bridge registered by AstInterpreterRunner — never bundled (the
-  // real file pulls in the host runner + flutter, which must not leak into
+  // real file pulls in the host runner + framework, which must not leak into
   // guest bundles). Contrast package:dartnative_go/server.dart (the
   // dependency-free annotation), which IS bundled via explicitSources.
   'package:dartnative_go/server_component.dart',
@@ -127,7 +127,7 @@ class AstBuildResult {
   final String? error;
 
   /// True when the rebuild was skipped because no source changed
-  /// (incremental fast path — equivalent to `flutter run` detecting
+  /// (incremental fast path — equivalent to `dn run` detecting
   /// "no changes").
   final bool cached;
 
@@ -574,7 +574,7 @@ Directory _codeRootFor(Directory projectDir, File entryFile) {
 ///
 /// Cheap I/O (no analyzer parse): sorted `relativePath + bytes` hash.
 /// Used to skip rebuilds when sources are unchanged since the last
-/// successful build — the `flutter run` "no changes" fast path.
+/// successful build — the `dn run` "no changes" fast path.
 Future<String> fingerprintGuestSources(
   Directory codeRoot, [
   Directory? projectDir,

@@ -62,7 +62,7 @@ The single most common confusion in this family is the two packages with
 Use **`tom_ast_generator`** when you have a `.dart` script you want to *run*
 on a device that cannot ship the analyzer. Use **`tom_d4rt_generator`** when
 you have a native Dart/Flutter API you want interpreted code to be able to
-*call*. A typical Flutter app uses **both**: `d4rtgen` produces the bridges
+*call*. A typical DartNative app uses **both**: `d4rtgen` produces the bridges
 for the Flutter API once, and `astgen` bundles each shippable script.
 
 ## When to bundle vs. parse at runtime

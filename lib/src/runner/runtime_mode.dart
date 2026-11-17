@@ -1,6 +1,6 @@
 /// Runtime engine selection for DartNative Go guest execution.
 ///
-/// AST (default) uses `tom_d4rt_ast` / `tom_d4rt_flutter_ast` with
+/// AST (default) uses `tom_d4rt_ast` with
 /// pre-compiled `AstBundle` bytes (analyzer-free, OTA/web-safe).
 /// Source uses `tom_d4rt` with on-device `package:analyzer` parsing.
 enum RuntimeMode { source, ast }

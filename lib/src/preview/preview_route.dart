@@ -29,7 +29,7 @@ class PreviewState {
   final String? errorStackTrace;
   final ErrorDisplayMode errorDisplayMode;
 
-  /// Epoch counter bumped on hot restart so Flutter discards existing State.
+  /// Epoch counter bumped on hot restart so DartNative discards existing State.
   final int guestEpoch;
 
   /// True when the error occurred before the initial frame rendered.

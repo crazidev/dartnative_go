@@ -13,7 +13,7 @@ import 'logger.dart';
 /// [kBuiltInIconFamilies]) short-circuit: they ship inside the host shell,
 /// so no HTTP request is ever made for them.
 ///
-/// Pure Dart (no `dart:ui`/`flutter`): when the dartnative SDK gains a
+/// Pure Dart (no `dart:ui`/framework UI): when the dartnative SDK gains a
 /// runtime font-registration API, call [fontBytes] there. Until then the
 /// manager still delivers the core win — unrequested fonts are never
 /// downloaded, and repeat reloads with an unchanged [iconFontsHash] fetch

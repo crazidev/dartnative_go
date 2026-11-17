@@ -40,7 +40,7 @@ Widget? mountServerComponent({
 /// That name belongs to the guest-side *annotation*
 /// (`package:dartnative_go/server.dart`) — const build-time metadata the
 /// bundler scans for. An annotation can only ever carry data (`id`,
-/// `version`): closures aren't const and a flutter dependency would poison
+/// `version`): closures aren't const and a framework dependency would poison
 /// guest bundles. Everything behavioral — fetching, fallbacks, loading and
 /// error UI, runner wiring — therefore lives here, on the host view, which
 /// addresses the annotation by its [componentId].

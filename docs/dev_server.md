@@ -258,7 +258,7 @@ When `--rebuild-ast` is on, the server (and `tool/build_ast_bundle.dart`) call
   Unchanged sources skip the analyzer parse entirely and return in
   milliseconds — the "no changes" fast path you see as `guest.ast up to date
   (cache hit)`.
-- **Bridged libraries are excluded.** `kAstBridgedLibraries` lists the Flutter
+- **Bridged libraries are excluded.** `kAstBridgedLibraries` lists the DartNative
   SDK, the DartNative plugin set, and whole third-party packages compiled into
   the shell (e.g. `dio` —
   [interpreter.md](architecture/interpreter.md#third-party-packages-compiled-into-the-shell));

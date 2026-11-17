@@ -30,7 +30,7 @@ in milliseconds. No Xcode/Android Studio builds after the initial install.
 | Requirement | Notes |
 | :--- | :--- |
 | Dart SDK `^3.12.0-192.0.dev` | The DartNative toolchain includes it. |
-| `dn` CLI | The DartNative SDK command (use it instead of `flutter`/`dart run` for run/build/pub). |
+| `dn` CLI | The DartNative SDK command (use it instead of foreign SDK CLIs / `dart run` for run/build/pub). |
 | DartNative license | Subscribe at [dartpub.dev/framework](https://dartpub.dev/framework), then `dn config --license-key dnk_...`. |
 | A device or emulator | iOS or Android, on the **same Wi-Fi network** as your computer. |
 

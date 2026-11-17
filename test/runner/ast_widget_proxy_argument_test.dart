@@ -1,4 +1,4 @@
-/// A native Flutter widget proxy handed to guest code as an argument of an
+/// A native DartNative widget proxy handed to guest code as an argument of an
 /// interpreted class type — `didUpdateWidget(covariant StickyNote oldWidget)` is
 /// the canonical case. The declared parameter is an interpreted class while the
 /// value's runtime type is the host's proxy class, so the argument check has to

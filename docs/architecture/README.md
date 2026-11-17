@@ -19,7 +19,7 @@ Cross-cutting depth (reload internals, bridge details) stays in the root
 ## Rules that apply everywhere
 
 - `lib/src/cli/**` runs on the workstation (plain `dart`); it must not import
-  `dart:ui` or Flutter. `lib/src/runner/ui_tree_json.dart` and
+  `dart:ui` or DartNative UI. `lib/src/runner/ui_tree_json.dart` and
   `icon_registry.dart` are also pure Dart so `tool/` scripts can use them.
 - Every guest-facing API exists twice: source engine (`tom_d4rt`) and AST
   engine (`tom_d4rt_ast`, under `interpreter/ast/`). Change both together.

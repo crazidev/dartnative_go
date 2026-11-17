@@ -6,7 +6,7 @@
 // Injects N synthetic Dart modules (widgets + services + providers) into a
 // real DartNative guest project so you can stress-test hot reload at scale.
 //
-// Each injected module is a realistic Flutter widget file, making the test
+// Each injected module is a realistic DartNative widget file, making the test
 // representative of an actual app's import graph.
 //
 // USAGE:
@@ -33,7 +33,7 @@ const _marker = '// scale_inject:auto-generated';
 // Module templates: realistic widget / service / provider code
 // ──────────────────────────────────────────────────────────────────────────────
 
-/// Stateless widget (most common Flutter widget type).
+/// Stateless widget (most common DartNative widget type).
 String _statelessWidget(int i) =>
     '''$_marker
 import 'package:dartnative/dartnative.dart';
@@ -140,7 +140,7 @@ class _ScaleStateful${i}State extends State<ScaleStateful$i> {
 }
 ''';
 
-/// Pure Dart service / data model (no Flutter import needed).
+/// Pure Dart service / data model (no DartNative UI import needed).
 String _serviceModel(int i) =>
     '''$_marker
 
@@ -630,7 +630,7 @@ Map<String, String> _parseFlags(List<String> args) {
 }
 
 void _usage() => print('''
-scale_inject — Inject realistic Flutter widgets + services into a DartNative project.
+scale_inject — Inject realistic DartNative widgets + services into a DartNative project.
 
   inject  --project=<p> --count=<N> [--type=mixed|widget|stateful|service]
   clean   --project=<p>

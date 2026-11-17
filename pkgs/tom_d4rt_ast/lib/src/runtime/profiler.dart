@@ -13,7 +13,7 @@ import 'dart:math' show max;
 /// ## Enabling locally
 ///
 /// Pass `--dart-define=D4RT_PROFILE_INIT=true` when building/running the host
-/// Flutter app. The `dart_go --verbose` CLI flag enables report output, but
+/// DartNative app. The `dart_go --verbose` CLI flag enables report output, but
 /// cannot enable this compile-time instrumentation by itself.
 ///
 /// ## Zero runtime cost when disabled

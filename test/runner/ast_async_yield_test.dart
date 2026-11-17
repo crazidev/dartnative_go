@@ -7,7 +7,7 @@ import 'package:tom_ast_generator/tom_ast_generator.dart';
 /// Interpreted async continuations used to be queued exclusively as microtasks
 /// (`Future.microtask`), and every pending microtask drains before the embedder
 /// regains control. A long chain of interpreted `await`s therefore starved the
-/// embedder's event loop — on Flutter that means a frozen UI for the duration
+/// embedder's event loop — on DartNative that means a frozen UI for the duration
 /// of, say, a `dio` request.
 ///
 /// `InterpretedFunction._scheduleStateMachineRun` now time-slices async work:

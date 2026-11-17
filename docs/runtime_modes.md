@@ -63,10 +63,10 @@ logs are unaffected — they stay gated on `--verbose` alone.
 `tom_d4rt_ast` has compile-time-gated setup profiling for runner initialization,
 warm-parent/stdlib and bridge registration, module-loader creation, and the
 declaration passes before guest `main()`. To collect its report, build or run
-the **host Flutter app** with:
+the **host DartNative app** with:
 
 ```sh
-flutter run --dart-define=D4RT_PROFILE_INIT=true
+dn run --dart-define=D4RT_PROFILE_INIT=true
 ```
 
 Then start the DartNative Go dev server with verbose logging:
@@ -91,7 +91,7 @@ work performed inside guest code.
 **Trade-offs / constraints:**
 
 - The bundle only contains what the bundler can statically reach and what
-  isn't natively bridged. Libraries in `kAstBridgedLibraries` (the Flutter SDK,
+  isn't natively bridged. Libraries in `kAstBridgedLibraries` (the DartNative SDK,
   the DartNative plugin set, and whole third-party packages such as `dio`) are
   excluded and satisfied by bridges at runtime.
 - The generated FFI plugin registrant is stubbed out, because native FFI

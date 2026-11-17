@@ -64,7 +64,7 @@
 | **AST Interpreter** | `tom_d4rt_ast` | Zero-dependency, analyzer-free AST interpreter for precompiled bundles. |
 | **Bridge Generator** | `tom_d4rt_generator` / `d4rtgen` | Code generator that inspected DartNative framework APIs and generated 51,000+ lines of reflection-free bindings. |
 | **Live Dev Server** | `dart_go start` (`server.dart`) | HTTP manifest + on-demand dependency packager + UDP broadcaster + WebSocket server. |
-| **Guest Application** | Pure Dart (`example/` / user app) | Interpreted modular code written against standard DartNative & Flutter-compatible APIs. |
+| **Guest Application** | Pure Dart (`example/` / user app) | Interpreted modular code written against standard DartNative APIs. |
 
 ---
 
@@ -73,7 +73,7 @@
 ### 4.1 Dependency Packaging & On-Device Caching (Expo Go Architecture)
 * **Challenge**: Packaging entire projects with large dependencies into a single monolithic bundle causes massive bundle downloads and slow parsing on every single save.
 * **Solution**:
-  1. **Split Manifest & Packaging**: Dev server inspects `.dart_tool/package_config.json` via `DepPackager`. Pure Dart dependencies (e.g. `flutter_riverpod`, `collection`, etc.) are packaged into individual versioned ZIP archives (`/pkg/<name>@<version>.zip`) with immutable cache headers.
+  1. **Split Manifest & Packaging**: Dev server inspects `.dart_tool/package_config.json` via `DepPackager`. Pure Dart dependencies (e.g. `riverpod_kit`, `collection`, etc.) are packaged into individual versioned ZIP archives (`/pkg/<name>@<version>.zip`) with immutable cache headers.
   2. **User Code Isolation**: Only user project code is zipped into `/user-code.zip`.
   3. **On-Device `DepCache`**: Downloaded package ZIPs are unpacked and persisted in `<app_support_dir>/dartnative_go/dep_cache/<pkg>@<ver>/`.
   4. **In-Memory Cache**: `BundleLoader` retains `_cachedDepSources` across hot reloads. During incremental reloads, fetching dependencies takes **0ms**.

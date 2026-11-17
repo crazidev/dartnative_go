@@ -36,7 +36,7 @@ class ProjectBundle {
   /// fetches when unchanged across reloads.
   final String iconFontsHash;
 
-  /// Custom `flutter: fonts:` declarations from the guest pubspec.
+  /// Custom font declarations from the guest pubspec.
   final List<Map<String, dynamic>> customFonts;
 
   /// Raw pre-compiled `AstBundle` bytes (ZIP/gzip/JSON auto-detected by

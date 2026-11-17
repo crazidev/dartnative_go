@@ -76,7 +76,7 @@ interpreter, which executes `main()` and captures the root widget. Details:
 Your guest code never touches the Dart compiler on device. Two engines can
 execute it — **source mode** parses Dart on-device with `package:analyzer`;
 **AST mode** (default) runs the pre-parsed bundle analyzer-free. Both share
-one trick: calls into Flutter and native plugins are *bridged* to real
+one trick: calls into DartNative and native plugins are *bridged* to real
 implementations compiled into the shell, and custom widgets become *proxies*
 whose `build()` methods run in the interpreter while their output inflates
 real native views. Details: [Runtime Modes](runtime_modes.md).

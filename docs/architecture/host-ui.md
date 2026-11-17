@@ -10,7 +10,7 @@ The shell app around the interpreted guest.
 | `lib/main_source.dart` | Development entrypoint that also links the Source engine (`tom_d4rt`) and analyzer; use `dn run -t lib/main_source.dart` when testing Source mode. |
 | `lib/host_api.dart` | Re-export of the host API (`package:dartnative_go_api`). Interpreted guests can import this URI; the shell bridges it. |
 | `lib/src/app_shell.dart` | Shared host shell: binds `DartGoHost`, embeds `HostLauncher` as the home route; opening a project pushes the preview route; mount/reload/restart orchestration, probe handler. Takes a `GuestRunnerBuilder`. |
-| `pkgs/dartnative_go_api` | Host API: `discover`, `refresh`, `openProject`, `openWithLink`, `toggleTheme`, `openDevTools`, `verbose`, `reload`, `goHome`. No Flutter. |
+| `pkgs/dartnative_go_api` | Host API: `discover`, `refresh`, `openProject`, `openWithLink`, `toggleTheme`, `openDevTools`, `verbose`, `reload`, `goHome`. No framework UI. |
 | `pkgs/dartnative_go_ui` | Launcher UI. Calls the API. `dart_go start` in this package previews it inside the host. |
 | `lib/src/runner/guest_runner.dart` | Host-facing runtime interface + builder typedef implemented by `AstGuestRunner` and `InterpreterRunner`. |
 | `lib/src/preview/` | `PreviewScreen` + `PreviewState`: the pushed launch/preview route (splash → mounted guest). Error surfaces are drawn by the shell layer, not here. |

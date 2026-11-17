@@ -103,7 +103,7 @@ Class-level coverage is audited by hand; **member-level** and
   the analyzer-free tree, because the oracle cannot be pointed at the twin
   directly — it needs `dart:mirrors` and must execute source, neither of which
   `tom_d4rt_ast` can do. That inference is load-bearing rather than incidental:
-  the twin is what ships inside Flutter apps. `test/scd49_stdlib_twin_sync_test.dart`
+  the twin is what ships inside DartNative apps. `test/scd49_stdlib_twin_sync_test.dart`
   makes it checkable by comparing TOKEN streams file by file — comments,
   directives and trailing commas excluded, because those differ legitimately
   and constantly. 122 of the 126 files agree exactly; the four that do not are

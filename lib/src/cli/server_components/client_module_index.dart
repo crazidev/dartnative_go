@@ -65,7 +65,7 @@ class ClientModuleIndex {
   /// libraries, which are never bundled and always resolved by the runtime.
   ///
   /// Optionally exclude [bridgedUris] — libraries handled by native bridges
-  /// (Flutter, DartNative plugins) that are also never bundled.
+  /// (DartNative core, DartNative plugins) that are also never bundled.
   factory ClientModuleIndex.fromBundle(
     AstBundle bundle, {
     Set<String>? bridgedUris,

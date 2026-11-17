@@ -63,7 +63,7 @@ Two constraints shape the design:
 **Non-goals (this pass)**
 
 - Replacing `pubspec.yaml` for dependencies, assets or fonts.
-- Flutter-style flavors/schemes as first-class config (available through raw
+- Flavor/scheme variants as first-class config (available through raw
   escape hatches).
 - Code signing, provisioning profiles, store metadata.
 - A `.dart` config. It would need evaluation before `pub get`, cannot be

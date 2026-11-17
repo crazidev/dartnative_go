@@ -4,7 +4,7 @@ import 'dart:isolate';
 import 'package:tom_d4rt_ast/runtime.dart' as ast;
 import 'package:tom_d4rt_ast/runtime.dart' show D4rtIsolateWorker;
 
-/// Registers the `compute()` top-level bridge mirroring Flutter's `compute()` API.
+/// Registers the `compute()` top-level bridge mirroring the `compute()` API.
 ///
 /// Executes [callback] in a real background Dart isolate using [D4rtIsolateWorker]
 /// when given a named top-level interpreted function and bundle bytes.

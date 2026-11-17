@@ -1282,7 +1282,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       _pendingBlankBuild = false;
       _pendingBlankNeedsRemount = false;
       // A hot restart must rebuild the guest from scratch: bump the epoch in
-      // the same publish that installs the new tree, so Flutter discards the
+      // the same publish that installs the new tree, so DartNative discards the
       // previous elements (and their State) rather than reusing them.
       _guestEpoch++;
       _publishPreview();
