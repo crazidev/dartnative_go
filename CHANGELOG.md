@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`dartnative_live_activities` plugin integration**:
+  - Bridged `LiveActivities` and `LiveActivity` for both AST and source runtimes with full preset and custom layout support.
+  - Added native iOS WidgetKit extension (`DartNativeWidgets`) and App Intents package for iOS 16.1+ Live Activities.
+  - Configured app group entitlements (`group.beatcode.studio.dartnative`) and `NSSupportsLiveActivities`.
+  - Added interactive demo (`LiveActivitiesDemo`), headless fake (`FakeLiveActivitiesHost`), and bridge suite.
 - **Selective bridge regeneration (`--package`, `--module`, `--changed`)**:
   - Added `tool/d4rtgen_select.dart` allowing `tool/d4rtgen.dart` and `tool/d4rtgen_ast.dart` to target specific packages or modules instead of full regeneration.
   - Implemented fingerprint stamp tracking to skip unchanged packages and avoid rewriting shared barrels during partial runs.

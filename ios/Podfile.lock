@@ -1,27 +1,33 @@
 PODS:
   - app_links_kit (0.1.0)
-  - dartnative_background (1.0.1)
-  - dartnative_connectivity (1.0.0)
+  - dartnative_background (1.0.3)
+  - dartnative_connectivity (1.0.1)
   - dartnative_ios (1.0.0):
     - FlexLayout (= 2.0.10)
-  - dartnative_media_picker (1.1.0)
-  - dartnative_notifications (1.0.1)
+  - dartnative_live_activities (0.1.0)
+  - dartnative_live_activities_extension (0.1.0)
+  - dartnative_media_picker (1.1.2)
+  - dartnative_notifications (1.0.4)
   - dartnative_path_provider (1.0.0)
-  - dartnative_share (1.0.2)
+  - dartnative_share (1.0.4)
   - dartnative_shared_preferences (1.0.1)
-  - dartnative_system (1.0.0)
-  - dartnative_url_launcher (1.0.0)
+  - dartnative_system (1.0.1)
+  - dartnative_url_launcher (1.0.1)
   - dartnative_webview (1.0.1)
   - DartNativeCore (1.0.0)
   - FlexLayout (2.0.10)
+  - local_auth_kit (0.2.0)
   - native_bottomsheet (0.1.0):
     - FlexLayout
+  - quick_actions_kit (0.1.0)
 
 DEPENDENCIES:
   - app_links_kit (from `.symlinks/plugins/app_links_kit/ios`)
   - dartnative_background (from `.symlinks/plugins/dartnative_background/ios`)
   - dartnative_connectivity (from `.symlinks/plugins/dartnative_connectivity/ios`)
   - dartnative_ios (from `.symlinks/plugins/dartnative_ios/ios`)
+  - dartnative_live_activities (from `.symlinks/plugins/dartnative_live_activities/ios`)
+  - dartnative_live_activities_extension (from `.symlinks/plugins/dartnative_live_activities/ios`)
   - dartnative_media_picker (from `.symlinks/plugins/dartnative_media_picker/ios`)
   - dartnative_notifications (from `.symlinks/plugins/dartnative_notifications/ios`)
   - dartnative_path_provider (from `.symlinks/plugins/dartnative_path_provider/ios`)
@@ -31,7 +37,9 @@ DEPENDENCIES:
   - dartnative_url_launcher (from `.symlinks/plugins/dartnative_url_launcher/ios`)
   - dartnative_webview (from `.symlinks/plugins/dartnative_webview/ios`)
   - DartNativeCore (from `DartNative`)
+  - local_auth_kit (from `.symlinks/plugins/local_auth_kit/ios`)
   - native_bottomsheet (from `.symlinks/plugins/native_bottomsheet/ios`)
+  - quick_actions_kit (from `.symlinks/plugins/quick_actions_kit/ios`)
 
 SPEC REPOS:
   trunk:
@@ -46,6 +54,10 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/dartnative_connectivity/ios"
   dartnative_ios:
     :path: ".symlinks/plugins/dartnative_ios/ios"
+  dartnative_live_activities:
+    :path: ".symlinks/plugins/dartnative_live_activities/ios"
+  dartnative_live_activities_extension:
+    :path: ".symlinks/plugins/dartnative_live_activities/ios"
   dartnative_media_picker:
     :path: ".symlinks/plugins/dartnative_media_picker/ios"
   dartnative_notifications:
@@ -64,26 +76,34 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/dartnative_webview/ios"
   DartNativeCore:
     :path: DartNative
+  local_auth_kit:
+    :path: ".symlinks/plugins/local_auth_kit/ios"
   native_bottomsheet:
     :path: ".symlinks/plugins/native_bottomsheet/ios"
+  quick_actions_kit:
+    :path: ".symlinks/plugins/quick_actions_kit/ios"
 
 SPEC CHECKSUMS:
   app_links_kit: e73d28fcc3acf5640a52a95e27c1de7d4afc3206
-  dartnative_background: ec8ba5a3951f356d8dad6a24c86e2fa780986061
-  dartnative_connectivity: 892218819e7e5f6b62d902b36bfcab06b2f54d7d
+  dartnative_background: 64974da9b53ef5a1930c9f39e15b55580506e13f
+  dartnative_connectivity: 675f7cc3b349c979c84d429593e92819daf77850
   dartnative_ios: c5e063a6bc126b1f88144c1c16ff9c200caf1e9e
-  dartnative_media_picker: d385658a670ee438a8c4ee6357a12fb0255e9ea9
-  dartnative_notifications: 8bb4b59755d97fbc7b7f4f8f22451edb64958ea9
+  dartnative_live_activities: 118e035df9c3cde1164afffa5ba15539e5a90325
+  dartnative_live_activities_extension: 21b721582e4d9f0e033e6bd76f273aa73f60b7cf
+  dartnative_media_picker: 1fef38971b7b943ab080e554085f2f7a91e8a5ae
+  dartnative_notifications: d1fbe0cddba36d021c00cf7cf6c2b3647e15b107
   dartnative_path_provider: c70d5d38a31ebf4a132a67dfa8de9f435fb11ed6
-  dartnative_share: ff194b41435ca672fab6cfc7511ae76883e11506
+  dartnative_share: b76c1d84ff478ea7f3bc99959a31dd6da4b741f8
   dartnative_shared_preferences: ec7c5f6b4fe20033acade3aab5c763a2348f4067
-  dartnative_system: a7ca12d00da95e1ee365d360ba4f393068305bd0
-  dartnative_url_launcher: 64da45efde475aa218c467a26c0052040c20ddde
+  dartnative_system: f26918ac41e23341a7edff1c581849fdfb2c6eae
+  dartnative_url_launcher: 0139786a4a780e4983bd95f17e2bdeebae53c8ca
   dartnative_webview: e30910314a27fdd067a3d958301b6d7b04e686ce
   DartNativeCore: 225e49d9e35e234bcadc6b81586fc4275a1006ee
   FlexLayout: ea94491c923485f7f28891cb5b10245d22df380b
-  native_bottomsheet: 32d2e15c1db2812363d1ffabf1ac8acf6c63a82d
+  local_auth_kit: 41c952a4b3e4dfb177b1d828d5f811c16b426273
+  native_bottomsheet: b49cc955a9a7ec0dfaff4bd479c8fc862cba7bca
+  quick_actions_kit: e0729cbb15bfcb9bd526df3fba05d5efd3c9c622
 
-PODFILE CHECKSUM: 0eb83f38c0038ca753c95effc43e8a0e67ec8c2c
+PODFILE CHECKSUM: 555c6419daf19c419610304e7fcb59e03d72cea4
 
 COCOAPODS: 1.16.2

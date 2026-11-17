@@ -25,9 +25,6 @@
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
-			<!-- Deep links: `dartnativego://open?url=http://host:port` opens a
-			     project without scanning. The CLI prints (and can open) this
-			     link; see lib/src/client/deep_link.dart. -->
 			<key>CFBundleURLName</key>
 			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			<key>CFBundleURLSchemes</key>
@@ -38,12 +35,18 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(DN_BUILD_NUMBER)</string>
+	<key>DartNativeAppGroup</key>
+	<string>group.beatcode.studio.dartnative</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Save photos and videos you create in the app.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Pick photos and videos to use in the app.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Authenticate to unlock the app</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
