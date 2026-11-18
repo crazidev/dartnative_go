@@ -31,7 +31,7 @@ dart_go version
 
 ### Key Features
 
-- **Plugin Version Validation**: Validates that all native plugins in `pubspec.yaml` match the versions compiled into DartNative Go runtime (e.g. `dartnative`, `dartnative_share`, `dartnative_webview` at `^1.0.0`).
+- **Plugin Version Validation**: Validates that all native plugins in `pubspec.yaml` match the versions compiled into DartNative Go runtime (e.g. `dartnative`, `dartnative_shared`, `dartnative_webview` at `v1.0.0`).
 - **DartNative Compatibility Layer**: Built-in bridge support for `package:dartnative/flutter_compat.dart` enabling drop-in compatibility for common DartNative widgets and paradigms.
 - **VS Code Debug Adapter (DAP)**: Start with `dart_go start --dap` to enable IDE breakpoints, stepping, variable inspection, and stack trace navigation directly in VS Code.
 - **Asset Detection & Serving**: Auto-discovers app icons and splash screen configurations (`dartnative_splash`), serving them via `/assets/icon.png`, `/assets/splash.png`, and `/manifest.json`.
@@ -67,9 +67,9 @@ dn build ipa
 
 Release apps ship the **full** icon fonts: icon-font tree shaking is disabled
 in [`android/app/build.gradle.kts`](android/app/build.gradle.kts) and
-[`ios/DartNative/*.xcconfig`](ios/DartNative/Release.xcconfig) because the
-interpreter creates `IconData` from code points in guest code at runtime, and
-the shaker only accepts `const IconData`. Leave it off — enabling it fails the
+[`ios/DartNative/Release.xcconfig`](ios/DartNative/Release.xcconfig) because the
+interpreter creates `IconData` from code points in guest code at runtime, and the
+shaker only accepts `const IconData`. Leave it off — enabling it fails the
 release build, and a forced subset would draw interpreted icons as blank boxes.
 
 ## Make it yours
@@ -94,3 +94,12 @@ and `android/.../{Application,MainActivity}.kt` + the Material3 themes in
 
 > Dependency paths in `pubspec.yaml` assume this app sits beside
 > `dartnative_framework`. Fix them if you created it elsewhere.
+
+## Attribution
+
+This project uses and extends [`tom_d4rt`](https://github.com/al-the-bear/tom_d4rt), an interpreter and ecosystem created and maintained by [al-the-bear](https://github.com/al-the-bear).
+
+According to `tom_d4rt`'s own attribution notice, the project is an extended clone of the original D4rt project by **Moustapha Kodjo Amadou**, first published in 2025, and is based on his interpreter idea.
+
+- [tom_d4rt repository](https://github.com/al-the-bear/tom_d4rt)
+- [Original D4rt attribution](https://github.com/al-the-bear/tom_d4rt#readme)
