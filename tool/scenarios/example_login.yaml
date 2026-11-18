@@ -1,5 +1,5 @@
 # Real-device scenario for the example/ guest app (Riverpod login flow).
-# Needs: `dart_go start` in example/ + app connected with guest mounted.
+# Needs: `dngo start` in example/ + app connected with guest mounted.
 # Needs a device: run with --server http://<lan-ip>:<port>
 # (Fake mode is rejected: no fake: block by design.)
 name: example-login-reload

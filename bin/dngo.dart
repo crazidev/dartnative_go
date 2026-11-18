@@ -81,10 +81,10 @@ void _printVersion() {
 
 void _printHelp() {
   print('''
-[DART] dart_go — The DartNative Go CLI
+[DART] dngo — The DartNative Go CLI
 
 USAGE:
-  dart_go <command> [arguments]
+  dngo <command> [arguments]
 
 AVAILABLE COMMANDS:
   start          Start live dev server with QR code, asset serving & hot reload (default)
@@ -114,13 +114,13 @@ OPTIONS FOR 'start':
       --no-qrcode             Disable terminal QR code rendering
 
 EXAMPLES:
-  dart_go start
-  dart_go start --project=/path/to/my_app
-  dart_go start --project=/path/to/my_app --rebuild-ast
-  dart_go start -p 8090
-  dart_go open --url=192.168.1.10:8088 --device
-  dart_go open dartnativego://open?url=192.168.1.10%3A8088
-  dart_go doctor
-  dart_go version
+  dngo start
+  dngo start --project=/path/to/my_app
+  dngo start --project=/path/to/my_app --rebuild-ast
+  dngo start -p 8090
+  dngo open --url=192.168.1.10:8088 --device
+  dngo open dartnativego://open?url=192.168.1.10%3A8088
+  dngo doctor
+  dngo version
 ''');
 }

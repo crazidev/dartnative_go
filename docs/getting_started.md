@@ -9,7 +9,7 @@ Two processes work together:
 
 1. **DartNative Go app** — a native iOS/Android shell (this repo) installed on
    your device once. It contains a Dart interpreter and all native bridges.
-2. **Dev server** (`dart_go start`) — runs on your computer, watches your
+2. **Dev server** (`dngo start`) — runs on your computer, watches your
    project, and streams code to the app over Wi-Fi.
 
 You edit Dart files in any DartNative project; the app on your phone reloads
@@ -18,7 +18,7 @@ in milliseconds. No Xcode/Android Studio builds after the initial install.
 ```
  your computer                         your phone
 ┌──────────────────┐   Wi-Fi/HTTP    ┌───────────────────────┐
-│ dart_go start    │ ──────────────▶ │ DartNative Go app     │
+│ dngo start       │ ──────────────▶ │ DartNative Go app     │
 │  - watches files │   guest.ast     │  - interpreter        │
 │  - builds bundle │   + deps        │  - native widgets     │
 │  - serves code   │ ◀────────────── │  - your app, live     │
@@ -34,7 +34,7 @@ in milliseconds. No Xcode/Android Studio builds after the initial install.
 | DartNative license | Subscribe at [dartpub.dev/framework](https://dartpub.dev/framework), then `dn config --license-key dnk_...`. |
 | A device or emulator | iOS or Android, on the **same Wi-Fi network** as your computer. |
 
-## Step 1 — Install the `dart_go` CLI
+## Step 1 — Install the `dngo` CLI
 
 From the root of this repository:
 
@@ -42,19 +42,19 @@ From the root of this repository:
 dart run tool/install_global.dart
 ```
 
-This compiles `bin/dart_go.dart` to a native binary and copies it into
+This compiles `bin/dngo.dart` to a native binary and copies it into
 `~/.local/bin` and `~/.pub-cache/bin`. Make sure one of those is on your
 `PATH`, then verify:
 
 ```sh
-dart_go version
+dngo version
 ```
 
 You should see the CLI version and the matrix of native plugins compiled into
 the runtime.
 
 > **Don't want a global install?** Every command also works via
-> `dart run bin/dart_go.dart <command>` from this repo.
+> `dart run bin/dngo.dart <command>` from this repo.
 
 ## Step 2 — Install the app on your device
 
@@ -79,7 +79,7 @@ project):
 
 ```sh
 cd example/
-dart_go start
+dngo start
 ```
 
 The terminal shows:
@@ -124,12 +124,12 @@ Type these into the dev-server terminal:
 
 ## Next steps
 
-- **Preview the host UI**: `cd pkgs/dartnative_go_ui && dart_go start`,
+- **Preview the host UI**: `cd pkgs/dartnative_go_ui && dngo start`,
   then open that server in the host. UI edits hot-reload; the buttons call
   the shell API (`discover`, `openProject`, `toggleTheme`, …) so you do not
   rebuild the native app to change the launcher.
-- **Use your own project**: `dart_go start --project=/path/to/my_app`. Check
-  compatibility first with `dart_go doctor`.
+- **Use your own project**: `dngo start --project=/path/to/my_app`. Check
+  compatibility first with `dngo doctor`.
 - **Full CLI options**: see the [CLI Reference](cli.md).
 - **Understand what just happened**: read the
   [Architecture overview](architecture.md).

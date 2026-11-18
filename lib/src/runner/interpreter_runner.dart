@@ -6,7 +6,7 @@ import 'package:tom_d4rt_ast/runtime.dart' as ast_runtime;
 import '../interpreter/asset_bridge.dart';
 import '../interpreter/auto_import_parser.dart';
 import '../interpreter/breakpoint_instrumenter.dart';
-import '../interpreter/d4rt_flutter_application.dart';
+import '../interpreter/d4rt_dartnative_application.dart';
 import '../interpreter/debug_controller.dart';
 import '../interpreter/dn_bridge.dart';
 import '../interpreter/host_api_bridge.dart';
@@ -31,7 +31,7 @@ class InterpreterRunner implements GuestRunner {
   final DebugController _debugController = DebugController();
 
   Widget? _capturedApp;
-  D4rtFlutterApplication? _activeApplication;
+  D4rtDartNativeApplication? _activeApplication;
   @override
   String? currentServerUrl;
   @override
@@ -190,7 +190,7 @@ class InterpreterRunner implements GuestRunner {
       ),
     );
 
-    // 3. Special Framework Bridges: D4rtFlutterApplication, runApp, unawaited
+    // 3. Special Framework Bridges: D4rtDartNativeApplication, runApp, unawaited
     Object? captureRunApp(
       InterpreterVisitor visitor,
       List<Object?> positional,
@@ -316,16 +316,18 @@ class InterpreterRunner implements GuestRunner {
       signature: 'Future<void> __debugBreakpoint(String file, int line)',
     );
 
-    // 6. D4rtFlutterApplication wrapper hook
+    // 6. D4rtDartNativeApplication wrapper hook
     interpreter.registertopLevelFunction(
-      'D4rtFlutterApplication',
+      'D4rtDartNativeApplication',
       (visitor, positional, named, typeArgs) {
         final rootWidget = unwrap<Widget>(named['root'], visitor: visitor);
-        return D4rtFlutterApplication(
+        return D4rtDartNativeApplication(
           root:
               rootWidget ??
               const Scaffold(
-                body: Center(child: Text('Empty D4rtFlutterApplication root')),
+                body: Center(
+                  child: Text('Empty D4rtDartNativeApplication root'),
+                ),
               ),
           onMount: named['onMount'] != null
               ? () => D4.callInterpreterCallback(visitor, named['onMount'], [])
@@ -338,7 +340,7 @@ class InterpreterRunner implements GuestRunner {
       },
       'package:dartnative/dartnative.dart',
       signature:
-          'D4rtFlutterApplication({required Widget root, Function? onMount, Function? onUnmount})',
+          'D4rtDartNativeApplication({required Widget root, Function? onMount, Function? onUnmount})',
     );
 
     return interpreter;
@@ -571,7 +573,7 @@ class InterpreterRunner implements GuestRunner {
     }
     final execMs = execSw.elapsedMilliseconds;
 
-    if (rawResult is D4rtFlutterApplication) {
+    if (rawResult is D4rtDartNativeApplication) {
       _activeApplication = rawResult;
       try {
         rawResult.onMount?.call();

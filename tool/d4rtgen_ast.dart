@@ -231,7 +231,7 @@ void _applyAstBridgePostFixes({Set<String>? only}) {
   if (want(
     'lib/src/interpreter/ast/dartnative_flutter_compat_bridges.b.dart',
   )) {
-    _patchFlutterCompatBridges(
+    _patchDartNativeCompatBridges(
       File('lib/src/interpreter/ast/dartnative_flutter_compat_bridges.b.dart'),
     );
   }
@@ -264,7 +264,7 @@ void _patchDioBridges(File file) {
   file.writeAsStringSync(content);
 }
 
-void _patchFlutterCompatBridges(File file) {
+void _patchDartNativeCompatBridges(File file) {
   if (!file.existsSync()) return;
   var content = file.readAsStringSync();
   content = content.replaceAllMapped(

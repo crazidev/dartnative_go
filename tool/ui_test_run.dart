@@ -9,7 +9,7 @@
 /// dart run tool/ui_test_run.dart --scenario tool/scenarios/counter.yaml --against fake
 ///
 /// # Real device: app connected to the dev server, guest mounted.
-/// dart_go start                                  # in example/ (or your project)
+/// dngo start                                    # in example/ (or your project)
 /// dart run tool/ui_test_run.dart --scenario tool/scenarios/example_login.yaml \
 ///   --server http://192.168.3.159:8088
 /// ```

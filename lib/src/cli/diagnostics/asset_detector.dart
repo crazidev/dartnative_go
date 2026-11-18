@@ -71,7 +71,7 @@ class AssetDetector {
         final content = pubspecFile.readAsStringSync();
         final dynamic yamlMap = loadYaml(content);
         if (yamlMap is YamlMap) {
-          // Check dartnative_splash / flutter_native_splash
+          // Check dartnative_splash / legacy native splash configuration
           final splashConfig =
               yamlMap['dartnative_splash'] ?? yamlMap['flutter_native_splash'];
           if (splashConfig is YamlMap) {

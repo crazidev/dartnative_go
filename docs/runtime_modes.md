@@ -54,7 +54,7 @@ device logs — so the CLI table and the on-device explorer can never disagree.
 Opening the viewer is the only thing that pays the AST sizing walk.
 
 The on-device section only appears when the dev server is started with
-`--profile` (`dart_go start --profile`): the server advertises
+`--profile` (`dngo start --profile`): the server advertises
 `profile: true` in the manifest and the app gates the panel on it, so
 sessions that never look at the bundle pay nothing. Verbose `[PROFILE]`
 logs are unaffected — they stay gated on `--verbose` alone.
@@ -72,7 +72,7 @@ dn run --dart-define=D4RT_PROFILE_INIT=true
 Then start the DartNative Go dev server with verbose logging:
 
 ```sh
-dart run bin/dart_go.dart start --project=example --verbose
+dart run bin/dngo.dart start --project=example --verbose
 ```
 
 The report is emitted as `[D4rtProfiler]` device logs after each AST

@@ -320,7 +320,7 @@ default and where hot-reload investment goes.
 
 ## Reading the verbose telemetry
 
-Run `dart_go start -v` (or press `v` live) and a reload prints benchmark lines
+Run `dngo start -v` (or press `v` live) and a reload prints benchmark lines
 from both halves. The AST reload line looks like:
 
 ```text

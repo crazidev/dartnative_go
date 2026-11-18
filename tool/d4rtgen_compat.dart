@@ -43,7 +43,7 @@ Future<void> main() async {
   final original = primaryFile.readAsStringSync();
   try {
     // 1. Source bridge
-    print('Generating source bridge for flutter_compat...');
+    print('Generating source bridge for DartNative compatibility...');
     primaryFile.writeAsStringSync(srcConfig);
     var runner = ToolRunner(
       tool: d4rtgenTool,
@@ -56,7 +56,7 @@ Future<void> main() async {
     }
 
     // 2. AST bridge
-    print('Generating AST bridge for flutter_compat...');
+    print('Generating AST bridge for DartNative compatibility...');
     primaryFile.writeAsStringSync(astConfig);
     runner = ToolRunner(
       tool: d4rtgenTool,
@@ -68,7 +68,7 @@ Future<void> main() async {
       return;
     }
 
-    print('Applying post fixes to flutter_compat bridges...');
+    print('Applying post fixes to DartNative compatibility bridges...');
     _applyPostFixes(
       File('lib/src/interpreter/dartnative_flutter_compat_bridges.b.dart'),
     );
@@ -76,7 +76,7 @@ Future<void> main() async {
       File('lib/src/interpreter/ast/dartnative_flutter_compat_bridges.b.dart'),
     );
 
-    print('Done generating flutter_compat bridges!');
+    print('Done generating DartNative compatibility bridges!');
   } finally {
     primaryFile.writeAsStringSync(original);
   }

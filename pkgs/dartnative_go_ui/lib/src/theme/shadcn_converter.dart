@@ -1,6 +1,6 @@
 /// Pure-Dart conversion of shadcn CSS tokens into Dart theme code.
 ///
-/// No Flutter/dartnative imports: this library runs both in the host CLI
+/// No DartNative compatibility imports: this library runs both in the host CLI
 /// (`tool/shadcn_to_dart.dart`) and in `package:test`. It parses `:root` and
 /// `.dark` custom-property blocks, converts `oklch(...)` colors to sRGB, and
 /// emits a generated `shadcn_theme.dart` with light/dark [ThemeData] plus a

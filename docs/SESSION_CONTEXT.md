@@ -35,7 +35,7 @@ Phases completed (per commit history):
 
 ---
 
-### 2. CLI refactor (`bin/dart_go.dart` + `lib/src/cli/`)
+### 2. CLI refactor (`bin/dngo.dart` + `lib/src/cli/`)
 
 The flat `lib/src/cli/` directory was reorganised into sub-packages:
 
@@ -48,7 +48,7 @@ lib/src/cli/
   server_components/ ← client_module_index, server_annotation_scanner/source, server_component_bundler
 ```
 
-`bin/dart_go.dart` is now a thin dispatcher that delegates to `DartGoCommandLine.parse()` and calls the right handler — no inline arg-parsing logic.
+`bin/dngo.dart` is now a thin dispatcher that delegates to `DartGoCommandLine.parse()` and calls the right handler — no inline arg-parsing logic.
 
 The server itself was split into focused files:
 - **`DevSocketHub`** — WebSocket registry, broadcast, UI-automation relay, breakpoint replay.
@@ -81,7 +81,7 @@ Files touched: `logger.dart`, `dap_server.dart`, `debug_controller.dart`, `float
 
 | File / area | What changed | Status |
 |-------------|-------------|--------|
-| `bin/dart_go.dart` | Rewired to `DartGoCommandLine`; old inline arg-parsing removed | Unstaged |
+| `bin/dngo.dart` | Rewired to `DartGoCommandLine`; old inline arg-parsing removed | Unstaged |
 | `lib/src/cli/commands/command_line.dart` | New — pure CLI parser | Untracked |
 | `lib/src/cli/server/{dev_socket_hub,http_support,terminal_ui}.dart` | New — server split-out | Untracked |
 | `lib/src/cli/{diagnostics,packaging,server,server_components}/` | Reorganised from flat `cli/` | Staged (new files) / old paths deleted |
@@ -104,7 +104,7 @@ Files touched: `logger.dart`, `dap_server.dart`, `debug_controller.dart`, `float
 
 Device-driven debugging session against the `example/` demo app (40 modules,
 `collection` + `equatable` in the graph). Six fixes, each with regression
-tests; all suites green. Requires a host-app rebuild + `dart_go` restart to
+tests; all suites green. Requires a host-app rebuild + `dngo` restart to
 reach devices (interpreter, retry, and lineage client all ship in the binary).
 
 | # | Fix | Files |
@@ -135,7 +135,7 @@ concurrency (suites pass file-by-file).
 1. **Stage and commit the CLI reorganisation** as one logical commit:
    - New `lib/src/cli/{commands,diagnostics,packaging,server,server_components}/` files
    - Deleted old flat `lib/src/cli/*.dart` files
-   - Updated `bin/dart_go.dart`
+   - Updated `bin/dngo.dart`
    - All import-path fixups across `lib/`, `test/`, `tool/`
 
 2. **Stage and commit the example app changes** separately:

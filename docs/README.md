@@ -10,7 +10,7 @@ under 50 ms — no native recompilation.
 | Document | What it covers |
 | :--- | :--- |
 | [Getting Started](getting_started.md) | Install the CLI, start the dev server, connect the app, make your first hot reload. |
-| [CLI Reference](cli.md) | Every `dart_go` command, flag, and interactive key. |
+| [CLI Reference](cli.md) | Every `dngo` command, flag, and interactive key. |
 | [Architecture](architecture.md) | A plain-language map of how the pieces fit together. |
 | [Architecture by feature](architecture/README.md) | Per-feature ownership, flows, and invariants. |
 | [Dev Server & Protocol](dev_server.md) | HTTP endpoints, WebSocket messages, discovery beacons, dependency packaging. |
@@ -40,7 +40,7 @@ dn run -d <device-id>
 
 # 3. In a second terminal, serve your guest app
 cd example/            # or any DartNative project
-dart_go start
+dngo start
 
 # 4. Edit example/lib/main.dart, save — the device reloads in <50 ms
 ```

@@ -11,7 +11,7 @@ The shell app around the interpreted guest.
 | `lib/host_api.dart` | Re-export of the host API (`package:dartnative_go_api`). Interpreted guests can import this URI; the shell bridges it. |
 | `lib/src/app_shell.dart` | Shared host shell: binds `DartGoHost`, embeds `HostLauncher` as the home route; opening a project pushes the preview route; mount/reload/restart orchestration, probe handler. Takes a `GuestRunnerBuilder`. |
 | `pkgs/dartnative_go_api` | Host API: `discover`, `refresh`, `openProject`, `openWithLink`, `toggleTheme`, `openDevTools`, `verbose`, `reload`, `goHome`. No framework UI. |
-| `pkgs/dartnative_go_ui` | Launcher UI. Calls the API. `dart_go start` in this package previews it inside the host. |
+| `pkgs/dartnative_go_ui` | Launcher UI. Calls the API. `dngo start` in this package previews it inside the host. |
 | `lib/src/runner/guest_runner.dart` | Host-facing runtime interface + builder typedef implemented by `AstGuestRunner` and `InterpreterRunner`. |
 | `lib/src/preview/` | `PreviewScreen` + `PreviewState`: the pushed launch/preview route (splash → mounted guest). Error surfaces are drawn by the shell layer, not here. |
 | `pkgs/dartnative_go_ui/lib/src/launcher/` | Launcher route: recent projects, server URL entry, discovery. Calls `DartGoHost`. |
@@ -113,7 +113,7 @@ The shell app around the interpreted guest.
   The UI package cannot depend on `dartnative_go` — the shell depends on
   the UI — so it imports `dartnative_go_api` directly.
 - **Preview the UI without a native rebuild.** From `pkgs/dartnative_go_ui`,
-  run `dart_go start` and open that server in the already-built host. Saves
+  run `dngo start` and open that server in the already-built host. Saves
   hot-reload the launcher. Theme, discovery, open, DevTools, verbose,
   reload, and go-home call the shell through the bridge.
 - **DevTools follow the UI that draws them.** `HostLauncher` renders the pill

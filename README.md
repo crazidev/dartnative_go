@@ -4,36 +4,36 @@ A **dartnative** client runtime and development shell (similar to _Expo Go_ for 
 
 > 📖 **Architecture & Technical Details**: See [ARCHITECTURE.md](ARCHITECTURE.md) for a deep dive into the bridge architecture, widget proxies, lifecycle management, and dev server protocol.
 
-## DartNative Go CLI (`dart_go`)
+## DartNative Go CLI (`dngo`)
 
-The `dart_go` CLI is the universal tool to start projects, validate native plugin compatibility, detect assets, and broadcast discovery beacons for the mobile app.
+The `dngo` CLI is the universal tool to start projects, validate native plugin compatibility, detect assets, and broadcast discovery beacons for the mobile app.
 
 ### Install Globally
 
-Install the standalone `dart_go` binary globally so you can use it in any terminal and project:
+Install the standalone `dngo` binary globally so you can use it in any terminal and project:
 
 ```sh
 dart run tool/install_global.dart
 ```
 
-Once installed, use `dart_go` directly anywhere:
+Once installed, use `dngo` directly anywhere:
 
 ```sh
 # Start the dev server in any DartNative project
-dart_go start
+dngo start
 
 # Check plugin compatibility and assets
-dart_go doctor
+dngo doctor
 
 # Check versions and supported native plugins
-dart_go version
+dngo version
 ```
 
 ### Key Features
 
-- **Plugin Version Validation**: Validates that all native plugins in `pubspec.yaml` match the versions compiled into DartNative Go runtime (e.g. `dartnative`, `dartnative_shared`, `dartnative_webview` at `v1.0.0`).
+- **Plugin Version Validation**: Validates that all native plugins in `pubspec.yaml` match the versions compiled into DartNative Go runtime (e.g. `dartnative`, `dartnative_share`, `dartnative_webview` at `^1.0.0`).
 - **DartNative Compatibility Layer**: Built-in bridge support for `package:dartnative/flutter_compat.dart` enabling drop-in compatibility for common DartNative widgets and paradigms.
-- **VS Code Debug Adapter (DAP)**: Start with `dart_go start --dap` to enable IDE breakpoints, stepping, variable inspection, and stack trace navigation directly in VS Code.
+- **VS Code Debug Adapter (DAP)**: Start with `dngo start --dap` to enable IDE breakpoints, stepping, variable inspection, and stack trace navigation directly in VS Code.
 - **Asset Detection & Serving**: Auto-discovers app icons and splash screen configurations (`dartnative_splash`), serving them via `/assets/icon.png`, `/assets/splash.png`, and `/manifest.json`.
 - **Port Range & Multi-Port UDP Broadcast**: Automatically finds an available port across a range (`8088..8098`) and broadcasts discovery beacons across the local network so mobile clients can auto-connect.
 - **Terminal QR Code**: Prints an ANSI half-block QR code directly in the terminal for instant mobile camera connection.

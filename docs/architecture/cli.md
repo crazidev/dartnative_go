@@ -1,12 +1,12 @@
 # CLI
 
-Entry point for everything the developer types: `dart_go`.
+Entry point for everything the developer types: `dngo`.
 
 ## Files
 
 | File | Role |
 | :--- | :--- |
-| `bin/dart_go.dart` | Dispatches a parsed command; prints help, version, doctor output. |
+| `bin/dngo.dart` | Dispatches a parsed command; prints help, version, doctor output. |
 | `lib/src/cli/commands/command_line.dart` | Pure argument parsing -> `DartGoCommandLine` (no I/O, unit-testable). |
 | `lib/src/cli/diagnostics/pubspec_validator.dart` | Checks `pubspec.yaml` plugins against the supported matrix. |
 | `lib/src/cli/diagnostics/dart_go_version.dart` | CLI/runtime versions and `kSupportedNativePlugins`. |
@@ -33,11 +33,11 @@ args -> DartGoCommandLine.parse -> command
 
 - Parsing never touches the filesystem except to resolve a positional project
   directory; execution lives in `bin/`.
-- A bare `dart_go -v` prints the version; `-v` with other arguments means
+- A bare `dngo -v` prints the version; `-v` with other arguments means
   verbose `start`.
 - Plugin compatibility is a major-version match (`_isConstraintCompatible`).
 
 ## Extending
 
 Add a command: extend `DartGoCommand`, handle it in `parse`, dispatch in
-`bin/dart_go.dart`, document it in `docs/cli.md`.
+`bin/dngo.dart`, document it in `docs/cli.md`.

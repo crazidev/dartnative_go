@@ -7,7 +7,7 @@ Cross-cutting depth (reload internals, bridge details) stays in the root
 
 | Feature | Owns | Page |
 | :--- | :--- | :--- |
-| CLI | `bin/dart_go.dart`, `lib/src/cli/{commands,diagnostics}/` | [cli.md](cli.md) |
+| CLI | `bin/dngo.dart`, `lib/src/cli/{commands,diagnostics}/` | [cli.md](cli.md) |
 | Dev server and bundling | `lib/src/cli/{server,packaging}/` | [dev-server.md](dev-server.md) |
 | Runner (device side) | `lib/src/runner/` (except `ui_*`, `icon_registry`) | [runner.md](runner.md) |
 | Interpreter and bridges | `lib/src/interpreter/`, generated `*.b.dart` | [interpreter.md](interpreter.md) |

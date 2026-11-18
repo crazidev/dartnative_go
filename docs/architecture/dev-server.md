@@ -1,6 +1,6 @@
 # Dev server and bundling
 
-`dart_go start` serves the guest project to devices and pushes reloads.
+`dngo start` serves the guest project to devices and pushes reloads.
 
 ## Files
 

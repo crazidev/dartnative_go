@@ -443,7 +443,7 @@ Future<void> _inject(Directory proj, int count, String type) async {
   print('   • Barrel files : $numChunks  +  1 top-level barrel');
 
   print('\n💡 Next steps:');
-  print('   Start server:  dart_go start --project=${proj.path}');
+  print('   Start server:  dngo start --project=${proj.path}');
   print(
     '   Reload test:   dart run tool/scale_inject.dart reload --project=${proj.path} --changed=10',
   );
@@ -532,7 +532,7 @@ Future<void> _reload(Directory proj, int changedCount, int cycles) async {
     );
     print('   Samples : $names${changedCount > 4 ? ' …' : ''}');
     print('   Types   : $types');
-    print('   ⏱️  Check dart_go server log for actual rebuild latency.');
+    print('   ⏱️  Check dngo server log for actual rebuild latency.');
 
     if (c < cycles) await Future.delayed(const Duration(seconds: 2));
   }
@@ -542,7 +542,7 @@ Future<void> _reload(Directory proj, int changedCount, int cycles) async {
     '\n📊 File-write timings: ${allMs.map((t) => '${t}ms').join(' | ')}  (avg: ${avg}ms)',
   );
   print(
-    '   Note: server rebuild latency is separate — visible in dart_go logs.',
+    '   Note: server rebuild latency is separate — visible in dngo logs.',
   );
 }
 
@@ -571,11 +571,11 @@ Future<void> _bench(
     );
   }
 
-  print('\n📦 Cold build (dart_go build)...');
+  print('\n📦 Cold build (dngo build)...');
   final coldSw = Stopwatch()..start();
   final res = await Process.run(
     'dart',
-    ['run', 'bin/dart_go.dart', 'build', '--project=${proj.path}'],
+    ['run', 'bin/dngo.dart', 'build', '--project=${proj.path}'],
     workingDirectory: Directory.current.path,
   );
   coldSw.stop();

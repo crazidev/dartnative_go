@@ -10,7 +10,7 @@
 
 ```
    ┌────────────────────────────────────────────────────────────────────────┐
-   │             Live Dev Server (bin/dart_go.dart / server.dart)           │
+   │             Live Dev Server (bin/dngo.dart / server.dart)              │
    │  - Validates pubspec & native plugins                                  │
    │  - Analyzes dependencies (.dart_tool/package_config.json)              │
    │  - Serves lightweight user code ZIP: http://localhost:8088/user-code.zip│
@@ -63,7 +63,7 @@
 | **Source Interpreter** | `tom_d4rt` (v1.77.0) | Pure-Dart interpreter operating in **source-based (analyzer)** mode (default). |
 | **AST Interpreter** | `tom_d4rt_ast` | Zero-dependency, analyzer-free AST interpreter for precompiled bundles. |
 | **Bridge Generator** | `tom_d4rt_generator` / `d4rtgen` | Code generator that inspected DartNative framework APIs and generated 51,000+ lines of reflection-free bindings. |
-| **Live Dev Server** | `dart_go start` (`server.dart`) | HTTP manifest + on-demand dependency packager + UDP broadcaster + WebSocket server. |
+| **Live Dev Server** | `dngo start` (`server.dart`) | HTTP manifest + on-demand dependency packager + UDP broadcaster + WebSocket server. |
 | **Guest Application** | Pure Dart (`example/` / user app) | Interpreted modular code written against standard DartNative APIs. |
 
 ---
@@ -172,7 +172,7 @@ guest build / lifecycle / button handler throws
   2. **Bi-Directional WebSocket Sync (`set_verbose`)**:
      - Pressing `v` in the dev server terminal toggles verbose mode and broadcasts `{'type': 'set_verbose', 'enabled': bool}` to connected mobile apps.
      - Toggling `VERBOSE LOGS` in the mobile app DevTool sends `set_verbose` to the dev server, syncing terminal telemetry instantly.
-  3. **Startup Flag**: CLI supports `-v` and `--verbose` flags on `dart_go start`.
+  3. **Startup Flag**: CLI supports `-v` and `--verbose` flags on `dngo start`.
 
 ### 4.5 Host Theme (shadcn tokens + Riverpod)
 * **Location**: the theme lives in `pkgs/dartnative_go_ui` (`lib/src/theme/`).
@@ -200,13 +200,13 @@ guest build / lifecycle / button handler throws
 
 ```bash
 # Start Dev Server with interactive hot reload & auto AST build
-dart_go start
+dngo start
 
 # Start Dev Server in verbose mode with detailed telemetry
-dart_go start -v
+dngo start -v
 
 # Run Dev Server on custom port
-dart_go start --port=8090
+dngo start --port=8090
 
 # Pre-compile AST bundle for test execution
 dart run tool/build_ast_bundle.dart

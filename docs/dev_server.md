@@ -1,7 +1,7 @@
 # Dev Server & Protocol
 
 The dev server is the half of DartNative Go that runs on your workstation.
-You start it with `dart_go start`; it lives in
+You start it with `dngo start`; it lives in
 [`lib/src/cli/server.dart`](../lib/src/cli/server.dart) with helpers in the
 same directory. This page documents its startup sequence, every HTTP
 endpoint, the WebSocket message protocol, the UDP discovery beacon, and how
@@ -18,7 +18,7 @@ when a step is the one failing (see [Troubleshooting](troubleshooting.md)).
 
 1. **Validate the pubspec** (`PubspecValidator`). Reads `pubspec.yaml` and
    checks every dependency against the native-plugin matrix compiled into the
-   shell (`dart_go version` prints that matrix). Produces the "Supported
+   shell (`dngo version` prints that matrix). Produces the "Supported
    Native Plugins / Version Mismatches / Unsupported Native Plugins" report.
 2. **Detect assets** (`AssetDetector`). Finds the app icon and splash image
    (from `dartnative_splash:` config, `dartnative: assets:`, then a list of

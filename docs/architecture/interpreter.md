@@ -14,7 +14,7 @@ Makes interpreted guest classes behave as real DartNative widgets.
 | `auto_import_parser.dart` | Import/export parsing and framework-import injection (source mode). |
 | `asset_bridge.dart`, `ast/ast_asset_bridge.dart` | `Image.asset` over HTTP from the dev server. |
 | `ast/isolate_compute_bridge.dart` | `compute()` on a real isolate. |
-| `d4rt_flutter_application.dart` | Long-lived app root with teardown across reloads. |
+| `d4rt_dartnative_application.dart` | Long-lived app root with teardown across reloads. |
 
 ## Generation
 

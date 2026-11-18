@@ -1,19 +1,19 @@
 import 'dart:io';
 
-/// Builds and installs `dart_go` into global bin directories in PATH:
-/// - ~/.local/bin/dart_go
-/// - ~/.pub-cache/bin/dart_go
+/// Builds and installs `dngo` into global bin directories in PATH:
+/// - ~/.local/bin/dngo
+/// - ~/.pub-cache/bin/dngo
 void main() async {
   final scriptDir = File(Platform.script.toFilePath()).parent.parent;
-  final binFile = File('${scriptDir.path}/bin/dart_go.dart');
+  final binFile = File('${scriptDir.path}/bin/dngo.dart');
 
   if (!binFile.existsSync()) {
     print('Error: Could not find ${binFile.path}');
     exit(1);
   }
 
-  print('⚡️ Compiling dart_go native executable...');
-  final tempOut = '${Directory.systemTemp.path}/dart_go_build';
+  print('⚡️ Compiling dngo native executable...');
+  final tempOut = '${Directory.systemTemp.path}/dngo_build';
 
   final result = await Process.run(
     'dart',
@@ -36,7 +36,7 @@ void main() async {
   for (final dirPath in targetDirs) {
     final dir = Directory(dirPath);
     if (dir.existsSync()) {
-      final destFile = File('$dirPath/dart_go');
+      final destFile = File('$dirPath/dngo');
       try {
         File(tempOut).copySync(destFile.path);
         // Ensure executable permissions
@@ -54,11 +54,11 @@ void main() async {
   } catch (_) {}
 
   if (installedCount > 0) {
-    print('\n🎉 dart_go CLI successfully installed globally!');
+    print('\n🎉 dngo CLI successfully installed globally!');
     print('You can now run:');
-    print('  dart_go start');
-    print('  dart_go doctor');
-    print('  dart_go version');
+    print('  dngo start');
+    print('  dngo doctor');
+    print('  dngo version');
   } else {
     print(
       'Warning: No target directory in ~/.local/bin or ~/.pub-cache/bin was found.',

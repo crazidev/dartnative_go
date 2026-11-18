@@ -1,6 +1,6 @@
 # CLI Reference
 
-`dart_go` is the universal command-line tool for DartNative Go development.
+`dngo` is the universal command-line tool for DartNative Go development.
 It starts the dev server, validates projects against the runtime's plugin
 matrix, and reports versions.
 
@@ -10,19 +10,19 @@ Install it globally once:
 dart run tool/install_global.dart
 ```
 
-Then run `dart_go <command>` from anywhere. Without a global install, use
-`dart run bin/dart_go.dart <command>` from this repository instead.
+Then run `dngo <command>` from anywhere. Without a global install, use
+`dart run bin/dngo.dart <command>` from this repository instead.
 
 ---
 
-## `dart_go open`
+## `dngo open`
 
 Hands a project to the app through a `dartnativego://` deep link, so it opens
 without scanning for a server or typing a URL.
 
 ```sh
-dart_go open --url=<host:port> [--name=<app>] [--device] [--qr]
-dart_go open dartnativego://open?url=…
+dngo open --url=<host:port> [--name=<app>] [--device] [--qr]
+dngo open dartnativego://open?url=…
 ```
 
 ### Options
@@ -35,7 +35,7 @@ dart_go open dartnativego://open?url=…
 | `--qr` | off | Render the link as a terminal QR code for a physical device. |
 
 The link is always printed, so a device without tooling can still be opened by
-tapping it. `dart_go start` prints the same link for the server it just bound.
+tapping it. `dngo start` prints the same link for the server it just bound.
 
 ### Link format
 
@@ -60,21 +60,21 @@ delegate and activity intents itself, so no Swift/Kotlin code is needed.
 ### Examples
 
 ```sh
-dart_go open --url=192.168.1.10:8088 --device     # open on a simulator
-dart_go open --url=192.168.1.10:8088 --qr         # scan from a phone
-dart_go open dartnativego://open?url=10.0.0.5%3A8088
+dngo open --url=192.168.1.10:8088 --device     # open on a simulator
+dngo open --url=192.168.1.10:8088 --qr         # scan from a phone
+dngo open dartnativego://open?url=10.0.0.5%3A8088
 ```
 
 ---
 
-## `dart_go start`
+## `dngo start`
 
 Starts the live dev server: HTTP bundle serving, WebSocket hot reload, UDP
 discovery beacon, and a terminal QR code. This is the default command, so
-`dart_go` alone is equivalent to `dart_go start`.
+`dngo` alone is equivalent to `dngo start`.
 
 ```sh
-dart_go start [options] [project-directory]
+dngo start [options] [project-directory]
 ```
 
 ### Options
@@ -94,12 +94,12 @@ dart_go start [options] [project-directory]
 ### Examples
 
 ```sh
-dart_go start                                  # serve current directory
-dart_go start --project=/path/to/my_app        # serve another project
-dart_go start -p 8090                          # custom base port
-dart_go start --host=192.168.1.20              # advertise a specific interface
-dart_go start -v                               # verbose telemetry
-dart_go start --no-rebuild-ast                 # source-mode development
+dngo start                                  # serve current directory
+dngo start --project=/path/to/my_app        # serve another project
+dngo start -p 8090                          # custom base port
+dngo start --host=192.168.1.20              # advertise a specific interface
+dngo start -v                               # verbose telemetry
+dngo start --no-rebuild-ast                 # source-mode development
 ```
 
 ### Interactive keys
@@ -118,7 +118,7 @@ While the server runs, type into its terminal:
 
 ---
 
-## `dart_go doctor`
+## `dngo doctor`
 
 Inspects a project for DartNative Go compatibility **before** you try to run
 it. Two reports:
@@ -131,26 +131,26 @@ it. Two reports:
    `/assets/splash.png`, and a correct `/manifest.json`.
 
 ```sh
-dart_go doctor                       # current directory
-dart_go doctor --project=/path/to/app
+dngo doctor                       # current directory
+dngo doctor --project=/path/to/app
 ```
 
 ---
 
-## `dart_go version`
+## `dngo version`
 
 Prints the CLI version, the matching mobile runtime version, and the full
 compatibility matrix of native plugins compiled into DartNative Go
 (`dartnative`, `dartnative_share`, `dartnative_webview`, `riverpod_kit`, …)
 with their supported version constraints. Core plugins are tagged `[core]`.
 
-Aliases: `dart_go --version`, `dart_go -v` (only when passed alone).
+Aliases: `dngo --version`, `dngo -v` (only when passed alone).
 
 ---
 
-## `dart_go help`
+## `dngo help`
 
-Prints usage. Also triggered by `dart_go -h` / `dart_go --help`.
+Prints usage. Also triggered by `dngo -h` / `dngo --help`.
 
 ---
 

@@ -66,7 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implemented interpreted call frame tracking (`InterpretedCallFrame`) in `tom_d4rt_ast`.
   - Added line and column number resolution mapping from AST byte offsets to source code locations.
   - Formatted guest runtime errors to output standard Dart stack traces (`#0 Class.method (package:uri:line:col)`) pointing directly to interpreted guest application code rather than host interpreter internals.
-- **Flutter Compatibility Bridge (`package:dartnative/flutter_compat.dart`)**:
+- **DartNative Compatibility Bridge (`package:dartnative/flutter_compat.dart`)**:
   - Generated native and AST bridges (`DartnativeFlutterCompatBridge`) for `package:dartnative/flutter_compat.dart`.
   - Registered bridge in `buildkit.yaml`, `buildkit_ast.yaml`, `tool/d4rtgen.dart`, and `tool/d4rtgen_ast.dart`.
   - Added `package:dartnative/flutter_compat.dart` to `kAstBridgedLibraries` in `ast_builder.dart`.
@@ -118,7 +118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated `LauncherAppBar` to use context theme background dynamically in `launcher_screen.dart` and `launcher_app_bar.dart`.
 - Refactored `LiveConnection` reload event streaming to prevent duplicate bundle fetches on single change triggers.
 - Updated `AstBuildWorker` isolate messaging to return `patchBytes` directly across the isolate boundary.
-- **Terminology alignment across documentation and comments**: Aligned framework references from Flutter to DartNative in user-facing documentation, architecture specs, and inline comments while keeping technical compatibility bridges and protocol interfaces intact.
+- **Terminology alignment across documentation and comments**: Aligned framework references to DartNative in user-facing documentation, architecture specs, and inline comments while keeping technical compatibility bridges and protocol interfaces intact.
 - Enhanced `WidgetGenerationTracker` and `classFileMap` generation for AST module reload precision.
 
 ### Fixed

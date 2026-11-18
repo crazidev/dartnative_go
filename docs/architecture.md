@@ -9,7 +9,7 @@ first.
 
 DartNative Go is two programs talking over the local network:
 
-- **The dev server** (`dart_go start`) runs on your workstation. It watches
+- **The dev server** (`dngo start`) runs on your workstation. It watches
   your guest project's Dart sources, packages them together with their
   dependencies, optionally compiles them into a pre-parsed AST bundle, and
   broadcasts reloads.
@@ -26,7 +26,7 @@ no native build step, no app store, no cable.
 ```
  your editor                workstation                     device
  ┌──────────┐   save   ┌───────────────────────┐   HTTP    ┌───────────────────┐
- │ lib/*.dart│ ──────► │ dart_go start          │ ────────► │ DartNative Go      │
+ │ lib/*.dart│ ──────► │ dngo start             │ ────────► │ DartNative Go      │
  └──────────┘          │  · file watcher        │  sources  │  · interpreter     │
                        │  · AST bundler         │  + .ast   │  · widget proxies  │
                        │  · dep packager        │           │  · DN reconciler   │
@@ -41,13 +41,13 @@ no native build step, no app store, no cable.
 | :--- | :--- |
 | `lib/main.dart` | Product entrypoint (AST-only): plugins + theme bootstrap, then the shared `lib/src/app_shell.dart` host shell. |
 | `lib/main_source.dart` | Development entrypoint with the Source engine + analyzer linked (`dn run -t lib/main_source.dart`). |
-| `lib/src/cli/` | Everything the `dart_go` CLI uses: `server.dart` (HTTP/WS/file-watch), `broadcaster.dart` (UDP beacons), `dep_packager.dart` (dependency zips), `ast_builder.dart` (guest.ast builds), `pubspec_validator.dart`, `asset_detector.dart`, `qr_code.dart`. |
+| `lib/src/cli/` | Everything the `dngo` CLI uses: `server.dart` (HTTP/WS/file-watch), `broadcaster.dart` (UDP beacons), `dep_packager.dart` (dependency zips), `ast_builder.dart` (guest.ast builds), `pubspec_validator.dart`, `asset_detector.dart`, `qr_code.dart`. |
 | `lib/src/runner/` | Guest execution: `interpreter_runner.dart` (source mode), `ast_interpreter_runner.dart` (AST mode), `bundle_loader.dart` (fetch + unpack bundles, patch lineage), `ast_profile.dart` (structured bundle profile), `live_connection.dart` (WebSocket client), `runtime_mode.dart`, `ui_probe.dart` (UI automation), `dep_cache.dart`. |
 | `lib/src/interpreter/` | The bridge surface: `dartscript.b.dart` plus one `*_bridges.b.dart` per plugin (generated), `widget_proxies.dart`, `asset_bridge.dart`, `debug_controller.dart`. Subfolder `ast/` holds the AST-mode equivalents. |
-| `pkgs/dartnative_go_ui/` | The project-picker UI you see when the app starts. Preview it with `dart_go start` in that directory. |
+| `pkgs/dartnative_go_ui/` | The project-picker UI you see when the app starts. Preview it with `dngo start` in that directory. |
 | `lib/src/devtool/` | The in-app developer overlay (logs, error surfaces, settings, AST bundle explorer). |
 | `lib/src/client/` | Persistence + networking for the launcher (project storage, network scanner, preferences). |
-| `bin/` | The `dart_go` CLI entrypoint. |
+| `bin/` | The `dngo` CLI entrypoint. |
 | `tool/` | Host-side tools: dev server entry, AST bundling, bridge generation, app-asset generation, theme conversion, UI scenario runner. |
 | `test/` | `unit/`, `server/`, `runner/`, `plugins/` test suites plus the `test_lab/` automation harness (see [Testing](testing.md)). |
 | `example/` | A bundled guest app used by the walkthroughs. |
@@ -94,9 +94,9 @@ generations, so a bad save leaves the working app running. Details:
 
 The shell app is a normal DartNative app: it statically links the DartNative
 framework and a fixed matrix of native plugins (`dartnative_share`,
-`dartnative_webview`, `riverpod_kit`, … — see `dart_go version`). Guests may
+`dartnative_webview`, `riverpod_kit`, … — see `dngo version`). Guests may
 use any of those plugins **at the exact versions the shell was built with**
-(`dart_go doctor` checks this) plus arbitrary *pure-Dart* packages, which the
+(`dngo doctor` checks this) plus arbitrary *pure-Dart* packages, which the
 server ships as source zips and the interpreter executes like guest code. A
 handful of pure-Dart packages (e.g. `dio`) are instead compiled into the shell
 and bridged whole, so their guest imports run as native code — see
