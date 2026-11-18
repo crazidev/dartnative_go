@@ -1,7 +1,17 @@
 import 'dart:io';
 
 /// Commands exposed by the `dart_go` executable.
-enum DartGoCommand { start, open, doctor, version, dap, help, unknown }
+enum DartGoCommand {
+  start,
+  open,
+  doctor,
+  version,
+  dap,
+  prebuild,
+  create,
+  help,
+  unknown,
+}
 
 /// Parsed, side-effect-free CLI configuration.
 ///
@@ -81,6 +91,16 @@ class DartGoCommandLine {
     }
     if (first == 'dap' || first == 'debug_adapter') {
       return _simple(DartGoCommand.dap, args.skip(1).toList(), baseDir);
+    }
+    if (first == 'prebuild') {
+      return _simple(
+        DartGoCommand.prebuild,
+        args.skip(1).toList(),
+        _projectDir(args.skip(1), baseDir),
+      );
+    }
+    if (first == 'create') {
+      return _simple(DartGoCommand.create, args.skip(1).toList(), baseDir);
     }
     if (first == 'open') {
       return _open(args.skip(1).toList(), baseDir);
@@ -165,11 +185,7 @@ class DartGoCommandLine {
   );
 
   static DartGoCommandLine _help(List<String> args, Directory baseDir) =>
-      _simple(
-        DartGoCommand.help,
-        args,
-        baseDir,
-      );
+      _simple(DartGoCommand.help, args, baseDir);
 
   static Directory _projectDir(Iterable<String> args, Directory fallback) {
     final values = args.toList();

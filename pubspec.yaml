@@ -3,6 +3,9 @@ description: "A new DartNative project."
 publish_to: "none"
 version: 0.1.0+1
 
+executables:
+  dngo: dngo
+
 workspace:
   - example
   - pkgs/dartnative_go_api

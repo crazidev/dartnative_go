@@ -7,6 +7,9 @@ import 'package:dartnative_go/src/cli/diagnostics/dart_go_version.dart';
 import 'package:dartnative_go/src/cli/diagnostics/pubspec_validator.dart';
 import 'package:dartnative_go/src/cli/server/server.dart';
 import 'package:dartnative_go/src/dap/dap_server.dart';
+import 'package:dartnative_go/src/prebuild/config.dart';
+import 'package:dartnative_go/src/prebuild/native_generator.dart';
+import 'package:dartnative_go/src/prebuild/project_creator.dart';
 
 Future<void> main(List<String> args) async {
   final cli = DartGoCommandLine.parse(args);
@@ -22,6 +25,19 @@ Future<void> main(List<String> args) async {
       return;
     case DartGoCommand.dap:
       await runDartNativeDap(cli.commandArgs);
+      return;
+    case DartGoCommand.prebuild:
+      await _runPrebuild(cli.projectDir);
+      return;
+    case DartGoCommand.create:
+      await DngoProjectCreator(cli.projectDir).run(
+        name: _arg(cli.commandArgs, 'name'),
+        plugins: _arg(cli.commandArgs, 'plugins')
+            ?.split(',')
+            .map((value) => value.trim())
+            .where((value) => value.isNotEmpty)
+            .toList(),
+      );
       return;
     case DartGoCommand.open:
       await runDeepLinkCommand(cli);
@@ -51,6 +67,27 @@ Future<void> main(List<String> args) async {
       });
       await server.start();
   }
+}
+
+Future<void> _runPrebuild(Directory projectDir) async {
+  final file = File('${projectDir.path}/dngo.config.dart');
+  if (!file.existsSync()) {
+    throw StateError('Missing dngo.config.dart in ${projectDir.path}');
+  }
+  final config = DngoConfigParser.parse(file.readAsStringSync());
+  final generator = DngoNativeGenerator(projectDir);
+  await generator.ensureNativeProject();
+  generator.generate(config);
+  print('Generated native projects for ${config.name}.');
+}
+
+String? _arg(List<String> args, String name) {
+  final prefix = '--$name=';
+  for (var i = 0; i < args.length; i++) {
+    if (args[i].startsWith(prefix)) return args[i].substring(prefix.length);
+    if (args[i] == '--$name' && i + 1 < args.length) return args[i + 1];
+  }
+  return null;
 }
 
 void _runDoctor(Directory projectDir) {
@@ -92,6 +129,8 @@ AVAILABLE COMMANDS:
   dap            Start DAP (Debug Adapter Protocol) server for VS Code debugging
   debug_adapter  Alias for 'dap'
   doctor         Inspect project dependencies and assets for compatibility
+  prebuild       Generate Android and iOS projects from dngo.config.dart
+  create         Run dn create, select supported plugins, and generate config
   version        Display CLI version and bundled native plugin compatibility matrix
   help           Show this help message
 
