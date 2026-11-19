@@ -8,7 +8,9 @@ import 'package:dartnative_go/src/cli/diagnostics/pubspec_validator.dart';
 import 'package:dartnative_go/src/cli/server/server.dart';
 import 'package:dartnative_go/src/dap/dap_server.dart';
 import 'package:dartnative_go/src/prebuild/config.dart';
+import 'package:dartnative_go/src/prebuild/config_init.dart';
 import 'package:dartnative_go/src/prebuild/native_generator.dart';
+import 'package:dartnative_go/src/prebuild/plugin_discovery.dart';
 import 'package:dartnative_go/src/prebuild/project_creator.dart';
 
 Future<void> main(List<String> args) async {
@@ -27,7 +29,21 @@ Future<void> main(List<String> args) async {
       await runDartNativeDap(cli.commandArgs);
       return;
     case DartGoCommand.prebuild:
-      await _runPrebuild(cli.projectDir);
+      await _runPrebuild(
+        cli.projectDir,
+        clean: cli.commandArgs.contains('--clean'),
+      );
+      return;
+    case DartGoCommand.prebuildInit:
+      _runPrebuildInit(
+        cli.projectDir,
+        force: cli.commandArgs.contains('--force'),
+        syncFromProject: cli.commandArgs.contains('--no-sync')
+            ? false
+            : cli.commandArgs.contains('--sync')
+            ? true
+            : null,
+      );
       return;
     case DartGoCommand.create:
       await DngoProjectCreator(cli.projectDir).run(
@@ -69,16 +85,84 @@ Future<void> main(List<String> args) async {
   }
 }
 
-Future<void> _runPrebuild(Directory projectDir) async {
+Future<void> _runPrebuild(Directory projectDir, {bool clean = false}) async {
   final file = File('${projectDir.path}/dngo.config.dart');
   if (!file.existsSync()) {
     throw StateError('Missing dngo.config.dart in ${projectDir.path}');
   }
-  final config = DngoConfigParser.parse(file.readAsStringSync());
+  final parsed = DngoConfigParser.parse(
+    file.readAsStringSync(),
+    baseDirectory: projectDir.path,
+  );
+  final config = applyDngoPluginDefaults(parsed);
   final generator = DngoNativeGenerator(projectDir);
-  await generator.ensureNativeProject();
-  generator.generate(config);
-  print('Generated native projects for ${config.name}.');
+  await generator.ensureNativeProject(clean: clean);
+  await generator.generate(config);
+  final discovered = discoverPluginBuildConfigs(projectDir);
+  print(
+    clean
+        ? 'Recreated and generated native projects for ${config.name}.'
+        : 'Synced native projects for ${config.name}.',
+  );
+  if (discovered.isNotEmpty) {
+    print(
+      '  plugins:         ${discovered.map((plugin) => plugin.name).join(', ')} '
+      '(from build_config.dart)',
+    );
+  }
+}
+
+void _runPrebuildInit(
+  Directory projectDir, {
+  bool force = false,
+  bool? syncFromProject,
+}) {
+  final inspection = initializeDngoConfig(
+    projectDir,
+    force: force,
+    syncFromProject: syncFromProject,
+    confirmOverwrite: force
+        ? null
+        : () => _confirm(
+            'dngo.config.dart already exists. Overwrite it?',
+            defaultYes: false,
+          ),
+    confirmSync: () => _confirm(
+      'Sync permissions, Gradle, Info.plist, Podfile and other native '
+      'settings into dngo.config.dart?',
+      defaultYes: true,
+    ),
+  );
+  print('Created ${projectDir.path}/dngo.config.dart');
+  print('  name:            ${inspection.name}');
+  print(
+    '  version:         ${inspection.versionName}+${inspection.buildNumber}',
+  );
+  print('  android bundle:  ${inspection.androidBundleId}');
+  print('  ios bundle:      ${inspection.iosBundleId}');
+  print(
+    inspection.syncedFromProject
+        ? '  native settings: copied from the current Android/iOS project'
+        : '  native settings: skipped',
+  );
+  if (!inspection.hasAndroid || !inspection.hasIos) {
+    final missing = [
+      if (!inspection.hasAndroid) 'android',
+      if (!inspection.hasIos) 'ios',
+    ];
+    print(
+      '  note:            ${missing.join(' and ')} project(s) not found; '
+      'fallback bundle ids were used.',
+    );
+  }
+}
+
+bool _confirm(String question, {required bool defaultYes}) {
+  if (!stdin.hasTerminal) return defaultYes;
+  stdout.write('$question ${defaultYes ? '[Y/n]' : '[y/N]'} ');
+  final answer = stdin.readLineSync()?.trim().toLowerCase();
+  if (answer == null || answer.isEmpty) return defaultYes;
+  return answer == 'y' || answer == 'yes';
 }
 
 String? _arg(List<String> args, String name) {
@@ -129,7 +213,8 @@ AVAILABLE COMMANDS:
   dap            Start DAP (Debug Adapter Protocol) server for VS Code debugging
   debug_adapter  Alias for 'dap'
   doctor         Inspect project dependencies and assets for compatibility
-  prebuild       Generate Android and iOS projects from dngo.config.dart
+  prebuild       Sync Android and iOS projects from dngo.config.dart (use --clean to recreate)
+  prebuild:init  Create dngo.config.dart from an existing project
   create         Run dn create, select supported plugins, and generate config
   version        Display CLI version and bundled native plugin compatibility matrix
   help           Show this help message
@@ -139,6 +224,16 @@ OPTIONS FOR 'open':
       --name=<app>            App name shown on the splash while it loads
       --device                Open the link with xcrun simctl / adb
       --qr                    Render the link as a terminal QR code
+
+OPTIONS FOR 'prebuild':
+      --project=<path>        Path to DartNative project directory (default: current directory)
+      --clean                 Delete android/ and ios/ first, then recreate them from the template
+
+OPTIONS FOR 'prebuild:init':
+      --project=<path>        Path to DartNative project directory (default: current directory)
+      --force                 Overwrite an existing dngo.config.dart without asking
+      --sync                  Copy native project settings into the config without asking
+      --no-sync               Write only name, version and bundle ids
 
 OPTIONS FOR 'start':
   -p, --port=<int>            Base port to start listening on (default: 8088)
@@ -160,6 +255,8 @@ EXAMPLES:
   dngo open --url=192.168.1.10:8088 --device
   dngo open dartnativego://open?url=192.168.1.10%3A8088
   dngo doctor
+  dngo prebuild
+  dngo prebuild --clean
   dngo version
 ''');
 }

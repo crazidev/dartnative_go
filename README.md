@@ -2,7 +2,7 @@
 
 A **dartnative** client runtime and development shell (similar to _Expo Go_ for React Native), powered by `tom_d4rt`. It allows authoring, interpreting, and live hot-reloading multi-file DartNative apps dynamically over Wi-Fi / localhost.
 
-> 📖 **Architecture & Technical Details**: See [ARCHITECTURE.md](ARCHITECTURE.md) for a deep dive into the bridge architecture, widget proxies, lifecycle management, and dev server protocol.
+> 📖 **Docs**: [docs/README.md](docs/README.md) · [Prebuild & plugin `build_config`](docs/prebuild.md) · [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ## DartNative Go CLI (`dngo`)
 
@@ -25,9 +25,15 @@ dngo start
 # Check plugin compatibility and assets
 dngo doctor
 
+# Sync android/ and ios/ from dngo.config.dart (and plugin build_config.dart)
+dngo prebuild
+
 # Check versions and supported native plugins
 dngo version
 ```
+
+Plugin authors: ship native permissions in a package-root `build_config.dart`.
+See [docs/prebuild.md](docs/prebuild.md).
 
 ### Key Features
 

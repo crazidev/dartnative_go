@@ -42,6 +42,56 @@ void main() {
       expect(parsed.profile, isFalse);
     });
 
+    test('parses prebuild --clean without treating it as the project path', () {
+      final parsed = DartGoCommandLine.parse(
+        ['prebuild', '--clean'],
+        currentDir: cwd,
+      );
+
+      expect(parsed.command, DartGoCommand.prebuild);
+      expect(parsed.commandArgs, contains('--clean'));
+      expect(parsed.projectDir.path, cwd.path);
+    });
+
+    test('parses prebuild:init without treating it as prebuild', () {
+      final parsed = DartGoCommandLine.parse(
+        ['prebuild:init'],
+        currentDir: cwd,
+      );
+
+      expect(parsed.command, DartGoCommand.prebuildInit);
+      expect(parsed.commandArgs, isEmpty);
+      expect(parsed.projectDir.path, cwd.path);
+    });
+
+    test('parses prebuild:init --force and --project', () {
+      final parsed = DartGoCommandLine.parse(
+        ['prebuild:init', '--force', '--project=/tmp/example'],
+        currentDir: cwd,
+      );
+
+      expect(parsed.command, DartGoCommand.prebuildInit);
+      expect(parsed.commandArgs, contains('--force'));
+      expect(parsed.projectDir.path, '/tmp/example');
+    });
+
+    test('parses prebuild:init --sync and --no-sync', () {
+      expect(
+        DartGoCommandLine.parse(
+          ['prebuild:init', '--sync'],
+          currentDir: cwd,
+        ).commandArgs,
+        contains('--sync'),
+      );
+      expect(
+        DartGoCommandLine.parse(
+          ['prebuild:init', '--no-sync'],
+          currentDir: cwd,
+        ).commandArgs,
+        contains('--no-sync'),
+      );
+    });
+
     test('parses --profile (AST explorer opt-in)', () {
       final parsed = DartGoCommandLine.parse(
         ['start', '--profile'],

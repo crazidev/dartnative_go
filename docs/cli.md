@@ -137,6 +137,55 @@ dngo doctor --project=/path/to/app
 
 ---
 
+## `dngo prebuild`
+
+Syncs `android/` and `ios/` from `dngo.config.dart`. Existing native folders
+are patched in place (formatting and manual edits outside managed entries are
+kept). Plugin `build_config.dart` files on the package graph are discovered
+and merged automatically — see [Prebuild & plugin `build_config`](prebuild.md).
+
+```sh
+dngo prebuild
+dngo prebuild --project=/path/to/app
+dngo prebuild --clean
+```
+
+| Flag | Description |
+| :--- | :--- |
+| `--project=<path>` | App directory (default: current directory). |
+| `--clean` | Delete `android/` and `ios/`, recreate them from the template, then sync. |
+
+The command prints discovered plugins:
+
+```text
+Synced native projects for My App.
+  plugins:         native_bottomsheet (from build_config.dart)
+```
+
+---
+
+## `dngo prebuild:init`
+
+Creates `dngo.config.dart` from an existing native project (pubspec version,
+bundle ids, and optionally Gradle / Info.plist / Podfile / permissions).
+
+```sh
+dngo prebuild:init
+dngo prebuild:init --force --sync
+```
+
+| Flag | Description |
+| :--- | :--- |
+| `--project=<path>` | App directory (default: current directory). |
+| `--force` | Overwrite an existing `dngo.config.dart` without asking. |
+| `--sync` | Copy native settings into the config without asking. |
+| `--no-sync` | Write only name, version, and bundle ids. |
+
+On a TTY, init asks before overwrite and asks whether to sync native settings.
+The generated file is passed through `dart format`.
+
+---
+
 ## `dngo version`
 
 Prints the CLI version, the matching mobile runtime version, and the full

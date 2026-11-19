@@ -8,6 +8,7 @@ enum DartGoCommand {
   version,
   dap,
   prebuild,
+  prebuildInit,
   create,
   help,
   unknown,
@@ -91,6 +92,13 @@ class DartGoCommandLine {
     }
     if (first == 'dap' || first == 'debug_adapter') {
       return _simple(DartGoCommand.dap, args.skip(1).toList(), baseDir);
+    }
+    if (first == 'prebuild:init') {
+      return _simple(
+        DartGoCommand.prebuildInit,
+        args.skip(1).toList(),
+        _projectDir(args.skip(1), baseDir),
+      );
     }
     if (first == 'prebuild') {
       return _simple(

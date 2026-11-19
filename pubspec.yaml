@@ -10,11 +10,15 @@ workspace:
   - example
   - pkgs/dartnative_go_api
   - pkgs/dartnative_go_ui
+  - pkgs/dartnative_go_config
 
 environment:
   sdk: ^3.9.0-0
 
 dependencies:
+  dartnative_go_config:
+    path: pkgs/dartnative_go_config
+  xml: ^6.6.1
   dartnative: ^1.0.0
   dartnative_ios: ^1.0.0
   dartnative_android: ^1.0.0
