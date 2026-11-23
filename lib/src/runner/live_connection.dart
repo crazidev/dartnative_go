@@ -14,6 +14,14 @@ class LiveConnection {
   final void Function(bool enabled)? onSetVerbose;
   final void Function(String error)? onError;
 
+  /// Fired whenever the socket opens or closes so the host UI can flip
+  /// Connected / Offline without polling [isConnected].
+  final void Function(bool connected)? onConnectionChanged;
+
+  /// When true (default), an unexpected socket drop schedules reconnect
+  /// attempts with exponential backoff. [disconnect] cancels the loop.
+  final bool autoReconnect;
+
   /// Hot restart requested by a test script (`restart` broadcast, usually
   /// `origin: test`). Unlike `onReload` (state-preserving), the handler
   /// should drop interpreter state and evaluate fresh.
@@ -60,6 +68,18 @@ class LiveConnection {
   WebSocket? _socket;
   bool _isDisposed = false;
   Completer<bool> _initialVerboseState = Completer<bool>();
+  Timer? _reconnectTimer;
+  Duration _reconnectDelay = _initialReconnectDelay;
+  bool _reconnectInFlight = false;
+  bool _notifiedConnected = false;
+
+  /// Bumped whenever the active socket is replaced or torn down so a stale
+  /// `onDone` / `onError` from a closed predecessor cannot schedule reconnect
+  /// or clear the socket that just replaced it.
+  int _socketGeneration = 0;
+
+  static const Duration _initialReconnectDelay = Duration(seconds: 1);
+  static const Duration _maxReconnectDelay = Duration(seconds: 30);
 
   LiveConnection({
     required this.serverUrl,
@@ -70,6 +90,8 @@ class LiveConnection {
     this.onSetVmDebugger,
     this.onSetVerbose,
     this.onError,
+    this.onConnectionChanged,
+    this.autoReconnect = true,
     this.onRestart,
     this.onUiProbeRequest,
     this.onUiTap,
@@ -84,6 +106,13 @@ class LiveConnection {
   bool get isConnected =>
       _socket != null && _socket!.readyState == WebSocket.open;
 
+  /// True while a reconnect attempt is scheduled or in flight after a drop.
+  bool get isReconnecting =>
+      !_isDisposed &&
+      !isConnected &&
+      autoReconnect &&
+      (_reconnectInFlight || (_reconnectTimer?.isActive ?? false));
+
   static Map<String, dynamic> _targetMap(Map<String, dynamic> data) {
     final target = data['target'];
     if (target is Map<String, dynamic>) return target;
@@ -94,22 +123,31 @@ class LiveConnection {
   /// Connects to the dev server WebSocket at `ws://$host:$port/ws`.
   Future<void> connect({Duration timeout = const Duration(seconds: 5)}) async {
     _isDisposed = false;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
     if (_initialVerboseState.isCompleted) {
       _initialVerboseState = Completer<bool>();
     }
     final wsUrl = '${serverUrl.replaceFirst('http', 'ws')}/ws';
+    final generation = ++_socketGeneration;
 
     try {
-      _socket?.close();
+      final previous = _socket;
+      _socket = null;
+      previous?.close();
       final socket = await WebSocket.connect(wsUrl).timeout(timeout);
-      if (_isDisposed) {
+      if (_isDisposed || generation != _socketGeneration) {
         socket.close();
         return;
       }
 
       _socket = socket;
+      _reconnectDelay = _initialReconnectDelay;
+      _reconnectInFlight = false;
+      _setConnected(true);
       socket.listen(
         (message) {
+          if (generation != _socketGeneration) return;
           try {
             final data = jsonDecode(message as String) as Map<String, dynamic>;
             final type = data['type']?.toString();
@@ -193,26 +231,67 @@ class LiveConnection {
           } catch (_) {}
         },
         onDone: () {
-          _socket = null;
-          if (!_initialVerboseState.isCompleted) {
-            _initialVerboseState.complete(false);
-          }
+          if (generation != _socketGeneration) return;
+          _handleSocketClosed(generation);
         },
         onError: (e) {
-          _socket = null;
-          if (!_initialVerboseState.isCompleted) {
-            _initialVerboseState.complete(false);
-          }
+          if (generation != _socketGeneration) return;
           onError?.call(e.toString());
+          _handleSocketClosed(generation);
         },
       );
     } catch (e) {
+      if (generation != _socketGeneration) return;
       _socket = null;
       onError?.call(e.toString());
       if (!_initialVerboseState.isCompleted) {
         _initialVerboseState.complete(false);
       }
+      _setConnected(false);
+      _scheduleReconnect();
     }
+  }
+
+  void _setConnected(bool connected) {
+    if (_notifiedConnected == connected) return;
+    _notifiedConnected = connected;
+    onConnectionChanged?.call(connected);
+  }
+
+  void _handleSocketClosed(int generation) {
+    if (generation != _socketGeneration) return;
+    _socket = null;
+    if (!_initialVerboseState.isCompleted) {
+      _initialVerboseState.complete(false);
+    }
+    _setConnected(false);
+    _scheduleReconnect();
+  }
+
+  void _scheduleReconnect() {
+    if (_isDisposed || !autoReconnect) return;
+    if (isConnected) return;
+    if (_reconnectTimer?.isActive ?? false) return;
+    if (_reconnectInFlight) return;
+
+    final delay = _reconnectDelay;
+    final nextMs = (delay.inMilliseconds * 2).clamp(
+      _initialReconnectDelay.inMilliseconds,
+      _maxReconnectDelay.inMilliseconds,
+    );
+    _reconnectDelay = Duration(milliseconds: nextMs);
+    _reconnectTimer = Timer(delay, () async {
+      if (_isDisposed || !autoReconnect || isConnected) return;
+      _reconnectInFlight = true;
+      try {
+        await connect();
+      } finally {
+        _reconnectInFlight = false;
+        if (!_isDisposed && !isConnected && autoReconnect) {
+          _scheduleReconnect();
+        }
+      }
+    });
   }
 
   /// Waits for the server's initial verbose setting before the first guest
@@ -315,13 +394,20 @@ class LiveConnection {
     } catch (_) {}
   }
 
-  /// Closes the connection.
+  /// Closes the connection and cancels any pending reconnect attempts.
   void disconnect() {
     _isDisposed = true;
-    _socket?.close();
+    _socketGeneration++;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _reconnectInFlight = false;
+    _reconnectDelay = _initialReconnectDelay;
+    final socket = _socket;
     _socket = null;
+    socket?.close();
     if (!_initialVerboseState.isCompleted) {
       _initialVerboseState.complete(false);
     }
+    _setConnected(false);
   }
 }

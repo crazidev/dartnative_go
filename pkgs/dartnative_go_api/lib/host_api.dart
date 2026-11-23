@@ -16,6 +16,8 @@
 /// it installed at startup.
 library;
 
+import 'version.dart';
+
 /// Library URIs the interpreter bridge and the AST bundler agree on.
 ///
 /// A guest that imports any of these gets the host implementation, not a
@@ -80,14 +82,20 @@ abstract class DartGoHostBinding {
   /// Forces a network rescan and returns the projects found.
   Future<List<DartGoProject>> refresh();
 
-  /// Projects from the latest discovery snapshot.
+  /// Projects from the latest discovery snapshot (active + recent).
   List<DartGoProject> get projects;
+
+  /// Projects the user has opened (persisted recents), not mere discoveries.
+  List<DartGoProject> get recentProjects;
 
   /// True while a scan is in flight.
   bool get isScanning;
 
   /// Opens [project] in the host preview route.
   Future<void> openProject(DartGoProject project);
+
+  /// Drops [project] from the recent/discovered list and storage.
+  Future<void> removeProject(DartGoProject project);
 
   /// Opens a server URL or a `dartnativego://` link.
   Future<void> openWithLink(String link);
@@ -203,10 +211,15 @@ class DartGoHost {
 
   static List<DartGoProject> get projects => _api.projects;
 
+  static List<DartGoProject> get recentProjects => _api.recentProjects;
+
   static bool get isScanning => _api.isScanning;
 
   static Future<void> openProject(DartGoProject project) =>
       _api.openProject(project);
+
+  static Future<void> removeProject(DartGoProject project) =>
+      _api.removeProject(project);
 
   static Future<void> openWithLink(String link) => _api.openWithLink(link);
 
@@ -222,6 +235,21 @@ class DartGoHost {
   /// shell's embedded copy reads the facade's `false`. UI code uses it to
   /// decide whether to render its own DevTools.
   static bool get isPreviewed => false;
+
+  /// DartNative Go CLI / shell version compiled into this build.
+  ///
+  /// Available without a binding so UI and guests can check compatibility
+  /// against a project's `/manifest.json` `dartGoVersion`.
+  static String get dngoVersion => kDartGoVersion;
+
+  /// DartNative SDK version this shell was built against.
+  ///
+  /// Compare with `/manifest.json` `dartnativeVersion` to detect skew
+  /// between the running shell and the project's dev server.
+  static String get dartNativeVersion => kDartNativeVersion;
+
+  /// DartNative Go mobile runtime version compiled into this build.
+  static String get runtimeVersion => kDartGoRuntimeVersion;
 
   static Future<void> claimDevTools() => _api.claimDevTools();
 

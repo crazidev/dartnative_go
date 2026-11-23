@@ -7,3 +7,4 @@
 library;
 
 export 'host_api.dart';
+export 'version.dart';

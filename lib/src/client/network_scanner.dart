@@ -19,10 +19,29 @@ class DartGoNetworkScanner {
       StreamController<List<DartGoProject>>.broadcast();
 
   final Map<String, DartGoProject> _projectsMap = {};
+
+  /// URLs the user has actually opened, most-recently-opened first.
+  ///
+  /// Discovery alone must not mutate this — otherwise a fresh `dngo start`
+  /// appears in Recents, and probe `lastSeen` bumps would reshuffle the list.
+  final List<String> _recentOrder = [];
+
   RawDatagramSocket? _udpSocket;
   Timer? _scanTimer;
   bool _isScanning = false;
   bool _disposed = false;
+
+  /// When true, [_addOrUpdateActiveProject] skips stream emits so a scan can
+  /// publish one coherent snapshot instead of flashing per-probe.
+  bool _batchingEmits = false;
+
+  /// How long a server may miss probes before it is treated as offline.
+  /// Prevents one flaky ping from blinking a dead server back into the list.
+  static const Duration _offlineGrace = Duration(seconds: 12);
+
+  /// Last emitted UI-relevant fingerprint (active flags + recent order).
+  /// Skips no-op stream events that would rebuild the launcher for lastSeen-only bumps.
+  String? _lastEmitFingerprint;
 
   DartGoNetworkScanner({
     this.startPort = 8088,
@@ -39,11 +58,23 @@ class DartGoNetworkScanner {
   /// Current list of projects sorted with active projects at the top.
   List<DartGoProject> get currentProjects => _getSortedProjects();
 
+  /// Projects the user has opened, in stable open-order (not probe order).
+  ///
+  /// Discovered-but-never-opened servers are omitted; they only appear in
+  /// [currentProjects] while [DartGoProject.isActive].
+  List<DartGoProject> get recentProjects => [
+    for (final url in _recentOrder)
+      if (_projectsMap[url] != null) _projectsMap[url]!,
+  ];
+
   /// Initializes the scanner: loads stored projects, starts UDP listener,
   /// and runs initial network scan.
   Future<void> start({Duration interval = const Duration(seconds: 4)}) async {
-    // 1. Load persisted projects from storage
+    // 1. Load persisted projects from storage (order is the recent order)
     final saved = await _storage.loadProjects();
+    _recentOrder
+      ..clear()
+      ..addAll(saved.map((p) => p.url));
     for (final p in saved) {
       _projectsMap[p.url] = p.copyWith(isActive: false);
     }
@@ -100,13 +131,16 @@ class DartGoNetworkScanner {
   Future<void> scanNow() async {
     if (_isScanning || _disposed) return;
     _isScanning = true;
+    _batchingEmits = true;
 
     try {
       // 1. Collect all connected network IPs
       final targetHosts = await _getConnectedNetworkHosts();
 
-      // 2. Also include hosts from known/recent projects
+      // 2. Also include hosts from active or recent projects (skip stale
+      //    offline discoveries so they are not re-probed into a flash).
       for (final p in _projectsMap.values) {
+        if (!p.isActive && !_recentOrder.contains(p.url)) continue;
         final uri = Uri.tryParse(p.url);
         if (uri != null && uri.host.isNotEmpty) {
           targetHosts.add(uri.host);
@@ -124,25 +158,26 @@ class DartGoNetworkScanner {
       // Execute in parallel
       await Future.wait(probeFutures);
 
-      // 4. Verify health of currently tracked active projects that weren't just probed
+      // 4. Refresh lastSeen for tracked URLs that still answer. Failures do
+      //    not flip isActive here — [_reconcileActiveFlags] applies grace.
       for (final project in _projectsMap.values.toList()) {
-        final isAlive = await _httpClient.ping(project.url);
-        if (_projectsMap.containsKey(project.url)) {
-          if (!isAlive && project.isActive) {
-            _projectsMap[project.url] = project.copyWith(isActive: false);
-          } else if (isAlive && !project.isActive) {
-            _projectsMap[project.url] = project.copyWith(
-              isActive: true,
-              lastSeen: DateTime.now(),
-            );
-          }
+        if (!project.isActive && !_recentOrder.contains(project.url)) {
+          continue;
         }
+        final isAlive = await _httpClient.ping(project.url);
+        if (!_projectsMap.containsKey(project.url) || !isAlive) continue;
+        _projectsMap[project.url] = project.copyWith(
+          isActive: true,
+          lastSeen: DateTime.now(),
+        );
       }
 
-      _emitProjects();
+      _reconcileActiveFlags();
     } catch (_) {
     } finally {
+      _batchingEmits = false;
       _isScanning = false;
+      _emitProjects();
     }
   }
 
@@ -182,7 +217,10 @@ class DartGoNetworkScanner {
     return hosts;
   }
 
-  /// Adds or updates an active project in the list and storage.
+  /// Adds or updates an active project in memory.
+  ///
+  /// Persists only when the URL is already in [recentProjects] so discovery
+  /// refreshes metadata without inventing a recent entry.
   void _addOrUpdateActiveProject(DartGoProject project) {
     final existing = _projectsMap[project.url];
     final updated = (existing ?? project).copyWith(
@@ -195,12 +233,80 @@ class DartGoNetworkScanner {
       iconUrl: project.iconUrl ?? existing?.iconUrl,
     );
 
+    final becameActive = existing == null || !existing.isActive;
+    final renamed = existing != null && existing.appName != updated.appName;
     _projectsMap[project.url] = updated;
-    _storage.upsertProject(updated);
+    // Refresh stored metadata in place — never reshuffle [_recentOrder].
+    if (_recentOrder.contains(updated.url)) {
+      unawaited(_storage.upsertProject(updated));
+    }
+    if (!_batchingEmits && (becameActive || renamed)) {
+      _emitProjects();
+    }
+  }
+
+  /// Marks servers offline only after [_offlineGrace] without a sighting, and
+  /// drops non-recent offline discoveries so they cannot flash back in.
+  void _reconcileActiveFlags() {
+    final now = DateTime.now();
+    for (final project in _projectsMap.values.toList()) {
+      final stale = now.difference(project.lastSeen) > _offlineGrace;
+      if (project.isActive && stale) {
+        _projectsMap[project.url] = project.copyWith(isActive: false);
+      }
+      final current = _projectsMap[project.url];
+      if (current != null &&
+          !current.isActive &&
+          !_recentOrder.contains(current.url) &&
+          stale) {
+        _projectsMap.remove(current.url);
+      }
+    }
+  }
+
+  /// Moves [url] to the front of the recent order (most recently opened).
+  void _touchRecentOrder(String url) {
+    _recentOrder.remove(url);
+    _recentOrder.insert(0, url);
+  }
+
+  /// Rewrites storage so on-disk order matches [_recentOrder].
+  Future<void> _persistRecentOrder() async {
+    final projects = [
+      for (final url in _recentOrder)
+        if (_projectsMap[url] != null) _projectsMap[url]!,
+    ];
+    await _storage.saveProjects(projects);
+  }
+
+  /// Records that the user opened [url], adding it to recent storage.
+  Future<void> rememberOpenedProject(
+    String url, {
+    String? appName,
+  }) async {
+    final normalized = DartGoHttpClient.normalizeUrl(url);
+    final existing = _projectsMap[normalized];
+    final project =
+        (existing ??
+                DartGoProject(
+                  appName:
+                      appName ?? Uri.tryParse(normalized)?.host ?? 'Dev Server',
+                  url: normalized,
+                  lastSeen: DateTime.now(),
+                ))
+            .copyWith(
+              appName: appName ?? existing?.appName,
+              lastSeen: DateTime.now(),
+            );
+
+    _projectsMap[project.url] = project;
+    _touchRecentOrder(project.url);
+    await _persistRecentOrder();
     _emitProjects();
   }
 
-  /// Adds a manually entered project URL, tests connection, and persists it.
+  /// Adds a manually entered project URL, tests connection, and persists it
+  /// as a recent entry (the user explicitly chose this URL).
   Future<DartGoProject> addManualProject(String rawUrl) async {
     final normalized = DartGoHttpClient.normalizeUrl(rawUrl);
     final manifest = await _httpClient.fetchManifest(normalized);
@@ -215,15 +321,21 @@ class DartGoNetworkScanner {
           );
 
     _projectsMap[project.url] = project;
-    await _storage.upsertProject(project);
+    _touchRecentOrder(project.url);
+    await _persistRecentOrder();
     _emitProjects();
     return project;
   }
 
-  /// Removes a project by URL.
+  /// Removes a project from recents. If it is still online it stays visible
+  /// in the active/discovered list until it goes offline.
   Future<void> removeProject(String url) async {
-    _projectsMap.remove(url);
+    _recentOrder.remove(url);
     await _storage.removeProject(url);
+    final existing = _projectsMap[url];
+    if (existing == null || !existing.isActive) {
+      _projectsMap.remove(url);
+    }
     _emitProjects();
   }
 
@@ -253,9 +365,15 @@ class DartGoNetworkScanner {
   }
 
   void _emitProjects() {
-    if (!_disposed && !_projectsController.isClosed) {
-      _projectsController.add(_getSortedProjects());
-    }
+    if (_disposed || _projectsController.isClosed) return;
+    final projects = _getSortedProjects();
+    final fingerprint = [
+      for (final p in projects) '${p.url}|${p.isActive}|${p.appName}',
+      'recent:${_recentOrder.join(',')}',
+    ].join('\n');
+    if (fingerprint == _lastEmitFingerprint) return;
+    _lastEmitFingerprint = fingerprint;
+    _projectsController.add(projects);
   }
 
   /// Disposes background timers and open sockets.

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dartnative/dartnative.dart';
+import 'package:dartnative_go_api/dartnative_go_api.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
 
 import '../theme/host_ui_theme.dart';
@@ -54,6 +55,16 @@ class HostDevToolSheet extends StatefulWidget {
   final Function onGoHome;
   final Function onReload;
 
+  /// Label for the secondary (left) action. Defaults to `Go Home`.
+  final String secondaryActionTitle;
+
+  /// Label for the primary (right) action. Defaults to `Reload`.
+  final String primaryActionTitle;
+
+  /// When true, the secondary action is a destructive trash icon instead of
+  /// [secondaryActionTitle] (used by the project long-press sheet).
+  final bool secondaryActionIsRemove;
+
   /// Shell-only section (the AST bundle explorer) rendered after the runtime
   /// selector. Null in a previewed UI.
   final Widget? extraSection;
@@ -78,6 +89,9 @@ class HostDevToolSheet extends StatefulWidget {
     this.onRescan,
     required this.onGoHome,
     required this.onReload,
+    this.secondaryActionTitle = 'Go Home',
+    this.primaryActionTitle = 'Reload',
+    this.secondaryActionIsRemove = false,
     this.extraSection,
   });
 
@@ -92,12 +106,22 @@ class _HostDevToolSheetState extends State<HostDevToolSheet> {
   late int _selectedModeIndex;
   late int _selectedThemeIndex;
 
+  /// Live Connected/Offline badge. Kept in state so an open sheet (its own
+  /// native DNTree) can flip when the host socket drops or reconnects without
+  /// waiting for the parent builder to run again.
+  late bool _isConnected;
+
   @override
   void initState() {
     super.initState();
     _verbose = widget.verbose;
     _selectedModeIndex = widget.selectedRuntimeModeIndex;
     _selectedThemeIndex = widget.selectedThemeIndex;
+    _isConnected = widget.isConnected;
+    try {
+      DartGoHost.addListener(_syncConnectionFromHost);
+      _isConnected = DartGoHost.isConnected;
+    } catch (_) {}
   }
 
   @override
@@ -112,6 +136,26 @@ class _HostDevToolSheetState extends State<HostDevToolSheet> {
     if (oldWidget.selectedThemeIndex != widget.selectedThemeIndex) {
       _selectedThemeIndex = widget.selectedThemeIndex;
     }
+    if (oldWidget.isConnected != widget.isConnected) {
+      _isConnected = widget.isConnected;
+    }
+  }
+
+  @override
+  void dispose() {
+    try {
+      DartGoHost.removeListener(_syncConnectionFromHost);
+    } catch (_) {}
+    super.dispose();
+  }
+
+  void _syncConnectionFromHost() {
+    if (!mounted) return;
+    try {
+      final next = DartGoHost.isConnected;
+      if (next == _isConnected) return;
+      setState(() => _isConnected = next);
+    } catch (_) {}
   }
 
   /// Palette for the current selection, resolved from [HostDevToolSheet.themeModes].
@@ -142,7 +186,7 @@ class _HostDevToolSheetState extends State<HostDevToolSheet> {
       color: !isIOS26 ? theme.background : null,
       child: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+          padding: const EdgeInsets.fromLTRB(12, 20, 12, 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,7 +217,7 @@ class _HostDevToolSheetState extends State<HostDevToolSheet> {
                               ),
                               margin: const EdgeInsets.only(left: 10),
                               decoration: BoxDecoration(
-                                color: widget.isConnected
+                                color: _isConnected
                                     ? const Color(0x2234C759)
                                     : const Color(0x22FF9500),
                                 borderRadius: BorderRadius.circular(12),
@@ -185,7 +229,7 @@ class _HostDevToolSheetState extends State<HostDevToolSheet> {
                                     width: 6,
                                     height: 6,
                                     decoration: BoxDecoration(
-                                      color: widget.isConnected
+                                      color: _isConnected
                                           ? const Color(0xFF34C759)
                                           : const Color(0xFFFF9500),
                                       shape: BoxShape.circle,
@@ -193,11 +237,9 @@ class _HostDevToolSheetState extends State<HostDevToolSheet> {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    widget.isConnected
-                                        ? 'Connected'
-                                        : 'Offline',
+                                    _isConnected ? 'Connected' : 'Offline',
                                     style: TextStyle(
-                                      color: widget.isConnected
+                                      color: _isConnected
                                           ? const Color(0xFF34C759)
                                           : const Color(0xFFFF9500),
                                       fontSize: 10,
@@ -238,27 +280,47 @@ class _HostDevToolSheetState extends State<HostDevToolSheet> {
               ),
               const SizedBox(height: 18),
 
-              // Action buttons
+              // Action buttons (Go Home / Reload, or Remove / Open Project)
               Row(
                 children: [
-                  Expanded(
-                    child: Button(
-                      title: 'Go Home',
-                      variant: ButtonVariant.bordered,
-                      foregroundColor: theme.foreground,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                  if (widget.secondaryActionIsRemove)
+                    Button(
+                      variant: ButtonVariant.tinted,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(40),
+                      ),
+                      color: theme.destructive,
                       onPressed: () {
                         widget.controller.dismiss();
                         widget.onGoHome();
                       },
+                      child: Icon(
+                        CupertinoIcons.trash_1,
+                        size: 20,
+                        color: theme.destructive,
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: Button(
+                        title: widget.secondaryActionTitle,
+                        variant: ButtonVariant.glass,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        onPressed: () {
+                          widget.controller.dismiss();
+                          widget.onGoHome();
+                        },
+                      ),
                     ),
-                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Button(
-                      title: 'Reload',
-                      variant: ButtonVariant.bordered,
-                      foregroundColor: theme.foreground,
+                      title: widget.primaryActionTitle,
+                      variant: ButtonVariant.prominentGlass,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       onPressed: () {
                         widget.controller.dismiss();
@@ -270,213 +332,175 @@ class _HostDevToolSheetState extends State<HostDevToolSheet> {
               ),
               const SizedBox(height: 14),
 
-              // Server URL details
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.secondary,
-                  borderRadius: theme.radius.lg,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'DEV SERVER',
-                      style: TextStyle(
-                        color: theme.mutedForeground,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.serverUrl,
-                      style: TextStyle(
-                        color: theme.foreground,
-                        fontSize: 13,
-                        fontFamily: 'Courier',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Runtime mode segment (hidden in single-engine product builds).
-              if (widget.runtimeModes.length > 1) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.secondary,
-                    borderRadius: theme.radius.lg,
-                  ),
-                  child: Column(
+              DevToolContainers(
+                children: [
+                  // Server URL details
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'RUNTIME MODE',
-                            style: TextStyle(
-                              color: theme.mutedForeground,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: SegmentedControl(
-                              segments: widget.runtimeModes,
-                              selectedIndex: _selectedModeIndex,
-                              onValueChanged: (index) {
-                                if (index == _selectedModeIndex) return;
-                                setState(() {
-                                  _selectedModeIndex = index;
-                                });
-                                widget.onSelectRuntimeMode?.call(index);
-                              },
-                            ),
-                          ),
-                        ],
+                      Text(
+                        'DEV SERVER',
+                        style: TextStyle(
+                          color: theme.mutedForeground,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.serverUrl,
+                        style: TextStyle(
+                          color: theme.foreground,
+                          fontSize: 13,
+                          fontFamily: 'Courier',
+                        ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 16),
-              ],
 
-              // AST bundle explorer (shell only).
-              if (widget.extraSection != null) ...[
-                widget.extraSection!,
-                const SizedBox(height: 16),
-              ],
-
-              // Theme
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.secondary,
-                  borderRadius: theme.radius.lg,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'THEME',
-                      style: TextStyle(
-                        color: theme.mutedForeground,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: SegmentedControl(
-                        segments: widget.themeModes,
-                        selectedIndex: _selectedThemeIndex,
-                        // labelFontStyle: TextStyle(
-                        //   color: theme.foreground,
-                        // ),
-                        // selectedLabelFontStyle: TextStyle(
-                        //   color: _selectedThemeIndex == 2 ? theme.background : null,
-                        // ),
-                        onValueChanged: (index) {
-                          if (index == _selectedThemeIndex) return;
-                          setState(() {
-                            _selectedThemeIndex = index;
-                          });
-                          widget.onSelectTheme?.call(index);
-                        },
-                      ),
+                  // Column(
+                  //   crossAxisAlignment: CrossAxisAlignment.start,
+                  //   children: [
+                  //     Text(
+                  //       'SHELL VERSIONS',
+                  //       style: TextStyle(
+                  //         color: theme.mutedForeground,
+                  //         fontSize: 10,
+                  //         fontWeight: FontWeight.bold,
+                  //         letterSpacing: 0.5,
+                  //       ),
+                  //     ),
+                  //     const SizedBox(height: 4),
+                  //     Text(
+                  //       'dngo v${DartGoHost.dngoVersion}  ·  '
+                  //       'DartNative v${DartGoHost.dartNativeVersion}  ·  '
+                  //       'runtime v${DartGoHost.runtimeVersion}',
+                  //       style: TextStyle(
+                  //         color: theme.foreground,
+                  //         fontSize: 12,
+                  //         fontFamily: 'Courier',
+                  //       ),
+                  //     ),
+                  //   ],
+                  // ),
+                  if (widget.runtimeModes.length > 1) ...[
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'RUNTIME MODE',
+                              style: TextStyle(
+                                color: theme.mutedForeground,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: SegmentedControl(
+                                segments: widget.runtimeModes,
+                                selectedIndex: _selectedModeIndex,
+                                onValueChanged: (index) {
+                                  if (index == _selectedModeIndex) return;
+                                  setState(() {
+                                    _selectedModeIndex = index;
+                                  });
+                                  widget.onSelectRuntimeMode?.call(index);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ],
-                ),
-              ),
-              const SizedBox(height: 16),
 
-              // Dependency Cache
-              // if (widget.cacheLabel != null) ...[
-              //   Container(
-              //     width: double.infinity,
-              //     padding: const EdgeInsets.all(12),
-              //     decoration: BoxDecoration(
-              //       color: theme.secondary,
-              //       borderRadius: theme.radius.lg,
-              //     ),
-              //     child: Row(
-              //       children: [
-              //         Expanded(
-              //           child: Column(
-              //             crossAxisAlignment: CrossAxisAlignment.start,
-              //             children: [
-              //               Text(
-              //                 'DEPENDENCY CACHE',
-              //                 style: TextStyle(
-              //                   color: theme.mutedForeground,
-              //                   fontSize: 10,
-              //                   fontWeight: FontWeight.bold,
-              //                   letterSpacing: 0.5,
-              //                 ),
-              //               ),
-              //               const SizedBox(height: 4),
-              //               Text(
-              //                 _isCacheCleared
-              //                     ? '0 B (0 packages)'
-              //                     : widget.cacheLabel!,
-              //                 style: TextStyle(
-              //                   color: theme.foreground,
-              //                   fontSize: 13,
-              //                 ),
-              //               ),
-              //             ],
-              //           ),
-              //         ),
-              //         if (!_isCacheCleared)
-              //           Button(
-              //             child: const Icon(CupertinoIcons.trash_1, size: 20),
-              //             variant: ButtonVariant.plain,
-              //             padding: EdgeInsets.zero,
-              //             foregroundColor: theme.destructive,
-              //             onPressed: () async {
-              //               widget.onClearCache?.call();
-              //               if (mounted) {
-              //                 setState(() {
-              //                   _isCacheCleared = true;
-              //                 });
-              //               }
-              //             },
-              //           ),
-              //       ],
-              //     ),
-              //   ),
-              //   const SizedBox(height: 16),
-              // ],
-
-              // Verbose logs toggle
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  final next = !_verbose;
-                  setState(() {
-                    _verbose = next;
-                  });
-                  widget.onToggleVerbose?.call(next);
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.secondary,
-                    borderRadius: theme.radius.lg,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'THEME',
+                        style: TextStyle(
+                          color: theme.mutedForeground,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(width: 40),
+                      Expanded(
+                        child: SegmentedControl(
+                          segments: widget.themeModes,
+                          selectedIndex: _selectedThemeIndex,
+                          onValueChanged: (index) {
+                            if (index == _selectedThemeIndex) return;
+                            setState(() {
+                              _selectedThemeIndex = index;
+                            });
+                            widget.onSelectTheme?.call(index);
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                  child: Row(
+
+                  // Dependency Cache
+                  // if (widget.cacheLabel != null) ...[
+                  //   Row(
+                  //     children: [
+                  //       Expanded(
+                  //         child: Column(
+                  //           crossAxisAlignment: CrossAxisAlignment.start,
+                  //           children: [
+                  //             Text(
+                  //               'DEPENDENCY CACHE',
+                  //               style: TextStyle(
+                  //                 color: theme.mutedForeground,
+                  //                 fontSize: 10,
+                  //                 fontWeight: FontWeight.bold,
+                  //                 letterSpacing: 0.5,
+                  //               ),
+                  //             ),
+                  //             const SizedBox(height: 4),
+                  //             Text(
+                  //               _isCacheCleared
+                  //                   ? '0 B (0 packages)'
+                  //                   : widget.cacheLabel!,
+                  //               style: TextStyle(
+                  //                 color: theme.foreground,
+                  //                 fontSize: 13,
+                  //               ),
+                  //             ),
+                  //           ],
+                  //         ),
+                  //       ),
+                  //       if (!_isCacheCleared)
+                  //         Button(
+                  //           child: const Icon(
+                  //             CupertinoIcons.trash_fill,
+                  //             size: 20,
+                  //           ),
+                  //           variant: ButtonVariant.plain,
+                  //           padding: EdgeInsets.zero,
+                  //           foregroundColor: theme.destructive,
+                  //           onPressed: () async {
+                  //             widget.onClearCache?.call();
+                  //             if (mounted) {
+                  //               setState(() {
+                  //                 _isCacheCleared = true;
+                  //               });
+                  //             }
+                  //           },
+                  //         ),
+                  //     ],
+                  //   ),
+                  // ],
+                  Row(
                     children: [
                       Expanded(
                         child: Column(
@@ -494,23 +518,165 @@ class _HostDevToolSheetState extends State<HostDevToolSheet> {
                           ],
                         ),
                       ),
-                      Switch(
-                        value: _verbose,
-                        onChanged: (v) {
-                          setState(() {
-                            _verbose = v;
-                          });
-                          widget.onToggleVerbose?.call(v);
-                        },
+                      SizedBox(
+                        height: 25,
+                        child: Switch(
+                          value: _verbose,
+                          android: AndroidSwitchStyle(checkIcon: true),
+                          onChanged: (v) {
+                            setState(() {
+                              _verbose = v;
+                            });
+                            widget.onToggleVerbose?.call(v);
+                          },
+                        ),
                       ),
                     ],
                   ),
-                ),
+                ],
               ),
-              const SizedBox(height: 20),
+
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  SizedBox(height: 50),
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      children: [
+                        Text(
+                          "SDK",
+                          style: TextStyle(
+                            color: theme.mutedForeground,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        Text(DartGoHost.dartNativeVersion),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // SizedBox(height: 16),
+              // DevToolContainers(
+              //   children: [
+              //     Row(
+              //       children: [
+              //         Expanded(
+              //           child: Column(
+              //             crossAxisAlignment: CrossAxisAlignment.start,
+              //             children: [
+              //               Text(
+              //                 'DARTNATIVE',
+              //                 style: TextStyle(
+              //                   color: theme.mutedForeground,
+              //                   fontSize: 10,
+              //                   fontWeight: FontWeight.bold,
+              //                   letterSpacing: 0.5,
+              //                 ),
+              //               ),
+              //             ],
+              //           ),
+              //         ),
+
+              //         Text(
+              //           DartGoHost.dartNativeVersion,
+              //           style: TextStyle(
+              //             color: theme.foreground,
+              //             fontSize: 13,
+              //             fontFamily: 'Courier',
+              //           ),
+              //         ),
+              //       ],
+              //     ),
+
+              //     Row(
+              //       children: [
+              //         Expanded(
+              //           child: Column(
+              //             crossAxisAlignment: CrossAxisAlignment.start,
+              //             children: [
+              //               Text(
+              //                 'GO CLIENT',
+              //                 style: TextStyle(
+              //                   color: theme.mutedForeground,
+              //                   fontSize: 10,
+              //                   fontWeight: FontWeight.bold,
+              //                   letterSpacing: 0.5,
+              //                 ),
+              //               ),
+              //             ],
+              //           ),
+              //         ),
+
+              //         Text(
+              //           'SDK ${DartGoHost.runtimeVersion}',
+              //           style: TextStyle(
+              //             color: theme.foreground,
+              //             fontSize: 13,
+              //             fontFamily: 'Courier',
+              //           ),
+              //         ),
+              //       ],
+              //     ),
+
+              //     // if (widget.extraSection != null) ...[
+              //     //   widget.extraSection!,
+              //     //   const SizedBox(height: 16),
+              //     // ],
+              //   ],
+              // ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class DevToolContainers extends StatelessWidget {
+  const DevToolContainers({super.key, required this.children});
+
+  final List<Widget> children;
+
+  Widget buildChild(BuildContext context, Widget child) {
+    var isFirst = children.indexOf(child) == 0;
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        if (!isFirst) ...[
+          Divider(color: context.theme.border, thickness: 2),
+        ],
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.only(
+            bottom: 7,
+            top: 7,
+            left: 14,
+            right: 14,
+          ),
+          child: child,
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: context.theme.secondary,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      child: Column(
+        children: children.map((child) => buildChild(context, child)).toList(),
       ),
     );
   }

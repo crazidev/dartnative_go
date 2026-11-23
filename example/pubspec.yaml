@@ -15,6 +15,8 @@ dependencies:
   riverpod_kit: ^0.1.0
   native_bottomsheet:
     path: ../../dartnative_bottomsheet
+  dartnative_go_config:
+    path: ../pkgs/dartnative_go_config
   dartnative_go:
     path: ../
   get_it: ^9.3.0
@@ -35,4 +37,5 @@ dev_dependencies:
 
 dartnative:
   assets:
-    - assets/dn-logo.png
+    - assets/app_icon.png
+    - assets/logo_rounded.png

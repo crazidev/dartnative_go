@@ -10,10 +10,12 @@ import '../client/project_model.dart' as host;
 class ShellHostBinding implements DartGoHostBinding {
   ShellHostBinding({
     required this.readProjects,
+    required this.readRecentProjects,
     required this.readScanning,
     required this.discoverProjects,
     required this.refreshProjects,
     required this.openProjectAt,
+    required this.removeProjectAt,
     required this.openLink,
     required this.cycleTheme,
     required this.readTheme,
@@ -37,10 +39,12 @@ class ShellHostBinding implements DartGoHostBinding {
   });
 
   final List<host.DartGoProject> Function() readProjects;
+  final List<host.DartGoProject> Function() readRecentProjects;
   final bool Function() readScanning;
   final Future<List<host.DartGoProject>> Function() discoverProjects;
   final Future<List<host.DartGoProject>> Function() refreshProjects;
   final void Function(String url, {String? appName}) openProjectAt;
+  final Future<void> Function(String url) removeProjectAt;
   final Future<void> Function(String link) openLink;
   final Future<String> Function() cycleTheme;
   final String Function() readTheme;
@@ -102,11 +106,20 @@ class ShellHostBinding implements DartGoHostBinding {
   List<DartGoProject> get projects => _convertAll(readProjects());
 
   @override
+  List<DartGoProject> get recentProjects => _convertAll(readRecentProjects());
+
+  @override
   bool get isScanning => readScanning();
 
   @override
   Future<void> openProject(DartGoProject project) async {
     openProjectAt(project.url, appName: project.appName);
+  }
+
+  @override
+  Future<void> removeProject(DartGoProject project) async {
+    await removeProjectAt(project.url);
+    notify();
   }
 
   @override

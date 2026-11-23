@@ -71,6 +71,7 @@ dartnative:
     # `dn config --no-enable-lldb-debugging` setting for this project.
     # enable-lldb-debugging: true
   assets:
+    - assets/app-logo.png
     - assets/dn-logo.png
 
 dependency_overrides:

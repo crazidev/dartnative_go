@@ -5,7 +5,7 @@ import 'dart:async';
 import 'dart:io';
 
 import '../../runner/logger.dart';
-import '../diagnostics/dart_go_version.dart';
+import '../diagnostics/version_info.dart';
 import 'dev_socket_hub.dart';
 import 'qr_code.dart';
 
@@ -13,12 +13,19 @@ const _dim = '\x1B[90m';
 const _reset = '\x1B[0m';
 const _cyan = '\x1B[36m';
 
-void printBanner() {
+void printBanner([DngoVersionInfo versions = DngoVersionInfo.current]) {
   print('\x1B[2J\x1B[0;0H');
   print('╔══════════════════════════════════════════════════════════╗');
   print('║            [DART] DartNative Go Dev Server [DART]        ║');
-  print('║                 CLI & Runtime v$kDartGoVersion                   ║');
+  print(
+    '║                 CLI & Runtime v${versions.dngoVersion}                   ║',
+  );
   print('╚══════════════════════════════════════════════════════════╝\n');
+  print(
+    '[SDK] dngo v${versions.dngoVersion}  ·  '
+    'DartNative v${versions.dartNativeVersion}  '
+    '·  runtime v${versions.runtimeVersion}',
+  );
 }
 
 void printConnectionInfo(String serverUrl) {

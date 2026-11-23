@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dartnative/dartnative.dart';
 
 import '../theme/host_ui_theme.dart';
@@ -32,7 +34,7 @@ class ServerUrlInput extends StatelessWidget {
         ),
         cursorColor: theme.primary,
         decoration: InputDecoration(
-          hintText: 'Enter URL or DartNative Go link',
+          hintText: 'Enter Development Server URL',
           hintStyle: TextStyle(
             fontSize: 13,
             color: theme.mutedForeground,
@@ -48,7 +50,9 @@ class ServerUrlInput extends StatelessWidget {
         ),
         prefixIcon: CupertinoIcons.link,
         prefixIconColor: theme.mutedForeground,
-        prefixIconPadding: const EdgeInsets.only(left: 10, right: 0),
+        prefixIconPadding: Platform.isIOS
+            ? EdgeInsets.only(left: 10)
+            : EdgeInsets.only(right: 10),
         clearButtonMode: ClearButtonMode.whileEditing,
         keyboardType: TextInputType.url,
         textInputAction: TextInputAction.go,

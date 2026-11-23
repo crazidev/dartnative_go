@@ -19,6 +19,7 @@ class PreviewState {
   final String? splashUrl;
   final String? iconUrl;
   final String? splashBackgroundColor;
+  final String? splashBackgroundColorDark;
 
   /// The failure's message, already stripped of host/interpreter framing.
   final String? errorMessage;
@@ -53,6 +54,7 @@ class PreviewState {
     this.splashUrl,
     this.iconUrl,
     this.splashBackgroundColor,
+    this.splashBackgroundColorDark,
     this.errorMessage,
     this.errorType,
     this.errorStackTrace,
@@ -135,9 +137,8 @@ class PreviewScreen extends StatelessWidget {
           appName: s.appName,
           splashUrl: s.splashUrl,
           iconUrl: s.iconUrl,
-          backgroundColor: ProjectSplashScreen.parseHexColor(
-            s.splashBackgroundColor,
-          ),
+          backgroundColorHex: s.splashBackgroundColor,
+          backgroundColorDarkHex: s.splashBackgroundColorDark,
           statusMessage: s.statusMessage,
           downloadProgress: s.downloadProgress,
           downloadedCount: s.downloadedCount,

@@ -460,7 +460,7 @@ packages:
       path: "../dartnative_bottomsheet"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "0.1.1"
   native_synchronization_temp:
     dependency: transitive
     description:

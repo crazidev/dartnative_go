@@ -96,61 +96,77 @@ class _PluginsScreenState extends State<PluginsScreen> {
         automaticallyImplyLeading: false,
         title: const Text(
           'Plugin List',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.bold,
-          ),
         ),
+        // largeTitle: const Text('Plugin List', style: TextStyle(fontSize: 20)),
         actions: [],
       ),
       body: Padding(
         padding: const EdgeInsets.only(top: 15),
-        child: Column(
-          children: [
-            ...plugins.map(
-              (plugin) => Column(
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      print("Navigate to ${plugin.name}");
-                      Navigator.of(
-                        context,
-                      ).push(
-                        PageRoute(
-                          builder: (c) => plugin.widget,
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              ...plugins.map(
+                (plugin) => Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        print("Navigate to ${plugin.name}");
+                        Navigator.of(
+                          context,
+                        ).push(
+                          PageRoute(
+                            builder: (c) => plugin.widget,
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Image.asset(
+                              'assets/dn-logo.png',
+                              width: 40,
+                              height: 40,
+                            ),
+                            SizedBox(width: 20),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    plugin.name,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.semiBold,
+                                    ),
+                                  ),
+
+                                  Text(
+                                    plugin.version,
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              CupertinoIcons.chevron_forward,
+                              color: Theme.of(context).primaryColor,
+                            ),
+                          ],
                         ),
-                      );
-                    },
-                    child: ListTile(
-                      contentPadding: EdgeInsets.symmetric(
-                        vertical: 0,
-                        horizontal: 20,
-                      ),
-                      leading: Image.asset(
-                        'assets/dn-logo-1.png',
-                        width: 40,
-                        height: 40,
-                      ),
-                      subtitle: Text(
-                        plugin.version,
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                      title: Text(
-                        plugin.name,
-                        style: TextStyle(fontWeight: FontWeight.semiBold),
-                      ),
-                      trailing: Icon(
-                        CupertinoIcons.chevron_forward,
-                        color: Theme.of(context).primaryColor,
                       ),
                     ),
-                  ),
-                  Divider(color: Colors.grey.shade300, thickness: .5),
-                ],
+                    Divider(
+                      color: Theme.of(context).dividerColor,
+                      thickness: .5,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            // ServerDemoCard(userId: 1),
-          ],
+              // ServerDemoCard(userId: 1),
+            ],
+          ),
         ),
       ),
     );

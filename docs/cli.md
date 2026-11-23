@@ -125,10 +125,12 @@ it. Two reports:
 
 1. **Plugin validation** — every dependency in `pubspec.yaml` is checked
    against the native plugin versions compiled into this runtime. Mismatches
-   print the supported constraint so you can fix your `pubspec.yaml`.
-2. **Asset detection** — finds app icons and `dartnative_splash`
-   configuration so the server can serve `/assets/icon.png`,
-   `/assets/splash.png`, and a correct `/manifest.json`.
+   print the supported constraint so you can fix your `pubspec.yaml`. Display
+   name/version prefer `dngo.config.dart` when present.
+2. **Asset detection** — finds app icons and splash (from `dngo.config.dart`
+   first, then `dartnative_splash` / conventional paths) so the server can
+   serve `/assets/icon.png`, `/assets/splash.png`, and a correct
+   `/manifest.json`.
 
 ```sh
 dngo doctor                       # current directory

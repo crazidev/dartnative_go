@@ -174,5 +174,59 @@ void main() {
       await _waitUntil(() => restarted);
       conn.disconnect();
     });
+
+    test('notifies onConnectionChanged when the socket drops', () async {
+      final states = <bool>[];
+      final conn = LiveConnection(
+        serverUrl: server.baseUrl,
+        autoReconnect: false,
+        onConnectionChanged: states.add,
+      );
+      await conn.connect();
+      expect(conn.isConnected, isTrue);
+      expect(states, equals([true]));
+
+      await server.dropClients();
+      await _waitUntil(() => !conn.isConnected);
+      expect(states, equals([true, false]));
+      conn.disconnect();
+    });
+
+    test('auto-reconnects after the server drops the socket', () async {
+      final states = <bool>[];
+      final conn = LiveConnection(
+        serverUrl: server.baseUrl,
+        onConnectionChanged: states.add,
+      );
+      await conn.connect();
+      expect(conn.isConnected, isTrue);
+
+      await server.dropClients();
+      await _waitUntil(() => states.contains(false));
+      expect(conn.isConnected, isFalse);
+
+      await _waitUntil(
+        () => conn.isConnected,
+        timeout: const Duration(seconds: 5),
+      );
+      expect(conn.isConnected, isTrue);
+      expect(states.last, isTrue);
+      conn.disconnect();
+      expect(conn.isConnected, isFalse);
+      expect(conn.isReconnecting, isFalse);
+    });
+
+    test('disconnect cancels pending auto-reconnect', () async {
+      final conn = LiveConnection(serverUrl: server.baseUrl);
+      await conn.connect();
+      await server.dropClients();
+      await _waitUntil(() => !conn.isConnected);
+      expect(conn.isReconnecting, isTrue);
+
+      conn.disconnect();
+      expect(conn.isReconnecting, isFalse);
+      await Future<void>.delayed(const Duration(milliseconds: 1500));
+      expect(conn.isConnected, isFalse);
+    });
   });
 }

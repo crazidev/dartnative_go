@@ -190,7 +190,8 @@ void _runDoctor(Directory projectDir) {
 
 void _printVersion() {
   print('DartNative Go CLI version: v$kDartGoVersion');
-  print('Target Mobile Runtime:      v$kDartGoRuntimeVersion\n');
+  print('Target Mobile Runtime:      v$kDartGoRuntimeVersion');
+  print('DartNative SDK:             v$kDartNativeVersion\n');
   print('Supported Native Plugins in DartNative Go v$kDartGoVersion:');
   for (final p in kSupportedNativePlugins) {
     final coreTag = p.isCore ? ' [core]' : '';

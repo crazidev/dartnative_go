@@ -8,8 +8,8 @@ import '../devtool/host_devtool_button.dart';
 import '../devtool/host_devtool_sheet.dart';
 import '../theme/host_ui_theme.dart';
 import 'launcher_app_bar.dart';
+import 'project_card.dart';
 import 'recent_projects_list.dart';
-import 'server_url_input.dart';
 
 /// Launcher the shell embeds, and the root widget `dart_go start` previews.
 ///
@@ -39,6 +39,7 @@ class _HostLauncherState extends State<HostLauncher> {
 
   final TextEditingController _urlController = TextEditingController();
   List<DartGoProject> _projects = const [];
+  List<DartGoProject> _recentProjects = const [];
   bool _loading = true;
   String _theme = 'system';
   bool _verbose = false;
@@ -53,7 +54,8 @@ class _HostLauncherState extends State<HostLauncher> {
   /// True when this copy runs as an interpreted guest previewed by the shell.
   bool _isPreviewed = false;
 
-  DNSheetController? _devToolsSheet;
+  /// Single sheet for floating DevTools and project long-press / inactive tap.
+  DNSheetController? _sheet;
 
   @override
   void initState() {
@@ -73,9 +75,9 @@ class _HostLauncherState extends State<HostLauncher> {
       unawaited(_releaseDevTools());
     }
     try {
-      _devToolsSheet?.dismiss();
+      _sheet?.dismiss();
     } catch (_) {}
-    _devToolsSheet = null;
+    _sheet = null;
     DartGoHost.removeListener(_syncFromHost);
     _urlController.dispose();
     super.dispose();
@@ -116,16 +118,7 @@ class _HostLauncherState extends State<HostLauncher> {
   }
 
   Future<void> _bootstrap() async {
-    // try {
-    //   final projects = await DartGoHost.discover();
-    //   if (!mounted) return;
-    //   setState(() {
-    //     _readHostState();
-    //     _projects = projects;
-    //   });
-    // } catch (_) {
-    //   if (mounted) setState(() => _loading = false);
-    // }
+    _syncFromHost();
   }
 
   void _syncFromHost() {
@@ -134,6 +127,7 @@ class _HostLauncherState extends State<HostLauncher> {
       try {
         _readHostState();
         _projects = DartGoHost.projects;
+        _recentProjects = DartGoHost.recentProjects;
       } catch (_) {}
     });
   }
@@ -149,24 +143,40 @@ class _HostLauncherState extends State<HostLauncher> {
     _syncFromHost();
   }
 
-  /// Opens this package's DevTools sheet.
+  List<DartGoProject> get _activeProjects => [
+    for (final project in _projects)
+      if (project.isActive) project,
+  ];
+
+  /// Tap on a recent row: open when online, otherwise show the sheet.
+  void _onRecentProjectTap(DartGoProject project) {
+    if (project.isActive) {
+      _run(() => DartGoHost.openProject(project));
+      return;
+    }
+    _openSheet(project: project);
+  }
+
+  /// Opens the shared DevTools sheet.
   ///
-  /// The launcher owns the sheet in both modes: embedded in the shell (home
-  /// route) and previewed as a guest. It is built from this package so edits
-  /// hot-reload with the rest of the UI; every action goes through the API.
-  void _openDevTools() {
-    if (_devToolsSheet != null) return;
-    _devToolsSheet = showBottomSheet(
+  /// With [project], secondary/primary become Remove / Open Project. Without,
+  /// they stay Go Home / Reload for the floating pill (preview mode).
+  void _openSheet({DartGoProject? project}) {
+    if (_sheet != null) return;
+    final forProject = project != null;
+    _sheet = showBottomSheet(
       context,
       detents: const [DNSheetDetent.medium, DNSheetDetent.large],
       initialDetent: DNSheetDetent.medium,
       showGrabber: true,
       builder: (ctx, controller) => HostDevToolSheet(
         controller: controller,
-        appName: _appName,
-        appVersion: _appVersion,
-        serverUrl: _serverUrl,
-        isConnected: _isConnected,
+        appName: forProject ? project.appName : _appName,
+        appVersion: forProject
+            ? project.appVersion ?? _appVersion
+            : _appVersion,
+        serverUrl: forProject ? project.url : _serverUrl,
+        isConnected: forProject ? project.isActive : _isConnected,
         runtimeModes: _runtimeModes,
         selectedRuntimeModeIndex: _runtimeModeIndex,
         onSelectRuntimeMode: (index) => _run(() async {
@@ -184,11 +194,21 @@ class _HostLauncherState extends State<HostLauncher> {
         onRescan: () => _run(() async {
           await DartGoHost.refresh();
         }),
-        onGoHome: () => _run(() => DartGoHost.goHome()),
-        onReload: () => _run(() => DartGoHost.reload()),
+        secondaryActionIsRemove: forProject,
+        primaryActionTitle: forProject ? 'Open Project' : 'Reload',
+        onGoHome: () => _run(
+          () => forProject
+              ? DartGoHost.removeProject(project)
+              : DartGoHost.goHome(),
+        ),
+        onReload: () => _run(
+          () => forProject
+              ? DartGoHost.openProject(project)
+              : DartGoHost.reload(),
+        ),
       ),
       onDismissed: () {
-        _devToolsSheet = null;
+        _sheet = null;
       },
     );
   }
@@ -210,44 +230,106 @@ class _HostLauncherState extends State<HostLauncher> {
             appBar: buildLauncherAppBar(context),
             body: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 24,
+                horizontal: 14,
+                vertical: 0,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 20),
                   Text(
-                    'Development Server',
+                    'Development Server'.toUpperCase(),
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: theme.foreground,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Connect to an active DartNative local dev server.',
-                    style: TextStyle(
-                      fontSize: 12,
                       color: theme.mutedForeground,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  ServerUrlInput(
-                    controller: _urlController,
-                    onSubmitted: (value) async {
-                      final trimmed = value.trim();
-                      if (trimmed.isEmpty) return;
-                      await _run(() => DartGoHost.openWithLink(trimmed));
-                      if (mounted) _urlController.clear();
-                    },
-                  ),
+                  const SizedBox(height: 3),
+                  if (_activeProjects.isEmpty) ...[
+                    Text(
+                      'Start a local development server with:',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: theme.foreground,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: theme.secondary,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.terminal_2,
+                            color: theme.mutedForeground,
+                            size: 25,
+                          ),
+                          SizedBox(width: 5),
+                          Text(
+                            'dngo start',
+                            style: TextStyle(
+                              color: theme.foreground,
+                              fontSize: 14,
+                              fontFamily: 'Courier',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Padding(
+                    //   padding: const EdgeInsets.only(left: 5, top: 5),
+                    //   child: Text(
+                    //     'Select a local server when it appears here.',
+                    //     style: TextStyle(
+                    //       fontSize: 11,
+                    //       color: theme.mutedForeground,
+                    //     ),
+                    //   ),
+                    // ),
+                  ] else
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 5),
+                      child: ListView.separated(
+                        itemCount: _activeProjects.length,
+                        shrinkWrap: true,
+                        padding: EdgeInsets.zero,
+                        physics: const NeverScrollableScrollPhysics(),
+                        separatorBuilder: (context, index) => Divider(
+                          color: theme.background,
+                          height: 2,
+                          thickness: 2,
+                        ),
+                        itemBuilder: (context, index) {
+                          final project = _activeProjects[index];
+                          return ProjectCard(
+                            project: project,
+                            position: ProjectPosition.at(
+                              index,
+                              _activeProjects.length,
+                            ),
+                            showActiveBadge: true,
+                            onTap: (selected) => _run(
+                              () => DartGoHost.openProject(selected),
+                            ),
+                            onLongPress: (p) => _openSheet(project: p),
+                          );
+                        },
+                      ),
+                    ),
                   const SizedBox(height: 32),
                   RecentProjectsList(
-                    projects: _projects,
+                    projects: _recentProjects,
                     isLoading: _loading,
-                    onSelectProject: (project) =>
-                        _run(() => DartGoHost.openProject(project)),
+                    onSelectProject: _onRecentProjectTap,
+                    onLongPressProject: (p) => _openSheet(project: p),
                   ),
                 ],
               ),
@@ -262,7 +344,7 @@ class _HostLauncherState extends State<HostLauncher> {
                   HostDevToolButton(
                     theme: theme,
                     isConnected: _isConnected,
-                    onTap: _openDevTools,
+                    onTap: _openSheet,
                   ),
                 ]
               : <Widget>[launcher];

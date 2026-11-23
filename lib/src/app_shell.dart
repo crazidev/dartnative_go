@@ -176,10 +176,12 @@ class _DartNativeGoState extends State<DartNativeGo> {
     super.initState();
     _hostBinding = ShellHostBinding(
       readProjects: () => _projects,
+      readRecentProjects: () => _scanner.recentProjects,
       readScanning: () => _isLoading,
       discoverProjects: _discoverForApi,
       refreshProjects: _refreshForApi,
       openProjectAt: _openProjectForApi,
+      removeProjectAt: _removeProjectForApi,
       openLink: _openWithLinkForApi,
       cycleTheme: _toggleThemeForApi,
       readTheme: _readThemeForApi,
@@ -273,6 +275,13 @@ class _DartNativeGoState extends State<DartNativeGo> {
     _publishPreview();
   }
 
+  /// Propagates live-socket open/close to the DevTools overlay and host API.
+  void _onLiveConnectionChanged(bool _) {
+    if (!mounted) return;
+    _publishPreview();
+    _hostBinding.notify();
+  }
+
   /// Updates preview state without triggering a host root rebuild.
   void _publishPreview() {
     if (!mounted) return;
@@ -291,6 +300,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       splashUrl: _activeBundle?.splashUrl,
       iconUrl: _activeBundle?.iconUrl,
       splashBackgroundColor: _activeBundle?.splashBackgroundColor,
+      splashBackgroundColorDark: _activeBundle?.splashBackgroundColorDark,
       errorMessage: _errorMessage,
       errorType: _errorType,
       errorStackTrace: _errorStackTrace,
@@ -523,6 +533,14 @@ class _DartNativeGoState extends State<DartNativeGo> {
     _startProject(url, fallbackAppName: appName);
   }
 
+  Future<void> _removeProjectForApi(String url) async {
+    await _scanner.removeProject(url);
+    if (!mounted) return;
+    setState(() {
+      _projects = _scanner.currentProjects;
+    });
+  }
+
   Future<void> _openWithLinkForApi(String link) async {
     final trimmed = link.trim();
     if (trimmed.isEmpty) return;
@@ -646,6 +664,11 @@ class _DartNativeGoState extends State<DartNativeGo> {
   /// a root swap.
   void _startProject(String rawUrl, {String? fallbackAppName}) {
     _astProfileEnabled = false;
+    // Persist as a recent only when a project is actually opened — discovery
+    // alone must not inflate the Recents list.
+    unawaited(
+      _scanner.rememberOpenedProject(rawUrl, appName: fallbackAppName),
+    );
     _openPreviewRoute();
     unawaited(_launchProject(rawUrl, fallbackAppName: fallbackAppName));
   }
@@ -838,6 +861,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       final websocketSw = Stopwatch()..start();
       _liveConnection = LiveConnection(
         serverUrl: bundle.serverUrl,
+        onConnectionChanged: _onLiveConnectionChanged,
         onReload: (changed) => _reloadApp(changedFile: changed),
         onReloadBatch: (changedList, {bool isAssetChange = false}) =>
             _reloadApp(changedFiles: changedList, isAssetChange: isAssetChange),

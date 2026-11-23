@@ -3,13 +3,12 @@
 /// Each release of DartNative Go is compiled with a specific set of native
 /// plugins and their corresponding versions. Developer projects targeting
 /// DartNative Go must match these supported plugin versions.
+///
+/// Version number constants live in `package:dartnative_go_api/version.dart`
+/// so the shell and guests share the same values at runtime.
 library;
 
-/// The current version of the DartNative Go CLI.
-const String kDartGoVersion = '0.1.0';
-
-/// The corresponding DartNative Go mobile runtime version.
-const String kDartGoRuntimeVersion = '0.1.0';
+export 'package:dartnative_go_api/version.dart';
 
 /// Represents a native plugin requirement supported by this DartNative Go version.
 class SupportedPlugin {

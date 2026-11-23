@@ -12,8 +12,10 @@ import '../packaging/ast_builder.dart';
 import '../packaging/ast_artifact_paths.dart';
 import 'broadcaster.dart';
 import 'dev_socket_hub.dart';
+import 'loading_page.dart';
 import 'terminal_ui.dart';
 import '../diagnostics/dart_go_version.dart';
+import '../diagnostics/version_info.dart';
 import '../packaging/dep_packager.dart';
 import '../diagnostics/pubspec_validator.dart';
 
@@ -39,6 +41,9 @@ class DartGoServerOptions {
   /// default — the explorer costs an on-demand AST sizing walk per open.
   final bool profile;
 
+  /// Same snapshot `dngo --version` prints (baked into this process).
+  final DngoVersionInfo versions;
+
   const DartGoServerOptions({
     required this.projectDir,
     this.startPort = 8088,
@@ -49,6 +54,7 @@ class DartGoServerOptions {
     this.rebuildAst = true,
     this.verbose = false,
     this.profile = false,
+    this.versions = DngoVersionInfo.current,
   });
 }
 
@@ -131,7 +137,7 @@ class DartGoServer {
         port: port,
         startPort: options.startPort,
         endPort: options.endPort,
-        dartGoVersion: kDartGoVersion,
+        dartGoVersion: options.versions.dngoVersion,
         hasIcon: assets.hasIcon,
         hasSplash: assets.hasSplash,
       );
@@ -139,7 +145,10 @@ class DartGoServer {
     }
 
     // 5. Print startup diagnostics and terminal controls.
-    printBanner();
+    // Versions are the in-process snapshot (same as `dngo --version`) —
+    // no subprocess or disk I/O on this path.
+    final versions = options.versions;
+    printBanner(versions);
     print(validation.formatReport());
     print(assets.formatReport());
     print(iconFonts.formatReport());
@@ -389,11 +398,11 @@ class DartGoServer {
       final depResult = DepPackager.resolveAndPack(
         projectDir,
         serverUrl,
-        packageName: validation.appName,
+        packageName: validation.packageName,
       );
       final userCode = DepPackager.packUserCode(
         codeDir,
-        packageName: validation.appName,
+        packageName: validation.packageName,
       );
       final astFile = _resolveAstBundleFile(projectDir);
       // Icon-font usage is re-detected per manifest fetch (cached by source
@@ -405,13 +414,13 @@ class DartGoServer {
       } catch (_) {
         fontsReport = const IconFontReport();
       }
+      final versions = options.versions;
       final manifest = {
         'protocol': 'dart_go',
         'appName': validation.appName,
-        'packageName': validation.appName,
+        'packageName': validation.packageName,
         'appVersion': validation.appVersion,
-        'dartGoVersion': kDartGoVersion,
-        'runtimeVersion': kDartGoRuntimeVersion,
+        ...versions.toJson(),
         'serverUrl': serverUrl,
         'depMode': true,
         'depsHash': depResult.depsHash,
@@ -424,6 +433,7 @@ class DartGoServer {
         'hasSplash': assets.hasSplash,
         'splashUrl': assets.hasSplash ? '$serverUrl/assets/splash.png' : null,
         'splashBackgroundColor': assets.splashBackgroundColor,
+        'splashBackgroundColorDark': assets.splashBackgroundColorDark,
         'assets': _collectProjectAssets(projectDir),
         // On-demand icon fonts: only the families the guest touches are
         // advertised; devices fetch each `.ttf` via its `url` once.
@@ -471,7 +481,7 @@ class DartGoServer {
       final depResult = DepPackager.resolveAndPack(
         projectDir,
         serverUrl,
-        packageName: validation.appName,
+        packageName: validation.packageName,
       );
       request.response
         ..headers.contentType = ContentType.json
@@ -489,7 +499,7 @@ class DartGoServer {
       final depResult = DepPackager.resolveAndPack(
         projectDir,
         serverUrl,
-        packageName: validation.appName,
+        packageName: validation.packageName,
       );
       final zipBytes = depResult.packageZips[pkgKey];
       if (zipBytes != null) {
@@ -509,7 +519,7 @@ class DartGoServer {
     } else if (path == '/user-code.zip') {
       final userCode = DepPackager.packUserCode(
         codeDir,
-        packageName: validation.appName,
+        packageName: validation.packageName,
       );
       request.response
         ..headers.contentType = ContentType('application', 'zip')
@@ -520,7 +530,7 @@ class DartGoServer {
     } else if (path == '/user-code-hash') {
       final userCode = DepPackager.packUserCode(
         codeDir,
-        packageName: validation.appName,
+        packageName: validation.packageName,
       );
       request.response
         ..headers.contentType = ContentType.json
@@ -666,24 +676,25 @@ class DartGoServer {
         final depResult = DepPackager.resolveAndPack(
           projectDir,
           serverUrl,
-          packageName: validation.appName,
+          packageName: validation.packageName,
         );
         final userCode = DepPackager.packUserCode(
           codeDir,
-          packageName: validation.appName,
+          packageName: validation.packageName,
         );
         final projectAssets = _collectProjectAssets(projectDir);
         final jsonStr = jsonEncode({
           'manifest': {
             'appName': validation.appName,
-            'packageName': validation.appName,
+            'packageName': validation.packageName,
             'appVersion': validation.appVersion,
-            'dartGoVersion': kDartGoVersion,
+            ...options.versions.toJson(),
             'depMode': true,
             'depsHash': depResult.depsHash,
             'depsCount': depResult.deps.length,
             'userCodeHash': userCode.hash,
             'splashBackgroundColor': assets.splashBackgroundColor,
+            'splashBackgroundColorDark': assets.splashBackgroundColorDark,
             'iconUrl': assets.hasIcon ? '$serverUrl/assets/icon.png' : null,
             'splashUrl': assets.hasSplash
                 ? '$serverUrl/assets/splash.png'
@@ -953,6 +964,7 @@ class DartGoServer {
         ..write(jsonEncode({'status': 'resumed'}))
         ..close();
     } else if (path == '/health' || path == '/dart_go/discover') {
+      final versions = options.versions;
       request.response
         ..headers.contentType = ContentType.json
         ..headers.add('Access-Control-Allow-Origin', '*')
@@ -961,12 +973,60 @@ class DartGoServer {
             'status': 'ok',
             'protocol': 'dart_go',
             'appName': validation.appName,
-            'version': kDartGoVersion,
+            'version': versions.dngoVersion,
+            ...versions.toJson(),
             'clients': _socketHub.clientCount,
             'hasIcon': assets.hasIcon,
             'hasSplash': assets.hasSplash,
           }),
         )
+        ..close();
+    } else if (path == '/' || path.isEmpty) {
+      // Browsers opening the printed Server URL get the loading page;
+      // API clients (Go app, curl JSON) keep the JSON identity payload.
+      final accept = request.headers.value(HttpHeaders.acceptHeader);
+      final versions = options.versions;
+      if (isBrowserDocumentRequest(accept)) {
+        request.response
+          ..statusCode = HttpStatus.temporaryRedirect
+          ..headers.set(
+            HttpHeaders.locationHeader,
+            '$kDngoLoadingPath?url=${Uri.encodeQueryComponent(serverUrl)}',
+          )
+          ..headers.add('Access-Control-Allow-Origin', '*')
+          ..headers.add('Cache-Control', 'no-cache')
+          ..close();
+      } else {
+        request.response
+          ..headers.contentType = ContentType.json
+          ..headers.add('Access-Control-Allow-Origin', '*')
+          ..headers.add('Cache-Control', 'no-cache')
+          ..write(
+            jsonEncode({
+              'status': 'ok',
+              'protocol': 'dart_go',
+              'appName': validation.appName,
+              'version': versions.dngoVersion,
+              ...versions.toJson(),
+              'loadingUrl': '$serverUrl$kDngoLoadingPath',
+            }),
+          )
+          ..close();
+      }
+    } else if (path == kDngoLoadingPath) {
+      final versions = options.versions;
+      final html = buildLoadingPageHtml(
+        appName: validation.appName,
+        appVersion: validation.appVersion,
+        serverUrl: serverUrl,
+        projectPath: projectDir.path,
+        // versions: versions,
+      );
+      request.response
+        ..headers.contentType = ContentType('text', 'html', charset: 'utf-8')
+        ..headers.add('Access-Control-Allow-Origin', '*')
+        ..headers.add('Cache-Control', 'no-cache')
+        ..write(html)
         ..close();
     } else {
       // Fallback: check if requested path points to any project asset

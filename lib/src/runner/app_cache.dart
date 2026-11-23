@@ -54,6 +54,7 @@ class AppCache {
         'splashUrl': bundle.splashUrl,
         'iconUrl': bundle.iconUrl,
         'splashBackgroundColor': bundle.splashBackgroundColor,
+        'splashBackgroundColorDark': bundle.splashBackgroundColorDark,
         'serverUrl': bundle.serverUrl,
         'entrypointLibrary': bundle.entrypointLibrary,
         'entrypointCode': bundle.entrypointCode,
@@ -145,6 +146,8 @@ class AppCache {
         splashUrl: metaJson['splashUrl']?.toString(),
         iconUrl: metaJson['iconUrl']?.toString(),
         splashBackgroundColor: metaJson['splashBackgroundColor']?.toString(),
+        splashBackgroundColorDark: metaJson['splashBackgroundColorDark']
+            ?.toString(),
         serverUrl:
             metaJson['serverUrl']?.toString() ??
             BundleLoader.normalizeUrl(serverUrl),

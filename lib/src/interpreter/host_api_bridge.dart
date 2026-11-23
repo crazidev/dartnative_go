@@ -36,6 +36,9 @@ BridgedClass _hostClass() {
       'openProject': (visitor, positional, named, typeArgs) {
         return DartGoHost.openProject(_projectArg(positional, named));
       },
+      'removeProject': (visitor, positional, named, typeArgs) {
+        return DartGoHost.removeProject(_projectArg(positional, named));
+      },
       'openWithLink': (visitor, positional, named, typeArgs) {
         return DartGoHost.openWithLink(_stringArg(positional, named, 'link'));
       },
@@ -90,7 +93,11 @@ BridgedClass _hostClass() {
       // This copy is interpreted inside the shell, so it is by definition a
       // preview. The shell's embedded UI reads the facade's `false`.
       'isPreviewed': (visitor) => true,
+      'dngoVersion': (visitor) => DartGoHost.dngoVersion,
+      'dartNativeVersion': (visitor) => DartGoHost.dartNativeVersion,
+      'runtimeVersion': (visitor) => DartGoHost.runtimeVersion,
       'projects': (visitor) => DartGoHost.projects,
+      'recentProjects': (visitor) => DartGoHost.recentProjects,
       'isScanning': (visitor) => DartGoHost.isScanning,
       'theme': (visitor) => DartGoHost.theme,
       'verbose': (visitor) => DartGoHost.verbose,
@@ -106,6 +113,7 @@ BridgedClass _hostClass() {
       'discover': 'Future<List<DartGoProject>> discover()',
       'refresh': 'Future<List<DartGoProject>> refresh()',
       'openProject': 'Future<void> openProject(DartGoProject project)',
+      'removeProject': 'Future<void> removeProject(DartGoProject project)',
       'openWithLink': 'Future<void> openWithLink(String link)',
       'toggleTheme': 'Future<String> toggleTheme()',
       'openDevTools': 'Future<void> openDevTools()',
@@ -124,7 +132,11 @@ BridgedClass _hostClass() {
     },
     staticGetterSignatures: {
       'isPreviewed': 'bool get isPreviewed',
+      'dngoVersion': 'String get dngoVersion',
+      'dartNativeVersion': 'String get dartNativeVersion',
+      'runtimeVersion': 'String get runtimeVersion',
       'projects': 'List<DartGoProject> get projects',
+      'recentProjects': 'List<DartGoProject> get recentProjects',
       'isScanning': 'bool get isScanning',
       'theme': 'String get theme',
       'verbose': 'bool get verbose',

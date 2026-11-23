@@ -76,6 +76,8 @@ class _BottomSheetExampleAppState extends State<BottomSheetExampleApp> {
 
   @override
   Widget build(BuildContext context) {
+    var screen = MediaQuery.sizeOf(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -83,24 +85,27 @@ class _BottomSheetExampleAppState extends State<BottomSheetExampleApp> {
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
         ),
       ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          TestCaseCard(
-            title: 'Fit content',
-            description:
-                'Auto-measures intrinsic content height using Yoga. Dynamically expands or collapses size on state mutation.',
-            onTap: _openFitToContentSheet,
-          ),
-          const SizedBox(height: 14),
-          TestCaseCard(
-            title: 'Scrollable Content',
-            description:
-                '100 rows in a fixed-height list. Scroll inside the sheet, snap between medium/large, and test scroll-expands-sheet at the list edge.',
-            onTap: _openScrollableSheet,
-          ),
-          const SizedBox(height: 30),
-        ],
+      body: Container(
+        width: screen.width,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TestCaseCard(
+              title: 'Fit content',
+              description:
+                  'Auto-measures intrinsic content height using Yoga. Dynamically expands or collapses size on state mutation.',
+              onTap: _openFitToContentSheet,
+            ),
+            const SizedBox(height: 14),
+            TestCaseCard(
+              title: 'Scrollable Content',
+              description:
+                  '100 rows in a fixed-height list. Scroll inside the sheet, snap between medium/large, and test scroll-expands-sheet at the list edge.',
+              onTap: _openScrollableSheet,
+            ),
+            const SizedBox(height: 30),
+          ],
+        ),
       ),
     );
   }
@@ -184,6 +189,7 @@ class FitContentSheetState extends State<FitContentSheet> {
       color: const Color(0xFF18181A),
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
       height: _currentHeight,
+
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

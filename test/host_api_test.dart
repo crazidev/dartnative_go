@@ -78,6 +78,10 @@ void main() {
 class _FakeHost implements DartGoHostBinding {
   @override
   List<DartGoProject> projects = const [];
+
+  @override
+  List<DartGoProject> get recentProjects => projects;
+
   bool refreshed = false;
   String? openedUrl;
   String? link;
@@ -104,6 +108,14 @@ class _FakeHost implements DartGoHostBinding {
   @override
   Future<void> openProject(DartGoProject project) async {
     openedUrl = project.url;
+  }
+
+  @override
+  Future<void> removeProject(DartGoProject project) async {
+    projects = [
+      for (final item in projects)
+        if (item.url != project.url) item,
+    ];
   }
 
   @override

@@ -343,9 +343,10 @@ mismatch between config and native files.
 - `dartnative_splash:` deprecation: `dn prebuild` reads it if `splash:` is
   absent, prints a migration note with both spellings, and keeps working. It
   is removed no earlier than the next major version.
-- `dartnative_go`'s `AssetDetector` reads `splash:` from `dartnative.yaml`
-  first, then `dartnative_splash:` — so the dev-server preview and the native
-  build agree during the transition.
+- **Shipped today:** `AssetDetector` reads icon/splash from `dngo.config.dart`
+  first (see [Prebuild](prebuild.md)), then `dartnative_splash:` / conventional
+  paths — so the dev-server preview and native prebuild agree. The
+  `dartnative.yaml` shape below remains a longer-term SDK proposal.
 - Adding `permissions` under `dartnative: plugin:` is additive; older `dn`
   versions must tolerate it. `_validateFlutter` in the *current* SDK would
   reject it, so the key must ship in the same release that documents it.

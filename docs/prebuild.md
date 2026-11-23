@@ -54,6 +54,12 @@ native folders. Use `--force`, `--sync`, or `--no-sync` to skip the prompts.
 Prebuild keeps existing native formatting and only inserts or removes the
 entries it manages. Manual edits outside those entries survive.
 
+The same file drives the **dev-server launch preview**: `dngo start` reads
+`app.icon` / `app.splash` (and platform overrides) for `/assets/icon.png`,
+`/assets/splash.png`, and splash background colors in `/manifest.json`, and
+uses `AppConfig.name` / `version` as the display identity (pubspec `name`
+stays the package id). See [Dev Server & Protocol](dev_server.md).
+
 ---
 
 ## Plugin owners: ship a `build_config.dart`

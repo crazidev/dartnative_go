@@ -18,11 +18,15 @@ when a step is the one failing (see [Troubleshooting](troubleshooting.md)).
 
 1. **Validate the pubspec** (`PubspecValidator`). Reads `pubspec.yaml` and
    checks every dependency against the native-plugin matrix compiled into the
-   shell (`dngo version` prints that matrix). Produces the "Supported
-   Native Plugins / Version Mismatches / Unsupported Native Plugins" report.
-2. **Detect assets** (`AssetDetector`). Finds the app icon and splash image
-   (from `dartnative_splash:` config, `dartnative: assets:`, then a list of
-   conventional paths like `assets/icon.png`). Feeds `/manifest.json`,
+   shell (`dngo version` prints that matrix). Display `appName` / `appVersion`
+   prefer `dngo.config.dart` when present; the pubspec package id stays
+   `packageName` for dep packaging. Produces the "Supported Native Plugins /
+   Version Mismatches / Unsupported Native Plugins" report.
+2. **Detect assets** (`AssetDetector`). Finds the app icon, splash image, and
+   splash background colors. Precedence: `dngo.config.dart` (shared
+   `app.icon` / `app.splash`, then platform icon/splash) →
+   `dartnative_splash:` / `flutter_native_splash:` / `dartnative: assets:` →
+   conventional paths like `assets/icon.png`. Feeds `/manifest.json`,
    `/assets/icon.png`, `/assets/splash.png`.
 3. **Detect icon-font usage** (`IconFontDetector`). Regex-scans guest
    `.dart` sources (comments/strings stripped, no analyzer parse) for
@@ -86,6 +90,8 @@ All responses set `Access-Control-Allow-Origin: *`. Mutable routes use
 | Endpoint | Method | Description |
 | :--- | :--- | :--- |
 | `/health`, `/dart_go/discover` | GET | Liveness + identity: `status`, `protocol: dart_go`, `appName`, version, connected client count. |
+| `/` | GET | Browser navigations (`Accept: text/html`) redirect to `/_dngo/loading`. API clients get a JSON identity payload. |
+| `/_dngo/loading` | GET | HTML interstitial for opening the project in the DartNative Go shell (deep link + version info). |
 | `/manifest.json` | GET | The project descriptor (below). The first thing a device fetches. |
 | `/deps.json` | GET | The dependency list: `depsHash` plus each package's `name`, `version`, `zipUrl`, `contentHash`, `byteSize`. |
 | `/pkg/<name>@<version>.zip` | GET | One pure-Dart dependency as a ZIP. Immutable (`max-age=31536000`) since it's content-addressed by version. |
@@ -110,7 +116,9 @@ All responses set `Access-Control-Allow-Origin: *`. Mutable routes use
 The manifest is the contract between server and device. Key fields:
 
 - `protocol: "dart_go"`, `appName`, `appVersion`, `dartGoVersion`,
-  `runtimeVersion` — identity and compatibility.
+  `dartnativeVersion`, `runtimeVersion` — identity and compatibility
+  (shell compares these with `DartGoHost.dngoVersion` /
+  `DartGoHost.dartNativeVersion`).
 - `depMode: true`, `depsHash`, `depsCount`, `depsUrl` — dependency mode is on
   and this is the hash to compare against the on-device cache.
 - `userCodeUrl`, `userCodeHash` — where your code is and how to tell it changed.
@@ -125,7 +133,9 @@ The manifest is the contract between server and device. Key fields:
   serialized AST. The device uses these to skip re-declaring unchanged modules
   on a hot reload (see [Hot Reload](hot_reload.md#module-reuse)).
 - `hasIcon`/`iconUrl`, `hasSplash`/`splashUrl`, `splashBackgroundColor`,
-  `assets` — asset metadata for the launch experience.
+  `splashBackgroundColorDark`, `assets` — asset metadata for the launch
+  experience (sourced from `dngo.config.dart` when configured).
+- `packageName` — pubspec package id (may differ from display `appName`).
 - `iconFonts`, `iconFontsHash`, `fonts` — on-demand icon fonts. `iconFonts`
   lists only the families the guest touches, each with its used-glyph
   subset (`names` + resolved `codePoints`) so the device never parses the

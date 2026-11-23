@@ -275,13 +275,19 @@ class FakeDevServer {
     'timestamp': DateTime.now().millisecondsSinceEpoch,
   });
 
-  Future<void> stop() async {
+  /// Closes every active WebSocket without stopping the HTTP listener, so
+  /// clients can exercise disconnect / auto-reconnect against a live server.
+  Future<void> dropClients() async {
     for (final ws in List.of(_sockets)) {
       try {
         await ws.close();
       } catch (_) {}
     }
     _sockets.clear();
+  }
+
+  Future<void> stop() async {
+    await dropClients();
     await _server?.close(force: true);
     _server = null;
   }

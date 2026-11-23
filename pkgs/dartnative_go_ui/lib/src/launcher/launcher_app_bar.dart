@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dartnative/dartnative.dart';
 
 import '../theme/host_ui_theme.dart';
@@ -15,12 +17,19 @@ AppBar buildLauncherAppBar(BuildContext context) {
   return AppBar(
     brightness: context.theme.brightness,
     backgroundColor: context.theme.background,
-    toolbarHeight: 56,
-    leading: Image.asset(
-      'assets/dn-logo.png',
-      width: 40,
-      height: 40,
+    // toolbarHeight: 50,
+    centerTitle: true,
+    leading: Padding(
+      padding: EdgeInsets.only(left: Platform.isAndroid ? 10 : 0),
+      child: SizedBox(
+        width: 40,
+        height: 40,
+        child: Image.asset(
+          'assets/app-logo.png',
+        ),
+      ),
     ),
+    actions: [],
     title: Text(
       'DartNative Go',
       style: TextStyle(

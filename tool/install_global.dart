@@ -1,8 +1,14 @@
 import 'dart:io';
 
+import 'sync_versions.dart';
+
 /// Builds and installs `dngo` into global bin directories in PATH:
 /// - ~/.local/bin/dngo
 /// - ~/.pub-cache/bin/dngo
+///
+/// Syncs `version.dart` from pubspec + `dn_plugins.lock` before compile so
+/// `dngo --version` and the local dev server advertise the same numbers
+/// with no runtime probes.
 void main() async {
   final scriptDir = File(Platform.script.toFilePath()).parent.parent;
   final binFile = File('${scriptDir.path}/bin/dngo.dart');
@@ -11,6 +17,12 @@ void main() async {
     print('Error: Could not find ${binFile.path}');
     exit(1);
   }
+
+  final synced = syncVersions(scriptDir);
+  print(
+    '✔ Synced versions (dngo ${synced.dngoVersion}, '
+    'DartNative ${synced.dartNativeVersion})',
+  );
 
   print('⚡️ Compiling dngo native executable...');
   final tempOut = '${Directory.systemTemp.path}/dngo_build';

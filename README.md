@@ -2,7 +2,7 @@
 
 A **dartnative** client runtime and development shell (similar to _Expo Go_ for React Native), powered by `tom_d4rt`. It allows authoring, interpreting, and live hot-reloading multi-file DartNative apps dynamically over Wi-Fi / localhost.
 
-> 📖 **Docs**: [docs/README.md](docs/README.md) · [Prebuild & plugin `build_config`](docs/prebuild.md) · [ARCHITECTURE.md](ARCHITECTURE.md)
+> 📖 **Docs**: [Website](website/) · [docs/README.md](docs/README.md) · [Prebuild & plugin `build_config`](docs/prebuild.md) · [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ## DartNative Go CLI (`dngo`)
 
@@ -77,29 +77,6 @@ in [`android/app/build.gradle.kts`](android/app/build.gradle.kts) and
 interpreter creates `IconData` from code points in guest code at runtime, and the
 shaker only accepts `const IconData`. Leave it off — enabling it fails the
 release build, and a forced subset would draw interpreted icons as blank boxes.
-
-## Make it yours
-
-- **Your UI** — edit `lib/main.dart`.
-- **App icon + launch logo** — replace `assets/dn-logo.png` with your logo, then
-  regenerate icon **and** splash in one step:
-  ```sh
-  dart run tool/generate_app_assets.dart --source=assets/dn-logo.png --bg=#000000
-  ```
-  (Splash only: `dart run dartnative_splash:setup`.)
-- **Plugins** — browse **[dartpub.dev](https://dartpub.dev)**. Add a package to
-  `pubspec.yaml`, run `dn pub get`, and import it — pure-Dart packages and
-  dartnative plugins both work as-is.
-
-## Don't touch (unless you know the runtime)
-
-These files are the dartnative runner glue — they're why the app renders:
-`ios/Runner/{AppDelegate,SceneDelegate}.swift` + the scene block in `Info.plist`,
-and `android/.../{Application,MainActivity}.kt` + the Material3 themes in
-`android/app/src/main/res/values*/styles.xml`.
-
-> Dependency paths in `pubspec.yaml` assume this app sits beside
-> `dartnative_framework`. Fix them if you created it elsewhere.
 
 ## Attribution
 

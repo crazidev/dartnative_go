@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:dartnative_go_config/dngo.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:yaml/yaml.dart';
@@ -20,7 +21,13 @@ class VersionMismatch {
 
 /// The result of validating a project's `pubspec.yaml` against DartNative Go.
 class PubspecValidationResult {
+  /// Human-facing display name (from `dngo.config.dart`, else pubspec `name`).
   final String appName;
+
+  /// Pubspec package id used for `package:` URIs and dep packaging.
+  final String packageName;
+
+  /// App version (from `dngo.config.dart`, else pubspec `version`).
   final String appVersion;
   final Map<String, String> validSupportedPlugins;
   final List<VersionMismatch> versionMismatches;
@@ -30,6 +37,7 @@ class PubspecValidationResult {
 
   const PubspecValidationResult({
     required this.appName,
+    required this.packageName,
     required this.appVersion,
     required this.validSupportedPlugins,
     required this.versionMismatches,
@@ -45,7 +53,11 @@ class PubspecValidationResult {
   String formatReport() {
     final buffer = StringBuffer();
     buffer.writeln('[INFO] \x1B[1mProject: $appName ($appVersion)\x1B[0m');
+    if (packageName != appName) {
+      buffer.writeln('   Package:               $packageName');
+    }
     buffer.writeln('   DartNative Go Target: v$kDartGoVersion');
+    buffer.writeln('   DartNative SDK:       v$kDartNativeVersion');
     buffer.writeln('──────────────────────────────────────────────────');
 
     if (validSupportedPlugins.isNotEmpty) {
@@ -119,6 +131,7 @@ class PubspecValidator {
     if (!pubspecFile.existsSync()) {
       return const PubspecValidationResult(
         appName: 'Unknown',
+        packageName: 'unknown',
         appVersion: '0.0.0',
         validSupportedPlugins: {},
         versionMismatches: [],
@@ -135,6 +148,7 @@ class PubspecValidator {
     } catch (_) {
       return const PubspecValidationResult(
         appName: 'Invalid YAML',
+        packageName: 'invalid',
         appVersion: '0.0.0',
         validSupportedPlugins: {},
         versionMismatches: [],
@@ -144,8 +158,16 @@ class PubspecValidator {
       );
     }
 
-    final appName = yamlMap['name']?.toString() ?? 'Unnamed App';
-    final appVersion = yamlMap['version']?.toString() ?? '0.1.0';
+    final packageName = yamlMap['name']?.toString() ?? 'Unnamed App';
+    var appName = packageName;
+    var appVersion = yamlMap['version']?.toString() ?? '0.1.0';
+
+    // Prefer display name / version from dngo.config.dart when present.
+    final dngoIdentity = _readDngoIdentity();
+    if (dngoIdentity != null) {
+      if (dngoIdentity.name.isNotEmpty) appName = dngoIdentity.name;
+      if (dngoIdentity.version.isNotEmpty) appVersion = dngoIdentity.version;
+    }
 
     final dependencies = _parseDependencies(yamlMap['dependencies']);
 
@@ -184,6 +206,7 @@ class PubspecValidator {
 
     return PubspecValidationResult(
       appName: appName,
+      packageName: packageName,
       appVersion: appVersion,
       validSupportedPlugins: validSupportedPlugins,
       versionMismatches: versionMismatches,
@@ -191,6 +214,24 @@ class PubspecValidator {
       pureDartDependencies: pureDartDependencies,
       hasPubspec: true,
     );
+  }
+
+  /// Reads display name and version from `dngo.config.dart`, if present.
+  ({String name, String version})? _readDngoIdentity() {
+    final configFile = File('${projectDir.path}/dngo.config.dart');
+    if (!configFile.existsSync()) return null;
+    try {
+      final config = DngoConfigParser.parse(
+        configFile.readAsStringSync(),
+        baseDirectory: projectDir.path,
+      );
+      final version = config.app.version.buildNumber > 0
+          ? '${config.app.version.name}+${config.app.version.buildNumber}'
+          : config.app.version.name;
+      return (name: config.app.name, version: version);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Normalizes the `dependencies:` map, keeping the declared display form and

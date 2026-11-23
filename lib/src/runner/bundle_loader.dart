@@ -20,6 +20,7 @@ class ProjectBundle {
   final String? splashUrl;
   final String? iconUrl;
   final String? splashBackgroundColor;
+  final String? splashBackgroundColorDark;
   final String serverUrl;
   final Map<String, String> sources;
   final String entrypointCode;
@@ -77,6 +78,7 @@ class ProjectBundle {
     this.splashUrl,
     this.iconUrl,
     this.splashBackgroundColor,
+    this.splashBackgroundColorDark,
     required this.serverUrl,
     required this.sources,
     required this.entrypointCode,
@@ -108,6 +110,7 @@ class ProjectBundle {
       splashUrl: previous.splashUrl,
       iconUrl: previous.iconUrl,
       splashBackgroundColor: previous.splashBackgroundColor,
+      splashBackgroundColorDark: previous.splashBackgroundColorDark,
       serverUrl: serverUrl,
       sources: sources,
       entrypointCode: entrypointCode,
@@ -571,6 +574,7 @@ class BundleLoader {
         ? (manifest['iconUrl']?.toString() ?? '$baseUrl/assets/icon.png')
         : null;
     final splashBg = manifest['splashBackgroundColor']?.toString();
+    final splashBgDark = manifest['splashBackgroundColorDark']?.toString();
 
     final rawAssets = <String>[];
     if (manifest['assets'] is List) {
@@ -605,6 +609,7 @@ class BundleLoader {
           splashUrl: splashUrl,
           iconUrl: iconUrl,
           splashBackgroundColor: splashBg,
+          splashBackgroundColorDark: splashBgDark,
           serverUrl: baseUrl,
           sources: const {},
           entrypointCode: '',
@@ -729,6 +734,7 @@ class BundleLoader {
         splashUrl: splashUrl,
         iconUrl: iconUrl,
         splashBackgroundColor: splashBg,
+        splashBackgroundColorDark: splashBgDark,
         serverUrl: baseUrl,
         sources: virtualSources,
         entrypointCode: entrypointCode,
@@ -821,6 +827,7 @@ class BundleLoader {
           splashUrl: splashUrl,
           iconUrl: iconUrl,
           splashBackgroundColor: splashBg,
+          splashBackgroundColorDark: splashBgDark,
           serverUrl: baseUrl,
           sources: virtualSources,
           entrypointCode: entrypointCode,
@@ -864,6 +871,7 @@ class BundleLoader {
       splashUrl: splashUrl,
       iconUrl: iconUrl,
       splashBackgroundColor: splashBg,
+      splashBackgroundColorDark: splashBgDark,
       serverUrl: baseUrl,
       sources: virtualSources,
       entrypointCode: virtualSources['main.dart'] ?? code,

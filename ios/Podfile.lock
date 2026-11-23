@@ -17,7 +17,7 @@ PODS:
   - DartNativeCore (1.0.0)
   - FlexLayout (2.0.10)
   - local_auth_kit (0.2.0)
-  - native_bottomsheet (0.1.0):
+  - native_bottomsheet (0.1.1):
     - FlexLayout
   - quick_actions_kit (0.1.0)
 
@@ -101,7 +101,7 @@ SPEC CHECKSUMS:
   DartNativeCore: 225e49d9e35e234bcadc6b81586fc4275a1006ee
   FlexLayout: ea94491c923485f7f28891cb5b10245d22df380b
   local_auth_kit: 41c952a4b3e4dfb177b1d828d5f811c16b426273
-  native_bottomsheet: b49cc955a9a7ec0dfaff4bd479c8fc862cba7bca
+  native_bottomsheet: 5aa0e0111e4c53b1b3df129ecb72d3dac9b7eab8
   quick_actions_kit: e0729cbb15bfcb9bd526df3fba05d5efd3c9c622
 
 PODFILE CHECKSUM: 555c6419daf19c419610304e7fcb59e03d72cea4
