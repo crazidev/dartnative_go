@@ -1,6 +1,8 @@
 import 'package:dartnative/dartnative.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
 import 'd4rt_dartnative_application.dart';
+import 'dartnative_bridges.b.dart' as dartnative_ui_bridges;
+import 'dartnative_sub_barrels.dart';
 import 'dartscript.b.dart';
 import 'widget_proxies.dart';
 
@@ -29,5 +31,16 @@ void registerDartNativeBridges(
   void Function(String message)? onLog,
 }) {
   DartnativeGoBridges.register(interpreter);
+  registerDartNativeSubBarrels(interpreter);
   registerWidgetInterfaceProxies(interpreter, onLog: onLog);
+}
+
+/// Library URIs exported by `package:dartnative` but **not** re-exported by
+/// `package:dartnative/dartnative.dart` (see [kDartNativeSubBarrelUris]).
+///
+/// Source-engine counterpart of the AST `registerAstDartNativeSubBarrels`.
+void registerDartNativeSubBarrels(D4rt interpreter) {
+  for (final uri in kDartNativeSubBarrelUris) {
+    dartnative_ui_bridges.DartnativeUiBridge.registerBridges(interpreter, uri);
+  }
 }

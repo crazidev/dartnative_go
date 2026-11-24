@@ -11,6 +11,7 @@
 | `test/runner` | Interpreter flows through `DnHarness`. |
 | `test/server`, `test/server_component` | Dev-server protocol and component loading. |
 | `test/plugins` | One suite per native plugin. |
+| `test/playground` | Boots the vendored upstream `playground/` app headless and builds every route + tab body (see [playground-headless.md](playground-headless.md)). |
 | `test/test_lab` | Harness infrastructure, fakes, fixtures (not suites). |
 
 ## Running

@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Dartscript registration for dartnative_go_ast
-// Generated: 2026-11-16T04:51:32.072606 by tom_d4rt_generator 1.26.2
+// Generated: 2026-11-24T16:26:03.071382 by tom_d4rt_generator 1.26.2
 
 /// D4rt Bridge Registration for dartnative_go_ast
 library;
@@ -34,6 +34,27 @@ import 'dartnative_live_activities_bridges.b.dart'
     as dartnative_live_activities_bridges;
 import 'local_auth_kit_bridges.b.dart' as local_auth_kit_bridges;
 import 'quick_actions_kit_bridges.b.dart' as quick_actions_kit_bridges;
+import 'dartnative_skia_bridges.b.dart' as dartnative_skia_bridges;
+import 'dartnative_sqlite_bridges.b.dart' as dartnative_sqlite_bridges;
+import 'dartnative_secure_storage_bridges.b.dart'
+    as dartnative_secure_storage_bridges;
+import 'dartnative_hive_bridges.b.dart' as dartnative_hive_bridges;
+import 'dartnative_social_sign_in_bridges.b.dart'
+    as dartnative_social_sign_in_bridges;
+import 'dartnative_firebase_bridges.b.dart' as dartnative_firebase_bridges;
+import 'dartnative_video_player_bridges.b.dart'
+    as dartnative_video_player_bridges;
+import 'dartnative_audio_bridges.b.dart' as dartnative_audio_bridges;
+import 'dartnative_permissions_bridges.b.dart'
+    as dartnative_permissions_bridges;
+import 'dartnative_camera_bridges.b.dart' as dartnative_camera_bridges;
+import 'dartnative_image_crop_bridges.b.dart' as dartnative_image_crop_bridges;
+import 'dartnative_compressor_bridges.b.dart' as dartnative_compressor_bridges;
+import 'dartnative_supertonic_tts_bridges.b.dart'
+    as dartnative_supertonic_tts_bridges;
+import 'dartnative_lottie_bridges.b.dart' as dartnative_lottie_bridges;
+import 'dartnative_onnxruntime_bridges.b.dart'
+    as dartnative_onnxruntime_bridges;
 import 'relaxers.b.dart' as relaxer_factories;
 
 /// Combined bridge registration for dartnative_go_ast.
@@ -273,6 +294,189 @@ class DartnativeGoAstBridges {
         barrel,
       );
     }
+    dartnative_skia_bridges.DartnativeSkiaBridge.registerBridges(
+      d4rt,
+      'package:dartnative_skia/dartnative_skia.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in dartnative_skia_bridges.DartnativeSkiaBridge.subPackageBarrels()) {
+      dartnative_skia_bridges.DartnativeSkiaBridge.registerBridges(
+        d4rt,
+        barrel,
+      );
+    }
+    dartnative_sqlite_bridges.DartnativeSqliteBridge.registerBridges(
+      d4rt,
+      'package:dartnative_sqlite/dartnative_sqlite.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in dartnative_sqlite_bridges
+            .DartnativeSqliteBridge.subPackageBarrels()) {
+      dartnative_sqlite_bridges.DartnativeSqliteBridge.registerBridges(
+        d4rt,
+        barrel,
+      );
+    }
+    dartnative_secure_storage_bridges
+        .DartnativeSecureStorageBridge.registerBridges(
+      d4rt,
+      'package:dartnative_secure_storage/dartnative_secure_storage.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in dartnative_secure_storage_bridges
+            .DartnativeSecureStorageBridge.subPackageBarrels()) {
+      dartnative_secure_storage_bridges
+          .DartnativeSecureStorageBridge.registerBridges(d4rt, barrel);
+    }
+    dartnative_hive_bridges.DartnativeHiveBridge.registerBridges(
+      d4rt,
+      'package:dartnative_hive/dartnative_hive.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in dartnative_hive_bridges.DartnativeHiveBridge.subPackageBarrels()) {
+      dartnative_hive_bridges.DartnativeHiveBridge.registerBridges(
+        d4rt,
+        barrel,
+      );
+    }
+    dartnative_social_sign_in_bridges
+        .DartnativeSocialSignInBridge.registerBridges(
+      d4rt,
+      'package:dartnative_social_sign_in/social_sign_in.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in dartnative_social_sign_in_bridges
+            .DartnativeSocialSignInBridge.subPackageBarrels()) {
+      dartnative_social_sign_in_bridges
+          .DartnativeSocialSignInBridge.registerBridges(d4rt, barrel);
+    }
+    dartnative_firebase_bridges.DartnativeFirebaseBridge.registerBridges(
+      d4rt,
+      'package:dartnative_firebase/dartnative_firebase.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in dartnative_firebase_bridges
+            .DartnativeFirebaseBridge.subPackageBarrels()) {
+      dartnative_firebase_bridges.DartnativeFirebaseBridge.registerBridges(
+        d4rt,
+        barrel,
+      );
+    }
+    dartnative_video_player_bridges.DartnativeVideoPlayerBridge.registerBridges(
+      d4rt,
+      'package:dartnative_video_player/dartnative_video_player.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in dartnative_video_player_bridges
+            .DartnativeVideoPlayerBridge.subPackageBarrels()) {
+      dartnative_video_player_bridges
+          .DartnativeVideoPlayerBridge.registerBridges(d4rt, barrel);
+    }
+    dartnative_audio_bridges.DartnativeAudioBridge.registerBridges(
+      d4rt,
+      'package:dartnative_audio/dartnative_audio.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in dartnative_audio_bridges.DartnativeAudioBridge.subPackageBarrels()) {
+      dartnative_audio_bridges.DartnativeAudioBridge.registerBridges(
+        d4rt,
+        barrel,
+      );
+    }
+    dartnative_permissions_bridges.DartnativePermissionsBridge.registerBridges(
+      d4rt,
+      'package:dartnative_permissions/dartnative_permissions.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in dartnative_permissions_bridges
+            .DartnativePermissionsBridge.subPackageBarrels()) {
+      dartnative_permissions_bridges
+          .DartnativePermissionsBridge.registerBridges(d4rt, barrel);
+    }
+    dartnative_camera_bridges.DartnativeCameraBridge.registerBridges(
+      d4rt,
+      'package:dartnative_camera/dartnative_camera.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in dartnative_camera_bridges
+            .DartnativeCameraBridge.subPackageBarrels()) {
+      dartnative_camera_bridges.DartnativeCameraBridge.registerBridges(
+        d4rt,
+        barrel,
+      );
+    }
+    dartnative_image_crop_bridges.DartnativeImageCropBridge.registerBridges(
+      d4rt,
+      'package:dartnative_image_crop/dartnative_image_crop.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in dartnative_image_crop_bridges
+            .DartnativeImageCropBridge.subPackageBarrels()) {
+      dartnative_image_crop_bridges.DartnativeImageCropBridge.registerBridges(
+        d4rt,
+        barrel,
+      );
+    }
+    dartnative_compressor_bridges.DartnativeCompressorBridge.registerBridges(
+      d4rt,
+      'package:dartnative_compressor/dartnative_compressor.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in dartnative_compressor_bridges
+            .DartnativeCompressorBridge.subPackageBarrels()) {
+      dartnative_compressor_bridges.DartnativeCompressorBridge.registerBridges(
+        d4rt,
+        barrel,
+      );
+    }
+    dartnative_supertonic_tts_bridges
+        .DartnativeSupertonicTtsBridge.registerBridges(
+      d4rt,
+      'package:dartnative_supertonic_tts/dartnative_supertonic_tts.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in dartnative_supertonic_tts_bridges
+            .DartnativeSupertonicTtsBridge.subPackageBarrels()) {
+      dartnative_supertonic_tts_bridges
+          .DartnativeSupertonicTtsBridge.registerBridges(d4rt, barrel);
+    }
+    dartnative_lottie_bridges.DartnativeLottieBridge.registerBridges(
+      d4rt,
+      'package:dartnative_lottie/dartnative_lottie.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in dartnative_lottie_bridges
+            .DartnativeLottieBridge.subPackageBarrels()) {
+      dartnative_lottie_bridges.DartnativeLottieBridge.registerBridges(
+        d4rt,
+        barrel,
+      );
+    }
+    dartnative_onnxruntime_bridges.DartnativeOnnxruntimeBridge.registerBridges(
+      d4rt,
+      'package:dartnative_onnxruntime/dartnative_onnxruntime.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel
+        in dartnative_onnxruntime_bridges
+            .DartnativeOnnxruntimeBridge.subPackageBarrels()) {
+      dartnative_onnxruntime_bridges
+          .DartnativeOnnxruntimeBridge.registerBridges(d4rt, barrel);
+    }
 
     // RC-2: Register generic constructor factories
     relaxer_factories.registerGenericConstructors();
@@ -340,6 +544,57 @@ class DartnativeGoAstBridges {
     buffer.writeln(local_auth_kit_bridges.LocalAuthKitBridge.getImportBlock());
     buffer.writeln(
       quick_actions_kit_bridges.QuickActionsKitBridge.getImportBlock(),
+    );
+    buffer.writeln(
+      dartnative_skia_bridges.DartnativeSkiaBridge.getImportBlock(),
+    );
+    buffer.writeln(
+      dartnative_sqlite_bridges.DartnativeSqliteBridge.getImportBlock(),
+    );
+    buffer.writeln(
+      dartnative_secure_storage_bridges
+          .DartnativeSecureStorageBridge.getImportBlock(),
+    );
+    buffer.writeln(
+      dartnative_hive_bridges.DartnativeHiveBridge.getImportBlock(),
+    );
+    buffer.writeln(
+      dartnative_social_sign_in_bridges
+          .DartnativeSocialSignInBridge.getImportBlock(),
+    );
+    buffer.writeln(
+      dartnative_firebase_bridges.DartnativeFirebaseBridge.getImportBlock(),
+    );
+    buffer.writeln(
+      dartnative_video_player_bridges
+          .DartnativeVideoPlayerBridge.getImportBlock(),
+    );
+    buffer.writeln(
+      dartnative_audio_bridges.DartnativeAudioBridge.getImportBlock(),
+    );
+    buffer.writeln(
+      dartnative_permissions_bridges
+          .DartnativePermissionsBridge.getImportBlock(),
+    );
+    buffer.writeln(
+      dartnative_camera_bridges.DartnativeCameraBridge.getImportBlock(),
+    );
+    buffer.writeln(
+      dartnative_image_crop_bridges.DartnativeImageCropBridge.getImportBlock(),
+    );
+    buffer.writeln(
+      dartnative_compressor_bridges.DartnativeCompressorBridge.getImportBlock(),
+    );
+    buffer.writeln(
+      dartnative_supertonic_tts_bridges
+          .DartnativeSupertonicTtsBridge.getImportBlock(),
+    );
+    buffer.writeln(
+      dartnative_lottie_bridges.DartnativeLottieBridge.getImportBlock(),
+    );
+    buffer.writeln(
+      dartnative_onnxruntime_bridges
+          .DartnativeOnnxruntimeBridge.getImportBlock(),
     );
     return buffer.toString();
   }

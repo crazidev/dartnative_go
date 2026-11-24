@@ -190,6 +190,34 @@ Future<void> _formatGeneratedBridges({
 
 /// Same generator-bug workarounds as `tool/d4rtgen.dart`, applied to the
 /// AST output dir. Kept in sync manually until the generator is fixed.
+/// Modules whose bridged API surface uses `@experimental` members (Hive's
+/// `HiveList`, …). The generator emits calls to them, so without the ignore
+/// every regeneration reintroduces warnings into `dart analyze`. Keeping the
+/// list explicit means a regeneration only rewrites the files that need it
+/// instead of touching every bridge with a cosmetic ignore line. DN-PATCH.
+const _experimentalMemberModules = {'dartnative_hive_bridges.b.dart'};
+
+/// Silences `experimental_member_use` in one generated bridge.
+void _addExperimentalMemberUseIgnore(String path) {
+  if (!_experimentalMemberModules.any(path.endsWith)) return;
+  final file = File(path);
+  if (!file.existsSync()) return;
+  var content = file.readAsStringSync();
+  const marker = '// ignore_for_file: ';
+  final idx = content.indexOf(marker);
+  if (idx < 0) return;
+  if (content.substring(idx, content.indexOf('\n', idx)).contains(
+    'experimental_member_use',
+  )) {
+    return;
+  }
+  content = content.replaceFirst(
+    marker,
+    '${marker}experimental_member_use, ',
+  );
+  file.writeAsStringSync(content);
+}
+
 void _applyAstBridgePostFixes({Set<String>? only}) {
   bool want(String path) => only == null || only.contains(path);
 
@@ -238,6 +266,32 @@ void _applyAstBridgePostFixes({Set<String>? only}) {
   if (want('lib/src/interpreter/ast/dio_bridges.b.dart')) {
     _patchDioBridges(File('lib/src/interpreter/ast/dio_bridges.b.dart'));
   }
+  if (want('lib/src/interpreter/ast/dartnative_sqlite_bridges.b.dart')) {
+    _patchSqliteBridges(
+      File('lib/src/interpreter/ast/dartnative_sqlite_bridges.b.dart'),
+    );
+  }
+
+  final dir = Directory('lib/src/interpreter/ast');
+  if (dir.existsSync()) {
+    for (final entity in dir.listSync()) {
+      if (entity is File &&
+          entity.path.endsWith('.b.dart') &&
+          want(entity.path)) {
+        _addExperimentalMemberUseIgnore(entity.path);
+      }
+    }
+  }
+}
+
+/// sqflite's `Database.query` family declares nullable named parameters with
+/// the legacy `Type??` spelling, which the generator emits verbatim and which
+/// does not parse under null safety. Collapse `??>` to `?>`. DN-PATCH.
+void _patchSqliteBridges(File file) {
+  if (!file.existsSync()) return;
+  var content = file.readAsStringSync();
+  content = content.replaceAll('??>', '?>');
+  file.writeAsStringSync(content);
 }
 
 /// dio's `FormData.fromMap` defaults `boundaryName` to the private top-level

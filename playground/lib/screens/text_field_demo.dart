@@ -1,0 +1,431 @@
+/// Native TextField demo.
+///
+/// Shows dartnative's drop-in Flutter TextField backed by UITextField (single
+/// line) and UITextView (multiline) — real native views, not Skia/Impeller.
+import 'package:dartnative/dartnative.dart';
+import 'home/demo_ui.dart';
+
+class TextFieldDemo extends StatefulWidget {
+  const TextFieldDemo({super.key});
+
+  @override
+  State<TextFieldDemo> createState() => _TextFieldDemoState();
+}
+
+// Reopening the keyboard from a different field, most often a number pad
+// after an email field, can print "Unable to simultaneously satisfy
+// constraints" for 'TUIKeyplane.right'.width == -1.5 in the run console on
+// iOS 26. It comes from the system keyboard building its key layout: a plain
+// UIKit app with three text fields prints the same lines on the same taps.
+// Not a DartNative issue; nothing on screen is affected.
+class _TextFieldDemoState extends State<TextFieldDemo> {
+  final _singleController = TextEditingController();
+  final _multiController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _numberController = TextEditingController();
+  final _signInEmailController = TextEditingController();
+  final _signInPasswordController = TextEditingController();
+  final _codeController = TextEditingController();
+
+  String _lastChanged = '';
+
+  @override
+  void dispose() {
+    _singleController.dispose();
+    _multiController.dispose();
+    _passwordController.dispose();
+    _emailController.dispose();
+    _numberController.dispose();
+    _signInEmailController.dispose();
+    _signInPasswordController.dispose();
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: kHomeBg,
+      resizeToAvoidBottomInset: true,
+      extendBodyBehindAppBar: isIOS26,
+      appBar: AppBar(
+        title: Text(
+          'Native TextField',
+          style: TextStyle(
+            color: kTextPrimary,
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: kBarBg,
+      ),
+      body: Container(
+        color: kHomeBg,
+        child: ListView(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: isIOS26 ? MediaQuery.paddingOf(context).top + 64 : 16,
+            bottom: 16,
+          ),
+          children: [
+            // ── Native features grid ────────────────────────────────────────
+            const _NativeFeaturesGrid(),
+            const SizedBox(height: 24),
+
+            // ── Section header ──────────────────────────────────────────────
+            _SectionHeader('Single-line — UITextField'),
+
+            // ── Default text field ──────────────────────────────────────────
+            _FieldLabel('Default'),
+            _FieldShell(
+              child: TextField(
+                controller: _singleController,
+                decoration: _inputBox(hint: 'Type something…', vertical: 18),
+                style: TextStyle(color: kTextPrimary, fontSize: 16),
+                onChanged: (v) => setState(() => _lastChanged = v),
+              ),
+            ),
+
+            // ── Email ───────────────────────────────────────────────────────
+            _FieldLabel('Email keyboard · no autocorrect'),
+            _FieldShell(
+              child: TextField(
+                controller: _emailController,
+                decoration: _inputBox(hint: 'you@example.com', vertical: 18),
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                style: TextStyle(color: kTextPrimary, fontSize: 16),
+              ),
+            ),
+
+            // ── Number ─────────────────────────────────────────────────────
+            _FieldLabel('Number keyboard'),
+            _FieldShell(
+              child: TextField(
+                controller: _numberController,
+                decoration: _inputBox(hint: '0.00', vertical: 18),
+                keyboardType: TextInputType.number,
+                style: TextStyle(color: kTextPrimary, fontSize: 16),
+              ),
+            ),
+
+            // ── Password ───────────────────────────────────────────────────
+            _FieldLabel('Password · obscureText'),
+            _FieldShell(
+              child: TextField(
+                controller: _passwordController,
+                decoration: _inputBox(hint: 'Password', vertical: 18),
+                obscureText: true,
+                style: TextStyle(color: kTextPrimary, fontSize: 16),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // ── Section header ──────────────────────────────────────────────
+            _SectionHeader('Multiline — UITextView'),
+
+            // ── Multiline / fixed 5-line box (scrolls internally) ───────────
+            _FieldLabel('minLines: 5  ·  maxLines: 5'),
+            _FieldShell(
+              child: TextField(
+                controller: _multiController,
+                decoration: _inputBox(hint: 'Multiline field — type past 5 to scroll…', vertical: 16),
+                keyboardType: TextInputType.multiline,
+                textCapitalization: TextCapitalization.sentences,
+                minLines: 5,
+                maxLines: 5,
+                style: TextStyle(color: kTextPrimary, fontSize: 16),
+                onChanged: (v) => setState(() => _lastChanged = v),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // ── Autofill ────────────────────────────────────────────────────
+            _SectionHeader('Autofill · autofillHints'),
+            _FieldLabel('Sign-in group · email + password'),
+            AutofillGroup(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _FieldShell(
+                    child: TextField(
+                      controller: _signInEmailController,
+                      decoration: _inputBox(hint: 'Email', vertical: 18),
+                      keyboardType: TextInputType.emailAddress,
+                      autocorrect: false,
+                      autofillHints: const [
+                        AutofillHints.email,
+                        AutofillHints.username,
+                      ],
+                      style: TextStyle(color: kTextPrimary, fontSize: 16),
+                    ),
+                  ),
+                  _FieldShell(
+                    child: TextField(
+                      controller: _signInPasswordController,
+                      decoration: _inputBox(hint: 'Password', vertical: 18),
+                      obscureText: true,
+                      autofillHints: const [AutofillHints.password],
+                      style: TextStyle(color: kTextPrimary, fontSize: 16),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _FieldLabel('One-time code · the SMS code above the keyboard'),
+            _FieldShell(
+              child: TextField(
+                controller: _codeController,
+                decoration: _inputBox(hint: '123456', vertical: 18),
+                keyboardType: TextInputType.number,
+                autofillHints: const [AutofillHints.oneTimeCode],
+                style: TextStyle(color: kTextPrimary, fontSize: 16),
+              ),
+            ),
+            Button(
+              title: 'Sign in · finishAutofillContext()',
+              onPressed: () => TextInput.finishAutofillContext(),
+            ),
+
+            const SizedBox(height: 24),
+
+            // ── onChanged readout ───────────────────────────────────────────
+            _SectionHeader('onChanged value'),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: kRowBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                _lastChanged.isEmpty ? '(nothing typed yet)' : _lastChanged,
+                style: TextStyle(
+                  color: _lastChanged.isEmpty
+                      ? kTextTertiary
+                      : const Color(0xFF32D74B),
+                  fontSize: 14,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Native features grid ──────────────────────────────────────────────────────
+
+const _kFeatures = [
+  _NativeFeature(
+    '1',
+    'Magnifier\nLoupe',
+    'Barrel loupe (iOS) & floating magnifier (Android) for pixel-precise cursor placement.',
+  ),
+  _NativeFeature(
+    '2',
+    'Native Render\n& Toolbar',
+    'CoreText / HarfBuzz shaping with real ligatures + system Cut · Copy · Translate action bar.',
+  ),
+  _NativeFeature(
+    '3',
+    'Autocorrection',
+    'Red-underline corrections & inline replacement bubbles powered by the OS engine.',
+  ),
+  _NativeFeature(
+    '4',
+    'Smart\nPunctuation',
+    'Auto curly quotes, em-dash on double-hyphen, period on double-space — both platforms.',
+  ),
+  _NativeFeature(
+    '5',
+    'Password\nAutoFill',
+    'iCloud Keychain (iOS) & Autofill Services (Android) — zero-setup credential filling.',
+  ),
+  _NativeFeature(
+    '6',
+    'Predictive\nText',
+    'QuickType bar (iOS) & GBoard inline suggestions (Android) above the keyboard.',
+  ),
+];
+
+class _NativeFeature {
+  const _NativeFeature(this.number, this.title, this.description);
+  final String number;
+  final String title;
+  final String description;
+}
+
+class _NativeFeaturesGrid extends StatelessWidget {
+  const _NativeFeaturesGrid();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(bottom: 10),
+          child: Text(
+            'WHY NATIVE TEXTFIELD',
+            style: TextStyle(
+              color: kTextSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
+            ),
+          ),
+        ),
+        GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          // Inside the page's list: the safe area is that list's.
+          padding: EdgeInsets.zero,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 0.6,
+          children: _kFeatures.map((f) => _FeatureCell(f)).toList(),
+        ),
+      ],
+    );
+  }
+}
+
+class _FeatureCell extends StatelessWidget {
+  const _FeatureCell(this.feature);
+  final _NativeFeature feature;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: kRowBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF38383A), width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            feature.number,
+            style: const TextStyle(
+              color: Color(0xFF0A84FF),
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            feature.title,
+            style: TextStyle(
+              color: kTextPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 1.25,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Expanded(
+            child: Text(
+              feature.description,
+              style: TextStyle(
+                color: kTextSecondary,
+                fontSize: 11,
+                height: 1.3,
+              ),
+              overflow: TextOverflow.fade,
+            ),
+          ),
+          const SizedBox(height: 15),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          color: kTextSecondary,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        text,
+        style: TextStyle(color: kTextTertiary, fontSize: 12),
+      ),
+    );
+  }
+}
+
+/// The space between one field and the next. The field draws its own box
+/// (see [_inputBox]); this is the app's spacing around it, which the
+/// keyboard does not keep visible, as on Android.
+class _FieldShell extends StatelessWidget {
+  const _FieldShell({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(padding: const EdgeInsets.only(bottom: 16), child: child);
+  }
+}
+
+/// The field's own box: fill, outline and padding as `InputDecoration`,
+/// drawn by the native field, so the box IS the field. The keyboard reveals
+/// the whole box and the focused outline follows focus, the way a native
+/// outlined field behaves.
+InputDecoration _inputBox({required String hint, required double vertical}) {
+  final border = OutlineInputBorder(
+    borderRadius: BorderRadius.circular(10),
+    borderSide: const BorderSide(color: Color(0xFF38383A), width: 0.5),
+  );
+  return InputDecoration(
+    hintText: hint,
+    hintStyle: TextStyle(color: kTextSecondary),
+    filled: true,
+    fillColor: kRowBg,
+    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: vertical),
+    border: border,
+    // The dark theme lights the outline of the focused field; the light
+    // theme's tint is white on a white page, so there the outline stays.
+    focusedBorder: playgroundPalette.brightness == Brightness.dark
+        ? OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: kSegTint, width: 1),
+          )
+        : border,
+  );
+}

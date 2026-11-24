@@ -34,6 +34,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `tool/d4rtgen_select.dart` allowing `tool/d4rtgen.dart` and `tool/d4rtgen_ast.dart` to target specific packages or modules instead of full regeneration.
   - Implemented fingerprint stamp tracking to skip unchanged packages and avoid rewriting shared barrels during partial runs.
   - Added generator post-fixes for Riverpod 3 skew (`StateNotifier`, `ProviderScope` type coercion, and member getters).
+- **Upstream `playground/` runs headless**: the reference DartNative app is
+  vendored as a fixture and covered by `test/playground/playground_headless_test.dart`
+  (`dn test test/playground/`). It boots the real `main.dart` (registrant, Skia,
+  SQLite pre-warm, Firebase/notifications, 43 `registerRoutes` calls, theme
+  restore) and builds every captured route plus the five tab bodies through the
+  analyzer-free engine. 32/43 routes build; the 11 that cannot are pinned in
+  `_knownGaps` with the missing runtime capability, so any new failure is a
+  regression. See `docs/architecture/playground-headless.md`.
+- **Bridges for the rest of the first-party plugin surface**:
+  `dartnative_skia`, `_sqlite`, `_secure_storage`, `_hive`, `_social_sign_in`,
+  `_firebase`, `_video_player`, `_audio`, `_permissions`, `_camera`,
+  `_image_crop`, `_compressor`, `_supertonic_tts`, `_lottie` and
+  `_onnxruntime` are now dependencies with modules in `buildkit.yaml` /
+  `buildkit_ast.yaml` (both bridge sets regenerated). `kAstBridgedLibraries`
+  covers their URIs plus `package:dartnative/canvas.dart`, which
+  `dartnative.dart` does not re-export — the UI surface is registered under that
+  URI by `registerDartNativeSubBarrels` / `registerAstDartNativeSubBarrels`.
+- **Host bridges for native-binding entry points**:
+  - `runZonedGuarded` (`zoned_guarded_bridge.dart`) keeps the catch-and-report
+    contract without bridging `Zone`, so entrypoints that wrap `main()` boot.
+  - `registerRoutes` (`routes_bridge.dart`) captures the route table in
+    `D4rtRoutes` and coerces each interpreted closure into a native
+    `WidgetBuilder` instead of hitting the host stub that throws.
+- **`DnHarness.astBridgeOverrides`** (and `AstInterpreterRunner.runner`) so host
+  fakes can shadow generated AST bridges, mirroring `bridgeOverrides` for the
+  source engine. `fake_shared_preferences_ast.dart` is the first such fake.
+
 - **Deep links (`dartnativego://open?url=<host:port>&name=<app>`)**: Launches the app directly into a guest project via `app_links_kit`, registered on iOS and Android. Added `dart_go open` CLI command with `--device` (simctl/adb dispatch) and `--qr` flags.
 - **`R` hot-restart key in CLI dev server**: Uppercase `R` in `dart_go start` broadcasts a hot restart, dropping interpreter state and re-evaluating the current bundle from scratch.
 - **Split app entrypoints for AST vs Source runtimes**: `lib/main.dart` links only the AST runtime, keeping ~690k lines of `package:analyzer` and source bridges out of release AOT compiles. Developer source runtime is accessible via `lib/main_source.dart`.
@@ -102,6 +129,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Benchmarking & Testing Infrastructure**:
   - Added `tool/scale_inject.dart` to generate and clean synthetic realistic Cupertino modules for scale benchmarking.
   - Added `tool/benchmark_scale.dart` and `tool/benchmark_speed.dart` for automated AST generation and reload latency profiling.
+
+### Fixed
+- **Library-scope getters were returned instead of invoked** (`tom_d4rt_ast`):
+  reading `kHomeBg` yielded the `InterpretedFunction`, so
+  `Container(color: kTileBg)` received a function. `visitSimpleIdentifier` now
+  invokes a library-scope getter.
+- **A library getter and setter sharing a name clobbered each other**
+  (`tom_d4rt_ast`): the second declaration overwrote the first, so
+  `playgroundPalette` resolved to the setter function. Both halves are now kept
+  in a `LibraryProperty`; reads invoke the getter, assignments the setter.
+- **Interpreted `InheritedWidget` subclasses were not widgets**
+  (`tom_d4rt_ast`): a guest theme wrapper failed its parent's build with
+  `Invalid parameter "buildResult": expected Widget`. The new
+  `InterpretedInheritedWidget` proxy wraps them, and the build paths prefer
+  `wrapAstInterpretedWidget` over `extractBridgedArg<Widget>`.
+- **Missing `assets/app-logo.png` broke `dn test` / `dn run`**: `pubspec.yaml`
+  and three widgets referenced the app logo, but the file was never committed,
+  so asset bundling failed with `No file or variants found for asset:
+  assets/app-logo.png`. Added the file (the existing `assets/dartnative.png`
+  brand mark).
+- **AST bridge regeneration lost the sqlite `??>` patch**: `tool/d4rtgen_ast.dart`
+  now applies it like the source driver, so formatting no longer fails on
+  `dartnative_sqlite_bridges.b.dart`.
 
 ### Changed
 - **Bridges regenerated for new plugins**: Updated `buildkit.yaml` and `buildkit_ast.yaml` to register `dartnative_live_activities`, `local_auth_kit`, and `quick_actions_kit`, and regenerated source and AST bridge files (`lib/src/interpreter/*.b.dart` and `ast/*.b.dart`). Updated host and example plugin registrants.

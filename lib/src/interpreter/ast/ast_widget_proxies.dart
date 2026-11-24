@@ -169,11 +169,17 @@ class InterpretedStatelessWidget extends StatelessWidget
         final method = instance.get('build', visitor: visitor);
         if (method is Callable) {
           final rawResult = method.call(visitor, [context], {});
-          final widget = D4.extractBridgedArg<Widget>(
-            rawResult,
-            'buildResult',
-            visitor,
-          );
+          // `wrapAstInterpretedWidget` first: a build result may be an
+          // interpreted subclass of an abstract widget (InheritedWidget,
+          // CustomPainter host widgets, …) that `extractBridgedArg` cannot
+          // coerce because there is no native instance to unwrap.
+          final widget =
+              wrapAstInterpretedWidget(rawResult, visitor: visitor) ??
+              D4.extractBridgedArg<Widget>(
+                rawResult,
+                'buildResult',
+                visitor,
+              );
           return widget;
         }
         throw StateError(
@@ -269,11 +275,17 @@ class InterpretedConsumerWidget extends ConsumerWidget
         final method = instance.get('build', visitor: visitor);
         if (method is Callable) {
           final rawResult = method.call(visitor, [context, ref], {});
-          final widget = D4.extractBridgedArg<Widget>(
-            rawResult,
-            'buildResult',
-            visitor,
-          );
+          // `wrapAstInterpretedWidget` first: a build result may be an
+          // interpreted subclass of an abstract widget (InheritedWidget,
+          // CustomPainter host widgets, …) that `extractBridgedArg` cannot
+          // coerce because there is no native instance to unwrap.
+          final widget =
+              wrapAstInterpretedWidget(rawResult, visitor: visitor) ??
+              D4.extractBridgedArg<Widget>(
+                rawResult,
+                'buildResult',
+                visitor,
+              );
           return widget;
         }
         throw StateError(
@@ -705,11 +717,17 @@ class InterpretedStateProxy extends State<StatefulWidget>
         final method = stateInstance.get('build', visitor: visitor);
         if (method is Callable) {
           final rawResult = method.call(visitor, [context], {});
-          final widget = D4.extractBridgedArg<Widget>(
-            rawResult,
-            'buildResult',
-            visitor,
-          );
+          // `wrapAstInterpretedWidget` first: a build result may be an
+          // interpreted subclass of an abstract widget (InheritedWidget,
+          // CustomPainter host widgets, …) that `extractBridgedArg` cannot
+          // coerce because there is no native instance to unwrap.
+          final widget =
+              wrapAstInterpretedWidget(rawResult, visitor: visitor) ??
+              D4.extractBridgedArg<Widget>(
+                rawResult,
+                'buildResult',
+                visitor,
+              );
           return widget;
         }
         throw StateError(
@@ -1156,11 +1174,12 @@ class InterpretedConsumerStateProxy
         final method = stateInstance.get('build', visitor: visitor);
         if (method is Callable) {
           final rawResult = method.call(visitor, [context], {});
-          return D4.extractBridgedArg<Widget>(
-            rawResult,
-            'buildResult',
-            visitor,
-          );
+          return wrapAstInterpretedWidget(rawResult, visitor: visitor) ??
+              D4.extractBridgedArg<Widget>(
+                rawResult,
+                'buildResult',
+                visitor,
+              );
         }
         throw StateError(
           'Interpreted ConsumerState has no callable build(context) method',
@@ -1316,6 +1335,10 @@ Widget? wrapAstInterpretedWidget(Object? arg, {InterpreterVisitor? visitor}) {
             cur.bridgedSuperclass?.name == 'StatelessWidget') {
           return InterpretedStatelessWidget(effectiveVisitor, arg);
         }
+        if (cur.name == 'InheritedWidget' ||
+            cur.bridgedSuperclass?.name == 'InheritedWidget') {
+          return InterpretedInheritedWidget(effectiveVisitor, arg);
+        }
         if (cur.superclass == null) break;
         cur = cur.superclass!;
       }
@@ -1328,6 +1351,68 @@ Widget? wrapAstInterpretedWidget(Object? arg, {InterpreterVisitor? visitor}) {
     }
   }
   return null;
+}
+
+/// Native proxy for AST-interpreted classes that extend [InheritedWidget].
+///
+/// `InheritedWidget` is abstract, so the interpreter cannot build a native
+/// super-object for a guest subclass — `bridgedSuperObject` stays null and the
+/// instance is not a `Widget`. Without this proxy, any guest that publishes
+/// state through an inherited widget (`PlaygroundTheme.of(context)`,
+/// `MyScope.of(context)`, …) fails its parent's build with
+/// `Invalid parameter "buildResult": expected Widget, got
+/// InterpretedInstance(PlaygroundTheme)`.
+///
+/// `child` comes from the guest instance; `updateShouldNotify` is forwarded to
+/// the interpreted method (defaulting to `true`, the safe answer: rebuild).
+class InterpretedInheritedWidget extends InheritedWidget
+    implements D4InterpretedProxy {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedInheritedWidget(this.visitor, this.instance, {Key? key})
+    : super(
+        key: key ?? _keyFor(instance),
+        child: _childFor(visitor, instance),
+      ) {
+    instance.nativeProxy = this;
+  }
+
+  static Key _keyFor(InterpretedInstance instance) =>
+      ValueKey('Inherited_${instance.klass.name}');
+
+  static Widget _childFor(
+    InterpreterVisitor visitor,
+    InterpretedInstance instance,
+  ) {
+    Object? raw;
+    try {
+      if (instance.hasInstanceMember('child')) {
+        raw = instance.get('child', visitor: visitor);
+      }
+    } catch (_) {}
+    return wrapAstInterpretedWidget(raw, visitor: visitor) ??
+        const SizedBox.shrink();
+  }
+
+  @override
+  Object get d4rtInstance => instance;
+
+  @override
+  bool updateShouldNotify(InheritedWidget oldWidget) {
+    try {
+      final method = instance.get('updateShouldNotify', visitor: visitor);
+      if (method is Callable) {
+        final previous = oldWidget is InterpretedInheritedWidget
+            ? oldWidget.instance
+            : oldWidget;
+        final result = method.call(visitor, [previous], {});
+        return result == true;
+      }
+    } catch (_) {}
+    // Unknown: rebuild dependants rather than silently keep stale state.
+    return true;
+  }
 }
 
 /// Registers interface proxies for [StatelessWidget], [StatefulWidget], and
@@ -1380,6 +1465,10 @@ void registerAstWidgetInterfaceProxies(
     'package:dartnative/dartnative.dart',
     signature: 'void print(Object? object)',
   );
+
+  D4.registerInterfaceProxy('InheritedWidget', (visitor, instance) {
+    return InterpretedInheritedWidget(visitor, instance);
+  });
 
   D4.registerInterfaceProxy('StatelessWidget', (visitor, instance) {
     return InterpretedStatelessWidget(visitor, instance);

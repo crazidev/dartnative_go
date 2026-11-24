@@ -179,6 +179,34 @@ Future<void> _formatGeneratedBridges({
   }
 }
 
+/// Modules whose bridged API surface uses `@experimental` members (Hive's
+/// `HiveList`, …). The generator emits calls to them, so without the ignore
+/// every regeneration reintroduces warnings into `dart analyze`. Keeping the
+/// list explicit means a regeneration only rewrites the files that need it
+/// instead of touching every bridge with a cosmetic ignore line. DN-PATCH.
+const _experimentalMemberModules = {'dartnative_hive_bridges.b.dart'};
+
+/// Silences `experimental_member_use` in one generated bridge.
+void _addExperimentalMemberUseIgnore(String path) {
+  if (!_experimentalMemberModules.any(path.endsWith)) return;
+  final file = File(path);
+  if (!file.existsSync()) return;
+  var content = file.readAsStringSync();
+  const marker = '// ignore_for_file: ';
+  final idx = content.indexOf(marker);
+  if (idx < 0) return;
+  if (content.substring(idx, content.indexOf('\n', idx)).contains(
+    'experimental_member_use',
+  )) {
+    return;
+  }
+  content = content.replaceFirst(
+    marker,
+    '${marker}experimental_member_use, ',
+  );
+  file.writeAsStringSync(content);
+}
+
 void _applyBridgePostFixes({Set<String>? only}) {
   bool want(String path) => only == null || only.contains(path);
 
@@ -280,6 +308,18 @@ void _applyBridgePostFixes({Set<String>? only}) {
   }
   if (want('lib/src/interpreter/ast/dio_bridges.b.dart')) {
     _patchDioBridges(File('lib/src/interpreter/ast/dio_bridges.b.dart'));
+  }
+
+  for (final dir in ['lib/src/interpreter', 'lib/src/interpreter/ast']) {
+    final directory = Directory(dir);
+    if (!directory.existsSync()) continue;
+    for (final entity in directory.listSync()) {
+      if (entity is File &&
+          entity.path.endsWith('.b.dart') &&
+          want(entity.path)) {
+        _addExperimentalMemberUseIgnore(entity.path);
+      }
+    }
   }
 }
 

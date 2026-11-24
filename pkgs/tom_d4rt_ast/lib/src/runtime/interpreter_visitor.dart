@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:tom_d4rt_ast/runtime.dart';
 import 'package:tom_d4rt_ast/src/runtime/unbridged_reasons.dart';
+import 'package:tom_d4rt_ast/src/runtime/library_property.dart';
 
 /// Detects whether any `SFunctionExpression` (closure) appears in a subtree.
 /// Used by the classic-for loop optimization (T8/F5) to decide whether a
@@ -864,6 +865,19 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
         Logger.debug(
           "[visitSimpleIdentifier] Returning '$name' = $value (from lexical/bridge)",
         );
+      }
+      // Top-level (library) getters are declared as `InterpretedFunction`s and
+      // stored in the module environment; a read of the name must INVOKE the
+      // getter, not hand back the function object. Instance/static getters are
+      // already invoked by their member-lookup paths, so this only fires for
+      // library-scope getters — the common `Color get kHomeBg => ...` pattern
+      // that every DartNative UI app uses. Dart has no getter tear-off, so
+      // invoking unconditionally is correct.
+      if (value is LibraryProperty) {
+        return value.getter?.call(this, const [], const {});
+      }
+      if (value is InterpretedFunction && value.isGetter) {
+        return value.call(this, const [], const {});
       }
       return value;
     }
@@ -2700,6 +2714,32 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
       );
 
       if (definingEnv != null) {
+        // Library-scope getter/setter pair (see [LibraryProperty]): assigning
+        // must run the setter, not overwrite the property binding. Without
+        // this, `playgroundPalette = p` replaced the getter/setter pair with
+        // the value and every later read skipped the setter's side effects.
+        final binding = definingEnv.isDefinedLocally(variableName)
+            ? definingEnv.getRawValueIfDefined(variableName)
+            : null;
+        if (binding is LibraryProperty) {
+          final setter = binding.setter;
+          if (setter == null) {
+            throw RuntimeD4rtException(
+              'Cannot assign to "$variableName": it has no setter.',
+            );
+          }
+          Object? valueToSet = rhsValue;
+          if (operatorType != '=') {
+            final current = binding.getter?.call(this, const [], const {});
+            valueToSet = computeCompoundValue(
+              current,
+              rhsValue,
+              operatorType,
+            );
+          }
+          setter.call(this, [valueToSet], const {});
+          return valueToSet;
+        }
         // Cell-backed binding (Phase 3): check the cell BEFORE reading, because
         // reading an uninitialized `late` cell throws and a plain `x = v`
         // assignment must not read x at all.
@@ -8630,7 +8670,38 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
             freshFunction,
             home: environment,
           );
-    // Define the function in the current environment
+    // Define the function in the current environment.
+    //
+    // A library-scope getter and setter may share a name. Both are
+    // InterpretedFunctions bound by name, so a plain `define` would let the
+    // second declaration overwrite the first and silently drop half the
+    // property. Merge them into a [LibraryProperty] instead.
+    if (node.isGetter || node.isSetter) {
+      final existing = environment.isDefinedLocally(functionName)
+          ? environment.getRawValueIfDefined(functionName)
+          : null;
+      final asFunction = function;
+      if (existing is LibraryProperty) {
+        environment.define(
+          functionName,
+          node.isGetter
+              ? existing.withGetter(asFunction)
+              : existing.withSetter(asFunction),
+        );
+        return null;
+      }
+      final existingFn = existing is InterpretedFunction ? existing : null;
+      if (existingFn != null && existingFn.isGetter != node.isGetter) {
+        environment.define(
+          functionName,
+          LibraryProperty(
+            getter: node.isGetter ? asFunction : existingFn,
+            setter: node.isGetter ? existingFn : asFunction,
+          ),
+        );
+        return null;
+      }
+    }
     environment.define(functionName, function);
     return null; // Declaration itself doesn't return a value
   }

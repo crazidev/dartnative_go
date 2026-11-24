@@ -111,3 +111,78 @@ d4rtgen:
         - package:quick_actions_kit/quick_actions_kit.dart
       barrelImport: package:quick_actions_kit/quick_actions_kit.dart
       outputPath: lib/src/interpreter/quick_actions_kit_bridges.b.dart
+    - name: dartnative_skia
+      barrelFiles:
+        - package:dartnative_skia/dartnative_skia.dart
+      barrelImport: package:dartnative_skia/dartnative_skia.dart
+      outputPath: lib/src/interpreter/dartnative_skia_bridges.b.dart
+    - name: dartnative_sqlite
+      barrelFiles:
+        - package:dartnative_sqlite/dartnative_sqlite.dart
+      barrelImport: package:dartnative_sqlite/dartnative_sqlite.dart
+      outputPath: lib/src/interpreter/dartnative_sqlite_bridges.b.dart
+    - name: dartnative_secure_storage
+      barrelFiles:
+        - package:dartnative_secure_storage/dartnative_secure_storage.dart
+      barrelImport: package:dartnative_secure_storage/dartnative_secure_storage.dart
+      outputPath: lib/src/interpreter/dartnative_secure_storage_bridges.b.dart
+    - name: dartnative_hive
+      barrelFiles:
+        - package:dartnative_hive/dartnative_hive.dart
+      barrelImport: package:dartnative_hive/dartnative_hive.dart
+      outputPath: lib/src/interpreter/dartnative_hive_bridges.b.dart
+    - name: dartnative_social_sign_in
+      barrelFiles:
+        - package:dartnative_social_sign_in/social_sign_in.dart
+      barrelImport: package:dartnative_social_sign_in/social_sign_in.dart
+      outputPath: lib/src/interpreter/dartnative_social_sign_in_bridges.b.dart
+    - name: dartnative_firebase
+      barrelFiles:
+        - package:dartnative_firebase/dartnative_firebase.dart
+      barrelImport: package:dartnative_firebase/dartnative_firebase.dart
+      outputPath: lib/src/interpreter/dartnative_firebase_bridges.b.dart
+    - name: dartnative_video_player
+      barrelFiles:
+        - package:dartnative_video_player/dartnative_video_player.dart
+      barrelImport: package:dartnative_video_player/dartnative_video_player.dart
+      outputPath: lib/src/interpreter/dartnative_video_player_bridges.b.dart
+    - name: dartnative_audio
+      barrelFiles:
+        - package:dartnative_audio/dartnative_audio.dart
+      barrelImport: package:dartnative_audio/dartnative_audio.dart
+      outputPath: lib/src/interpreter/dartnative_audio_bridges.b.dart
+    - name: dartnative_permissions
+      barrelFiles:
+        - package:dartnative_permissions/dartnative_permissions.dart
+      barrelImport: package:dartnative_permissions/dartnative_permissions.dart
+      outputPath: lib/src/interpreter/dartnative_permissions_bridges.b.dart
+    - name: dartnative_camera
+      barrelFiles:
+        - package:dartnative_camera/dartnative_camera.dart
+      barrelImport: package:dartnative_camera/dartnative_camera.dart
+      outputPath: lib/src/interpreter/dartnative_camera_bridges.b.dart
+    - name: dartnative_image_crop
+      barrelFiles:
+        - package:dartnative_image_crop/dartnative_image_crop.dart
+      barrelImport: package:dartnative_image_crop/dartnative_image_crop.dart
+      outputPath: lib/src/interpreter/dartnative_image_crop_bridges.b.dart
+    - name: dartnative_compressor
+      barrelFiles:
+        - package:dartnative_compressor/dartnative_compressor.dart
+      barrelImport: package:dartnative_compressor/dartnative_compressor.dart
+      outputPath: lib/src/interpreter/dartnative_compressor_bridges.b.dart
+    - name: dartnative_supertonic_tts
+      barrelFiles:
+        - package:dartnative_supertonic_tts/dartnative_supertonic_tts.dart
+      barrelImport: package:dartnative_supertonic_tts/dartnative_supertonic_tts.dart
+      outputPath: lib/src/interpreter/dartnative_supertonic_tts_bridges.b.dart
+    - name: dartnative_lottie
+      barrelFiles:
+        - package:dartnative_lottie/dartnative_lottie.dart
+      barrelImport: package:dartnative_lottie/dartnative_lottie.dart
+      outputPath: lib/src/interpreter/dartnative_lottie_bridges.b.dart
+    - name: dartnative_onnxruntime
+      barrelFiles:
+        - package:dartnative_onnxruntime/dartnative_onnxruntime.dart
+      barrelImport: package:dartnative_onnxruntime/dartnative_onnxruntime.dart
+      outputPath: lib/src/interpreter/dartnative_onnxruntime_bridges.b.dart
