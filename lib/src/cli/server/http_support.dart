@@ -69,20 +69,35 @@ Future<void> sendNotModified(HttpRequest request, String tag) async {
   await request.response.close();
 }
 
-/// Serves [file] with CORS, no-cache, and an optional [etag] header value.
+/// Strong ETag for [file] based on mtime and byte size.
+String computeFileEtag(File file) {
+  final stat = file.statSync();
+  return '"${stat.modified.millisecondsSinceEpoch}-${stat.size}"';
+}
+
+/// Unquoted version token (`mtime-size`) for [file].
+String computeFileVersionToken(File file) {
+  final stat = file.statSync();
+  return '${stat.modified.millisecondsSinceEpoch}-${stat.size}';
+}
+
+/// Serves [file] with CORS, no-cache, ETag, and 304 Not Modified support.
 Future<void> serveFile(HttpRequest request, File file, {String? etag}) async {
   try {
+    final resolvedEtag = etag ?? computeFileEtag(file);
+    final rawTag = resolvedEtag.replaceAll('"', '');
+    if (etagMatches(request, rawTag)) {
+      await sendNotModified(request, rawTag);
+      return;
+    }
     final bytes = await file.readAsBytes();
     request.response
       ..statusCode = HttpStatus.ok
       ..headers.contentType = contentTypeForFile(file.path)
       ..headers.add(_corsHeader, '*')
-      ..headers.add('Cache-Control', 'no-cache');
-    if (etag != null) {
-      request.response.headers.set(HttpHeaders.etagHeader, etag);
-      request.response.headers.set('Access-Control-Expose-Headers', 'ETag');
-    }
-    request.response
+      ..headers.add('Cache-Control', 'no-cache')
+      ..headers.set(HttpHeaders.etagHeader, resolvedEtag)
+      ..headers.set('Access-Control-Expose-Headers', 'ETag')
       ..headers.contentLength = bytes.length
       ..add(bytes)
       ..close();
@@ -127,6 +142,7 @@ ContentType contentTypeForFile(String path) {
 }
 
 /// Relative paths of every file under `<project>/assets`, sorted.
+/// Excludes generated `assets/bundles/` artifacts.
 List<String> collectProjectAssets(Directory projectDir) {
   final assetsDir = Directory('${projectDir.path}/assets');
   if (!assetsDir.existsSync()) return const [];
@@ -134,16 +150,30 @@ List<String> collectProjectAssets(Directory projectDir) {
   try {
     for (final entity in assetsDir.listSync(recursive: true)) {
       if (entity is File) {
-        results.add(
-          entity.path
-              .replaceFirst('${projectDir.path}/', '')
-              .replaceAll(r'\', '/'),
-        );
+        final rel = entity.path
+            .replaceFirst('${projectDir.path}/', '')
+            .replaceAll(r'\', '/');
+        if (rel.startsWith('assets/bundles/')) continue;
+        results.add(rel);
       }
     }
   } catch (_) {}
   results.sort();
   return results;
+}
+
+/// Map of `<project>/assets` relative path → `mtime-size` version token.
+Map<String, String> collectProjectAssetEtags(Directory projectDir) {
+  final out = <String, String>{};
+  for (final rel in collectProjectAssets(projectDir)) {
+    final f = File('${projectDir.path}/$rel');
+    if (f.existsSync()) {
+      try {
+        out[rel] = computeFileVersionToken(f);
+      } catch (_) {}
+    }
+  }
+  return out;
 }
 
 /// Finds `.dart_tool/bundles/guest.ast` (then the legacy `assets/bundles/` and

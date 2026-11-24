@@ -10,6 +10,8 @@ import 'package:example/plugins/local_auth_demo.dart';
 import 'package:equatable/equatable.dart';
 import 'package:example/plugins/native_bottomsheet.dart';
 import 'package:example/plugins/quick_actions_demo.dart';
+import 'package:lucide_kit/lucide_kit.dart';
+// import 'package:lucide_kit/lucide_kit.dart';
 
 class Plugins extends Equatable {
   final Widget widget;
@@ -98,7 +100,22 @@ class _PluginsScreenState extends State<PluginsScreen> {
           'Plugin List',
         ),
         // largeTitle: const Text('Plugin List', style: TextStyle(fontSize: 20)),
-        actions: [],
+        actions: [
+          IconButton(
+            icon: Icon(
+              LucideIcons.sun,
+              size: 24,
+            ),
+            onPressed: () {},
+          ),
+          // IconButton(
+          //   icon: Icon(
+          //     LucideIcons.moonStar,
+          //     size: 24,
+          //   ),
+          //   onPressed: () {},
+          // ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.only(top: 15),

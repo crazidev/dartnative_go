@@ -1,5 +1,5 @@
 import 'package:dartnative/dartnative.dart';
-import 'package:dartnative_go_ui/dartnative_go_ui.dart';
+import 'package:dngo_ui/dngo_ui.dart';
 
 /// Renders the project splash screen while bundles and resources are being loaded.
 ///
@@ -59,6 +59,7 @@ class ProjectSplashScreen extends StatelessWidget {
         width: 100,
         height: 100,
         fit: BoxFit.contain,
+        cachePolicy: ImageCachePolicy.none,
       );
     }
     if (iconUrl != null && iconUrl!.isNotEmpty) {
@@ -67,6 +68,7 @@ class ProjectSplashScreen extends StatelessWidget {
         width: 90,
         height: 90,
         fit: BoxFit.contain,
+        cachePolicy: ImageCachePolicy.none,
       );
     }
     return Image.asset('assets/app-logo.png', width: 90, height: 90);

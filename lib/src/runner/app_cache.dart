@@ -7,8 +7,15 @@ import 'logger.dart';
 /// On-device persistent cache for guest application bundles (enables offline mode).
 class AppCache {
   final Directory cacheDir;
+  Future<void> _metaQueue = Future<void>.value();
 
   AppCache(this.cacheDir);
+
+  Future<T> _withMetaLock<T>(Future<T> Function() fn) {
+    final next = _metaQueue.then((_) => fn());
+    _metaQueue = next.then((_) {}, onError: (_) {});
+    return next;
+  }
 
   /// Creates or returns the on-device application cache root.
   static Future<AppCache> create([Directory? baseDir]) async {
@@ -60,6 +67,7 @@ class AppCache {
         'entrypointCode': bundle.entrypointCode,
         'breakpoints': bundle.breakpoints,
         'assets': bundle.assets,
+        'assetEtags': bundle.assetEtags,
         'astEntryPoint': bundle.astEntryPoint,
         'astModuleFingerprints': bundle.astModuleFingerprints,
         'hasAst': bundle.hasAst,
@@ -140,6 +148,14 @@ class AppCache {
         );
       }
 
+      final rawAssetEtags = metaJson['assetEtags'];
+      final assetEtags = <String, String>{};
+      if (rawAssetEtags is Map) {
+        rawAssetEtags.forEach(
+          (k, v) => assetEtags[k.toString()] = v.toString(),
+        );
+      }
+
       return ProjectBundle(
         appName: metaJson['appName']?.toString() ?? 'DartNative App',
         appVersion: metaJson['appVersion']?.toString(),
@@ -157,6 +173,7 @@ class AppCache {
             metaJson['entrypointLibrary']?.toString() ?? 'main.dart',
         breakpoints: breakpoints,
         assets: assets,
+        assetEtags: assetEtags,
         astBytes: astBytes,
         isPatch: false,
         astEntryPoint: metaJson['astEntryPoint']?.toString(),
@@ -236,5 +253,214 @@ class AppCache {
       }
     } catch (_) {}
     return count;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Font & Asset Disk Caching + Reinvalidation
+  // ---------------------------------------------------------------------------
+
+  static String _normalizeAssetPath(String assetPath) {
+    var clean = assetPath.trim().replaceAll(r'\', '/');
+    while (clean.startsWith('/')) {
+      clean = clean.substring(1);
+    }
+    if (!clean.startsWith('assets/')) {
+      clean = 'assets/$clean';
+    }
+    return clean;
+  }
+
+  static String _safeFontFileName(String family, String ext) {
+    final sanitized = family.trim().replaceAll(RegExp(r'[^a-zA-Z0-9_.-]'), '_');
+    final suffix = ext.startsWith('.') ? ext : '.$ext';
+    return '$sanitized$suffix';
+  }
+
+  Map<String, dynamic> _readJsonMap(File file) {
+    if (!file.existsSync()) return {};
+    try {
+      final decoded = jsonDecode(file.readAsStringSync());
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {}
+    return {};
+  }
+
+  /// Returns the cached font [File] for [family] if present on disk and
+  /// (when [expectedEtag] is provided) its stored ETag matches.
+  File? getCachedFontFile(
+    String serverUrl,
+    String family, {
+    String? expectedEtag,
+  }) {
+    final dir = _dirForUrl(serverUrl);
+    final meta = _readJsonMap(File(p.join(dir.path, 'fonts_meta.json')));
+    final entry = meta[family.trim()];
+    if (entry is! Map) return null;
+    if (expectedEtag != null &&
+        expectedEtag.isNotEmpty &&
+        entry['etag']?.toString() != expectedEtag) {
+      return null;
+    }
+    final fileName = entry['fileName']?.toString();
+    if (fileName == null || fileName.isEmpty) return null;
+    final file = File(p.join(dir.path, 'fonts', fileName));
+    return file.existsSync() ? file : null;
+  }
+
+  /// Stored ETag for cached [family] (for `If-None-Match` revalidation).
+  String? getCachedFontEtag(String serverUrl, String family) {
+    final dir = _dirForUrl(serverUrl);
+    final meta = _readJsonMap(File(p.join(dir.path, 'fonts_meta.json')));
+    final entry = meta[family.trim()];
+    if (entry is! Map) return null;
+    return entry['etag']?.toString();
+  }
+
+  /// Persists downloaded font [bytes] for [family] under the server's cache
+  /// directory along with its [etag]. Returns the saved [File].
+  Future<File?> saveFont(
+    String serverUrl,
+    String family,
+    List<int> bytes, {
+    String? etag,
+    String ext = '.ttf',
+  }) async {
+    try {
+      final dir = _dirForUrl(serverUrl);
+      final fontsDir = Directory(p.join(dir.path, 'fonts'));
+      if (!fontsDir.existsSync()) fontsDir.createSync(recursive: true);
+
+      final fileName = _safeFontFileName(family, ext);
+      final file = File(p.join(fontsDir.path, fileName));
+      await file.writeAsBytes(bytes, flush: true);
+
+      await _withMetaLock(() async {
+        final metaFile = File(p.join(dir.path, 'fonts_meta.json'));
+        final meta = _readJsonMap(metaFile);
+        meta[family.trim()] = {
+          'fileName': fileName,
+          if (etag != null && etag.isNotEmpty) 'etag': etag,
+          'size': bytes.length,
+          'savedAt': DateTime.now().toIso8601String(),
+        };
+        await metaFile.writeAsString(jsonEncode(meta));
+      });
+      return file;
+    } catch (e) {
+      DartGoLogger.warn('AppCache: failed to save font "$family": $e');
+      return null;
+    }
+  }
+
+  /// Invalidates and removes cached font [family] from disk.
+  Future<void> invalidateFont(String serverUrl, String family) async {
+    try {
+      final dir = _dirForUrl(serverUrl);
+      final metaFile = File(p.join(dir.path, 'fonts_meta.json'));
+      final meta = _readJsonMap(metaFile);
+      final entry = meta.remove(family.trim());
+      if (entry is Map) {
+        final fileName = entry['fileName']?.toString();
+        if (fileName != null) {
+          final f = File(p.join(dir.path, 'fonts', fileName));
+          if (f.existsSync()) f.deleteSync();
+        }
+      }
+      await metaFile.writeAsString(jsonEncode(meta));
+    } catch (_) {}
+  }
+
+  /// Returns a cached asset [File] for [assetPath] if present on disk.
+  File? getCachedAssetFile(String serverUrl, String assetPath) {
+    final norm = _normalizeAssetPath(assetPath);
+    if (norm.contains('..')) return null;
+    final dir = _dirForUrl(serverUrl);
+    final file = File(p.join(dir.path, norm));
+    return file.existsSync() ? file : null;
+  }
+
+  /// Stored ETag for a cached asset (for `If-None-Match` revalidation).
+  String? getCachedAssetEtag(String serverUrl, String assetPath) {
+    final norm = _normalizeAssetPath(assetPath);
+    final dir = _dirForUrl(serverUrl);
+    final meta = _readJsonMap(File(p.join(dir.path, 'assets_meta.json')));
+    final entry = meta[norm];
+    if (entry is! Map) return null;
+    return entry['etag']?.toString();
+  }
+
+  /// Persists downloaded asset [bytes] for [assetPath] along with its [etag].
+  Future<File?> saveAsset(
+    String serverUrl,
+    String assetPath,
+    List<int> bytes, {
+    String? etag,
+  }) async {
+    try {
+      final norm = _normalizeAssetPath(assetPath);
+      if (norm.contains('..')) return null;
+      final dir = _dirForUrl(serverUrl);
+      final file = File(p.join(dir.path, norm));
+      if (!file.parent.existsSync()) file.parent.createSync(recursive: true);
+      await file.writeAsBytes(bytes, flush: true);
+
+      await _withMetaLock(() async {
+        final metaFile = File(p.join(dir.path, 'assets_meta.json'));
+        final meta = _readJsonMap(metaFile);
+        meta[norm] = {
+          if (etag != null && etag.isNotEmpty) 'etag': etag,
+          'size': bytes.length,
+          'savedAt': DateTime.now().toIso8601String(),
+        };
+        await metaFile.writeAsString(jsonEncode(meta));
+      });
+      return file;
+    } catch (e) {
+      DartGoLogger.warn('AppCache: failed to save asset "$assetPath": $e');
+      return null;
+    }
+  }
+
+  /// Compares cached assets against [serverEtags] (`path -> etag`). Any
+  /// cached asset whose ETag changed or that was removed on the server is
+  /// deleted from disk and returned so callers can evict in-memory caches.
+  Future<List<String>> invalidateStaleAssets(
+    String serverUrl,
+    Map<String, String> serverEtags,
+  ) async {
+    final invalidated = <String>[];
+    try {
+      final dir = _dirForUrl(serverUrl);
+      final metaFile = File(p.join(dir.path, 'assets_meta.json'));
+      final meta = _readJsonMap(metaFile);
+      if (meta.isEmpty) return invalidated;
+
+      final keysToRemove = <String>[];
+      for (final entry in meta.entries) {
+        final path = entry.key;
+        final cachedEtag = (entry.value is Map)
+            ? (entry.value as Map)['etag']?.toString()
+            : null;
+        final serverEtag = serverEtags[path];
+        if (serverEtag == null ||
+            (cachedEtag != null && cachedEtag != serverEtag)) {
+          keysToRemove.add(path);
+          invalidated.add(path);
+          final file = File(p.join(dir.path, path));
+          if (file.existsSync()) {
+            try {
+              file.deleteSync();
+            } catch (_) {}
+          }
+        }
+      }
+      if (keysToRemove.isNotEmpty) {
+        for (final k in keysToRemove) {
+          meta.remove(k);
+        }
+        await metaFile.writeAsString(jsonEncode(meta));
+      }
+    } catch (_) {}
+    return invalidated;
   }
 }

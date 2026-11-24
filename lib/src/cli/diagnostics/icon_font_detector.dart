@@ -6,7 +6,11 @@ import 'package:yaml/yaml.dart';
 
 import '../../runner/icon_registry.dart';
 import '../packaging/ast_builder.dart'
-    show cachedBundleForProject, detectGuestPackageName, resolvePackageSources;
+    show
+        cachedBundleForProject,
+        detectGuestPackageName,
+        findPackageConfigFile,
+        resolvePackageSources;
 import 'icon_annotation_scanner.dart';
 
 /// Known icon-font families DartNative guests can request.
@@ -107,15 +111,25 @@ class IconFontReport {
     for (final f in customFonts) f.family,
   };
 
-  /// Stable hash over families + glyphs + custom fonts. Devices compare this
-  /// against the last loaded set to skip redundant font fetches on reload.
+  /// Stable hash over families + glyphs + custom fonts + resolved font file
+  /// timestamps/sizes. Devices compare this against the last loaded set to
+  /// skip redundant font fetches on reload, and reinvalidate when a font file
+  /// on disk changes.
   String get hash {
     final parts = <String>[];
     final fams = families.toList()..sort();
     for (final fam in fams) {
       final glyphs = (glyphsByFamily[fam] ?? const {}).toList()..sort();
       final cps = (codePointsByFamily[fam] ?? const {}).toList()..sort();
-      parts.add('$fam:${glyphs.join(",")}:${cps.join(",")}');
+      var fileTag = '';
+      final filePath = fontFiles[fam];
+      if (filePath != null) {
+        try {
+          final st = File(filePath).statSync();
+          fileTag = '@${st.modified.millisecondsSinceEpoch}-${st.size}';
+        } catch (_) {}
+      }
+      parts.add('$fam$fileTag:${glyphs.join(",")}:${cps.join(",")}');
     }
     final customs = customFonts.map((f) => '${f.family}@${f.asset}').toList()
       ..sort();
@@ -129,7 +143,7 @@ class IconFontReport {
         );
   }
 
-  /// Manifest payload: one entry per used family with subset + font URL.
+  /// Manifest payload: one entry per used family with subset + font URL + etag.
   List<Map<String, dynamic>> toManifestJson(String serverUrl) {
     final out = <Map<String, dynamic>>[];
     final fams = families.toList()..sort();
@@ -138,14 +152,23 @@ class IconFontReport {
         ..sort());
       final cps = ((codePointsByFamily[family] ?? const <int>{}).toList()
         ..sort());
+      final filePath = fontFiles[family];
+      String? etag;
+      if (filePath != null) {
+        try {
+          final st = File(filePath).statSync();
+          etag = '${st.modified.millisecondsSinceEpoch}-${st.size}';
+        } catch (_) {}
+      }
       out.add({
         'family': family,
         'package': fontPackages[family],
         'builtIn': IconFontFamilies.builtIn.contains(family),
-        'hasFontFile': fontFiles.containsKey(family),
-        'url': fontFiles.containsKey(family)
+        'hasFontFile': filePath != null,
+        'url': filePath != null
             ? '$serverUrl/fonts/${Uri.encodeComponent(family)}.ttf'
             : null,
+        if (etag != null) 'etag': etag,
         'glyphCount': names.length + cps.length,
         'names': names,
         'codePoints': cps,
@@ -245,7 +268,7 @@ class IconFontDetector {
     );
     final mergedGlyphs = Map<String, Set<String>>.from(usage.glyphsByFamily);
     final mergedCps = Map<String, Set<int>>.from(usage.codePointsByFamily);
-    final mergedPackages = <String, String>{};
+    final mergedPackages = Map<String, String>.from(usage.fontPackages);
     final annotatedFamilies = <String>{};
     for (final a in annotated) {
       mergedGlyphs.putIfAbsent(a.family, () => <String>{});
@@ -253,13 +276,23 @@ class IconFontDetector {
       mergedPackages.putIfAbsent(a.family, () => a.package);
       annotatedFamilies.add(a.family);
     }
+    // Discover fonts declared by external packages imported in guest code
+    // (e.g. `lucide_kit` declaring `dartnative: fonts: - family: Lucide`).
+    final importedPkgFonts = _readImportedPackageFonts(guestSources);
+    for (final entry in importedPkgFonts) {
+      mergedGlyphs.putIfAbsent(entry.family, () => <String>{});
+      mergedCps.putIfAbsent(entry.family, () => <int>{});
+      mergedPackages.putIfAbsent(entry.family, () => entry.package);
+    }
     final files = _resolveFontFiles(
       IconFontReport(
         glyphsByFamily: mergedGlyphs,
         codePointsByFamily: mergedCps,
+        fontPackages: mergedPackages,
       ),
       customs,
       annotated: annotated,
+      importedPackageFonts: importedPkgFonts,
     );
     // Annotation packages win for families the hardcoded map doesn't know.
     for (final a in annotated) {
@@ -387,6 +420,7 @@ class IconFontDetector {
   static IconFontReport scanSources(Map<String, String> sources) {
     final glyphs = <String, Set<String>>{};
     final codePoints = <String, Set<int>>{};
+    final fontPackages = <String, String>{};
 
     void addGlyph(String family, String name) {
       final norm = name.trim();
@@ -434,10 +468,14 @@ class IconFontDetector {
             ? int.tryParse(cpStr.substring(2), radix: 16)
             : int.tryParse(cpStr);
         if (cp == null) continue;
-        addCodePoint(
-          fam.isEmpty ? IconFontFamilies.cupertino : fam,
-          cp,
-        );
+        final resolvedFam = fam.isEmpty ? IconFontFamilies.cupertino : fam;
+        addCodePoint(resolvedFam, cp);
+        final fullMatch = m.group(0) ?? '';
+        final pkgMatch = _fontPackagePattern.firstMatch(fullMatch);
+        if (pkgMatch != null) {
+          final pkg = pkgMatch.group(1)!.trim();
+          if (pkg.isNotEmpty) fontPackages.putIfAbsent(resolvedFam, () => pkg);
+        }
       }
       for (final m in _iconDataFamFirst.allMatches(noComments)) {
         final fam = (m.group(1) ?? '').trim();
@@ -446,10 +484,8 @@ class IconFontDetector {
             ? int.tryParse(cpStr.substring(2), radix: 16)
             : int.tryParse(cpStr);
         if (cp == null) continue;
-        addCodePoint(
-          fam.isEmpty ? IconFontFamilies.cupertino : fam,
-          cp,
-        );
+        final resolvedFam = fam.isEmpty ? IconFontFamilies.cupertino : fam;
+        addCodePoint(resolvedFam, cp);
       }
       // fontFamily: 'SomeCustomFont' — counted as usage even without a
       // resolvable IconData, so custom text/icon fonts are preloaded.
@@ -480,6 +516,7 @@ class IconFontDetector {
     return IconFontReport(
       glyphsByFamily: glyphs,
       codePointsByFamily: codePoints,
+      fontPackages: fontPackages,
     );
   }
 
@@ -500,7 +537,13 @@ class IconFontDetector {
     r'\b(FontAwesome(?:5|6)?|FaIcon|FontAwesomeIcons)\.([A-Za-z0-9_]+)',
   );
   static final _iconDataCpFirst = RegExp(
-    "IconData\\(\\s*(0[xX][0-9a-fA-F]+|\\d+)[^)]*?fontFamily\\s*:\\s*['\"]([^'\"]+)['\"]",
+    "IconData\\(\\s*(0[xX][0-9a-fA-F]+|\\d+)[^)]*?fontFamily\\s*:\\s*['\"]([^'\"]+)['\"][^)]*\\)",
+  );
+  static final _fontPackagePattern = RegExp(
+    r'''fontPackage\s*:\s*['"]([^'"]+)['"]''',
+  );
+  static final _packageImportPattern = RegExp(
+    r'''(?:import|export)\s+['"]package:([a-zA-Z0-9_]+)/''',
   );
   static final _iconDataFamFirst = RegExp(
     "fontFamily\\s*:\\s*['\"]([^'\"]+)['\"][^)]*?IconData\\(\\s*(0[xX][0-9a-fA-F]+|\\d+)",
@@ -579,16 +622,21 @@ class IconFontDetector {
 
   List<String> _collectFingerprintInputs() {
     final inputs = <String>[];
-    for (final rel in [
-      'pubspec.yaml',
-      '.dart_tool/package_config.json',
-    ]) {
-      final f = File('${projectDir.path}/$rel');
-      if (f.existsSync()) {
-        try {
-          inputs.add('$rel:${f.lastModifiedSync().millisecondsSinceEpoch}');
-        } catch (_) {}
-      }
+    final pubspec = File('${projectDir.path}/pubspec.yaml');
+    if (pubspec.existsSync()) {
+      try {
+        inputs.add(
+          'pubspec.yaml:${pubspec.lastModifiedSync().millisecondsSinceEpoch}',
+        );
+      } catch (_) {}
+    }
+    final pkgConfig = findPackageConfigFile(projectDir);
+    if (pkgConfig != null && pkgConfig.existsSync()) {
+      try {
+        inputs.add(
+          'package_config.json:${pkgConfig.lastModifiedSync().millisecondsSinceEpoch}',
+        );
+      } catch (_) {}
     }
     for (final rootName in ['lib', 'guest_app']) {
       final root = Directory('${projectDir.path}/$rootName');
@@ -610,19 +658,34 @@ class IconFontDetector {
         }
       } catch (_) {}
     }
+    for (final custom in _readCustomFonts()) {
+      if (custom.asset.isEmpty) continue;
+      final f = File('${projectDir.path}/${custom.asset}');
+      if (f.existsSync()) {
+        try {
+          final st = f.statSync();
+          inputs.add(
+            '${custom.asset}:${st.modified.millisecondsSinceEpoch}-${st.size}',
+          );
+        } catch (_) {}
+      }
+    }
     return inputs;
   }
 
-  List<CustomFontDecl> _readCustomFonts() {
-    final pubspec = File('${projectDir.path}/pubspec.yaml');
+  List<CustomFontDecl> _readCustomFonts([Directory? dir]) {
+    final targetDir = dir ?? projectDir;
+    final pubspec = File('${targetDir.path}/pubspec.yaml');
     if (!pubspec.existsSync()) return const [];
     try {
       final content = pubspec.readAsStringSync();
       final yaml = loadYaml(content);
       if (yaml is! YamlMap) return const [];
       final flutter = yaml['flutter'];
-      if (flutter is! YamlMap) return const [];
-      final fonts = flutter['fonts'];
+      final dartnative = yaml['dartnative'];
+      final fonts =
+          (dartnative is YamlMap ? dartnative['fonts'] : null) ??
+          (flutter is YamlMap ? flutter['fonts'] : null);
       if (fonts is! YamlList) return const [];
       final out = <CustomFontDecl>[];
       for (final entry in fonts) {
@@ -652,15 +715,83 @@ class IconFontDetector {
     }
   }
 
+  /// Discovers fonts declared in `pubspec.yaml` (`dartnative.fonts` or
+  /// `flutter.fonts`) of external packages imported by [guestSources].
+  List<({String package, String family, String filePath})>
+  _readImportedPackageFonts(Map<String, String> guestSources) {
+    final importedPackages = <String>{};
+    for (final source in guestSources.values) {
+      final noComments = _stripCommentsOnly(source);
+      for (final m in _packageImportPattern.allMatches(noComments)) {
+        final pkg = m.group(1);
+        if (pkg != null && pkg.isNotEmpty) importedPackages.add(pkg);
+      }
+    }
+    if (importedPackages.isEmpty) return const [];
+    final out = <({String package, String family, String filePath})>[];
+    for (final pkg in importedPackages) {
+      if (pkg == 'dartnative' || pkg == 'flutter' || pkg == 'dartnative_go') {
+        continue;
+      }
+      final root = _packageRootDir(pkg);
+      if (root == null) continue;
+      final decls = _readCustomFonts(root);
+      for (final decl in decls) {
+        if (decl.asset.isEmpty) continue;
+        final file = File('${root.path}/${decl.asset}');
+        if (file.existsSync()) {
+          out.add((
+            package: pkg,
+            family: decl.family,
+            filePath: file.path,
+          ));
+        }
+      }
+    }
+    return out;
+  }
+
   ({Map<String, String> files, Map<String, String> packages}) _resolveFontFiles(
     IconFontReport usage,
     List<CustomFontDecl> customs, {
     Set<AnnotatedIconFont> annotated = const {},
+    List<({String package, String family, String filePath})>
+        importedPackageFonts =
+        const [],
   }) {
     final files = <String, String>{};
     final packages = <String, String>{};
 
+    // 1. Imported external package fonts declared in their pubspec.yaml.
+    for (final entry in importedPackageFonts) {
+      files.putIfAbsent(entry.family, () => entry.filePath);
+      packages.putIfAbsent(entry.family, () => entry.package);
+    }
+
+    // 2. Families detected via usage or IconData(fontPackage: ...).
     for (final family in usage.families) {
+      if (files.containsKey(family)) continue;
+      final declaredPkg = usage.fontPackages[family];
+      if (declaredPkg != null && declaredPkg.isNotEmpty) {
+        final root = _packageRootDir(declaredPkg);
+        if (root != null) {
+          for (final decl in _readCustomFonts(root)) {
+            if (decl.family == family && decl.asset.isNotEmpty) {
+              final f = File('${root.path}/${decl.asset}');
+              if (f.existsSync()) {
+                files[family] = f.path;
+                break;
+              }
+            }
+          }
+          if (!files.containsKey(family)) {
+            final found = _findFontInDir(root, family);
+            if (found != null) files[family] = found.path;
+          }
+        }
+        packages[family] = declaredPkg;
+        continue;
+      }
       final found = _findPackageFont(family);
       if (found != null) {
         files[family] = found.path;
@@ -734,12 +865,12 @@ class IconFontDetector {
   }
 
   /// Resolves a package's on-disk root, or null when unknown. Never throws.
+  /// Walks up parent directories so Dart workspace members (e.g. `example/`)
+  /// find the workspace `.dart_tool/package_config.json`.
   Directory? _packageRootDir(String packageName) {
     try {
-      final configFile = File(
-        '${projectDir.path}/.dart_tool/package_config.json',
-      );
-      if (!configFile.existsSync()) return null;
+      final configFile = findPackageConfigFile(projectDir);
+      if (configFile == null || !configFile.existsSync()) return null;
       final json =
           jsonDecode(configFile.readAsStringSync()) as Map<String, dynamic>;
       final packages = json['packages'] as List<dynamic>?;
@@ -766,20 +897,17 @@ class IconFontDetector {
       File? fallback;
       for (final entity in root.listSync(recursive: true)) {
         if (entity is! File) continue;
-        final p = entity.path.toLowerCase();
+        final fileName = entity.path.split(Platform.pathSeparator).last;
+        // Skip hidden files and macOS AppleDouble resource forks (e.g. ._lucide.ttf).
+        if (fileName.startsWith('.')) continue;
+        final p = fileName.toLowerCase();
         if (!(p.endsWith('.ttf') ||
             p.endsWith('.otf') ||
             p.endsWith('.woff') ||
             p.endsWith('.woff2'))) {
           continue;
         }
-        final base = p
-            .split(Platform.pathSeparator)
-            .last
-            .replaceAll(
-              RegExp(r'\.(ttf|otf|woff2?)$'),
-              '',
-            );
+        final base = p.replaceAll(RegExp(r'\.(ttf|otf|woff2?)$'), '');
         if (base.contains(want) || want.contains(base)) return entity;
         fallback ??= entity;
       }

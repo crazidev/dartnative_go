@@ -12,9 +12,9 @@ import '../packaging/ast_builder.dart';
 import '../packaging/ast_artifact_paths.dart';
 import 'broadcaster.dart';
 import 'dev_socket_hub.dart';
+import 'http_support.dart';
 import 'loading_page.dart';
 import 'terminal_ui.dart';
-import '../diagnostics/dart_go_version.dart';
 import '../diagnostics/version_info.dart';
 import '../packaging/dep_packager.dart';
 import '../diagnostics/pubspec_validator.dart';
@@ -120,17 +120,25 @@ class DartGoServer {
       exit(1);
     }
 
-    // 3. Bind HTTP Server across port range
+    // 3. Bind HTTP Server across port range (binding to customHost IP if provided)
+    final bindAddress = await _resolveBindAddress(options.customHost);
     final (server, port) = await NetworkHelper.bindInRange(
       startPort: options.startPort,
       endPort: options.endPort,
+      address: bindAddress,
     );
     _server = server;
 
-    final hostStr = options.customHost ?? await NetworkHelper.getLocalIp();
+    final customHost = options.customHost?.trim();
+    final hostStr = (customHost != null && customHost.isNotEmpty)
+        ? customHost
+        : await NetworkHelper.getLocalIp();
 
     // 4. Start UDP Discovery Broadcaster across port range
     if (options.enableBroadcast) {
+      final beaconIconUrl = assets.hasIcon
+          ? 'http://$hostStr:$port/assets/icon.png?v=${computeFileVersionToken(assets.iconFile!)}'
+          : null;
       _broadcaster = DartGoBroadcaster(
         appName: validation.appName,
         host: hostStr,
@@ -138,7 +146,9 @@ class DartGoServer {
         startPort: options.startPort,
         endPort: options.endPort,
         dartGoVersion: options.versions.dngoVersion,
+        appVersion: validation.appVersion,
         hasIcon: assets.hasIcon,
+        iconUrl: beaconIconUrl,
         hasSplash: assets.hasSplash,
       );
       await _broadcaster!.start();
@@ -410,9 +420,9 @@ class DartGoServer {
       // `CupertinoIcons.xxx` / `Icons.xxx` glyphs appear without restart.
       IconFontReport fontsReport;
       try {
-        fontsReport = iconFonts ?? IconFontDetector(projectDir).detect();
+        fontsReport = IconFontDetector(projectDir).detect();
       } catch (_) {
-        fontsReport = const IconFontReport();
+        fontsReport = iconFonts ?? const IconFontReport();
       }
       final versions = options.versions;
       final manifest = {
@@ -429,17 +439,29 @@ class DartGoServer {
         'userCodeUrl': '$serverUrl/user-code.zip',
         'userCodeHash': userCode.hash,
         'hasIcon': assets.hasIcon,
-        'iconUrl': assets.hasIcon ? '$serverUrl/assets/icon.png' : null,
+        'iconUrl': assets.hasIcon
+            ? '$serverUrl/assets/icon.png?v=${computeFileVersionToken(assets.iconFile!)}'
+            : null,
         'hasSplash': assets.hasSplash,
-        'splashUrl': assets.hasSplash ? '$serverUrl/assets/splash.png' : null,
+        'splashUrl': assets.hasSplash
+            ? '$serverUrl/assets/splash.png?v=${computeFileVersionToken(assets.splashFile!)}'
+            : null,
         'splashBackgroundColor': assets.splashBackgroundColor,
         'splashBackgroundColorDark': assets.splashBackgroundColorDark,
         'assets': _collectProjectAssets(projectDir),
+        'assetEtags': collectProjectAssetEtags(projectDir),
         // On-demand icon fonts: only the families the guest touches are
-        // advertised; devices fetch each `.ttf` via its `url` once.
+        // advertised; devices fetch each `.ttf`/`.otf` via its `url` once.
         'iconFonts': fontsReport.toManifestJson(serverUrl),
         'iconFontsHash': fontsReport.hash,
-        'fonts': fontsReport.customFonts.map((f) => f.toJson()).toList(),
+        'fonts': fontsReport.customFonts
+            .map(
+              (f) => {
+                ...f.toJson(),
+                'url': '$serverUrl/fonts/${Uri.encodeComponent(f.family)}.ttf',
+              },
+            )
+            .toList(),
         'hasAstBundle': astFile != null,
         'astUrl': astFile != null ? '$serverUrl/guest.ast' : null,
         // Tells AST-mode clients whether a bundle is still being built: the
@@ -540,19 +562,20 @@ class DartGoServer {
         ..close();
     } else if (path == '/assets.json') {
       final projectAssets = _collectProjectAssets(projectDir);
+      final assetEtags = collectProjectAssetEtags(projectDir);
       request.response
         ..headers.contentType = ContentType.json
         ..headers.add('Access-Control-Allow-Origin', '*')
         ..headers.add('Cache-Control', 'no-cache')
-        ..write(jsonEncode({'assets': projectAssets}))
+        ..write(jsonEncode({'assets': projectAssets, 'assetEtags': assetEtags}))
         ..close();
     } else if (path == '/icon-fonts.json' || path == '/fonts.json') {
       // Subset manifest for on-demand font loading: families + used glyphs.
       IconFontReport fontsReport;
       try {
-        fontsReport = iconFonts ?? IconFontDetector(projectDir).detect();
+        fontsReport = IconFontDetector(projectDir).detect();
       } catch (_) {
-        fontsReport = const IconFontReport();
+        fontsReport = iconFonts ?? const IconFontReport();
       }
       request.response
         ..headers.contentType = ContentType.json
@@ -562,7 +585,15 @@ class DartGoServer {
           jsonEncode({
             'hash': fontsReport.hash,
             'iconFonts': fontsReport.toManifestJson(serverUrl),
-            'fonts': fontsReport.customFonts.map((f) => f.toJson()).toList(),
+            'fonts': fontsReport.customFonts
+                .map(
+                  (f) => {
+                    ...f.toJson(),
+                    'url':
+                        '$serverUrl/fonts/${Uri.encodeComponent(f.family)}.ttf',
+                  },
+                )
+                .toList(),
           }),
         )
         ..close();
@@ -580,34 +611,25 @@ class DartGoServer {
       } else {
         File? fontFile;
         try {
-          fontFile = IconFontDetector(projectDir).resolveFontFile(
-            Uri.decodeComponent(cleanFamily.replaceAll('.ttf', '')),
+          final decoded = Uri.decodeComponent(cleanFamily);
+          final stripped = decoded.replaceAll(
+            RegExp(r'\.(ttf|otf)$', caseSensitive: false),
+            '',
           );
+          final detector = IconFontDetector(projectDir);
+          fontFile = detector.resolveFontFile(stripped);
           // Accept both `/fonts/CupertinoIcons` and `/fonts/CupertinoIcons.ttf`.
-          fontFile ??= IconFontDetector(projectDir).resolveFontFile(
-            Uri.decodeComponent(cleanFamily),
-          );
+          fontFile ??= detector.resolveFontFile(decoded);
         } catch (_) {
           fontFile = null;
         }
         if (fontFile != null && fontFile.existsSync()) {
           final stat = fontFile.statSync();
-          final etag = '"${stat.modified.millisecondsSinceEpoch}-${stat.size}"';
-          final clientEtag = request.headers
-              .value(HttpHeaders.ifNoneMatchHeader)
-              ?.trim();
-          if (clientEtag == etag) {
-            request.response.statusCode = HttpStatus.notModified;
-            request.response.headers.set(HttpHeaders.etagHeader, etag);
-            request.response.headers.set('Access-Control-Allow-Origin', '*');
-            await request.response.close();
-          } else {
-            await _serveAssetFile(request, fontFile, etag: etag);
-            print(
-              '[DevServer] [FONTS] Served $cleanFamily '
-              '(${stat.size} bytes)',
-            );
-          }
+          await _serveAssetFile(request, fontFile);
+          print(
+            '[DevServer] [FONTS] Served $cleanFamily '
+            '(${stat.size} bytes)',
+          );
         } else {
           request.response
             ..statusCode = HttpStatus.notFound
@@ -695,9 +717,11 @@ class DartGoServer {
             'userCodeHash': userCode.hash,
             'splashBackgroundColor': assets.splashBackgroundColor,
             'splashBackgroundColorDark': assets.splashBackgroundColorDark,
-            'iconUrl': assets.hasIcon ? '$serverUrl/assets/icon.png' : null,
+            'iconUrl': assets.hasIcon
+                ? '$serverUrl/assets/icon.png?v=${computeFileVersionToken(assets.iconFile!)}'
+                : null,
             'splashUrl': assets.hasSplash
-                ? '$serverUrl/assets/splash.png'
+                ? '$serverUrl/assets/splash.png?v=${computeFileVersionToken(assets.splashFile!)}'
                 : null,
             'assets': projectAssets,
           },
@@ -1231,7 +1255,25 @@ class DartGoServer {
     }
   }
 
-  /// Streams the asset file to the HTTP response with CORS and cache headers.
+  /// Resolves [customHost] into a bind [InternetAddress], defaulting to
+  /// `anyIPv4` when unset.
+  static Future<InternetAddress> _resolveBindAddress(String? customHost) async {
+    final trimmed = customHost?.trim();
+    if (trimmed == null || trimmed.isEmpty) return InternetAddress.anyIPv4;
+    if (trimmed.toLowerCase() == 'localhost') {
+      return InternetAddress.loopbackIPv4;
+    }
+    final parsed = InternetAddress.tryParse(trimmed);
+    if (parsed != null) return parsed;
+    try {
+      final results = await InternetAddress.lookup(trimmed);
+      if (results.isNotEmpty) return results.first;
+    } catch (_) {}
+    return InternetAddress.anyIPv4;
+  }
+
+  /// Streams the asset file to the HTTP response with CORS, ETag, and 304
+  /// Not Modified support.
   static Future<void> _serveAssetFile(
     HttpRequest request,
     File file, {
@@ -1239,6 +1281,12 @@ class DartGoServer {
     Map<String, String>? extraHeaders,
   }) async {
     try {
+      final resolvedEtag = etag ?? computeFileEtag(file);
+      final rawTag = resolvedEtag.replaceAll('"', '');
+      if (etagMatches(request, rawTag)) {
+        await sendNotModified(request, rawTag);
+        return;
+      }
       final bytes = await file.readAsBytes();
       final contentType = _getContentTypeForFile(file.path);
       request.response
@@ -1246,23 +1294,18 @@ class DartGoServer {
         ..headers.contentType = contentType
         ..headers.add('Access-Control-Allow-Origin', '*')
         ..headers.add('Cache-Control', 'no-cache');
-      final expose = <String>[];
-      if (etag != null) {
-        request.response.headers.set(HttpHeaders.etagHeader, etag);
-        expose.add('ETag');
-      }
+      final expose = <String>['ETag'];
+      request.response.headers.set(HttpHeaders.etagHeader, resolvedEtag);
       if (extraHeaders != null) {
         extraHeaders.forEach((name, value) {
           request.response.headers.set(name, value);
           expose.add(name);
         });
       }
-      if (expose.isNotEmpty) {
-        request.response.headers.set(
-          'Access-Control-Expose-Headers',
-          expose.join(', '),
-        );
-      }
+      request.response.headers.set(
+        'Access-Control-Expose-Headers',
+        expose.join(', '),
+      );
       request.response
         ..headers.contentLength = bytes.length
         ..add(bytes)
