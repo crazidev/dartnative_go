@@ -38,6 +38,7 @@ Desktop.ini
 .pub-cache/
 .pub/
 /build/
+pkgs/*/build/
 /coverage/
 .tom/
 
