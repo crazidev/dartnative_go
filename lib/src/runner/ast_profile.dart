@@ -224,7 +224,7 @@ AstProfileSnapshot buildAstProfile({
     totalClasses += classes.length;
     final knownClassSizes = precomputedClassSizes?[uri];
     for (final declaration in classes) {
-      final className = declaration.name?.name ?? '(unnamed)';
+      final className = declaration.namePart.typeName.name;
       final classBytes =
           knownClassSizes?[className] ??
           (allowSerialization

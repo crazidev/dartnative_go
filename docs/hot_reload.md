@@ -14,7 +14,7 @@ The mechanism is different in the two engines:
   before re-evaluating and puts it back after. It's covered briefly at the end.
 
 The AST machinery lives in
-[`pkgs/tom_d4rt_ast/lib/src/runtime/declaration_registry.dart`](../pkgs/tom_d4rt_ast/lib/src/runtime/declaration_registry.dart)
+[`third_party/tom_d4rt_ast/lib/src/runtime/declaration_registry.dart`](../third_party/tom_d4rt_ast/lib/src/runtime/declaration_registry.dart)
 and is driven by
 [`lib/src/runner/ast_interpreter_runner.dart`](../lib/src/runner/ast_interpreter_runner.dart).
 For the server side of the pipeline, see

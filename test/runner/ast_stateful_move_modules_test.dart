@@ -144,7 +144,14 @@ void main() {
       );
     }
 
-    test('duplicate definitions across modules report a conflict', () async {
+    test('a module\'s own declaration shadows an imported one', () async {
+      // `sticky.dart` imports `todo.dart` and declares its own `Note`. That is
+      // legal Dart: a library's own class shadows an imported one of the same
+      // name, and tom_d4rt 1.244.0 made the engine honour it (before that the
+      // import won, and the second module's pass-2 re-registered members on the
+      // already-frozen imported class, which surfaced as a conflict). The
+      // regression this guards is *silent merging*: each module must resolve
+      // `Note` to its OWN declaration, which the rendered label shows.
       final v1 = await build(localNote: true, defineNote: false, name: 'd1');
       await runner.evaluateAstBundleAs<Widget>(
         v1.bytes,
@@ -152,14 +159,16 @@ void main() {
       );
 
       final v2 = await build(localNote: true, defineNote: true, name: 'd2');
-      await expectLater(
-        runner.evaluateAstBundleAs<Widget>(
-          v2.bytes,
-          isHotReload: true,
-          moduleFingerprints: v2.fingerprints,
-        ),
-        throwsA(anything),
-        reason: 'two different Note classes is a conflict, not a silent pass',
+      final rootV2 = await runner.evaluateAstBundleAs<Widget>(
+        v2.bytes,
+        isHotReload: true,
+        moduleFingerprints: v2.fingerprints,
+      );
+      expect(
+        _renderedLabel(rootV2),
+        'local:n',
+        reason: 'todo.dart keeps its own Note even though sticky.dart '
+            'declares one of the same name',
       );
     });
 

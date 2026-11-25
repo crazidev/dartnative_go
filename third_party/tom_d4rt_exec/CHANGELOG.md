@@ -1,0 +1,1726 @@
+## 1.62.0
+
+### Changed — takes the GitHub #18, #20-#24 batch: tom_d4rt_ast ^0.260.0, tom_ast_generator ^0.2.11
+
+Exec runs the interpreter fixes of tom_d4rt 1.265.0-1.279.0 / tom_d4rt_ast
+0.245.0-0.260.0: a top-level function signature across an import cycle
+(#20), parts and library privacy (#21), `await` inside `is` / `?:` / switch /
+patterns, block scopes in async functions, enum values through an import
+prefix (#21), collections keeping their written type arguments, a generic
+instance's `runtimeType`, deferred imports, `MapView` and the
+`dart:collection` bases as superclasses (#21, Slang), extension operators and
+setters, `prefix.Class.new` (#23), `T == List<String>` (#24); and, on the
+bundle path, the static facts of a resolving `AstBundler` (#18), carried in
+`AstBundle.facts`.
+
+### Fixed — exec's own module loader: parts, private names, deferred imports in a loaded library (GitHub #21)
+
+Exec loads source libraries with a loader of its own, which the ports of the
+batch's tests found behind tom_d4rt's:
+
+- a library's `part` files are merged in (their declarations share its imports
+  and its private names), a part must name its library in its `part of` and
+  have no directive of its own, and a part imported, exported or run is
+  refused; a `source:` with a part directive is refused unless filesystem
+  imports anchor it at `<basePath>/main.dart`;
+- an import or export barrel no longer carries a library's `_` names;
+- `import ... deferred as z` in a loaded library marks the prefix deferred, so
+  `z.loadLibrary()` is found there.
+
+Name resolution: yes — parts' declarations resolve in their library, and an
+imported library's `_` names no longer resolve in its importers.
+
+## 1.61.0
+
+### Added — per-execution hooks (GitHub #19), as in tom_d4rt's `D4rt`
+
+`hooks: D4rtExecutionHooks(...)` on `execute`, `continuedExecute`,
+`executeProgram`, their async variants and `executeBundle` /
+`executeBundleAs` / `executeBundleAsAsync`, and `executionHooks` for every
+execution without its own (held by the inner `D4rtRunner`, so the bundle path
+shares it). The source path runs the same lifecycle as tom_d4rt: `onStart`
+before any import or script code (a `library:` root starts the run before its
+load), `onImport` per library, the entry function as the first accepted entry,
+`onEnd`, per-run `onError`, per-run permissions (`D4rt.checkPermission` asks the
+run from its Zone) and output, the run's Zones. See tom_d4rt_ast's
+`doc/execution_hooks.md`.
+
+### Fixed — exec's module loader merges a bridged library's re-exports
+
+Exec's loader registered each bridged library's own content only and ignored
+`registerLibraryReExport` (GEN-107), so a library reaching names through a
+recorded re-export had none of them. It now merges them transitively under
+the combined `show` / `hide` filters, as tom_d4rt's and tom_d4rt_ast's loaders
+do; an alias whose target a re-exported library declares is defined after that
+merge; and a library whose bridges are only re-exports, aliases or typedefs is
+a bridged library.
+
+### Changed — takes tom_d4rt_ast 0.244.0
+
+`tom_d4rt_ast ^0.244.0` (from `^0.243.0`): per-execution hooks, aliases
+through re-exports, export-only bridged libraries. The three conformance suites
+paired with their ast twins meanwhile (ghfeatures1-3) now run here as ports.
+
+Name resolution: yes — re-exported bridged libraries, aliases whose target is
+re-exported and export-only bridged libraries now resolve in exec.
+
+## 1.60.0
+
+### Changed — takes tom_d4rt_ast 0.243.0 and tom_ast_generator 0.2.5
+
+`tom_d4rt_ast ^0.243.0` (from `^0.237.0`) and `tom_ast_generator ^0.2.5`: the
+interpreter release for GitHub #13-#18 - a bridged `noSuchMethod` satisfies
+an interface, the extensions of a prefixed import apply, generic function
+references keep their type arguments, an extension's own type parameters are
+bound, explicit extension overrides `E(x).member`, and an extension's getter
+and setter of one name. The six conformance suites the batch paired with
+their ast twins while exec resolved 0.237.0 now run here as ports.
+
+Name resolution: yes — through tom_d4rt_ast 0.243.0 (an extension member
+through a prefixed import, a call of an extension's name as an explicit
+override, an extension setter beside its getter).
+
+## 1.59.0
+
+### Fixed — one enum name registered by two libraries no longer refuses the import
+
+Exec's module loader refused a second bridged enum of one name from another
+library: a script importing two libraries that both register the enum (as
+Flutter's bridge files register `WidgetState` from three) failed to load with
+`Duplicate enum ... These are different enums with the same name.` It now
+registers each into its library's module environment with its source, as it
+already did for same-named classes and as tom_d4rt's per-module registration
+does: one native enum registered twice is one type (tom_d4rt_ast 0.226.0,
+ghissues21), and two enums of one name from two packages leave the bare name
+ambiguous (SCE25).
+
+### Fixed — a re-exported bridge reaches every barrel that exports it
+
+The loader kept its "already registered from this source" maps across the
+module environments it builds per bridged library, so a declaration two
+barrels re-export (same `sourceUri`) was registered into the first barrel's
+environment only: a library importing only the second barrel read
+`Undefined variable`. The maps are now per module environment, as tom_d4rt's
+per-module registration has it; enums, classes, functions, variables,
+getters, setters and extensions alike.
+
+The 25 tests the GitHub-issue batch added to tom_d4rt are now ported here
+verbatim, and gh9 (intl 0.20.3) and gh10 also run on the bundle path.
+
+Name resolution: yes — a bridged enum name registered by two libraries binds through the environment instead of refusing the import, and a re-exported bridge resolves through every barrel that exports it.
+
+## 1.58.0
+
+### Changed — resolves tom_d4rt_ast 0.237.0 and tom_ast_generator 0.2.3
+
+The interpreter floor moves to `tom_d4rt_ast ^0.237.0` (reference
+`tom_d4rt ^1.257.0`), with `tom_ast_generator ^0.2.3`: the release that keeps a
+generic call's type arguments with their `?` and nesting.
+
+Name resolution: no.
+
+## 1.57.0
+
+### Changed — resolves tom_d4rt_ast 0.236.0 and tom_ast_generator 0.2.2
+
+The interpreter floor moves to `tom_d4rt_ast ^0.236.0` (and the reference
+`tom_d4rt ^1.256.0`), with `tom_ast_generator ^0.2.2`, which takes the same
+interpreter. `ModuleLoader.isLoadingModules` and `deferUntilModulesLoaded`
+now carry `@override`: the `ModuleContext` they implement declares them from
+tom_d4rt_ast 0.215.0 on.
+
+Name resolution: no.
+
+## 1.56.0
+
+### Fixed — a doc-comment reference never refuses a script
+
+Exec's copy of the static name pass, which runs over the analyzer AST at parse
+time and refuses a program reading an undefined name before `main`, walked
+into doc comments: `/// Uses [NotDeclared].` above a declaration refused the
+script with `Undefined variable: NotDeclared`. It now skips comments, as
+tom_d4rt 1.248.0's does; a real undefined read is still refused.
+
+This changes which programs are refused: a script whose doc comments name
+something out of scope now runs.
+
+Name resolution: yes — a doc comment's `[Name]` references are no longer read as names by the static name pass.
+
+## 1.55.0
+
+### Fixed — an imported library no longer sees the importing script's declarations
+
+A loaded library could read the importing script's top-level declarations:
+a module's environment encloses the loader's global environment, and the entry
+script was executed IN that environment, so `int useScript() => scriptOnly;`
+in a library returned the script's `scriptOnly` (Dart: a compile error), a
+library class could extend a script class, and a library naming something it
+neither declares nor imports bound a same-named script declaration. The entry
+now runs in a script scope of its own, `ModuleLoader.scriptEnvironment`, which
+encloses the global environment: the script still sees the stdlib, the bridges
+and its imports, and a library no longer sees the script. `getEnvironmentState` lists the script scope and then the global
+environment. Exec's own front end, so this holds before tom_d4rt_ast is
+published.
+
+Name resolution: yes — a library's free names no longer resolve to the importing script's declarations; the entry's declarations live in a script scope only the entry sees.
+
+## 1.54.0
+
+### Added — deferred supertype resolution in the module loader (GitHub #9)
+
+`ModuleLoader` implements the `ModuleContext` members tom_d4rt_ast 0.215.0
+adds: `isLoadingModules`, and `deferUntilModulesLoaded`, which runs the
+resolutions the interpreter hands over (a supertype or type-parameter bound in
+a library still loading) once the outermost load returns. With tom_d4rt_ast
+0.215.0 and tom_ast_generator 0.2.2, a bundle of the unmodified intl 0.20.3
+sources runs `Intl.canonicalizedLocale('en-US')` (measured in the tree with
+both path-resolved). The members carry no `@override` while this package
+resolves tom_d4rt_ast 0.212.1.
+
+Name resolution: yes — module loading defers supertypes and bounds a library still loading declares.
+
+## 1.53.0
+
+### Added — async entry points (dasy1)
+
+`D4rt.executeAsync`, `executeAsAsync<T>` and `executeProgramAsync`, as on
+`tom_d4rt` 1.231.0: they settle an `async` entry point and hand back its
+native value; the typed variant unwraps with the visitor of its own run,
+captured before the await. `executeBundleAsAsync<T>` gets the same rule from
+`tom_d4rt_ast` 0.212.0's runner.
+
+### Changed
+
+On `tom_d4rt_ast` ^0.212.0. `execute` and `executeProgram` no longer clear the
+interpreter's parent map: it is gone, its links now live in an `Expando`, so a
+run suspended at an `await` keeps its result when another run starts.
+
+Name resolution: no
+
+## 1.52.0
+
+### Changed — analyzer ^14.5.0; tom_d4rt_ast 0.211.0, tom_ast_generator 0.2.0 (vstdm3)
+
+The analyzer front end is on analyzer 14 and hands its AST to the analyzer-free
+interpreter through `tom_ast_generator` 0.2. `static_name_report.dart` follows
+`tom_d4rt`'s copy byte for byte.
+
+Name resolution: yes — through tom_d4rt_ast 0.211.0.
+
+## 1.51.0
+
+### Changed — tom_ast_generator ^0.1.17 (dfin9)
+
+The floor 1.50.0 lowered for the scf34 route is back; F-SCE62-6 passes.
+
+Name resolution: no.
+
+## 1.50.0
+
+### Changed — resolves tom_d4rt_ast 0.210.0 / tom_d4rt 1.229.0 (dfin9)
+
+`tom_d4rt_ast` ^0.210.0 and dev `tom_d4rt` ^1.229.0, which carry dfin8's fix
+for integers typed as `double` on the web. `tom_ast_generator` is ^0.1.5 for
+this release only (the scf34 route: astgen 0.1.16 pins `tom_d4rt_ast` below
+0.210.0); F-SCE62-6 fails until the next exec release raises it again.
+`front_end_parity_test.dart` gains F-DFIN9-1, which holds the five
+filesystem-import helpers of `ModuleLoader` byte-identical to `tom_d4rt`'s.
+
+Name resolution: no.
+
+## 1.49.0
+
+### Changed — tom_ast_generator ^0.1.16 (dfin7)
+
+The floor 1.48.0 lowered for the scf34 route is back; F-SCE62-6 passes.
+
+Name resolution: no.
+
+## 1.48.0
+
+### Changed — a module exports only its own declarations and its `export`s (dfin6)
+
+BREAKING for a script that relied on the leak. A module's exported environment
+used to receive its whole module environment, imports included, so with
+`main -> a -> b` the entry could call a name only `b` declares. Dart rejects
+that ("Undefined name"), and so does the interpreter now: an importer sees what
+the module declares at its top level plus what its `export` directives name
+(with their `show` / `hide`). Cyclic imports still load. Unnamed extensions are
+still carried, as before.
+
+### Changed — resolves tom_d4rt_ast 0.209.0 / tom_d4rt 1.228.0 (dfin7)
+
+`tom_d4rt_ast` ^0.209.0 and dev `tom_d4rt` ^1.228.0. `tom_ast_generator` is
+^0.1.5 for this release only (the scf34 route: every published astgen pins
+`tom_d4rt_ast` below 0.208.0); F-SCE62-6 fails until the next exec release
+raises it again. `dfin5_record_type_test.dart` and
+`dfin5_record_casts_and_parameters_test.dart` are the reference verbatim; their
+publish pins are gone and `_astPublishBlock` is null.
+
+Name resolution: yes — names an import of an import declares are no longer visible to the importer (dfin6).
+
+## 1.47.0
+
+### Fixed — imported modules: forward static fields and extension types (dfin5, dgub14)
+
+exec's own module loader lacked two passes the other two loaders have. An
+imported class whose static field constructs a class declared later in the
+module failed with "does not have an unnamed constructor", and an imported
+extension type was undefined in its importer. Both work now.
+
+Name resolution: no.
+
+## 1.46.0
+
+### Changed — tom_ast_generator ^0.1.15 (dfin4)
+
+The floor 1.45.0 lowered for the scf34 route is back; F-SCE62-6 passes.
+
+## 1.45.0
+
+### Changed — resolves tom_d4rt_ast 0.207.0 / tom_d4rt 1.226.0 (dfin4)
+
+`tom_d4rt_ast` ^0.207.0 and dev `tom_d4rt` ^1.226.0. `tom_ast_generator` is
+^0.1.5 for this release only (the scf34 route: every published astgen pins
+`tom_d4rt_ast` below 0.207.0); F-SCE62-6 fails until the next exec release
+raises it again. `dfin3_cwd_and_execute_permission_test.dart` is the reference
+verbatim; its publish pin is gone and `_astPublishBlock` is null.
+
+### Changed — no web platform claim (dfin4)
+
+`platforms:` no longer lists `web`. This package depends on `analyzer` and
+uses `dart:io`, so it cannot run on the web; pub.dev showed a web badge it
+could not honour. Web embeddings use tom_d4rt_ast's bundle runtime.
+
+### Changed — exec's own dart:io import gate admits ProcessRunPermission (dfin3)
+
+Mirrors tom_d4rt 1.226.0's import gate. The process and working-directory
+gates themselves live in tom_d4rt_ast's stdlib and reach exec with
+tom_d4rt_ast 0.207.0; `dfin3_cwd_and_execute_permission_test.dart` is ported
+publish-blocked until then.
+
+Name resolution: no.
+
+## 1.44.0
+
+### Changed — the script runners read imports through the interpreter's permissions (dfin2)
+
+BREAKING for a script that imports from outside its own directory without a
+grant. `executeFile`, `executeSource` and `executeFileContinued` used to
+resolve imports with a regex pre-walk that read every transitive import off
+disk directly, so a scoped FilesystemPermission did not hold, a symlink
+inside the script directory read outside it, and a run with no grant at all
+could read anything the process could. `executeFile` and `executeSource` now
+hand the interpreter only the entry source, and the module loader reads
+every import under FilesystemPermission on the file's real path.
+`executeFileContinued` evaluates file by file, so it keeps its own walk, but
+every read goes through the same check.
+
+Each run adds one implicit grant: READ on the entry script's directory tree
+(the `basePath` for `executeSource`), added and removed by identity, so a
+host grant is never touched. An import beside or below the script runs as
+before, and anything outside needs the host's own grant.
+`resolveImportsRecursively` remains a host-side utility (no sandbox), now
+resolving paths with `Uri.resolve` and taking an optional `readFile`.
+`D4rt.loadedSourceModuleCount` reports the `file:` modules of the last run;
+`sourcesLoaded` is read from it.
+
+Name resolution: no — the loader resolves the same imports; only who reads the files changed.
+
+## 1.43.0
+
+### Added — exec refuses a statically undefined name before `main` (sch1, sci2)
+
+The second half of sch1, mirroring tom_d4rt's scg6. The static name pass's
+candidates are recorded when exec parses executable source, since exec keeps
+only the mirror AST after that, and are confirmed through
+`Environment.isDefined` after imports and declarations, before `main` runs. A
+name both stages agree on is refused with the error its line would have
+raised. The scg6 test is ported and scc31's F-SCC31-10 re-ported.
+
+`lib/src/static_name_report.dart` takes tom_d4rt 1.224.0's fix: the
+`dart.library.io` of a conditional import is not a read. Without it, every
+program with a conditional import was refused (F-SCE62-5 found it).
+
+### Changed — tom_ast_generator ^0.1.14
+
+The floor 1.42.0 lowered for the scf34 route is back; F-SCE62-6 passes.
+
+Name resolution: yes — a name the program reads and nothing defines is refused before `main`.
+
+## 1.42.0
+
+### Changed — resolves tom_d4rt_ast 0.206.0 / tom_d4rt 1.223.0 (sci2)
+
+`tom_d4rt_ast` ^0.206.0 and dev `tom_d4rt` ^1.223.0. `tom_ast_generator` is
+^0.1.5 for this release only, the route scf34 used: every published astgen
+pins `tom_d4rt_ast` below 0.196.0 and dev-depends on an exec that does too, so
+astgen can only follow once this release exists. F-SCE62-6 needs astgen 0.1.8
+and fails until the next exec release raises the floor.
+
+Ten publish-blocked ports are now the reference verbatim and their register
+entries are gone: scc12, scc73, scf35, scf36, scf37, scf38, scf39, scf40,
+scf44 and sci1. `_astPublishBlock` is null.
+
+### Fixed — exec's module loader catches up with the reference (sci2)
+
+Three behaviours the two interpreters' loaders have and this front end's own
+copy did not:
+
+- A value's members need no import of its type's library (scf44). The global
+  environment answers from tom_d4rt_ast's process-wide stdlib registry
+  (`AstModuleLoader.latentStdlibBridgeFor`) and from a type-only baseline of
+  every host bridge, the baseline tom_d4rt's warm parent seeds. Names are
+  untouched: imports still govern them.
+- Bridged class aliases are registered (GEN-078). This loader never had the
+  pass, so no alias resolved in exec; with tom_d4rt_ast 0.206.0 an alias of an
+  enum resolves too (`MaterialState`).
+
+Name resolution: yes — bridged aliases now define, and a value's members no longer depend on the script's imports.
+
+### Added — `lastErrorTrace`, `parse` and `executeProgram` (sci1)
+
+Mirrors tom_d4rt 1.221.0 / 1.222.0. `D4rt.lastErrorTrace` hands the host the
+interpreted frames an error passed through, innermost first. The loader keeps
+the run's `D4rtCallStack` (now required by tom_d4rt_ast's `ModuleContext`) and
+locates a frame through the text each unit was parsed from, since the mirror
+AST carries offsets but no line table. `D4rt.parse` / `D4rt.executeProgram`
+split `execute` at its parse, so an embedder pays for it once. Both reference
+tests are ported verbatim.
+
+## 1.41.0
+
+### Added — exec carries the static name pass (sch1, first half)
+
+`lib/src/static_name_report.dart` is now in exec as a byte-identical copy of
+tom_d4rt's, held so by `front_end_parity_test.dart`'s F-SCD10-7, and
+`scd95_static_name_report_test.dart` is ported verbatim. The pass reports
+names a program reads and nothing defines.
+
+It does not enforce yet. tom_d4rt 1.220.0 refuses such a program before
+`main`, and confirms each candidate through `Environment.isDefined`, which
+exec reaches only once tom_d4rt_ast 0.204.0 is published. The enforcement
+lands with that release.
+
+## 1.40.0
+
+### Fixed — the host `invoke` path reaches inherited bridged members (scf42)
+
+The mirror of tom_d4rt 1.217.0: `D4rt.invoke` on an interpreted subclass of
+a bridged class now reaches the members that class inherits (`elementAt` and
+`first` under a `ListQueue` subclass), through
+`BridgedClass.findReachable*Adapter`.
+
+## 1.39.0
+
+### Changed — `tom_ast_generator` ^0.1.13 (scf34)
+
+The floor 1.38.0 had to drop to reach `tom_d4rt_ast` 0.195.0 is back, now at
+the release that carries conditional-import resolution (scf16) and the
+`astgen` fixes of scf33. F-SCE62-6 passes again; the suite is fully green.
+
+## 1.38.0
+
+### Changed — resolves the published tom_d4rt_ast 0.195.0 (scf34)
+
+`tom_d4rt_ast` ^0.195.0, dev `tom_d4rt` ^1.210.0 and `tom_d4rt_generator`
+^1.50.0. The eleven test files that were publish-blocked on those releases are
+now the reference files verbatim, and the pin register is empty.
+
+`tom_ast_generator` is constrained `^0.1.5` for this one release: every astgen
+from 0.1.6 pins an older `tom_d4rt_ast`, and astgen 0.1.13 cannot resolve
+until an exec on 0.195.0 exists. One test depends on astgen 0.1.8's copier fix
+(F-SCE62-6) and fails here; the next release raises the astgen floor.
+
+## 1.37.0
+
+### Changed — `functionTypedefs` and `registerFunctionTypedef` match the reference (scf20)
+
+`D4rt.functionTypedefs` returns the runner's list as-is, typed
+`({String name, String library, int? requiredPositional, int? maxPositional})`
+as `tom_d4rt`'s is, instead of projecting it to `name` and `library`.
+`registerFunctionTypedef` takes the optional `requiredPositional` /
+`maxPositional` named parameters and forwards them, so a host can register a
+typedef's positional arity and have the interpreter refuse a callable that
+cannot be invoked through it. The projection existed only while exec could
+resolve a `tom_d4rt_ast` whose record was narrower; the floor (^0.184.0) is
+past that.
+
+## 1.36.0
+
+### Changed — `tom_ast_generator` ^0.1.11 (sce237)
+
+Closes the cascade 1.35.0 opened: astgen 0.1.11 resolves `tom_d4rt_ast`
+0.184.0, so the copier and the interpreter are the same pair again.
+F-SCE62-6 (a library directive is interpreted) passes on it.
+
+## 1.35.0
+
+### Changed — resolves the current interpreter (sce237)
+
+Resolves `tom_d4rt_ast` ^0.184.0, `tom_d4rt` ^1.200.0 (dev) and
+`tom_d4rt_generator` ^1.46.0. The five tests that were pinned waiting for these
+releases are ported and pass: SCE216's fuse-converter refusal, SCE217's
+`Socket.pipe`, SCE223's announced gaps, SCE232's getter-first
+`BridgedInstance.get` and SCE234's class-name identity.
+
+`tom_ast_generator` is constrained `^0.1.5` in this release only. Every
+published 0.1.6-0.1.9 pins an older `tom_d4rt_ast`, and 0.1.11, which admits
+0.184.0, cannot publish until this release exists, because it dev-depends on
+exec. 1.36.0 raises the floor again.
+
+## 1.34.0
+
+### Changed — `tom_ast_generator` ^0.1.9 (sce212)
+
+The floor 1.33.0 could not raise. Every published astgen 0.1.6-0.1.8 pinned
+`tom_d4rt_ast ^0.65.0`, so exec on a current interpreter resolved 0.1.5 and
+lost the `library`-directive copier fix (F-SCE62-6). 0.1.9 resolves the
+current interpreter; with it this package's suite is fully green.
+
+## 1.33.0
+
+### Changed — resolves the current interpreters (sce212)
+
+`tom_d4rt_ast` ^0.177.0 (was ^0.65.0), `tom_d4rt` ^1.192.0 (was ^1.77.0)
+and `tom_d4rt_generator` >=1.44.0. Every exec suite measured the interpreter
+published on 2026-09-11 until now; the publish-blocked conformance files are
+ported and their pins deleted.
+
+`tom_ast_generator` stays `^0.1.5` for this release only: every published
+0.1.6-0.1.8 pins `tom_d4rt_ast ^0.65.0`, and astgen's own dev dependency on
+this package means the next astgen cannot resolve until this release exists.
+1.34.0 raises the floor once tom_ast_generator 0.1.9 is published.
+
+### Fixed — `dart:io` imports with EITHER FilesystemPermission or NetworkPermission (sce206, exec's front end)
+
+sce206 changed the import gate in both interpreters but not in exec's own
+`module_loader.dart`, so an exec script granted only `NetworkPermission`
+still could not import `dart:io`. Found by porting sce206's cases once exec
+could resolve an interpreter carrying the change.
+
+### Removed — exec's private `_unwrapScriptError` copy (sce119)
+
+The published `unwrapScriptError` is used instead, now that the resolved
+`tom_d4rt_ast` exposes it.
+
+## 1.32.0
+
+### Fixed — the script-to-host boundary retyped typed-data lists (sce160)
+
+`_bridgeInterpreterValueToNative` rebuilt every List with `.map(...).toList()`
+and every Map with `.map`, which retypes unconditionally. A `Uint8List`
+returned by a method reached the host as `List<Object?>` and `as Uint8List`
+threw. scd98 had fixed the same function in `tom_d4rt`'s front end and in
+`tom_d4rt_ast`'s runner; this copy was missed. The boundary now rebuilds a
+collection only when an element actually changed, so a collection that is
+already native comes back as itself.
+
+## 1.31.0
+
+### Fixed — the pre-publish pass could not compile this package (sce129)
+
+`functionTypedefs` returned `_runner.functionTypedefs` directly against a
+declared `List<({String name, String library})>`. The published `tom_d4rt_ast`
+declares that two-field record; the working tree declares a four-field one
+(`requiredPositional`, `maxPositional` added). So the line compiled against
+exactly one of them at a time, and the comment above it said as much — "this
+widens on the next publish".
+
+THE COST WAS NOT AT THE PUBLISH, IT WAS ALREADY BEING PAID. SCD66's
+pre-publish pass path-resolves this package at the tree precisely so exec's
+suite can be run before an irreversible release, and exec's suite is the one
+gate that sees behavioural drift neither interpreter tree can. Under the pass
+this package did not COMPILE, so that gate produced a loader error instead of
+a verdict — the pass's most valuable half, silently absent.
+
+The two fields are now projected rather than passed through. Reading only
+`name` and `library` compiles against both record shapes, so the widening
+stops being an event and the gate runs in both configurations.
+
+MEASURED under the pass at tom_d4rt_ast 0.155.0: analyze clean, suite
+3824 / 1 / 33. The 33 are pins to the PUBLISHED interpreter inverting because
+the tree is resolved — `F-SCC43-1` ("no pinned entry is waiting on a publish
+that already happened") is the clearest of them, and the list is the
+publish-time review this pass exists to produce.
+
+Name resolution: no — a record projection at the wrapper boundary.
+
+## 1.30.0
+
+### Fixed — every host boundary hands over the same shape (sce118)
+
+SCE118 was filed against `execute()` handing a caller a
+`BridgedInstance<Object>` instead of the `StateError` the script threw. SCD96
+closed that; measured before anything was changed, `execute`, `eval`, the
+`onUncaughtError` hook and an embedder's own zone all deliver the SDK type.
+
+WHAT WAS STILL OPEN was the todo's own closing instruction — state that all
+delivery paths hand over the identical shape, because nothing did. Stating it
+found a live divergence.
+
+`invoke()` is the fourth boundary and was the last one deciding for itself. It
+goes through `_tryFunction`, whose catch peeled the interpreted-`throw` carrier
+by hand and stringified everything else into `"$error : $e"`. A script method
+that hit an ordinary interpreter fault therefore handed the host a **String**
+where `execute` and `eval` hand over a `RuntimeD4rtException` — nothing
+catchable by type, and nothing saying so. It is on `throwAsHostFacingError`
+now, so the context the message carried is in the preserved stack trace
+instead.
+
+Four hand-rolled peels became one seam: the two `eval` sites in this tree also
+carried their own, including a `RuntimeD4rtException` branch whose two arms are
+the same throw with different static types. Converging those changes no
+behaviour — measured — but they are how `eval` came to differ from the shared
+helper by one level in the first place.
+
+Name resolution: no.
+
+## 1.29.0
+
+### Fixed — the last route that handed an embedder the interpreter's wrapper (sce117)
+
+SCD73 made the unwrapping of `InternalInterpreterD4rtException` unconditional
+for every callback the zone REGISTERS, and pinned the one shape it could not
+reach: a handler passed to `Stream.handleError`. The SDK invokes that handler
+with no zone registration at all, so there was no `register*Callback` seam to
+wrap — adding `runUnary` and `runBinary` was tried and changed nothing except
+double-wrapping the `Stream.listen` case.
+
+`Zone.errorCallback` fires for that shape and — this is why it is the right
+seam rather than merely an available one — IS NOT AN ERROR-ZONE HOOK.
+Specifying it leaves `Zone.errorZone` resolving to the parent's, so the
+property that ruled `handleUncaughtError` out does not arise: an awaiting
+caller outside the zone still receives an ordinary script failure rather than
+hanging.
+
+THE BLAST RADIUS WAS MEASURED, NOT REASONED. `errorCallback` is consulted for
+errors entering futures generally, so the question was whether an interpreted
+`catch` would start seeing a different value. A thirteen-row matrix of
+in-script shapes is byte-identical with and without the seam, and is a
+standing test now rather than a hand measurement nobody could re-run.
+
+`unwrapScriptError` stays public and stays correct on a value that no longer
+needs it, so an embedder's defensive call has not become a bug.
+
+Name resolution: no.
+
+## 1.28.0
+
+### Fixed — the module parse failure is worded as the reference words it (sce111)
+
+`_parseExecutableSource` serves two callers — an entry script, where `path` is
+null, and a module the loader is resolving, where it is the URI — and used the
+direct-source phrasing for both. "Fatal parsing errors for package:m/bad.dart"
+reads oddly because `for the direct source` is the subject that phrasing was
+built around. The module case now says `Parsing errors in module <uri>`, which
+is what `tom_d4rt` says, so the pair whose entire contract is to behave alike
+produces a byte-identical message for a malformed module.
+
+Adopting the reference's sentence meant first repairing what sat behind it:
+its diagnostics were in French and joined by a literal `\n` rather than a
+newline. Both are fixed in `tom_d4rt` 1.160.0; copying the sentence without
+them would have imported a defect.
+
+Also: `_parseSourceToAst`'s doc referred to `[_parseDirectSource]`, a name that
+has not existed since SCC35 renamed the rejecting wrapper to
+`_parseExecutableSource` — a dartdoc link resolving to nothing, and a reader
+sent looking for a method that is not there.
+
+Name resolution: no.
+
+## 1.27.0
+
+### Fixed — the `D4rt` facade now declares every public member the reference does
+
+`tom_d4rt`'s `D4rt` declared NINE public members this facade did not forward —
+`dispose`, `classAliases`, `functionTypedefs`, `reuseAcrossRuns`,
+`debugLoadedModuleCount`, `debugBridgedModuleEnvBuildCount`,
+`registerRelaxerFactory`, `registerInterfaceProxy` and
+`registerGenericConstructor`. Every one already existed on `D4rtRunner`, so the
+capability was present on this line the whole time and only the facade hid it: a
+consumer reached them by going around it, or could not reach them at all.
+
+`dispose` was the visible cost. `tom_d4rt`'s testing guideline tells readers to
+write `tearDown(() => interpreter.dispose())`, so the documented pattern did not
+compile here.
+
+It is IMPLEMENTED, not merely forwarded. This line has two execution paths and
+each keeps its own per-run state — the classic `execute()` path on the wrapper,
+the bundle path on the inner runner — and releasing only the runner's leaves the
+wrapper's parsed units pinned, which is the retention `dispose` exists to end.
+Measured: with a forward-only `dispose`, `debugLoadedModuleCount` stays at 2
+where it must reach 0.
+
+`ModuleLoader` gained `loadedModuleCount` and `releaseLoadedModules`, mirroring
+the reference — that file is one of the three the front-end parity guard
+compares, and their absence is why `dispose` could not be implemented before.
+
+`registerClassAlias` is now a pure forward. It used to also append to a second
+list on this wrapper that nothing ever read, which the new `classAliases` getter
+would have made actively misleading.
+
+`F-SCD10-5` in `test/front_end_parity_test.dart` compares the two class surfaces
+with the ANALYZER and fails when they diverge again; `F-SCD10-6` keeps the
+absence register from outliving its reason. Parsed rather than matched: the
+regex scan that sized this work returned seven false positives.
+
+NOTE: `functionTypedefs` here carries `(name, library)` while the reference also
+carries `requiredPositional` / `maxPositional`. That is a real divergence
+between the lines — the published `tom_d4rt_ast` declares two fields — and it
+widens on the next publish of that package.
+
+## 1.26.0
+
+### Fixed — `getConfiguration`'s example omitted the library argument
+
+`registerGlobalVariable` takes the library URI as a required third argument; the
+doc comment showed a two-argument call that does not compile.
+
+## 1.25.0
+
+### Fixed — exec's host boundary is the shared rule, with no copies left (scd101)
+
+SCD101 was filed when exec's boundary was stranded pre-SCC27: it enumerated the
+escaping types one by one and called `isSdkShapedError`, a predicate both
+interpreters had deleted — so exec could not compile against a working-tree
+`tom_d4rt_ast` at all. It was recorded as BLOCKED ON PUBLISHING, because exec
+declared `tom_d4rt_ast: >=0.20.0` and 0.20.1 was the newest published.
+
+**Measured before touching anything, that blocker is gone.** SCD74 and SCD84
+moved both `execute()` clauses to `throwAsHostFacingError`, the constraint is
+now `^0.65.0`, and published 0.65.0 has no `isSdkShapedError`. The eighteen
+failing tests the todo lists do not fail — they were measured against a
+working-tree ast at 0.39.0 under a patch that was applied and reverted, and the
+suite is green at 3740. I-MISC-97, which the todo singled out for investigation
+before editing, returns `'Oops'`; the carrier it reported belonged to that patch
+state, not to a defect that survived.
+
+**What was actually left is the tail of the todo's own fix list**: "deleting the
+hand-rolled unwrap". Four `on InternalInterpreterD4rtException` clauses remained
+— two in `execute()`, two in `eval()` — each peeling the carrier inline, and
+each running BEFORE the general clause that would have done it.
+
+A clause that runs first and reimplements part of the rule **cannot inherit a
+fix**. SCD96 taught `throwAsHostFacingError` a second peel — a bridged exception
+holds its native object one level inside the carrier — and exec's copies still
+peeled once. So a script's `throw FormatException('boom')` was set to reach an
+exec caller as a `BridgedInstance` shell it cannot `catch` on, permanently, no
+matter what the shared helper learned. Deleting the copies is what lets SCD96
+arrive when the constraint is next raised.
+
+**Deleting them changed nothing measurable today**, which is the honest result:
+exec calls the helper it resolves from pub.dev, and published 0.65.0 still peels
+once. `scd101_host_boundary_single_rule_test.dart` is therefore a SOURCE guard
+— it fails on any clause that peels inline, naming the line — plus a
+behavioural case pinning the published state so the day it tightens is visible
+rather than silent.
+
+Two copies survive on purpose and the guard knows about both: `_unwrapScriptError`
+(a documented temporary fourth copy that exists only because the published ast
+keeps `unwrapScriptError` private below 0.82.0 — sce119 deletes it), and
+`_runGuarded`'s fallback, which ends in a diagnostic string rather than a
+host-facing rethrow and is a different contract.
+
+## 1.24.1
+
+### Removed — `_executeClassic`, which was dead code pinning a retired contract (scd85)
+
+A ~230-line private copy of the original `execute()` implementation, kept
+behind `// ignore: unused_element` under a banner reading `PRESERVED FOR
+DEBUGGING REFERENCE` / `DO NOT MODIFY OR DELETE THIS METHOD!`. Nothing called
+it — that is what the ignore was for.
+
+**The problem was the word "reference".** SCC27 rewrote the live boundary so an
+`Error` or `Exception` leaves `execute()` as itself; this copy was deliberately
+left alone, because the banner forbade editing it and a dead method cannot fail
+a test. Its two catch-alls therefore still said
+`throw RuntimeD4rtException('Unexpected error: $e')` — a boundary contract that
+holds nowhere — while the banner told the reader it was authoritative. A stale
+document that announces itself as current is worse than no copy, and the same
+objection would have applied to every future change to the live path.
+
+The banner also contradicted itself: alongside `DO NOT MODIFY OR DELETE` it
+carried `TODO: Remove this legacy method once all code uses the new execution
+path`. Deleting it follows the second instruction; keeping it accurate was
+forbidden by the first.
+
+Git history serves the stated purpose without the risk — `git log -S
+_executeClassic` finds it, unambiguously dated, which an in-tree copy is not.
+Checked before deleting: nothing in the workspace calls it, and no doc or
+guideline names it. The other hits a naive grep finds are `_executeClassicFor`
+and `_executeClassicForWithYieldSuspension`, which are about C-style `for` loops
+and unrelated.
+
+No behaviour changes: the method was unreachable, and both suites are unchanged
+(3740 pass, 3 pre-existing conformance failures).
+
+## 1.24.0
+
+### Fixed — an error from an `async main` reaches the host as itself (scd84)
+
+SCC27 made `execute()` rethrow an `Error`/`Exception` as itself instead of
+relabelling it, so a host `catch` clause can name what a script raised. This
+package adopted it on the synchronous path and not on the asynchronous one, so
+which shape the host got depended on whether the script's `main` was `async`:
+
+```dart
+main() => int.parse("zz");        // FormatException — as intended
+main() async => int.parse("zz");  // RuntimeD4rtException: Native error during
+                                  // static bridged method call 'parse' on int:
+                                  // FormatException: …
+```
+
+An `async main` reports its failure through the future `execute()` returns,
+never through the enclosing `try`, so the boundary has to be applied at that
+future too. `onError: throwAsHostFacingError` on the `.then` is what the
+reference tree already does and what was missing here.
+
+`tom_d4rt/test/scc27_host_error_fidelity_test.dart` is now ported verbatim —
+only the interpreter-package import differs — and passes 9 of 9. It had been
+recorded in `_uncoveredBaseline` at 8 of 9 since the measurement that filed
+SCD84; that entry is deleted in this commit.
+
+**The second `resultValue is Future` site in this file is deliberately
+untouched.** It belongs to `_executeClassic`, which is dead code kept for
+reference (`PRESERVED FOR DEBUGGING REFERENCE`) and is byte-identical to the
+reference tree's copy of the same dead path. Applying the boundary there would
+have created a mirror divergence to fix a path nothing calls.
+
+## 1.23.0
+
+### Added — `D4rt.onUncaughtError`, wired to BOTH execution paths (scd74)
+
+This package had no `onUncaughtError` at all, so an error escaping an interpreted
+callback the platform invoked — a `Stream.listen` handler, a `Timer` body — could
+not be observed by an embedder here, only by one using `tom_d4rt` or
+`tom_d4rt_ast` directly.
+
+The addition is two-part because this package has **two** execution paths that do
+not share a seam. `D4rt` is a facade over an inner `D4rtRunner`: `executeBundle`
+delegates to it, while the classic `execute()` carries its own
+`_executeInEnvironment`, because it runs against the analyzer front end's
+`ModuleLoader` rather than a pre-resolved bundle. So the execution seam exists in
+**three** copies (`tom_d4rt`, `tom_d4rt_ast`, here), and the "keep the twins in
+sync" rule as usually stated names only two of them. The setter assigns the
+runner's hook as well as this package's, and the SCC23/SCD73 zone seam is
+mirrored into the third copy — shipping one half would have been a public API
+that looks covered and is not.
+
+`tom_d4rt/test/scc23_uncaught_callback_error_test.dart` is now ported verbatim
+(16 cases, all passing) and its `_uncoveredBaseline` entry is gone. That entry
+had said for months that the forwarder "cannot be written until `tom_d4rt_ast`
+publishes"; the publish had landed long before, and nobody was looking at the
+file at the moment it came due.
+
+**One asymmetry remains, and is asserted rather than left to be found.** SCD73
+made the *unwrapping* unconditional, so a no-hook embedder using its own
+`runZonedGuarded` also receives the value the script threw. The classic path has
+that today. The bundle path's seam lives in the **published** `tom_d4rt_ast` this
+package resolves (DGUC6), currently 0.65.0, which predates SCD73 — so with no
+hook set that path still hands over the internal wrapper. Measured:
+
+| path            | hook set     | no hook                            |
+| --------------- | ------------ | ---------------------------------- |
+| `execute()`     | `StateError` | `StateError`                       |
+| `executeBundle` | `StateError` | `InternalInterpreterD4rtException` |
+
+The hook column — the one this release is about — agrees. F-SCD74-5 pins the
+difference so that raising the constraint turns it red instead of closing it
+quietly, and `_pinnedInterpreterFloors` now carries the flip condition for the
+two reference suites that need the same publish.
+
+## 1.22.0
+
+### Changed — module resolution is a visible sequence, not an order of early returns (scd52)
+
+`ModuleLoader` now resolves a module the way `tom_d4rt` and `tom_d4rt_ast` have
+since GEN-100: **stdlib → bridged → source**, as three steps in
+`_loadModuleInternal`, each producing its own `Environment`.
+
+Until now both earlier steps lived inside `_fetchModuleSource`, which
+registered every bridge for a URI into `globalEnvironment` as a side effect of
+being asked for source text and returned `''` so the caller parsed an empty
+unit. Three things follow from that shape, and the first is what prompted this:
+
+- **Precedence was implicit.** Which of stdlib, bridges, the filesystem and the
+  preloaded `sources` won was whatever the sequence of early returns in one
+  650-line function happened to do. SCC14 met `Undefined variable: Beep`
+  because the `sources` check sat ahead of the bridge check, so the documented
+  multi-source pattern — register a bridge under a URI, pass `'that:uri': ''`
+  so the import resolves — loaded an empty library and lost every bridged name.
+  That was fixed in two lines at the time; this removes the shape that allowed
+  it.
+- **Bridges landed in the global scope.** A bridged URI now gets its own module
+  `Environment`, built once and cached, holding everything the URI exports; the
+  per-import `show`/`hide` filter is applied by the caller when it merges,
+  rather than baked in at registration time by whichever module imported first.
+- **`_fetchModuleSource` mutated.** It is named for a pure read and was the
+  registration path. It now reads source and nothing else — a URI with bridged
+  content never reaches it.
+
+`dart:` libraries that register on demand (`math`, `convert`, `io`,
+`collection`, `typed_data`, `isolate`) each get an isolated environment, with
+only the native-type→bridge mapping propagated to the global scope so
+`toBridgedInstance` can still resolve a native subtype. `dart:core` and
+`dart:async` stay ambient.
+
+Behaviour-preserving: the full suite reports the same 3687 passing tests as
+before the change. This package's own additions — DGUB3 URI canonicalisation
+and the symlink identity key, the per-read `FilesystemPermission` gate, DFUB10
+cycle handling — are unchanged and still sit in `_loadModuleInternal`.
+
+### Note on a prediction that did not hold
+
+scd52 listed "bridges leak into the global scope, so exec cannot express
+`show`/`hide` or same-name-in-two-libraries the way the other two can" as a
+live consequence. Both halves were measured against the old loader, and both
+were already working:
+
+- **Same name in two libraries.** Registration is driven by IMPORT, so a
+  library nobody imports never reaches the environment and there is no second
+  name to shadow anything. With both imported, the clash was already handled
+  above the loader by the ambiguity machinery
+  (`AmbiguousBridgedNameException` and the `<package>.Name` qualifier).
+  `test/bridge/scd52_same_name_bridge_per_module_test.dart` pins all four
+  cases and passes against the old loader as well as the new one.
+- **Per-import `show`/`hide`.** A module importing a bridged library with
+  `show Alpha` did not remove `Beta` for a second module importing the same
+  library plainly. Measured both ways; unchanged.
+
+So this release changes structure, not capability. The value is the two
+consequences that ARE real — resolution order you can read, and a fetch
+function that does not mutate — plus being the same shape as the other two
+interpreters, which is what makes a fix in one portable to the others.
+
+## 1.21.0
+
+### Changed — resolves `tom_d4rt_ast` 0.65.0; imports are recorded for the ambiguity check
+
+`tom_d4rt_ast` 0.65.0 judges a bridged name that two packages declare over the
+reading script's imports rather than over everything the host registered
+(scd4_aicv). This package's own module loader records each unprefixed import
+on the module scope (`Environment.recordUnprefixedImport`), as both
+interpreters' loaders do.
+
+On this package's `execute(source:)` path the narrowing is dormant: bare
+bridged names reach a script only through its imports, so no ambiguity from
+outside them can arise. It is live on the `executeBundle*` path, which runs
+`D4rtRunner` with its name baseline — see the `tom_d4rt_ast` 0.65.0 CHANGELOG.
+
+## 1.20.0
+
+### Changed — resolves `tom_d4rt_ast` 0.64.0: `break` and `continue` reach the statement they name
+
+The interpreter this package runs is `tom_d4rt_ast` from pub.dev, and the
+constraint was `^0.60.0` — which on a 0.x version stops before 0.61.0, so this
+package, and everything that depends on it, stayed on 0.60.x through three
+releases. It is now `^0.64.0`.
+
+0.64.0 fixes `break` and `continue` in `async` code: inside `await for` they
+failed with "outside of a loop", in `while` and `do` likewise, a `break` in a
+`while` nested in a `for` left the `for`, and labels were ignored. Labelled
+`break` / `continue` in synchronous code no longer land on an unlabelled inner
+loop. See the `tom_d4rt_ast` 0.64.0 CHANGELOG.
+
+The reference suite's new `scd4_await_for_break_test.dart` is ported here
+unchanged, and so are two corrected reference tests: `I-FILE-179` skips only on
+a network failure, and `I-MISC-327` expects the Dart VM's `''` rather than the
+`'012'` the label defect produced.
+
+## 1.19.0
+
+### Removed — `lib/src/version.versioner.dart`, a version stamp nothing could read or refresh
+
+It declared `TomVersionInfo` with a version a long way behind the package's
+own, because it was never regenerated: this package has no `versioner:`
+configuration, so `buildkit :versioner` skips it. Nothing imported it and the
+library does not export it, so no consumer could reach it — it could only
+mislead someone reading the source. A stamp is kept only where a banner prints
+it, and there a test holds it to `pubspec.yaml`.
+
+### Fixed — a dead anchor in the README, and the guard widened to cover it (scc88)
+
+The guard walked `doc/` only. The package README is the first page anyone reads,
+and `tom_d4rt`'s carried
+`#source-based-vs-analyzer-free--which-line-to-use` — a double hyphen left by
+stripping an em dash. Fixed, and every package's README is now inside the guard.
+
+### Fixed — four dead cross-file links, and the anchor guard extended to cover them (scc88)
+
+The anchor guard checked `](#anchor)` only, and four links to other FILES were
+dead at the same moment: `limitation_and_bug_analysis.md` had been deleted from
+both trees, and exec's `issues.md` linked to `d4rt_limitations.md`, which is the
+reference tree's filename for a document exec names
+`tom_d4rt_exec_limitations.md`. Retargeted or dropped, and `F-SCC88-5` now
+checks every relative link resolves. External URLs stay out of scope.
+
+### Fixed — two dead anchors in the bridging guide, and a test that stops them coming back (scc88)
+
+`doc/BRIDGING_GUIDE.md` linked to `#advanced-enum-bridging` and
+`#core-concepts-BridgedClass`; the real slugs are
+`advanced-enum-bridging-with-getters-and-methods` and the lowercased form.
+`test/doc/doc_anchors_test.dart` now checks every `](#anchor)` in this package's
+own `doc/` resolves.
+
+### Changed — the interpreter floor moves to `^0.60.0`, and the arity diagnostics are certified end to end here (scc86)
+
+`tom_d4rt_ast` 0.60.0 is published, so the floor rises from `^0.55.0`. That is
+five minors of interpreter work reaching this package at once, including SCB28's
+`describeArityError` and SCC85's 526 `D4.checkArity` guards. Neither was
+reachable from an exec test before: this package resolves its interpreter from
+pub.dev rather than by path (DGUC6), so an exec suite certifies the PUBLISHED
+interpreter and working-tree fixes are invisible here until a release goes out.
+
+`test/stdlib/bridge_arity_test.dart` is ported from the reference tree — 19
+cases, identical apart from one import line. Thirteen are SCB28's (a too-few
+call names the class and member instead of surfacing a raw list `RangeError`);
+six are SCC85's (a surplus argument is rejected rather than silently discarded).
+Until now the analyzer-free line had only registration-level coverage of the
+recogniser, because `tom_d4rt_ast` has no source parser and cannot run a
+script-level arity test in-tree even in principle.
+
+The `_coveredElsewhere` exemption that stood in for this file is removed: it
+claimed the ast twin covered it, and a real port is now here.
+
+The five-minor upgrade caused no regressions — 3602 passed / 1 skipped before
+the port, with the only two failures the pre-existing F-SCC6-2 and F-SCC6-4
+tracked as SCD200.
+
+## 1.18.0
+
+### Changed — the `tom_d4rt_ast` constraint becomes a caret, and every run now prints the interpreter it measured (scc80)
+
+The constraint moves from `>=0.55.0` to `^0.55.0` (and `tom_ast_generator` from
+`>=0.1.5` to `^0.1.5`). A lower-bound-only constraint is satisfied forever by
+any pre-existing `pubspec.lock`, so a machine could keep certifying an
+interpreter no fresh checkout resolves — which is exactly what happened: a lock
+frozen at 0.14.0 reported a green suite while a fresh checkout resolved 0.19.0
+and got a red one. A caret makes a lock older than the certified version
+unresolvable, and adopting a new interpreter publish a deliberate edit.
+
+Two new cases in `test/conformance_drift_test.dart`:
+
+- **`F-SCC80-1`** prints the resolved version into every run's log —
+  `exec conformance measured against tom_d4rt_ast 0.55.0 (pubspec floor 0.55.0)`
+  — so no baseline can be read as a claim about "the interpreter" in the
+  abstract. `pubspec.lock` is gitignored, so this number appears in no diff and
+  no review; printing it is the only way it reaches the record. Its `expect` is
+  a backstop and is documented as one: rewriting the lock to a stale 0.42.0
+  showed `dart test` re-resolving it before the assertion could see the fault.
+- **`F-SCC80-2`** fails if the constraint is ever relaxed back to `>=`, which is
+  what keeps the fix above from being quietly undone.
+
+`_execAstFloor()` now accepts `^x.y.z` as well as `>=x.y.z`. It parsed only
+`>=`, so the caret would have turned it into a `fail()` and disarmed
+`F-SCC43-1` — the register check — on the very edit meant to harden it.
+
+`_copilot_guidelines/testing.md` gains the run recipe: `dart pub upgrade` before
+any conformance measurement, and quote the printed version alongside any number
+reported.
+
+## 1.17.0
+
+### Changed — the `tom_d4rt_ast` floor moves to 0.55.0, and eighteen pinned conformance entries flip with it (scc75)
+
+`tom_d4rt` 1.66.0 and `tom_d4rt_ast` 0.55.0 are published, so exec's floor rises
+from `>=0.40.0` to `>=0.55.0` and the thirteen-minor skew every exec-side
+measurement was taken through is closed.
+
+`F-SCC43-1` produced the re-port checklist the moment the floor moved — that is
+what the register exists for — and **all eighteen entries passed when ported**.
+Not one had gone stale, which is the opposite of what SCC44 found when it
+re-measured seven pins and six had already converged. The difference is that
+these eighteen were each measured against the published copy before being
+pinned, and SCC44's six were inferred from prose.
+
+`_pinnedInterpreterFloors` is now empty. The eighteen files, previously skipped
+or absent:
+
+- `scb14_await_receiver_position_test.dart`, `scc64_callable_is_operand_test.dart`
+- `stdlib/collection/` — `list_queue`, `splay_tree_set`, `linked_hash_set`,
+  `linked_list`, `queue`
+- `stdlib/async/stream_consumer`, `stdlib/typed_data/typed_list_inherited_members`
+- `stdlib/core/core_hierarchy`, `stdlib/io/io_hierarchy`,
+  `stdlib/isolate/isolate_hierarchy`
+- `stdlib/io/` — `http_exception`, `http_server`, `websocket`,
+  `http_credentials`, `http_response_details`, `http_date`
+
+### Added — script-level coverage of the fixes that could not previously reach this line
+
+`stdlib/convert/converter_bind_stream_test.dart` (SCC68's `Converter.bind` over
+erased streams), `stdlib/scc73_sdk_member_completeness_behaviour_test.dart` and
+`stdlib/scc74_member_axis_gaps_test.dart`. Each exercises members that were
+unreachable through a published interpreter until this release, which is exactly
+the asymmetry SCC75 was filed to end: the exec suite was green either way,
+because it had no test for what it could not reach.
+
+`stdlib/io/io_sink_test.dart` gains SCC68's two `addStream` cases, and
+`stdlib/intentionally_unbridged_test.dart` drops its `WebSocket` assertion —
+SCC63 bridged the class, and this copy lagged only because it reads a published
+interpreter.
+
+## 1.16.0
+
+### Fixed — an error keeps its type when it leaves `execute()` (scc35)
+
+`lib/src/d4rt_base.dart` is exec's own copy of the execute boundary, and it
+still called `isSdkShapedError`, which SCC27 deleted upstream. It compiled only
+because the dependency pin held `tom_d4rt_ast` at 0.20.1 — so the pub.dev
+resolution hazard was hiding a *compile break* here, not merely stale
+behaviour. Both boundary sites now call `throwAsHostFacingError`, and the host
+receives the type the callee actually raised.
+
+The explicit type list those sites used to carry is deliberately not
+reinstated. `D4rtException implements Exception`, so the general rule — an
+`Error` or an `Exception` that is not an interpreter control-flow signal
+escapes as itself — already admits every diagnostic type the list enumerated,
+and unlike the list it does not need editing when a new one is added.
+
+### Fixed — source that does not parse is rejected instead of partly run (scc35)
+
+`_parseSourceToAst` returns a unit with `hasParseErrors` set rather than
+throwing, because the expression paths try several parses in turn and need to
+inspect a failed one before falling through to the next. Code on its way to the
+interpreter has no next strategy, and nothing rejected the unit on its behalf —
+so a script with a syntax error ran the fragment the parser salvaged and
+reported success for a program the author never wrote.
+
+`_parseExecutableSource` now performs that rejection for the three entry points
+that execute source and for the module loader, raising
+`SourceCodeD4rtException` with one formatted line per diagnostic, each naming
+its line and column. Three cases in `interpreter_test.dart` had recorded the
+old behaviour as a property of the serialized-AST pipeline; they assert the
+parser diagnostic again, matching `tom_d4rt`, and the file is now a verbatim
+port of the reference copy.
+
+## 1.15.1
+
+### Changed — formatted the tree once, at the aligned language version (scc26)
+
+Follows 1.15.0, which raised this package's SDK floor to `^3.10.4`. Raising the
+floor changes what `dart format` produces here, so leaving the tree unformatted
+would have left a latent trap: the next person to format any single file would
+have rewritten it wholesale. Formatting once removes it.
+
+This commit contains the formatter's output and nothing else. That it is inert
+was not assumed — `git diff -w` cannot establish it, because the tall style
+*splits* lines and a whitespace-insensitive diff still counts a moved line
+boundary as a change. What was checked instead is the token stream: strip all
+whitespace and the two revisions of every changed file are either identical
+(153 files) or identical once trailing commas are also stripped (893 files),
+commas being pure formatting punctuation in Dart. Zero files carried an edit
+that survived both passes.
+
+## 1.15.0
+
+### Changed — the declared SDK floor now matches the one pub can actually reach (scc26)
+
+`environment.sdk` said `^3.5.0` while this package's own dependency
+`tom_d4rt_ast` declares `^3.10.4`, so the floor was unreachable in exactly the
+way `tom_d4rt`'s was. It is now `^3.10.4`.
+
+The floor is not only a resolution constraint: `dart format` takes its style
+from the language version, and the tall style begins at 3.7. Leaving a
+deliberately low floor in place means the formatter produces a different layout
+here than in the packages this one is built from — which is the divergence
+scc26 exists to remove.
+
+No lint fallout and no behaviour changes.
+
+## 1.14.0
+
+### Fixed — a preloaded source stub shadowed the bridge registered at the same URI (scc14)
+
+`ModuleLoader._fetchModuleSource` returned a `sources` entry as soon as the URI
+matched, before it ever asked whether that URI had bridged content. The
+documented way to expose a bridge to a multi-source script is to register it
+under a URI and pass an empty entry for the same URI in `sources` so the import
+resolves — and that empty entry won: the module loaded as an empty library and
+every bridged name in it was undefined.
+
+```dart
+interpreter.registerBridgedClass(beepBridge, 'test:beep');
+interpreter.execute(
+  library: 'main',
+  sources: {'main': "import 'test:beep';\n…", 'test:beep': ''},
+  name: 'run',
+); // Runtime Error: Undefined variable: Beep
+```
+
+The single-source form (`execute(source: …)`) was unaffected, as was the
+multi-source form with no stub entry, which is why this survived: the failing
+shape is the one the reference suite uses and this package had no test for.
+
+A registered bridge now wins, which is what `tom_d4rt` and `tom_d4rt_ast` have
+always done — both resolve bridged content before consulting sources. There is
+no legitimate case for the other precedence: a URI cannot be both a native
+library and an interpreted one.
+
+### Added — eleven conformance suites ported from tom_d4rt (scc14)
+
+`bridge/bridged_setter_unwrap`, `bridge/d4_helpers`,
+`bridge/enum_map_arg_and_roundtrip`, `bridge/is_operator_on_unwrapped_native`,
+`bridge/usage_log_runner`, `environment_bridge_cache`,
+`null_safety/null_propagating_operators`, `scb9_error_handler_arity`,
+`scb11_symbol_literal`, `scb14_await_receiver_position` and
+`scb17_map_set_inherited_surface` — 107 cases that had only ever run against the
+analyzer-based interpreter. The `is`-operator suite is the one that found the
+loader defect above; the other ten passed on arrival.
+
+`test/conformance_drift_test.dart`'s recipe gained a third import remap
+(`package:tom_d4rt/src/generator/d4.dart` →
+`package:tom_d4rt_ast/src/runtime/generator/d4.dart`). The rule behind all three:
+a `src/` import resolves against `tom_d4rt_ast` under `src/runtime/`, while the
+public library import resolves against `tom_d4rt_exec`.
+
+## 1.13.0
+
+### Fixed — the stdlib on-type probe was still reported as an error (tccc5)
+
+1.12.0 fixed the on-type probe that runs *before* the stdlib fallback. The probe
+*inside* it is a second call site with the same defect, and it is the noisier of
+the two: `_resolveTypeForExtension` registers one stdlib module at a time and
+asks whether the on-type has appeared, so every module that does not carry it
+misses by construction, and an on-type that resolves nowhere misses in all of
+them. It used the throwing `Environment.get` inside a `try`/`on
+RuntimeD4rtException` that discarded the exception — but constructing one
+already registers it with the `ErrorReporter`, so each miss left an `Undefined
+variable: <Type>` behind.
+
+An unresolvable on-type is not a runtime error: the loader's contract is to warn
+and skip the extension (and, under `validateRegistrations`, return one collected
+message). Importing a bridge library whose on-type is not itself bridged — a
+crypto package's `Digest` — was therefore enough to fail a REPL `-test` run with
+four errors while every assertion in it passed.
+
+The probe now uses the non-throwing `Environment.lookup` and the `try`/`catch`
+is gone: there is no longer an exception to swallow.
+
+## 1.12.0
+
+### Fixed — a handled on-type lookup miss was still reported as an error (tccc5)
+
+Mirrors the `tom_d4rt` 1.28.0 fix. Registering a bridged extension probes the
+global environment for its on-type and falls back to
+`_resolveTypeForExtension` when the importing script has not also imported the
+on-type's own library. The probe used the throwing `Environment.get`, whose
+exception registers itself with the `ErrorReporter`; the loader caught it and
+never revoked it, so every routine miss left a phantom
+`Undefined variable: <Type>` behind and failed hosts that treat reported errors
+as their pass/fail signal.
+
+The probe now uses the non-throwing `Environment.lookup`.
+
+## 1.11.0
+
+### `basePath` / `allowFileSystemImports` are no longer dead parameters (DGUB3)
+
+**`execute()`, `executeAsync()` and `validateRegistrations()` have always
+ACCEPTED `basePath` and `allowFileSystemImports`, but `_initModule` dropped both
+on the floor** — it never passed them to the `ModuleLoader`, which did not
+declare them. Any filesystem import therefore failed with "Base URI not defined
+in ModuleLoader" no matter what the caller passed. This is the exact
+dead-parameter defect DFUB1 fixed in `tom_d4rt`; it was never mirrored here.
+
+- `ModuleLoader` gains `basePath` + `allowFileSystemImports`, and `D4rt` threads
+  both through. A relative import in an inline `source:` now resolves against
+  `basePath`, and a root `library:` may live on disk rather than in the
+  preloaded `sources` map.
+- Nested relative imports resolve correctly: module URIs are canonicalized to a
+  single absolute `file:` spelling before use (DFUB3's
+  `_canonicalizeModuleUri`), so a module reached relatively resolves its *own*
+  relative imports against its real location rather than against `basePath`. The
+  module cache and the in-flight (cycle) registry are keyed by a
+  symlink-resolved identity, so different spellings of one file load exactly
+  once.
+- **Every on-disk module read is gated by `FilesystemPermission`** (DFUB2's
+  `_checkFileSystemSourceReadPermission`), which throws before any bytes are
+  read.
+- Missing-source errors now name the actual reason instead of blaming the
+  stdlib: filesystem imports disabled, or not found with the *resolved path* the
+  loader looked at. `package:` guidance is unchanged.
+- New conformance suite `test/dgub3_filesystem_import_basepath_test.dart`
+  (7 tests), the exec-side mirror of `dfub1_filesystem_import_basepath_test` and
+  the read-gate half of `dfub2_filesystem_import_permission_test`.
+
+**Known boundary (unchanged, now pinned):** `executeFile()` reaches module
+sources by a different route — `resolveImportsRecursively`, a regex pre-walk in
+`script_execution.dart` that reads every transitive import off disk with **no**
+permission check and folds them into `sources` before the interpreter runs. That
+path predates this change and its reads stay ungated; F-DGUB3-7 pins the
+boundary so the gap stays visible. Closing it is tracked as dguc1.
+
+`AstModuleLoader` in `tom_d4rt_ast` is deliberately untouched — it stays
+lookup-only and free of `dart:io` so it remains usable where there is no
+filesystem.
+
+### Record type annotations resolve to their real shape (DGUB8)
+
+Requires `tom_d4rt_ast >=0.14.0` and `tom_ast_generator >=0.1.5`. The fix itself
+is upstream — this package has no record resolver of its own — but the constraint
+bump is what delivers it, and the behaviour change is visible here.
+
+Previously a record type annotation reached the interpreter carrying only its
+ARITY: every field type became `dynamic`, and every named key became a synthetic
+`$named0`, `$named1`, … Because the record VALUE side derives its runtime type
+from the actual record, it carried the real key, so:
+
+- a record with ANY named field matched nothing in either direction —
+  `(42, label: 'answer') is (int, {String label})` answered **false** and now
+  answers **true**;
+- a positional-only record matched on arity while IGNORING field types —
+  `(1, 'a') is (String, int)` answered **true**, unsoundly, and now answers
+  **false**;
+- consequently a record return-type mismatch was accepted unchecked.
+  `(int, String) f() => ('wrong', 'shape');` **now throws** "can't be returned".
+
+**The second and third are tightenings**: code that relied on a record `is` or a
+record return type being accepted where the field types do not actually match
+will start being rejected. Matching records are unaffected.
+
+`test/dfub5_function_record_runtime_type_test.dart`'s five record cases were
+pinned to the degraded answers while the fix was unpublished; they are now
+tightened to the analyzer-tree expectations and the group no longer calls itself
+degraded.
+
+### Filesystem permission scopes are symlink-aware (DGUB5)
+
+Also delivered by the `tom_d4rt_ast >=0.14.0` bump, and also a tightening.
+`FilesystemPermission` now compares the grant and the requested path on their
+REAL paths, with symlinks resolved, instead of on their literal spellings:
+
+- **A grant on a resolved path now admits an unresolved spelling of the same
+  location** — on macOS `Directory.systemTemp` hands back `/var/folders/...`,
+  itself a symlink to `/private/var/folders/...`, so granting one and reading
+  through the other used to be denied for no visible reason.
+- **A symlink inside a granted directory no longer reaches outside it.** This is
+  the security-relevant half: `<sandbox>/link_to_elsewhere/x` used to satisfy a
+  `<sandbox>` grant because it was lexically in scope, while actually reading
+  from wherever the link pointed.
+
+**So this can deny operations that previously succeeded** — specifically, any
+access that relied on a symlink to leave its granted directory. Grants that name
+the location the operation really touches are unaffected, whichever way either
+side is spelled. Paths that do not exist yet are still matched (resolution walks
+up to the deepest existing ancestor and re-appends the remainder), and resolution
+failures fall back to the literal spelling rather than throwing.
+
+### Stdlib bridges from the SDK gap audit (SC1–SC11)
+
+The same bump carries twenty-five previously unbridged `dart:core`,
+`dart:async`, `dart:collection` and `dart:convert` classes, none of which had
+ever been published: `Stopwatch`, `UriData`/`Uri.data`, `LinkedHashSet`,
+`SplayTreeSet`, `UnmodifiableMapView`, `UnmodifiableSetView`, `StreamConsumer`,
+seven catchable `dart:core` error types (`NoSuchMethodError`,
+`ConcurrentModificationError`, `IndexError`, `TypeError`, `AssertionError`,
+`StackOverflowError`, `OutOfMemoryError`), `StreamView`, `AsyncError`,
+`StreamTransformerBase`, `DoubleLinkedQueue`/`DoubleLinkedQueueEntry`,
+`BytesBuilder`, `JsonUtf8Encoder` and `ClosableStringSink`, plus the interpreter
+fixes that made them reachable (`is` without `isAssignable`, catch-clause
+matching against the new error hierarchy, a broadened `Stream.transform`, and a
+queue supertype block that also repairs the already-shipped `ListQueue`). These
+are additions, not tightenings.
+
+## 1.10.0
+
+### Security — scoped `FilesystemPermission` grants are now actually enforced (DFUB11)
+
+**This is a behavioural tightening. Scripts that relied on the previous, laxer
+matching will now be denied — hence the minor bump rather than a patch.**
+
+- Consume `tom_d4rt_ast >=0.2.0`, which carries the per-operation filesystem
+  gate and the canonical, segment-boundary scope matcher. A grant scoped to one
+  directory used to behave exactly like `FilesystemPermission.any` once
+  `dart:io` was importable: the import gate established only that *some*
+  filesystem permission existed, and no bridged file/directory operation
+  re-checked the path. Every read/write entry point in the `dart:io` bridges now
+  checks the path BEFORE the native call, so a denial leaves the filesystem
+  untouched.
+- Scope matching is canonical: `..` segments are normalized away before the
+  comparison (so `/allowed/../etc/passwd` no longer escapes a `/allowed` grant),
+  and the prefix test lands on a path-segment boundary (so `/allowed_sneaky` is
+  no longer treated as inside `/allowed`).
+- This package's own `dart:io` import gate now asks the path-agnostic question
+  (`{'type': 'filesystem', 'pathAgnostic': true}`). Without this, tightening the
+  matcher would have turned every *scoped* grant into an import denial — the
+  gate has no path to offer, so it must not be measured against a scoped grant's
+  path. `pathAgnostic` waives the PATH check only; the read/write/execute flags
+  are still enforced.
+- New conformance suite `test/dfub11_filesystem_operation_permission_test.dart`
+  (16 tests), the executable twin of the same suite in `tom_d4rt`.
+
+## 1.9.0
+
+### Dependencies
+- Consume `tom_d4rt_ast ^0.1.9` for the import-optimization API: the
+  process-global package pool (`providePackage` / `allowedPackages`),
+  once-per-process bridge-extension hooks (`registerExtensions` /
+  `finalizeBridges` / `warmup`), warm-parent reuse across executes, and
+  `executeBundleAs<T>` result unwrapping. The `D4rt` wrapper exposes these
+  through its inner `D4rtRunner`. Additive and backward compatible — existing
+  `execute()` / `eval()` call sites are unaffected.
+
+## 1.8.6
+
+### Fixes
+- Consume `tom_d4rt_ast ^0.1.8` (B2 "MarkdownParser clash" fix). The module
+  loader no longer errors on same-name/different-source bridged class
+  duplicates — it registers both and relies on the AST runtime's shadow
+  fallback, matching the tolerant per-module behaviour of the tom_d4rt and
+  tom_d4rt_ast runtimes.
+
+## 1.8.5
+
+- Housekeeping: test artifacts now live in a gitignored `testlog/` folder; `doc/` no longer ships machine-generated baselines or last_testrun.json. No code changes.
+
+## 1.8.4
+
+- Picks up `tom_d4rt_ast 0.1.6` (instance/bridged shadowing fix, implicit-
+  `this` read fix, interpreter performance work) via the existing
+  `^0.1.5` constraint.
+- Documentation: BRIDGING_GUIDE, advanced/standard user guides, and
+  limitations updated; README aligned with the source-primary documentation
+  reframe.
+
+## 1.8.3
+
+### Dependencies
+- Require `tom_d4rt_ast ^0.1.5` / `tom_ast_generator ^0.1.1` to pick up the
+  `StaticResolver` slot-resolution pipeline (`resolvedSlot` / `declSlot`):
+  parsed source is converted to a mirror AST whose resolved reads bind to
+  frame slots, and the AST-driven interpreter serves them without name-map
+  walks.
+
+## 1.8.2
+
+### Features
+- Support extensible dart: library bridges - unknown dart: URIs now check for bridged content before throwing an error
+- Allows external packages to register bridges for dart:ui and other dart: libraries
+
+## 1.8.1
+
+### Bug Fixes
+- **GEN-056**: Fixed extension on-type resolution for stdlib and bridge types in the interpreter
+- **G-DCLI-05/07/08/11/12/13/14**: All DCli bridge issues resolved — proper handling of DCli-specific bridged methods and types
+
+### Tests
+- **Flaky file IO tests**: Fixed race condition where all file IO tests (I-FILE-144 through I-FILE-159) shared a hardcoded `/tmp/test.txt` path. Under concurrent execution, one test's `deleteSync()` would remove the file while another was still using it. Each test now uses a unique filename (`/test_{ID}.txt`).
+- 1680 tests pass (2 known I-BUG-14a/14b intentional failures excluded)
+
+## 1.7.0
+
+### Bug Fixes
+- **G-GNRC-7**: Fixed `runtimeType` comparison with type identifiers. When comparing `runtimeType` (which returns a native `Type`) against type identifiers like `int` (which resolve to `BridgedClass`), the interpreter now correctly compares via `BridgedClass.nativeType`. This fixes F-bounded polymorphism tests involving `Comparable<T>` sort operations.
+
+## 1.6.1
+
+### Documentation
+- **Advanced Bridging User Guide**: New comprehensive guide for the D4 helper class covering type coercion, argument extraction, target validation, and global function bridging
+- **Example suite**: Added 5 runnable examples demonstrating D4 class usage patterns:
+  - `d4_type_coercion_example.dart` - List and Map coercion
+  - `d4_argument_extraction_example.dart` - Positional and named arguments
+  - `d4_target_validation_example.dart` - Target validation and inheritance
+  - `d4_globals_example.dart` - Global functions and variables
+  - `d4_complete_bridge_example.dart` - Complete realistic example with enums, factories, and complex signatures
+
+## 1.6.0
+
+### Features
+- **Comprehensive Dart language coverage**: All 20 areas of the Dart language now pass the dart_overview test suite
+- **Extension types (Dart 3.3+)**: Full support for inline classes / extension types
+- **sync* generators**: Fixed infinite loop issues with sync* generators (lazy evaluation now works correctly)
+- **Improved extension support**: Extensions on bridged types and imported extensions now work correctly
+- **Enhanced pattern matching**: Full support for logical OR patterns, when guards, record patterns with named fields and shorthand syntax
+
+### Bug Fixes (99 total bugs tracked, 97 fixed)
+
+#### Interpreter Core
+- **Bug-93**: Int not implicitly promoted to double return type - fixed auto-promotion in return statements
+- **Bug-94**: Cascade index assignment on property (`..headers['key'] = value`) now works correctly
+- **Bug-96**: `super.name` constructor parameter forwarding now correctly passes values to super constructor
+- **Bug-97**: `num` now recognized as satisfying `Comparable<num>` type bound
+- **Bug-98**: Extension getters on bridged List resolved correctly, including accessing other extension members via implicit `this`
+- **Bug-99**: `Stream.handleError` callback arity detection - callbacks with 1 or 2 parameters both work correctly
+- **Bug-95**: `List.forEach` with native function tear-offs (like `print`) now works
+- **Bug-79-92**: Various fixes for switch expressions, cascades, patterns, and class modifiers
+
+#### Pattern Matching
+- **Bug-81**: Pattern with `when` guard now works (`case String s when s.isNotEmpty`)
+- **Bug-88**: Record pattern with `:name` shorthand syntax works
+- **Bug-66, Bug-67**: Record patterns with named fields and if-case with int patterns fixed
+
+#### Class System
+- **Bug-84, Bug-85**: Mixin abstract method satisfaction and extending abstract final classes
+- **Bug-72**: Bridged mixins properly resolved during class declaration
+- **Bug-51**: Mixing in bridged mixins works correctly
+
+#### Async/Stream
+- **Bug-44**: Async generators completion detection
+- **Bug-48**: `await for` stream iteration
+- **Bug-73, Bug-74**: Async nested loops and return type handling
+
+#### Standard Library
+- **Bug-89**: `Enum.values.byName` (via List.byName extension) bridged
+- **Bug-82, Bug-83**: Function.call and nullable function?.call() support
+- **Bug-65**: Map.from constructor bridged
+
+### Known Limitations (Won't Fix)
+- **Lim-3**: Isolate execution with interpreted closures - fundamental limitation due to Dart's isolate serialization requirements
+- **Bug-14**: Records with named fields or >9 positional fields return InterpretedRecord (Dart doesn't support dynamic record type creation)
+
+### Test Coverage
+- **1620 tests passing** (3 expected failures for "Won't Fix" limitations)
+- **21 dart_overview_bugs_test** tests all passing
+- All 20 Dart language areas demonstrated in dart_overview scripts
+
+### Documentation
+- Consolidated BRIDGING_GUIDE.md to single location in `doc/` folder
+- Moved dart_overview and d4rt_bugs test scripts to tom_d4rt/example folder
+- Updated documentation to reflect current capabilities
+
+---
+
+## 1.5.0
+
+### Features
+- **Script execution module**: New `ScriptExecutionResult` and file-based script execution with automatic import resolution
+- **Bridge deduplication**: Complete deduplication system with `sourceUri` tracking to prevent duplicate registrations across packages
+- **D4rtConfiguration enhancement**: Added library info support for better multi-package configurations
+- **Unary operator fix**: Fixed unary operators (e.g., `-x`) on bridged instances
+
+### Bug Fixes
+- Fixed typedef callback wrapping in bridge registration
+- Fixed type resolution for bridges with complex generics
+
+### Internal
+- Added shared script_execution module for D4rt-based CLI tools
+- Improved error aggregation for bridge registration failures
+
+## 1.4.0
+
+### Features
+- **Global getter lazy evaluation**: Added `GlobalGetter` wrapper class for lazy evaluation of top-level getters
+- **registerGlobalGetter method**: New D4rt method `registerGlobalGetter(name, getter)` for registering getters that are evaluated at access time rather than registration time
+- Essential for singleton patterns and values that may not be initialized at registration time
+
+### Documentation
+- Added "Global Variables and Getters" section to BRIDGING_GUIDE.md
+- Documented when to use `registerGlobalVariable` vs `registerGlobalGetter`
+
+## 1.3.1
+- **Repository reorganization**: Moved to tom_module_d4rt repository as part of modular workspace structure
+- Updated repository URL to https://github.com/al-the-bear/tom_module_d4rt
+
+## 1.3.0
+- **Operator bridging support**: BridgedInstance now supports all Dart operators
+  - Arithmetic: +, -, *, /, ~/, %
+  - Comparison: <, >, <=, >=, ==
+  - Bitwise: &, |, ^, ~, <<, >>, >>>
+  - Index: [], []=
+  - Unary: - (negation)
+- Added operator override documentation for UserBridge classes
+- Added bridged_operators_test.dart with comprehensive operator tests
+
+## 1.2.0
+- Added D4 bridge helpers class for generated bridge code
+  - Type coercion helpers (coerceList, coerceMap)
+  - Argument extraction helpers (getRequiredArg, getOptionalArg, etc.)
+  - Target validation for instance methods
+  - Argument count validation
+- D4 class moved from tom_dartscript_core to tom_d4rt
+
+## 1.1.0
+- Updated analyzer dependency to ^8.0.0 (from fixed 8.0.0)
+- Bridge generator improvements and cleanup
+
+## 1.0.4
+- Changed dependency of analyzer to version 8.0.0
+
+## 0.1.9
+- **feat:positionalArgs and namedArgs** - Pass arguments directly to functions via execute()
+  - Add `positionalArgs` parameter to D4rt.execute() for passing positional arguments
+  - Add `namedArgs` parameter to D4rt.execute() for passing named arguments
+  - Support complex data types (List, Map, nested structures) as arguments
+  - Support function callbacks and async functions as arguments
+  - Add 33 comprehensive test cases covering all argument passing patterns
+  - Add parameter introspection methods: `positionalParameterNames` and `namedParameterNames` getters
+
+- **feat: Introspection API** - Analyze code structure and get metadata at runtime
+  - Add `analyze()` method to D4rt for code analysis without execution
+  - Create IntrospectionResult with metadata about functions, classes, enums, variables, and extensions
+  - Extract function signatures including parameter names, types, and default values
+  - Extract class information: inheritance, mixins, interfaces, constructors, methods
+  - Extract enum values and variants
+  - Extract variable declarations and initializers
+  - Extract extension definitions and extended types
+  - Use AST-based analysis for accurate metadata extraction
+  - Add 38 comprehensive test cases covering all declaration types and complex scenarios
+
+- **feat: eval() method** - Dynamically execute code with current execution state
+  - Add `eval()` method to D4rt for dynamic code execution
+  - Preserve execution environment across eval calls
+  - Support access to previously defined variables and functions
+  - Support complex expressions and statements in eval
+  - Support async/await in eval expressions
+  - Add 39 comprehensive test cases covering expression evaluation and statement execution
+
+- **fix: Environment import handling** - Tolerate duplicate imports with identical values
+  - Allow re-importing the same symbol if the value is identical (same reference)
+  - Use `identical()` comparison for duplicate detection
+  - Support imports via multiple paths without conflict errors
+
+## 0.1.8
+- fix: security sandboxing with permission checks for file, process, and network operations; add platform access control
+
+## 0.1.7
+- **feat: Security sandboxing system** - Comprehensive permission-based security system to restrict dangerous operations
+  - Implement modular permission system with `FilesystemPermission`, `NetworkPermission`, `ProcessRunPermission`, `IsolatePermission`
+  - Block access to dangerous modules (`dart:io`, `dart:isolate`) by default unless explicitly granted
+  - Add `d4rt.grant()`, `d4rt.revoke()`, `d4rt.hasPermission()` methods for permission management
+  - Integrate permission checking into module loading and import directives
+  - Support fine-grained permissions (specific paths, commands, network hosts)
+  - Add comprehensive security tests to prevent malicious code execution
+  - Enable safe execution environment for untrusted code
+
+## 0.1.6
+- fix: Nested for-in loops in async contexts now work correctly
+- fix: Async nested for-in loops with await for streams works
+- feat: enhance async execution state to support nested await-for loops and improve iterator management; add comprehensive tests for complex async scenarios
+- **feat: Compound super operators** - Support for compound assignment operators on super properties (+=, -=, *=, /=, ~/=, %=, &=, |=, ^=, <<=, >>=, >>>=)
+  - Implement proper lookup and evaluation of super properties in compound assignments
+  - Support for both interpreted and bridged superclass properties
+  - Add 6 comprehensive test cases covering all operator types and nested inheritance
+- **feat: Bridged static methods as values** - Bridged static methods can now be treated as first-class function values
+  - Support for accessing bridged static methods as callable values (e.g., `int.parse`)
+  - Enable passing bridged static methods to higher-order functions
+  - Store bridged static methods in collections and variables
+  - Add 5 test cases for static method value usage patterns
+- **feat: Complex generic type checking** - Enhanced runtime type checking for generic collections with type parameters
+  - Support `is` operator with parameterized types (List<int>, Map<String, int>, etc.)
+  - Runtime validation of generic type constraints
+  - Proper handling of nested generic types and null safety
+  - Add 10 comprehensive test cases for various generic type checking scenarios
+- **feat: Complex await assignments** - Advanced await expression support in various contexts
+  - Support await in conditional expressions (ternary operator)
+  - Support await in list/map literals and collection operations
+  - Support await in compound assignments and complex expressions
+  - Support await in constructor arguments and method chains
+  - Add 10 test cases covering complex async assignment patterns
+- **feat: Stream transformers** - Complete implementation of StreamTransformer and stream manipulation
+  - Implement `StreamTransformer.fromHandlers` with handleData, handleError, handleDone
+  - Support stream transformation with custom logic
+  - Implement bidirectional stream transformers
+  - Support stream event handling and error propagation
+  - Add 10 comprehensive test cases for stream transformation patterns
+- **feat: Const expressions complexes** - Enhanced support for const expressions in various contexts
+  - Support const List and Map literals with type parameters
+  - Support const expressions in field initializers and default parameters
+  - Support nested const collections and complex const expressions
+  - Proper compile-time evaluation of const expressions
+  - Add 15 test cases covering const expression usage patterns
+- **feat: Feature #7 - Enhanced enums with mixins** - Enums can now use mixins to add functionality
+  - Support `enum Name with Mixin` syntax
+  - Mixins can add methods, getters, and properties to enum values
+  - Support multiple mixins on a single enum
+  - Full integration with enum values (index, name, toString)
+  - Add 15 comprehensive test cases for enum-mixin combinations
+- **feat: Extensions statiques** - Extensions can now declare static members (methods, getters, setters, fields)
+  - Implement static member storage in `InterpretedExtension` class
+  - Add static member access via `Extension.member` syntax
+  - Support static method calls, property access, and assignments
+  - Add support for prefix/postfix increment/decrement operators on static extension fields
+  - Add 15 comprehensive test cases covering all static extension member types
+- **feat: Enhance compound super assignments for bridged classes** - Full support for compound assignments on properties inherited from bridged superclasses
+  - Fix `visitAssignmentExpression` to handle bridged superclass getters/setters in compound `super` assignments
+  - Fix `InterpretedInstance.get()` to properly traverse bridged superclass hierarchy at each inheritance level
+  - Fix `InterpretedInstance.set()` to properly handle bridged superclass setters at each inheritance level
+  - Support nested inheritance chains (Interpreted → Interpreted → Bridged)
+  - Add 5 comprehensive test cases for bridged super compound assignments
+- **Total test count: 1269 tests passing** - All 8 planned features fully implemented with comprehensive test coverage
+
+## 0.1.5
+- feat: implement handling of factory constructors in InterpreterVisitor; add comprehensive tests for factory constructor behavior
+- feat: enhance async execution state and interpreter visitor to support break/continue handling; add comprehensive tests for nested async loops
+- feat: enhance async execution state and interpreter visitor to support async* generators; add comprehensive tests for generator behavior and control flow
+
+## 0.1.4
+- feat: add methods to find and retrieve bridged enum values in Environment and InterpreterVisitor; enhance handling of bridged enums in property access and binary expressions
+- feat: enhance documentation across multiple files; add examples and clarify class functionalities in D4rt interpreter
+## 0.1.3
+- Implement complete `late` variable support with lazy initialization and proper error handling
+- Add comprehensive late variable test coverage (33 test cases) including static fields, instance fields, final constraints, and error conditions
+- Add LateVariable class with proper uninitialized access detection and assignment validation
+- Enhance interpreter visitor to handle late variables in all contexts (local, static, instance)
+- Fix nullable variable handling in interpreted class instances
+- Add ComparableCore bridge to core standard library for better type comparison support
+- Update documentation and project description for better clarity
+
+## 0.1.2+1
+- update project description in pubspec.yaml
+- docs: minor updates to documentation in README.md
+
+## 0.1.2
+- Implement complete Isolate API with Capability, IsolateSpawnException, Isolate, SendPort, ReceivePort, RawReceivePort, RemoteError, and TransferableTypedData classes
+- Add comprehensive isolate communication and message passing support
+- Enhance async capabilities with Timer functionality and improved error handling
+- Add UnawaitedAsync and TimeoutExceptionAsync classes for better async error management
+- Implement additional HTTP methods and error handling in HttpClientIo
+- Add toString method to DirectoryIo for better debugging
+- Enhance FileSystemEntity with parentOf method and FileStat improvements
+- Add FileSystemEvent static getters and methods
+- Implement RawSocket and additional Socket classes for network programming
+- Enhance Stream and Socket classes with additional utility methods
+- Add IOSink, ProcessIo, and StringSink classes for improved I/O operations
+- Implement Comparable interface for better type comparison support
+- Add comprehensive test coverage for isolate, socket, and I/O functionality
+- Update core typed data classes (Uint8List, Int16List, Float32List) with enhanced functionality
+- Add list extension utilities for better collection manipulation
+
+## 0.1.1
+- Implement await for-in loop support for streams in interpreter
+- Enhance pattern matching with support for rest elements in lists and maps
+- Add support for await expressions in function and constructor arguments
+- BREAKING CHANGE: BridgedClassDefinition has been removed and replaced with BridgedClass
+
+## 0.1.0
+- Added runtime checks for generic type constraints.
+- Added support for compound bitwise assignment operators (&=, |=, etc.).
+- Introduced Int16List and Float32List in typed_data.
+
+## 0.0.9
+- full support (generic classes/functions, type constraints, runtime validation)
+- use BridgedClassDefinition for all Stdlib
+- Support adjacent string literals in interpreter
+- add operators support for InterpretedClass
+- more features
+
+## 0.0.8
+- expose visitor getter
+- add support for bridged mixins
+- enhance async execution state with nested loop support 
+
+## 0.0.7
+- fix: support null safety
+
+## 0.0.6
+- Update docs
+
+## 0.0.5
+- minor fix
+
+## 0.0.4
+- Add 'import/export' directive support, support for 'show' and 'hide' combinators 
+- Add some dart:collection & dart:typed_data
+- Support for ParenthesizedExpression property access in simpleIdentifier in async state
+
+## 0.0.3
+- Fix infinite loop when using rethrow in try catch in async state
+
+## 0.0.2
+- Support web
+- Fix return nativeValue for BridgedEnumValue to BridgedInstance argument
+
+## 0.0.1
+
+- Initial version.

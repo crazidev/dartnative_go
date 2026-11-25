@@ -1,0 +1,341 @@
+import 'package:tom_d4rt_ast/runtime.dart';
+import '../cast_views.dart';
+import '../written_collection_writes.dart';
+
+class MapCore {
+  static BridgedClass get definition => BridgedClass(
+    nativeType: Map,
+    name: 'Map',
+    isAssignable: (v) => v is Map,
+    typeParameterCount: 2,
+    nativeNames: [
+      'UnmodifiableMapView',
+      '_UnmodifiableMapView',
+      'ListMapView', // List.asMap() return type
+      '_MapView', // Internal MapView implementation
+    ],
+    constructors: {
+      '': (visitor, positionalArgs, namedArgs) {
+        return <dynamic, dynamic>{};
+      },
+      'from': (visitor, positionalArgs, namedArgs) {
+        return Map.from(positionalArgs[0] as Map);
+      },
+      'of': (visitor, positionalArgs, namedArgs) {
+        return Map.of(positionalArgs[0] as Map);
+      },
+      'unmodifiable': (visitor, positionalArgs, namedArgs) {
+        return Map.unmodifiable(positionalArgs[0] as Map);
+      },
+      // Dart 3.13 (DART313B1): the SDK declares `Map.unmodifiableOf` as a
+      // redirect to `Map.unmodifiable`, so delegating to that is exact and
+      // keeps it available on older host SDKs.
+      'unmodifiableOf': (visitor, positionalArgs, namedArgs) {
+        return Map.unmodifiable(positionalArgs[0] as Map);
+      },
+      'identity': (visitor, positionalArgs, namedArgs) {
+        return Map.identity();
+      },
+      'fromEntries': (visitor, positionalArgs, namedArgs) {
+        final entries = positionalArgs[0] as Iterable;
+        // Unwrap BridgedInstance<MapEntry> to get native MapEntry objects
+        final nativeEntries = entries.map((entry) {
+          if (entry is BridgedInstance) {
+            return entry.nativeObject as MapEntry;
+          } else if (entry is MapEntry) {
+            return entry;
+          } else {
+            throw RuntimeD4rtException(
+              'fromEntries expects Iterable<MapEntry>, got ${entry.runtimeType}',
+            );
+          }
+        });
+        return Map.fromEntries(nativeEntries);
+      },
+    },
+    staticMethods: {
+      // The static counterpart of the instance `cast()`: re-types an
+      // existing map as a live view rather than a copy. Type arguments are
+      // erased at the bridge boundary, so the native call is instantiated
+      // at `dynamic` and the observable contract is "same entries, still a
+      // view".
+      'castFrom': (visitor, positionalArgs, namedArgs, _) {
+        if (positionalArgs.length != 1 || namedArgs.isNotEmpty) {
+          throw RuntimeD4rtException(
+            'Map.castFrom(source) expects one positional argument.',
+          );
+        }
+        final source = positionalArgs[0];
+        if (source is! Map) {
+          throw RuntimeD4rtException(
+            'The argument to Map.castFrom must be a Map.',
+          );
+        }
+        return Map.castFrom<dynamic, dynamic, dynamic, dynamic>(source);
+      },
+      'from': (visitor, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.from', atMost: 1);
+        return Map.from(positionalArgs[0] as Map);
+      },
+      'of': (visitor, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.of', atMost: 1);
+        return Map.of(positionalArgs[0] as Map);
+      },
+      'unmodifiable': (visitor, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.unmodifiable', atMost: 1);
+        return Map.unmodifiable(positionalArgs[0] as Map);
+      },
+      'unmodifiableOf': (visitor, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.unmodifiableOf', atMost: 1);
+        return Map.unmodifiable(positionalArgs[0] as Map);
+      },
+      'identity': (visitor, positionalArgs, namedArgs, _) {
+        return Map.identity();
+      },
+      'fromIterable': (visitor, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.fromIterable', atMost: 1);
+        final iterable = positionalArgs[0] as Iterable;
+        final key = namedArgs['key'] as Callable?;
+        final value = namedArgs['value'] as Callable?;
+
+        return Map.fromIterable(
+          iterable,
+          key: key == null
+              ? null
+              : (element) => D4.enterInterpreted(visitor, key, [element]),
+          value: value == null
+              ? null
+              : (element) => D4.enterInterpreted(visitor, value, [element]),
+        );
+      },
+      'fromIterables': (visitor, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.fromIterables', atMost: 2);
+        return Map.fromIterables(
+          positionalArgs[0] as Iterable,
+          positionalArgs[1] as Iterable,
+        );
+      },
+      'fromEntries': (visitor, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.fromEntries', atMost: 1);
+        final entries = positionalArgs[0] as Iterable;
+        // Unwrap BridgedInstance<MapEntry> to get native MapEntry objects
+        final nativeEntries = entries.map((entry) {
+          if (entry is BridgedInstance) {
+            return entry.nativeObject as MapEntry;
+          } else if (entry is MapEntry) {
+            return entry;
+          } else {
+            throw RuntimeD4rtException(
+              'fromEntries expects Iterable<MapEntry>, got ${entry.runtimeType}',
+            );
+          }
+        });
+        return Map.fromEntries(nativeEntries);
+      },
+    },
+    methods: {
+      '[]': (visitor, target, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.[]', atMost: 1);
+        return (target as Map)[positionalArgs[0]];
+      },
+      '[]=': (visitor, target, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.[]=', atMost: 2);
+        (target as Map)[checkWrittenElement(
+          visitor,
+          target,
+          0,
+          positionalArgs[0],
+          'key',
+        )] = checkWrittenElement(
+          visitor,
+          target,
+          1,
+          positionalArgs[1],
+          'value',
+        );
+        return null;
+      },
+      'addAll': (visitor, target, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.addAll', atMost: 1);
+        final other = positionalArgs[0] as Map;
+        checkWrittenArgument(target, other, 'other');
+        final map = target as Map;
+        other.forEach((key, value) {
+          map[checkWrittenElement(visitor, target, 0, key, 'key')] =
+              checkWrittenElement(visitor, target, 1, value, 'value');
+        });
+        return null;
+      },
+      'addEntries': (visitor, target, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.addEntries', atMost: 1);
+        final entries = positionalArgs[0] as Iterable;
+        // Unwrap BridgedInstance<MapEntry> to get native MapEntry objects
+        final nativeEntries = entries.map((entry) {
+          final native = entry is BridgedInstance ? entry.nativeObject : entry;
+          if (native is MapEntry) {
+            // ghissues73: a written map checks the entry's key and value.
+            return MapEntry<Object?, Object?>(
+              checkWrittenElement(visitor, target, 0, native.key, 'key'),
+              checkWrittenElement(visitor, target, 1, native.value, 'value'),
+            );
+          } else {
+            throw RuntimeD4rtException(
+              'addEntries expects Iterable<MapEntry>, got ${entry.runtimeType}',
+            );
+          }
+        });
+        (target as Map).addEntries(nativeEntries);
+        return null;
+      },
+      'clear': (visitor, target, positionalArgs, namedArgs, _) {
+        (target as Map).clear();
+        return null;
+      },
+      'containsKey': (visitor, target, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.containsKey', atMost: 1);
+        return (target as Map).containsKey(positionalArgs[0]);
+      },
+      'containsValue': (visitor, target, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.containsValue', atMost: 1);
+        return (target as Map).containsValue(positionalArgs[0]);
+      },
+      'forEach': (visitor, target, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.forEach', atMost: 1);
+        final action = positionalArgs[0] as Callable;
+        (target as Map).forEach((key, value) {
+          D4.enterInterpreted(visitor, action, [key, value]);
+        });
+        return null;
+      },
+      'putIfAbsent': (visitor, target, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.putIfAbsent', atMost: 2);
+        final ifAbsent = positionalArgs[1] as Callable;
+        return (target as Map).putIfAbsent(
+          checkWrittenElement(visitor, target, 0, positionalArgs[0], 'key'),
+          () => checkWrittenElement(
+            visitor,
+            target,
+            1,
+            D4.enterInterpreted(visitor, ifAbsent, []),
+            'value',
+          ),
+        );
+      },
+      'remove': (visitor, target, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.remove', atMost: 1);
+        return (target as Map).remove(positionalArgs[0]);
+      },
+      'removeWhere': (visitor, target, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.removeWhere', atMost: 1);
+        final test = positionalArgs[0] as Callable;
+        (target as Map).removeWhere((key, value) {
+          return D4.enterInterpreted(visitor, test, [key, value]) as bool;
+        });
+        return null;
+      },
+      'update': (visitor, target, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.update', atMost: 2);
+        final update = positionalArgs[1] as Callable;
+        final ifAbsent = namedArgs['ifAbsent'] as Callable?;
+        return (target as Map).update(
+          checkWrittenElement(visitor, target, 0, positionalArgs[0], 'key'),
+          (value) => checkWrittenElement(
+            visitor,
+            target,
+            1,
+            D4.enterInterpreted(visitor, update, [value]),
+            'value',
+          ),
+          ifAbsent: ifAbsent == null
+              ? null
+              : () => checkWrittenElement(
+                  visitor,
+                  target,
+                  1,
+                  D4.enterInterpreted(visitor, ifAbsent, []),
+                  'value',
+                ),
+        );
+      },
+      'updateAll': (visitor, target, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.updateAll', atMost: 1);
+        final update = positionalArgs[0] as Callable;
+        (target as Map).updateAll((key, value) {
+          return checkWrittenElement(
+            visitor,
+            target,
+            1,
+            D4.enterInterpreted(visitor, update, [key, value]),
+            'value',
+          );
+        });
+        return null;
+      },
+      'map': (visitor, target, positionalArgs, namedArgs, _) {
+        D4.checkArity(positionalArgs, 'Map.map', atMost: 1);
+        final convert = positionalArgs[0] as Callable;
+        return (target as Map).map((key, value) {
+          final result = D4.enterInterpreted(visitor, convert, [key, value]);
+          // Accept both native MapEntry and BridgedInstance<MapEntry>
+          if (result is MapEntry) {
+            return result;
+          } else if (result is BridgedInstance &&
+              result.nativeObject is MapEntry) {
+            return result.nativeObject as MapEntry;
+          } else {
+            throw RuntimeD4rtException(
+              'Map.map callback must return a MapEntry, got ${result.runtimeType}',
+            );
+          }
+        });
+      },
+      'cast': (visitor, target, positionalArgs, namedArgs, typeArgs) {
+        return castMap(visitor, target as Map, typeArgs);
+      },
+    },
+    getters: {
+      'length': (visitor, target) => (target as Map).length,
+      'hashCode': (visitor, target) => (target as Map).hashCode,
+      'isEmpty': (visitor, target) => (target as Map).isEmpty,
+      'isNotEmpty': (visitor, target) => (target as Map).isNotEmpty,
+      'keys': (visitor, target) => (target as Map).keys,
+      'values': (visitor, target) => (target as Map).values,
+      'entries': (visitor, target) => (target as Map).entries,
+      'runtimeType': (visitor, target) =>
+          WrittenCollectionType.of(target) ?? (target as Map).runtimeType,
+    },
+  );
+}
+
+class MapEntryCore {
+  static BridgedClass get definition => BridgedClass(
+    nativeType: MapEntry,
+    name: 'MapEntry',
+    isAssignable: (v) => v is MapEntry,
+    typeParameterCount: 2,
+    constructors: {
+      '': (visitor, positionalArgs, namedArgs) {
+        if (positionalArgs.length != 2) {
+          throw RuntimeD4rtException(
+            'MapEntry constructor requires 2 arguments (key, value).',
+          );
+        }
+        return MapEntry(positionalArgs[0], positionalArgs[1]);
+      },
+    },
+    methods: {
+      'toString': (visitor, target, positionalArgs, namedArgs, _) =>
+          (target as MapEntry).toString(),
+    },
+    getters: {
+      'key': (visitor, target) => (target as MapEntry).key,
+      'value': (visitor, target) => (target as MapEntry).value,
+      // SCD196: a GETTER, which is what `Object` declares. Registered as a
+      // method it was reachable only as `e.hashCode()`, and `e.hashCode` — the
+      // spelling every Dart program uses — returned the bound callable. Nothing
+      // masked it: no universal getter answers ahead of a bridge's own method
+      // map, so `map.entries.first.hashCode` was not an int.
+      'hashCode': (visitor, target) => (target as MapEntry).hashCode,
+    },
+  );
+}
