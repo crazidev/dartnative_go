@@ -135,5 +135,80 @@ void main() {
       );
       expect(found, isTrue);
     });
+
+    test('fromBeacon preserves versioned iconUrl and appVersion', () {
+      final project = DartGoProject.fromBeacon({
+        'protocol': 'dart_go',
+        'appName': 'Updated App',
+        'appVersion': '2.0.0',
+        'url': 'http://127.0.0.1:8088',
+        'hasIcon': true,
+        'iconUrl': 'http://127.0.0.1:8088/assets/icon.png?v=123-456',
+      });
+      expect(project.appVersion, equals('2.0.0'));
+      expect(
+        project.iconUrl,
+        equals('http://127.0.0.1:8088/assets/icon.png?v=123-456'),
+      );
+    });
+
+    test('emits update when iconUrl or appVersion changes on restart', () async {
+      var iconVersion = 'v1';
+      var appVersion = '1.0.0';
+      final dynamicServer = await HttpServer.bind(
+        InternetAddress.loopbackIPv4,
+        0,
+      );
+      final port = dynamicServer.port;
+      dynamicServer.listen((req) {
+        if (req.uri.path == '/manifest.json') {
+          req.response
+            ..headers.contentType = ContentType.json
+            ..write(
+              jsonEncode({
+                'protocol': 'dart_go',
+                'appName': 'Same Name',
+                'appVersion': appVersion,
+                'serverUrl': 'http://127.0.0.1:$port',
+                'hasIcon': true,
+                'iconUrl': 'http://127.0.0.1:$port/assets/icon.png?v=$iconVersion',
+              }),
+            )
+            ..close();
+        } else {
+          req.response
+            ..statusCode = HttpStatus.notFound
+            ..close();
+        }
+      });
+
+      final localScanner = DartGoNetworkScanner(startPort: port, endPort: port);
+      final emissions = <List<DartGoProject>>[];
+      final sub = localScanner.projectsStream.listen(emissions.add);
+      try {
+        await localScanner.scanNow();
+        await Future<void>.delayed(Duration.zero);
+        expect(emissions.length, equals(1));
+        expect(
+          emissions.last.single.iconUrl,
+          endsWith('/assets/icon.png?v=v1'),
+        );
+
+        iconVersion = 'v2';
+        appVersion = '1.0.1';
+        await localScanner.scanNow();
+        await Future<void>.delayed(Duration.zero);
+        expect(emissions.length, equals(2));
+        expect(
+          emissions.last.single.iconUrl,
+          endsWith('/assets/icon.png?v=v2'),
+        );
+        expect(emissions.last.single.appVersion, equals('1.0.1'));
+      } finally {
+        await sub.cancel();
+        localScanner.dispose();
+        await dynamicServer.close();
+      }
+    });
   });
 }

@@ -52,7 +52,9 @@ class DartGoBroadcaster {
   final int startPort;
   final int endPort;
   final String dartGoVersion;
+  final String? appVersion;
   final bool hasIcon;
+  final String? iconUrl;
   final bool hasSplash;
 
   RawDatagramSocket? _udpSocket;
@@ -65,7 +67,9 @@ class DartGoBroadcaster {
     this.startPort = 8088,
     this.endPort = 8098,
     required this.dartGoVersion,
+    this.appVersion,
     this.hasIcon = false,
+    this.iconUrl,
     this.hasSplash = false,
   });
 
@@ -91,31 +95,53 @@ class DartGoBroadcaster {
       'protocol': 'dart_go',
       'version': dartGoVersion,
       'appName': appName,
+      if (appVersion != null) 'appVersion': appVersion,
       'url': 'http://$host:$port',
       'bundleUrl': 'http://$host:$port/bundle.json',
       'manifestUrl': 'http://$host:$port/manifest.json',
       'wsUrl': 'ws://$host:$port/ws',
       'port': port,
       'hasIcon': hasIcon,
+      if (iconUrl != null) 'iconUrl': iconUrl,
       'hasSplash': hasSplash,
       'timestamp': DateTime.now().millisecondsSinceEpoch,
     });
 
-    final bytes = utf8.encode(payload);
+    _broadcastBytes(utf8.encode(payload));
+  }
+
+  /// Broadcasts an immediate goodbye packet so listeners drop online status
+  /// without waiting for probe timeouts.
+  void _sendGoodbye() {
+    if (_udpSocket == null) return;
+
+    final payload = jsonEncode({
+      'protocol': 'dart_go',
+      'type': 'bye',
+      'url': 'http://$host:$port',
+      'port': port,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    });
+
+    _broadcastBytes(utf8.encode(payload));
+  }
+
+  void _broadcastBytes(List<int> bytes) {
+    final socket = _udpSocket;
+    if (socket == null) return;
 
     // Broadcast to standard port range (8088..8098) and dedicated discovery port (45454)
     final broadcastTarget = InternetAddress('255.255.255.255');
 
-    // Broadcast across port range
     for (var targetPort = startPort; targetPort <= endPort; targetPort++) {
       try {
-        _udpSocket!.send(bytes, broadcastTarget, targetPort);
+        socket.send(bytes, broadcastTarget, targetPort);
       } catch (_) {}
     }
 
     // Dedicated discovery port for mobile app listener
     try {
-      _udpSocket!.send(bytes, broadcastTarget, 45454);
+      socket.send(bytes, broadcastTarget, 45454);
     } catch (_) {}
   }
 
@@ -123,6 +149,7 @@ class DartGoBroadcaster {
   void stop() {
     _timer?.cancel();
     _timer = null;
+    _sendGoodbye();
     _udpSocket?.close();
     _udpSocket = null;
   }

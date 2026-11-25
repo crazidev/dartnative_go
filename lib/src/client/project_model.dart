@@ -101,19 +101,24 @@ class DartGoProject {
 
   factory DartGoProject.fromBeacon(Map<String, dynamic> beacon) {
     final appName = beacon['appName'] as String? ?? 'DartNative Project';
+    final appVersion = beacon['appVersion'] as String?;
     final url = beacon['url'] as String? ?? '';
     final bundleUrl = beacon['bundleUrl'] as String?;
     final manifestUrl = beacon['manifestUrl'] as String?;
     final wsUrl = beacon['wsUrl'] as String?;
     final hasIcon = beacon['hasIcon'] as bool? ?? false;
+    final iconUrl =
+        beacon['iconUrl'] as String? ??
+        (hasIcon ? '$url/assets/icon.png' : null);
 
     return DartGoProject(
       appName: appName,
+      appVersion: appVersion,
       url: url,
       manifestUrl: manifestUrl ?? '$url/manifest.json',
       bundleUrl: bundleUrl ?? '$url/bundle.json',
       wsUrl: wsUrl ?? '${url.replaceFirst('http', 'ws')}/ws',
-      iconUrl: hasIcon ? '$url/assets/icon.png' : null,
+      iconUrl: iconUrl,
       isActive: true,
       lastSeen: DateTime.now(),
     );

@@ -37,7 +37,7 @@ class DartGoNetworkScanner {
 
   /// How long a server may miss probes before it is treated as offline.
   /// Prevents one flaky ping from blinking a dead server back into the list.
-  static const Duration _offlineGrace = Duration(seconds: 12);
+  static const Duration _offlineGrace = Duration(seconds: 6);
 
   /// Last emitted UI-relevant fingerprint (active flags + recent order).
   /// Skips no-op stream events that would rebuild the launcher for lastSeen-only bumps.
@@ -121,10 +121,33 @@ class DartGoNetworkScanner {
       final json = jsonDecode(text) as Map<String, dynamic>;
 
       if (json['protocol'] == 'dart_go') {
+        if (json['type'] == 'bye') {
+          final rawUrl = json['url'] as String?;
+          if (rawUrl != null && rawUrl.isNotEmpty) {
+            _markProjectOffline(DartGoHttpClient.normalizeUrl(rawUrl));
+          }
+          return;
+        }
         final project = DartGoProject.fromBeacon(json);
         _addOrUpdateActiveProject(project);
       }
     } catch (_) {}
+  }
+
+  /// Immediately marks [url] offline (e.g. on UDP goodbye) and drops it if
+  /// not in [_recentOrder].
+  void _markProjectOffline(String url) {
+    final existing = _projectsMap[url];
+    if (existing == null) return;
+    if (_recentOrder.contains(url)) {
+      if (!existing.isActive) return;
+      _projectsMap[url] = existing.copyWith(isActive: false);
+    } else {
+      _projectsMap.remove(url);
+    }
+    if (!_batchingEmits) {
+      _emitProjects();
+    }
   }
 
   /// Runs an active scan across all connected network interfaces and known hosts.
@@ -158,19 +181,22 @@ class DartGoNetworkScanner {
       // Execute in parallel
       await Future.wait(probeFutures);
 
-      // 4. Refresh lastSeen for tracked URLs that still answer. Failures do
-      //    not flip isActive here — [_reconcileActiveFlags] applies grace.
-      for (final project in _projectsMap.values.toList()) {
-        if (!project.isActive && !_recentOrder.contains(project.url)) {
-          continue;
-        }
-        final isAlive = await _httpClient.ping(project.url);
-        if (!_projectsMap.containsKey(project.url) || !isAlive) continue;
-        _projectsMap[project.url] = project.copyWith(
-          isActive: true,
-          lastSeen: DateTime.now(),
-        );
-      }
+      // 4. Refresh lastSeen for tracked URLs that still answer (in parallel).
+      //    Failures do not flip isActive here — [_reconcileActiveFlags] applies grace.
+      final tracked = _projectsMap.values
+          .where((p) => p.isActive || _recentOrder.contains(p.url))
+          .toList();
+      await Future.wait([
+        for (final project in tracked)
+          _httpClient.ping(project.url).then((isAlive) {
+            final current = _projectsMap[project.url];
+            if (current == null || !isAlive) return;
+            _projectsMap[project.url] = current.copyWith(
+              isActive: true,
+              lastSeen: DateTime.now(),
+            );
+          }),
+      ]);
 
       _reconcileActiveFlags();
     } catch (_) {
@@ -223,24 +249,30 @@ class DartGoNetworkScanner {
   /// refreshes metadata without inventing a recent entry.
   void _addOrUpdateActiveProject(DartGoProject project) {
     final existing = _projectsMap[project.url];
-    final updated = (existing ?? project).copyWith(
+    final updated = DartGoProject(
       appName: project.appName,
+      url: existing?.url ?? project.url,
+      manifestUrl: project.manifestUrl ?? existing?.manifestUrl,
+      bundleUrl: project.bundleUrl ?? existing?.bundleUrl,
+      wsUrl: project.wsUrl ?? existing?.wsUrl,
+      appVersion: project.appVersion ?? existing?.appVersion,
+      iconUrl: project.iconUrl,
       isActive: true,
       lastSeen: DateTime.now(),
-      manifestUrl: project.manifestUrl,
-      bundleUrl: project.bundleUrl,
-      wsUrl: project.wsUrl,
-      iconUrl: project.iconUrl ?? existing?.iconUrl,
     );
 
-    final becameActive = existing == null || !existing.isActive;
-    final renamed = existing != null && existing.appName != updated.appName;
+    final metadataChanged =
+        existing == null ||
+        !existing.isActive ||
+        existing.appName != updated.appName ||
+        existing.appVersion != updated.appVersion ||
+        existing.iconUrl != updated.iconUrl;
     _projectsMap[project.url] = updated;
     // Refresh stored metadata in place — never reshuffle [_recentOrder].
     if (_recentOrder.contains(updated.url)) {
       unawaited(_storage.upsertProject(updated));
     }
-    if (!_batchingEmits && (becameActive || renamed)) {
+    if (!_batchingEmits && metadataChanged) {
       _emitProjects();
     }
   }
@@ -368,7 +400,8 @@ class DartGoNetworkScanner {
     if (_disposed || _projectsController.isClosed) return;
     final projects = _getSortedProjects();
     final fingerprint = [
-      for (final p in projects) '${p.url}|${p.isActive}|${p.appName}',
+      for (final p in projects)
+        '${p.url}|${p.isActive}|${p.appName}|${p.appVersion ?? ''}|${p.iconUrl ?? ''}',
       'recent:${_recentOrder.join(',')}',
     ].join('\n');
     if (fingerprint == _lastEmitFingerprint) return;
