@@ -1190,11 +1190,20 @@ class _DartNativeGoState extends State<DartNativeGo> {
       // A patch has no manifest: keep the app name/version/splash the previous
       // bundle carried, or DevTools falls back to the placeholder name.
       _activeBundle = updatedBundle.withMetadataFrom(_activeBundle!);
-      await _syncIconFonts(updatedBundle);
+      final syncSw = Stopwatch()..start();
+      if (updatedBundle.isPatch && !isAssetChange) {
+        // Code-only patch reloads must stay off the font-manifest HTTP path so
+        // an extra roundtrip never stalls evaluation/repaint. Any newly added
+        // icon font still syncs and registers right behind the reload.
+        unawaited(_syncIconFonts(updatedBundle));
+      } else {
+        await _syncIconFonts(updatedBundle);
+      }
       await _syncAndRevalidateAssets(
         _activeBundle!,
         isAssetChange: isAssetChange,
       );
+      final syncMs = syncSw.elapsedMilliseconds;
       if (!mounted || seq != _reloadSeq) return;
 
       final trackSw = Stopwatch()..start();
@@ -1290,6 +1299,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
         totalMs: totalMs,
         timings: {
           'fetch': fetchMs,
+          if (syncMs > 0) 'sync': syncMs,
           'track': trackMs,
           'eval': evalMs,
           'remount': remountMs,

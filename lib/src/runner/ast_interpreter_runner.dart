@@ -201,7 +201,7 @@ class AstInterpreterRunner {
     // (`package:dartnative_go/server_component.dart`). The loader reads the
     // live server URL per fetch, so URL changes after init are picked up.
     registerServerComponentBridge(runner, loader: componentLoader);
-    // Host API for interpreted UI (`package:dartnative_go_api/host_api.dart`).
+    // Host API for interpreted UI (`package:dngo_api/host_api.dart`).
     registerAstHostApiBridge(runner);
 
     Object? captureRunApp(
@@ -291,7 +291,6 @@ class AstInterpreterRunner {
   }) async {
     final totalSw = Stopwatch()..start();
     _capturedApp = null;
-    _lastModuleFingerprints = Map<String, String>.of(moduleFingerprints);
     final initSw = Stopwatch()..start();
     final hadCoreRunner = _runner != null;
     initRunner();
@@ -341,14 +340,15 @@ class AstInterpreterRunner {
 
     final decodeSw = Stopwatch()..start();
     final ast.AstBundle bundle;
+    ast.AstBundle? appliedPatch;
     if (isPatch &&
         astPatchBytes != null &&
         astPatchBytes.isNotEmpty &&
         _cachedBundle != null) {
-      final patch = decodeAstBundleBytes(astPatchBytes);
-      bundle = _cachedBundle!.applyPatch(patch);
+      appliedPatch = decodeAstBundleBytes(astPatchBytes);
+      bundle = _cachedBundle!.applyPatch(appliedPatch);
       _cachedBundle = bundle;
-      _classFileMap = {..._classFileMap, ..._classFilesOf(patch)};
+      _classFileMap = {..._classFileMap, ..._classFilesOf(appliedPatch)};
       _lastDecodeWasCacheHit = false;
     } else {
       if (astBytes.isNotEmpty) {
@@ -358,6 +358,26 @@ class AstInterpreterRunner {
       bundle = _decodeBundle(astBytes);
     }
     final decodeMs = decodeSw.elapsedMilliseconds;
+
+    // Preserve unchanged module fingerprints across patch reloads so
+    // DeclarationRegistry.cachedModule reuses every untouched module instead of
+    // re-declaring the entire bundle. Only URIs present in the patch get a new
+    // generation-unique fingerprint so they are always re-declared (even across
+    // A -> B -> A reverts).
+    final Map<String, String> effectiveFingerprints;
+    if (moduleFingerprints.isNotEmpty) {
+      effectiveFingerprints = Map<String, String>.of(moduleFingerprints);
+    } else if (appliedPatch != null && _lastModuleFingerprints.isNotEmpty) {
+      final merged = Map<String, String>.of(_lastModuleFingerprints);
+      final patchGen = _evaluationCount + 1;
+      for (final uri in appliedPatch.modules.keys) {
+        merged[uri] = 'patch:$patchGen:$uri';
+      }
+      effectiveFingerprints = merged;
+    } else {
+      effectiveFingerprints = const {};
+    }
+    _lastModuleFingerprints = effectiveFingerprints;
 
     final effectiveEntry = resolveBundleEntry(bundle, entryPoint);
     if (entryPoint != null && effectiveEntry != entryPoint) {
@@ -381,7 +401,7 @@ class AstInterpreterRunner {
             name: name,
             positionalArgs: positionalArgs,
             namedArgs: namedArgs,
-            moduleFingerprints: moduleFingerprints,
+            moduleFingerprints: effectiveFingerprints,
           );
           raw = result is Future ? await result : result;
         },
@@ -510,7 +530,7 @@ class AstInterpreterRunner {
         // appending an `ms` unit to them.
         'decl_cells': '${_declarationRegistry.cellCount} cells',
         'var_cells': '${_declarationRegistry.variableCellCount} cells',
-        'decl_swaps': _declarationRegistry.swaps,
+        'decl_swaps': '${_declarationRegistry.swaps} swaps',
       },
     );
 

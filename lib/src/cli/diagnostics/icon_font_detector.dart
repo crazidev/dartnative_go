@@ -10,7 +10,7 @@ import '../packaging/ast_builder.dart'
         cachedBundleForProject,
         detectGuestPackageName,
         findPackageConfigFile,
-        resolvePackageSources;
+        kExcludedDevPackages;
 import 'icon_annotation_scanner.dart';
 
 /// Known icon-font families DartNative guests can request.
@@ -240,35 +240,80 @@ class IconFontDetector {
   // fetched on every (re)connect; without this each fetch would rescan.
   static final Map<String, ({String fp, IconFontReport report})> _cache = {};
 
-  /// Full detection: scan sources + resolve fonts.
+  // Parsed package_config.json cache: config path → (mtimeMs, pkgName → dirs).
+  static final Map<
+    String,
+    ({
+      int mtimeMs,
+      Map<String, ({Directory rootDir, Directory libDir})> packages,
+    })
+  >
+  _packageConfigCache = {};
+
+  // Per-package font scan cache: `pkgName:rootPath` → (mtimeKey, scan result).
+  // Kept independent of guest `lib/*.dart` mtimes so editing a guest file never
+  // forces a re-scan of third-party packages like `lucide_kit`.
+  static final Map<
+    String,
+    ({
+      String mtimeKey,
+      IconFontReport usage,
+      Set<AnnotatedIconFont> annotated,
+      List<({String package, String family, String filePath})> declaredFonts,
+    })
+  >
+  _packageScanCache = {};
+
+  /// Full detection: scan guest sources + only the external packages actually
+  /// imported or bundled by the project (cached per package).
   IconFontReport detect() {
     final fp = _fingerprintProject();
     final cached = _cache[projectDir.path];
     if (cached != null && cached.fp == fp) return cached.report;
     final guestPackage = detectGuestPackageName(projectDir);
     final guestSources = _readGuestSources();
-    // Package sources (bounded: dev/dartnative packages skipped by
-    // resolvePackageSources) catch icon usage *inside* dependencies —
-    // e.g. a widget kit using its own registry internally.
-    Map<String, String> packageSources;
-    try {
-      packageSources = resolvePackageSources(
-        projectDir,
-        packageName: guestPackage,
-      );
-    } catch (_) {
-      packageSources = const {};
-    }
-    final usage = scanSources({...guestSources, ...packageSources});
+    final guestUsage = scanSources(guestSources);
     final customs = _readCustomFonts();
-    final annotated = _scanAnnotatedIconFonts(
-      guestSources,
-      packageSources,
-      guestPackage ?? 'guest_app',
+
+    final mergedGlyphs = <String, Set<String>>{
+      for (final e in guestUsage.glyphsByFamily.entries)
+        e.key: Set<String>.from(e.value),
+    };
+    final mergedCps = <String, Set<int>>{
+      for (final e in guestUsage.codePointsByFamily.entries)
+        e.key: Set<int>.from(e.value),
+    };
+    final mergedPackages = Map<String, String>.from(guestUsage.fontPackages);
+    final annotated = <AnnotatedIconFont>{};
+    final importedPkgFonts =
+        <({String package, String family, String filePath})>[];
+
+    // Scan only packages actually imported by guest code or bundled into
+    // `guest.ast`, never the entire monorepo `package_config.json`.
+    final usedPackages = _collectUsedPackages(guestSources, guestPackage);
+    final pkgConfig = _loadPackageConfig();
+    for (final pkg in usedPackages) {
+      final dirs = pkgConfig[pkg];
+      if (dirs == null) continue;
+      final pkgScan = _scanPackageCached(pkg, dirs.rootDir, dirs.libDir);
+      pkgScan.usage.glyphsByFamily.forEach((fam, names) {
+        mergedGlyphs.putIfAbsent(fam, () => <String>{}).addAll(names);
+      });
+      pkgScan.usage.codePointsByFamily.forEach((fam, cps) {
+        mergedCps.putIfAbsent(fam, () => <int>{}).addAll(cps);
+      });
+      pkgScan.usage.fontPackages.forEach((fam, p) {
+        mergedPackages.putIfAbsent(fam, () => p);
+      });
+      annotated.addAll(pkgScan.annotated);
+      importedPkgFonts.addAll(pkgScan.declaredFonts);
+    }
+
+    // Guest-level (or bundle-wide) `@IconFont` annotations.
+    annotated.addAll(
+      _scanGuestAnnotatedIconFonts(guestSources, guestPackage ?? 'guest_app'),
     );
-    final mergedGlyphs = Map<String, Set<String>>.from(usage.glyphsByFamily);
-    final mergedCps = Map<String, Set<int>>.from(usage.codePointsByFamily);
-    final mergedPackages = Map<String, String>.from(usage.fontPackages);
+
     final annotatedFamilies = <String>{};
     for (final a in annotated) {
       mergedGlyphs.putIfAbsent(a.family, () => <String>{});
@@ -276,9 +321,6 @@ class IconFontDetector {
       mergedPackages.putIfAbsent(a.family, () => a.package);
       annotatedFamilies.add(a.family);
     }
-    // Discover fonts declared by external packages imported in guest code
-    // (e.g. `lucide_kit` declaring `dartnative: fonts: - family: Lucide`).
-    final importedPkgFonts = _readImportedPackageFonts(guestSources);
     for (final entry in importedPkgFonts) {
       mergedGlyphs.putIfAbsent(entry.family, () => <String>{});
       mergedCps.putIfAbsent(entry.family, () => <int>{});
@@ -310,12 +352,119 @@ class IconFontDetector {
     return report;
   }
 
-  /// Discovers annotated icon registries, preferring the precise bundle
-  /// scan (free: reuses the builder's in-memory bundle) over the cold-
-  /// start regex pre-scan. Never throws.
-  Set<AnnotatedIconFont> _scanAnnotatedIconFonts(
+  /// Collects external package names actually referenced by [guestSources] or
+  /// present in the cached AST bundle for [projectDir].
+  Set<String> _collectUsedPackages(
     Map<String, String> guestSources,
-    Map<String, String> packageSources,
+    String? guestPackage,
+  ) {
+    final pkgs = <String>{};
+    for (final source in guestSources.values) {
+      final noComments = _stripCommentsOnly(source);
+      for (final m in _packageImportPattern.allMatches(noComments)) {
+        final pkg = m.group(1);
+        if (pkg != null && pkg.isNotEmpty) pkgs.add(pkg);
+      }
+    }
+    try {
+      final bundle = cachedBundleForProject(projectDir);
+      if (bundle != null) {
+        for (final uriStr in bundle.modules.keys) {
+          if (uriStr.startsWith('package:')) {
+            final slash = uriStr.indexOf('/');
+            if (slash > 8) {
+              pkgs.add(uriStr.substring(8, slash));
+            }
+          }
+        }
+      }
+    } catch (_) {}
+    pkgs.removeWhere(
+      (pkg) =>
+          pkg == guestPackage ||
+          pkg == 'dartnative' ||
+          pkg == 'dartnative_ios' ||
+          pkg == 'dartnative_android' ||
+          pkg == 'dartnative_go' ||
+          pkg == 'flutter' ||
+          kExcludedDevPackages.contains(pkg),
+    );
+    return pkgs;
+  }
+
+  /// Scans a single external package once and caches the result by its
+  /// `lib/` + `pubspec.yaml` timestamps.
+  ({
+    String mtimeKey,
+    IconFontReport usage,
+    Set<AnnotatedIconFont> annotated,
+    List<({String package, String family, String filePath})> declaredFonts,
+  })
+  _scanPackageCached(String pkgName, Directory rootDir, Directory libDir) {
+    final pubspec = File('${rootDir.path}/pubspec.yaml');
+    final libMtime = libDir.existsSync()
+        ? libDir.statSync().modified.millisecondsSinceEpoch
+        : 0;
+    final pubMtime = pubspec.existsSync()
+        ? pubspec.statSync().modified.millisecondsSinceEpoch
+        : 0;
+    final mtimeKey = '$libMtime:$pubMtime';
+    final cacheKey = '$pkgName:${rootDir.path}';
+    final cached = _packageScanCache[cacheKey];
+    if (cached != null && cached.mtimeKey == mtimeKey) {
+      return cached;
+    }
+
+    final pkgSources = <String, String>{};
+    if (libDir.existsSync()) {
+      final libPrefix = libDir.path.endsWith(Platform.pathSeparator)
+          ? libDir.path
+          : '${libDir.path}${Platform.pathSeparator}';
+      try {
+        for (final entity in libDir.listSync(recursive: true)) {
+          if (entity is File && entity.path.endsWith('.dart')) {
+            try {
+              final rel = entity.path
+                  .substring(libPrefix.length)
+                  .replaceAll(r'\', '/');
+              pkgSources['package:$pkgName/$rel'] = entity.readAsStringSync();
+            } catch (_) {}
+          }
+        }
+      } catch (_) {}
+    }
+
+    final usage = pkgSources.isEmpty
+        ? const IconFontReport()
+        : scanSources(pkgSources);
+    final annotated = _regexScanAnnotations(pkgSources, pkgName);
+    final declaredFonts = <({String package, String family, String filePath})>[];
+    for (final decl in _readCustomFonts(rootDir)) {
+      if (decl.asset.isEmpty) continue;
+      final file = File('${rootDir.path}/${decl.asset}');
+      if (file.existsSync()) {
+        declaredFonts.add((
+          package: pkgName,
+          family: decl.family,
+          filePath: file.path,
+        ));
+      }
+    }
+
+    final entry = (
+      mtimeKey: mtimeKey,
+      usage: usage,
+      annotated: annotated,
+      declaredFonts: declaredFonts,
+    );
+    _packageScanCache[cacheKey] = entry;
+    return entry;
+  }
+
+  /// Discovers annotated icon registries in guest sources (or the already-built
+  /// AST bundle when available). Never throws.
+  Set<AnnotatedIconFont> _scanGuestAnnotatedIconFonts(
+    Map<String, String> guestSources,
     String guestPackage,
   ) {
     try {
@@ -327,14 +476,19 @@ class IconFontDetector {
         );
       }
     } catch (_) {}
-    // Cold start (no build yet): regex pre-scan over guest sources
-    // (re-keyed to module URIs) plus package sources.
+    final searchSources = <String, String>{};
+    for (final entry in guestSources.entries) {
+      searchSources[_guestModuleUri(entry.key, guestPackage)] = entry.value;
+    }
+    return _regexScanAnnotations(searchSources, guestPackage);
+  }
+
+  Set<AnnotatedIconFont> _regexScanAnnotations(
+    Map<String, String> searchSources,
+    String defaultPackage,
+  ) {
+    if (searchSources.isEmpty) return const {};
     try {
-      final searchSources = <String, String>{};
-      for (final entry in guestSources.entries) {
-        searchSources[_guestModuleUri(entry.key, guestPackage)] = entry.value;
-      }
-      searchSources.addAll(packageSources);
       final found = IconAnnotationScanner.findAnnotatedClasses(searchSources);
       final out = <AnnotatedIconFont>{};
       for (final e in found.entries) {
@@ -350,7 +504,7 @@ class IconFontDetector {
             AnnotatedIconFont(
               className: className,
               moduleUri: e.key,
-              package: _packageOfUri(e.key, guestPackage),
+              package: _packageOfUri(e.key, defaultPackage),
               family: family,
               fontAsset: null,
             ),
@@ -715,42 +869,6 @@ class IconFontDetector {
     }
   }
 
-  /// Discovers fonts declared in `pubspec.yaml` (`dartnative.fonts` or
-  /// `flutter.fonts`) of external packages imported by [guestSources].
-  List<({String package, String family, String filePath})>
-  _readImportedPackageFonts(Map<String, String> guestSources) {
-    final importedPackages = <String>{};
-    for (final source in guestSources.values) {
-      final noComments = _stripCommentsOnly(source);
-      for (final m in _packageImportPattern.allMatches(noComments)) {
-        final pkg = m.group(1);
-        if (pkg != null && pkg.isNotEmpty) importedPackages.add(pkg);
-      }
-    }
-    if (importedPackages.isEmpty) return const [];
-    final out = <({String package, String family, String filePath})>[];
-    for (final pkg in importedPackages) {
-      if (pkg == 'dartnative' || pkg == 'flutter' || pkg == 'dartnative_go') {
-        continue;
-      }
-      final root = _packageRootDir(pkg);
-      if (root == null) continue;
-      final decls = _readCustomFonts(root);
-      for (final decl in decls) {
-        if (decl.asset.isEmpty) continue;
-        final file = File('${root.path}/${decl.asset}');
-        if (file.existsSync()) {
-          out.add((
-            package: pkg,
-            family: decl.family,
-            filePath: file.path,
-          ));
-        }
-      }
-    }
-    return out;
-  }
-
   ({Map<String, String> files, Map<String, String> packages}) _resolveFontFiles(
     IconFontReport usage,
     List<CustomFontDecl> customs, {
@@ -864,31 +982,50 @@ class IconFontDetector {
     return _findFontInDir(rootDir, family);
   }
 
+  /// Loads and caches the nearest `.dart_tool/package_config.json` map
+  /// (`packageName -> (rootDir, libDir)`). Never throws.
+  Map<String, ({Directory rootDir, Directory libDir})> _loadPackageConfig() {
+    try {
+      final configFile = findPackageConfigFile(projectDir);
+      if (configFile == null || !configFile.existsSync()) return const {};
+      final mtimeMs = configFile.lastModifiedSync().millisecondsSinceEpoch;
+      final cached = _packageConfigCache[configFile.path];
+      if (cached != null && cached.mtimeMs == mtimeMs) {
+        return cached.packages;
+      }
+      final json =
+          jsonDecode(configFile.readAsStringSync()) as Map<String, dynamic>;
+      final packages = json['packages'] as List<dynamic>?;
+      if (packages == null) return const {};
+      final baseUri = configFile.uri;
+      final out = <String, ({Directory rootDir, Directory libDir})>{};
+      for (final entry in packages) {
+        if (entry is! Map<String, dynamic>) continue;
+        final name = entry['name'] as String?;
+        final rawRoot = entry['rootUri'] as String?;
+        if (name == null || name.isEmpty || rawRoot == null) continue;
+        final rootUri = baseUri.resolve(
+          rawRoot.endsWith('/') ? rawRoot : '$rawRoot/',
+        );
+        final rawPkgUri = (entry['packageUri'] as String?) ?? 'lib/';
+        final pkgUri = rawPkgUri.endsWith('/') ? rawPkgUri : '$rawPkgUri/';
+        final rootDir = Directory.fromUri(rootUri);
+        if (!rootDir.existsSync()) continue;
+        final libDir = Directory.fromUri(rootUri.resolve(pkgUri));
+        out[name] = (rootDir: rootDir, libDir: libDir);
+      }
+      _packageConfigCache[configFile.path] = (mtimeMs: mtimeMs, packages: out);
+      return out;
+    } catch (_) {
+      return const {};
+    }
+  }
+
   /// Resolves a package's on-disk root, or null when unknown. Never throws.
   /// Walks up parent directories so Dart workspace members (e.g. `example/`)
   /// find the workspace `.dart_tool/package_config.json`.
   Directory? _packageRootDir(String packageName) {
-    try {
-      final configFile = findPackageConfigFile(projectDir);
-      if (configFile == null || !configFile.existsSync()) return null;
-      final json =
-          jsonDecode(configFile.readAsStringSync()) as Map<String, dynamic>;
-      final packages = json['packages'] as List<dynamic>?;
-      if (packages == null) return null;
-      final baseUri = configFile.uri;
-      for (final entry in packages) {
-        if (entry is! Map<String, dynamic>) continue;
-        if (entry['name'] != packageName) continue;
-        final rawRoot = entry['rootUri'] as String?;
-        if (rawRoot == null) continue;
-        final rootUri = baseUri.resolve(
-          rawRoot.endsWith('/') ? rawRoot : '$rawRoot/',
-        );
-        final rootDir = Directory.fromUri(rootUri);
-        if (rootDir.existsSync()) return rootDir;
-      }
-    } catch (_) {}
-    return null;
+    return _loadPackageConfig()[packageName]?.rootDir;
   }
 
   File? _findFontInDir(Directory root, String family) {
