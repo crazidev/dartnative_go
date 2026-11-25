@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:dartnative/dartnative.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 
-import 'package:dartnative_go_ui/dartnative_go_ui.dart';
+import 'package:dngo_ui/dngo_ui.dart';
 
 final themePreferenceProvider =
     NotifierProvider<ThemeController, ThemePreference>(ThemeController.new);

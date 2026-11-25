@@ -1,5 +1,5 @@
 import 'package:dartnative_go/src/cli/server/loading_page.dart';
-import 'package:dartnative_go_api/version.dart';
+import 'package:dngo_api/version.dart';
 import 'package:test/test.dart';
 
 void main() {

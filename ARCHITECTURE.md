@@ -175,9 +175,9 @@ guest build / lifecycle / button handler throws
   3. **Startup Flag**: CLI supports `-v` and `--verbose` flags on `dngo start`.
 
 ### 4.5 Host Theme (shadcn tokens + Riverpod)
-* **Location**: the theme lives in `pkgs/dartnative_go_ui` (`lib/src/theme/`).
-  Tokens: `pkgs/dartnative_go_ui/tool/shadcn_tokens.css` holds the
-  `:root`/`.dark` shadcn custom properties. From `pkgs/dartnative_go_ui/`,
+* **Location**: the theme lives in `pkgs/dngo_ui` (`lib/src/theme/`).
+  Tokens: `pkgs/dngo_ui/tool/shadcn_tokens.css` holds the
+  `:root`/`.dark` shadcn custom properties. From `pkgs/dngo_ui/`,
   `dart run tool/shadcn_to_dart.dart` converts every `oklch(...)` token to
   sRGB and emits `lib/src/theme/shadcn_theme.dart` (`ShadcnLight`/`ShadcnDark`
   bags + `ThemeData` with a shadcn→ColorScheme

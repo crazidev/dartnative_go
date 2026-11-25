@@ -38,12 +38,14 @@ class DartGoHttpClient {
     Duration timeout = const Duration(milliseconds: 1500),
   }) async {
     final normalized = normalizeUrl(baseUrl);
+    HttpClientRequest? request;
     try {
       final uri = Uri.parse('$normalized/manifest.json');
-      final request = await _client.getUrl(uri).timeout(timeout);
+      request = await _client.getUrl(uri).timeout(timeout);
       final response = await request.close().timeout(timeout);
 
       if (response.statusCode != HttpStatus.ok) {
+        await response.drain<void>();
         return null;
       }
 
@@ -56,7 +58,10 @@ class DartGoHttpClient {
         return decoded;
       }
     } catch (_) {
-      // Ignored for offline or unreachable hosts
+      // Abort timed-out / failed requests so sockets do not linger in the pool.
+      try {
+        request?.abort();
+      } catch (_) {}
     }
     return null;
   }

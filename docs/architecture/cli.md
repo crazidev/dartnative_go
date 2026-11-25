@@ -15,7 +15,7 @@ Entry point for everything the developer types: `dngo`.
 | `lib/src/cli/diagnostics/icon_font_detector.dart` | Detects the icon families/glyphs the guest actually uses, for on-demand font serving. |
 | `lib/src/cli/server/qr_code.dart` | Terminal QR rendering. |
 | `lib/src/cli/server/loading_page.dart` | Browser interstitial at `/_dngo/loading`. |
-| `pkgs/dartnative_go_api/lib/version.dart` | Generated version constants (`tool/sync_versions.dart`). |
+| `pkgs/dngo_api/lib/version.dart` | Generated version constants (`tool/sync_versions.dart`). |
 
 Sub-packages: `commands/` (parsing), `diagnostics/` (validation, versions,
 assets, icon fonts), `packaging/` (AST build, dependency ZIPs),

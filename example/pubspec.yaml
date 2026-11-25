@@ -15,8 +15,8 @@ dependencies:
   riverpod_kit: ^0.1.0
   native_bottomsheet:
     path: ../../dartnative_bottomsheet
-  dartnative_go_config:
-    path: ../pkgs/dartnative_go_config
+  dngo_config:
+    path: ../pkgs/dngo_config
   dartnative_go:
     path: ../
   get_it: ^9.3.0
@@ -28,6 +28,7 @@ dependencies:
   dartnative_live_activities: ^0.1.0
   local_auth_kit: ^0.2.0
   quick_actions_kit: ^0.1.0
+  lucide_kit: ^0.1.0
 
 dev_dependencies:
   lints: ^6.0.0
@@ -37,5 +38,10 @@ dev_dependencies:
 
 dartnative:
   assets:
-    - assets/app_icon.png
-    - assets/logo_rounded.png
+    - assets/icon.png
+    - assets/dn-logo.png
+    - assets/dn-logo-1.png
+  fonts:
+    - family: AndaleMono
+      fonts:
+        - asset: assets/fonts/AndaleMono.ttf

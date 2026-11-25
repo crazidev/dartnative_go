@@ -1,9 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:app_links_kit/app_links_kit.dart';
 import 'package:dartnative/dartnative.dart';
-import 'package:dartnative_go_api/host_api.dart' hide DartGoProject;
-import 'package:dartnative_go_ui/dartnative_go_ui.dart';
+import 'package:dngo_api/host_api.dart' hide DartGoProject;
+import 'package:dngo_ui/dngo_ui.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 
 import 'client/deep_link.dart';
@@ -15,8 +16,11 @@ import 'client/runtime_mode_storage.dart';
 import 'devtool/ast_profile_panel.dart';
 import 'devtool/devtool_overlay.dart';
 import 'host_api/shell_binding.dart';
+import 'interpreter/asset_bridge.dart';
+import 'interpreter/ast/ast_asset_bridge.dart';
 import 'interpreter/widget_generation_tracker.dart';
 import 'preview/preview_route.dart';
+import 'runner/app_cache.dart';
 import 'runner/bundle_loader.dart';
 import 'runner/guest_error_format.dart';
 import 'runner/guest_runner.dart';
@@ -97,6 +101,9 @@ class _DartNativeGoState extends State<DartNativeGo> {
   /// On-demand icon fonts: rebuilt per server connection, synced after every
   /// bundle fetch. Steady-state reloads no-op on matching `iconFontsHash`.
   IconFontManager? _iconFontManager;
+
+  /// Persistent on-device cache for bundles, fonts, and assets.
+  AppCache? _appCache;
 
   /// Whether the dev server runs with `--profile` (from the manifest's
   /// `profile` field): the AST BUNDLE explorer shows in the DevTools sheet
@@ -219,9 +226,24 @@ class _DartNativeGoState extends State<DartNativeGo> {
     );
     _bundleLoader.breakpointInstrumenter =
         _interpreterRunner.breakpointInstrumenter;
+    _initAppCache();
     _restoreSavedRuntimeMode();
     _initScanner();
     _listenForDeepLinks();
+  }
+
+  void _initAppCache() {
+    File? resolveCachedAsset(String assetPath) {
+      final url = _activeBundle?.serverUrl;
+      if (url == null || url.isEmpty) return null;
+      return _appCache?.getCachedAssetFile(url, assetPath);
+    }
+
+    AstAssetResolver.cachedAssetFileProvider = resolveCachedAsset;
+    AssetResolver.cachedAssetFileProvider = resolveCachedAsset;
+    AppCache.create().then((cache) {
+      if (mounted) _appCache = cache;
+    });
   }
 
   /// Opens projects handed to the app as `dartnativego://` links.
@@ -598,6 +620,11 @@ class _DartNativeGoState extends State<DartNativeGo> {
   /// Empties the dependency cache from the DevTools sheet.
   Future<void> _clearDependencyCache() async {
     await _bundleLoader.depCache?.clearCache();
+    await _appCache?.clearAll();
+    _iconFontManager?.reset();
+    try {
+      ImageCache.clearAll();
+    } catch (_) {}
     if (mounted) _hostBinding.notify();
   }
 
@@ -715,9 +742,11 @@ class _DartNativeGoState extends State<DartNativeGo> {
   /// Never throws — font failures must not break a reload.
   Future<void> _syncIconFonts(ProjectBundle bundle) async {
     try {
+      _appCache ??= await AppCache.create();
       _iconFontManager ??= IconFontManager.fromLoader(
         _bundleLoader,
         bundle.serverUrl,
+        cache: _appCache,
       );
       final manager = _iconFontManager!;
       if (bundle.isPatch) {
@@ -731,6 +760,45 @@ class _DartNativeGoState extends State<DartNativeGo> {
         return;
       }
       await manager.syncBundle(bundle);
+    } catch (_) {}
+  }
+
+  /// Revalidates cached assets against server ETags and evicts any stale
+  /// entries from both disk [AppCache] and native [ImageCache].
+  Future<void> _syncAndRevalidateAssets(
+    ProjectBundle bundle, {
+    bool isAssetChange = false,
+  }) async {
+    try {
+      var etags = bundle.assetEtags;
+      if (isAssetChange && etags.isEmpty) {
+        final refreshed = await _bundleLoader.fetchAssetsManifest(
+          bundle.serverUrl,
+        );
+        if (refreshed != null) {
+          etags = refreshed.assetEtags;
+        }
+      }
+      final invalidated =
+          await _appCache?.invalidateStaleAssets(bundle.serverUrl, etags) ??
+          const <String>[];
+      final toEvict = <String>{
+        ...invalidated,
+        if (isAssetChange && invalidated.isEmpty) ...bundle.assets,
+        if (isAssetChange && invalidated.isEmpty) ...etags.keys,
+      };
+      for (final assetPath in toEvict) {
+        final url = AstAssetResolver.resolveAssetUrl(
+          bundle.serverUrl,
+          assetPath,
+        );
+        try {
+          ImageCache.evict(NetworkImage(url));
+        } catch (_) {}
+      }
+      if (!bundle.isPatch) {
+        await _appCache?.saveBundle(bundle);
+      }
     } catch (_) {}
   }
 
@@ -841,11 +909,14 @@ class _DartNativeGoState extends State<DartNativeGo> {
       // Fresh server connection: drop cached fonts, then fetch only the
       // families this bundle advertises (built-ins short-circuit locally).
       final iconFontsSw = Stopwatch()..start();
+      _appCache ??= await AppCache.create();
       _iconFontManager = IconFontManager.fromLoader(
         _bundleLoader,
         bundle.serverUrl,
+        cache: _appCache,
       );
       await _syncIconFonts(bundle);
+      await _syncAndRevalidateAssets(bundle);
       final iconFontsMs = iconFontsSw.elapsedMilliseconds;
       if (!mounted || launchSeq != _reloadSeq) return;
 
@@ -862,6 +933,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       _liveConnection = LiveConnection(
         serverUrl: bundle.serverUrl,
         onConnectionChanged: _onLiveConnectionChanged,
+        onReconnected: () => _restartApp(),
         onReload: (changed) => _reloadApp(changedFile: changed),
         onReloadBatch: (changedList, {bool isAssetChange = false}) =>
             _reloadApp(changedFiles: changedList, isAssetChange: isAssetChange),
@@ -1118,7 +1190,20 @@ class _DartNativeGoState extends State<DartNativeGo> {
       // A patch has no manifest: keep the app name/version/splash the previous
       // bundle carried, or DevTools falls back to the placeholder name.
       _activeBundle = updatedBundle.withMetadataFrom(_activeBundle!);
-      await _syncIconFonts(updatedBundle);
+      final syncSw = Stopwatch()..start();
+      if (updatedBundle.isPatch && !isAssetChange) {
+        // Code-only patch reloads must stay off the font-manifest HTTP path so
+        // an extra roundtrip never stalls evaluation/repaint. Any newly added
+        // icon font still syncs and registers right behind the reload.
+        unawaited(_syncIconFonts(updatedBundle));
+      } else {
+        await _syncIconFonts(updatedBundle);
+      }
+      await _syncAndRevalidateAssets(
+        _activeBundle!,
+        isAssetChange: isAssetChange,
+      );
+      final syncMs = syncSw.elapsedMilliseconds;
       if (!mounted || seq != _reloadSeq) return;
 
       final trackSw = Stopwatch()..start();
@@ -1214,6 +1299,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
         totalMs: totalMs,
         timings: {
           'fetch': fetchMs,
+          if (syncMs > 0) 'sync': syncMs,
           'track': trackMs,
           'eval': evalMs,
           'remount': remountMs,
@@ -1278,6 +1364,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
       if (!mounted || seq != _restartSeq) return;
       _activeBundle = updatedBundle;
       await _syncIconFonts(updatedBundle);
+      await _syncAndRevalidateAssets(updatedBundle);
       if (!mounted || seq != _restartSeq) return;
 
       WidgetGenerationTracker.resetAll();

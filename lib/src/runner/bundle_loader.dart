@@ -27,6 +27,7 @@ class ProjectBundle {
   final String entrypointLibrary;
   final List<Map<String, dynamic>> breakpoints;
   final List<String> assets;
+  final Map<String, String> assetEtags;
 
   /// On-demand icon fonts advertised by the dev server (`iconFonts` in
   /// `/manifest.json`): one entry per used family with subset + font `url`.
@@ -85,6 +86,7 @@ class ProjectBundle {
     required this.entrypointLibrary,
     this.breakpoints = const [],
     this.assets = const [],
+    this.assetEtags = const {},
     this.astBytes,
     this.astPatchBytes,
     this.isPatch = false,
@@ -117,6 +119,7 @@ class ProjectBundle {
       entrypointLibrary: entrypointLibrary,
       breakpoints: breakpoints,
       assets: assets,
+      assetEtags: previous.assetEtags,
       astBytes: astBytes,
       astPatchBytes: astPatchBytes,
       isPatch: isPatch,
@@ -580,6 +583,12 @@ class BundleLoader {
     if (manifest['assets'] is List) {
       rawAssets.addAll((manifest['assets'] as List).map((e) => e.toString()));
     }
+    final rawAssetEtags = <String, String>{};
+    if (manifest['assetEtags'] is Map) {
+      (manifest['assetEtags'] as Map).forEach(
+        (k, v) => rawAssetEtags[k.toString()] = v.toString(),
+      );
+    }
 
     // 1b. Fast AST Mode Path (zero source downloading)
     if (onlyAst && (manifest['hasAstBundle'] == true || fetchAst)) {
@@ -616,6 +625,7 @@ class BundleLoader {
           entrypointLibrary: '',
           breakpoints: const [],
           assets: rawAssets,
+          assetEtags: rawAssetEtags,
           astBytes: astBytes,
           isPatch: false,
           astEntryPoint: manifest['astEntryPoint']?.toString(),
@@ -741,6 +751,7 @@ class BundleLoader {
         entrypointLibrary: entrypointLibrary,
         breakpoints: const [],
         assets: rawAssets,
+        assetEtags: rawAssetEtags,
         astBytes: fetchAst
             ? await fetchAstBytesAwaitReady(
                 baseUrl,
@@ -921,33 +932,124 @@ class BundleLoader {
     }
   }
 
+  /// Best-effort fetch of one font file from `/fonts/<family>.ttf` with
+  /// optional `If-None-Match` ETag revalidation.
+  Future<({List<int>? bytes, String? etag, bool notModified})> fetchFont(
+    String serverUrl,
+    String family, {
+    String? ifNoneMatch,
+  }) async {
+    final baseUrl = normalizeUrl(serverUrl);
+    final trimmed = family.trim();
+    if (trimmed.isEmpty || trimmed.contains('..') || trimmed.contains('/')) {
+      return (bytes: null, etag: null, notModified: false);
+    }
+    try {
+      final encoded = Uri.encodeComponent(trimmed);
+      for (final suffix in ['.ttf', '.otf', '']) {
+        final req = await _client.getUrl(
+          Uri.parse('$baseUrl/fonts/$encoded$suffix'),
+        );
+        if (ifNoneMatch != null && ifNoneMatch.isNotEmpty) {
+          req.headers.set(HttpHeaders.ifNoneMatchHeader, ifNoneMatch);
+        }
+        final res = await req.close();
+        final etag = res.headers.value(HttpHeaders.etagHeader);
+        if (res.statusCode == HttpStatus.notModified) {
+          await res.drain<void>();
+          return (bytes: null, etag: etag ?? ifNoneMatch, notModified: true);
+        }
+        if (res.statusCode != HttpStatus.ok) continue;
+        final bytes = await res.fold<List<int>>(
+          <int>[],
+          (prev, el) => prev..addAll(el),
+        );
+        if (bytes.isNotEmpty) {
+          return (bytes: bytes, etag: etag, notModified: false);
+        }
+      }
+    } catch (_) {}
+    return (bytes: null, etag: null, notModified: false);
+  }
+
   /// Best-effort fetch of one font file from `/fonts/<family>.ttf`.
   /// Returns null on 404 (built-ins resolve locally) or failure. Never throws.
   Future<List<int>?> fetchFontBytes(
     String serverUrl,
     String family,
   ) async {
+    final result = await fetchFont(serverUrl, family);
+    return result.bytes;
+  }
+
+  /// Fetches `/assets.json` (`assets` + `assetEtags`) for revalidation on
+  /// patch-only reloads where `/manifest.json` is skipped.
+  Future<({List<String> assets, Map<String, String> assetEtags})?>
+  fetchAssetsManifest(String serverUrl) async {
     final baseUrl = normalizeUrl(serverUrl);
-    final trimmed = family.trim();
-    if (trimmed.isEmpty || trimmed.contains('..') || trimmed.contains('/')) {
+    try {
+      final req = await _client.getUrl(Uri.parse('$baseUrl/assets.json'));
+      final res = await req.close();
+      if (res.statusCode != HttpStatus.ok) return null;
+      final body = await res.transform(utf8.decoder).join();
+      final decoded = jsonDecode(body);
+      if (decoded is! Map) return null;
+      final assets = (decoded['assets'] is List)
+          ? (decoded['assets'] as List).map((e) => e.toString()).toList()
+          : const <String>[];
+      final etags = <String, String>{};
+      if (decoded['assetEtags'] is Map) {
+        (decoded['assetEtags'] as Map).forEach(
+          (k, v) => etags[k.toString()] = v.toString(),
+        );
+      }
+      return (assets: assets, assetEtags: etags);
+    } catch (_) {
       return null;
     }
+  }
+
+  /// Fetches an asset file with optional `If-None-Match` ETag revalidation.
+  Future<({List<int>? bytes, String? etag, bool notModified})> fetchAssetBytes(
+    String serverUrl,
+    String assetPath, {
+    String? ifNoneMatch,
+  }) async {
+    final baseUrl = normalizeUrl(serverUrl);
+    var clean = assetPath.trim().replaceAll(r'\', '/');
+    while (clean.startsWith('/')) {
+      clean = clean.substring(1);
+    }
+    if (clean.isEmpty || clean.contains('..')) {
+      return (bytes: null, etag: null, notModified: false);
+    }
+    final urlPath = clean.startsWith('assets/') ? clean : 'assets/$clean';
     try {
-      final encoded = Uri.encodeComponent(trimmed);
-      for (final suffix in ['.ttf', '']) {
-        final req = await _client.getUrl(
-          Uri.parse('$baseUrl/fonts/$encoded$suffix'),
-        );
-        final res = await req.close();
-        if (res.statusCode != HttpStatus.ok) continue;
-        final bytes = await res.fold<List<int>>(
-          <int>[],
-          (prev, el) => prev..addAll(el),
-        );
-        if (bytes.isNotEmpty) return bytes;
+      final req = await _client.getUrl(Uri.parse('$baseUrl/$urlPath'));
+      if (ifNoneMatch != null && ifNoneMatch.isNotEmpty) {
+        req.headers.set(HttpHeaders.ifNoneMatchHeader, ifNoneMatch);
       }
-    } catch (_) {}
-    return null;
+      final res = await req.close();
+      final etag = res.headers.value(HttpHeaders.etagHeader);
+      if (res.statusCode == HttpStatus.notModified) {
+        await res.drain<void>();
+        return (bytes: null, etag: etag ?? ifNoneMatch, notModified: true);
+      }
+      if (res.statusCode != HttpStatus.ok) {
+        return (bytes: null, etag: null, notModified: false);
+      }
+      final bytes = await res.fold<List<int>>(
+        <int>[],
+        (prev, el) => prev..addAll(el),
+      );
+      return (
+        bytes: bytes.isNotEmpty ? bytes : null,
+        etag: etag,
+        notModified: false,
+      );
+    } catch (_) {
+      return (bytes: null, etag: null, notModified: false);
+    }
   }
 
   void close() {

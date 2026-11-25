@@ -1,1 +1,1 @@
-export 'package:dartnative_go_config/dngo.dart';
+export 'package:dngo_config/dngo.dart';

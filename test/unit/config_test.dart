@@ -658,7 +658,7 @@ DngoConfig get dngoConfig => DngoConfig(
     expect(parsed.app.icon!.androidRound, isTrue);
     expect(parsed.app.icon!.androidLegacyPadding, 43);
     expect(parsed.app.icon!.iosPadding, 5);
-    expect(parsed.app.splash!.backgroundColor.value, '#112233');
+    expect(parsed.app.splash!.backgroundColor?.value, '#112233');
     expect(parsed.app.splash!.androidImageFit, SplashImageFit.asIs);
     expect(parsed.app.splash!.androidIconBackground!.value, '#ABCDEF');
     expect(parsed.app.splash!.iosLogoSize, 128);

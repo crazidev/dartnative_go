@@ -18,6 +18,10 @@ class LiveConnection {
   /// Connected / Offline without polling [isConnected].
   final void Function(bool connected)? onConnectionChanged;
 
+  /// Fired when the socket reconnects after a previous connection dropped
+  /// (e.g. dev server restarted with new config/assets).
+  final void Function()? onReconnected;
+
   /// When true (default), an unexpected socket drop schedules reconnect
   /// attempts with exponential backoff. [disconnect] cancels the loop.
   final bool autoReconnect;
@@ -72,6 +76,7 @@ class LiveConnection {
   Duration _reconnectDelay = _initialReconnectDelay;
   bool _reconnectInFlight = false;
   bool _notifiedConnected = false;
+  bool _hasConnectedOnce = false;
 
   /// Bumped whenever the active socket is replaced or torn down so a stale
   /// `onDone` / `onError` from a closed predecessor cannot schedule reconnect
@@ -91,6 +96,7 @@ class LiveConnection {
     this.onSetVerbose,
     this.onError,
     this.onConnectionChanged,
+    this.onReconnected,
     this.autoReconnect = true,
     this.onRestart,
     this.onUiProbeRequest,
@@ -144,7 +150,12 @@ class LiveConnection {
       _socket = socket;
       _reconnectDelay = _initialReconnectDelay;
       _reconnectInFlight = false;
+      final isReconnect = _hasConnectedOnce;
+      _hasConnectedOnce = true;
       _setConnected(true);
+      if (isReconnect) {
+        onReconnected?.call();
+      }
       socket.listen(
         (message) {
           if (generation != _socketGeneration) return;

@@ -8,16 +8,16 @@ The shell app around the interpreted guest.
 | :--- | :--- |
 | `lib/main.dart` | Product entrypoint: plugins + theme bootstrap, then the shared shell with an AST-only guest runner. Links no analyzer/source runtime, so profile/release compiles stay small. |
 | `lib/main_source.dart` | Development entrypoint that also links the Source engine (`tom_d4rt`) and analyzer; use `dn run -t lib/main_source.dart` when testing Source mode. |
-| `lib/host_api.dart` | Re-export of the host API (`package:dartnative_go_api`). Interpreted guests can import this URI; the shell bridges it. |
+| `lib/host_api.dart` | Re-export of the host API (`package:dngo_api`). Interpreted guests can import this URI; the shell bridges it. |
 | `lib/src/app_shell.dart` | Shared host shell: binds `DartGoHost`, embeds `HostLauncher` as the home route; opening a project pushes the preview route; mount/reload/restart orchestration, probe handler. Takes a `GuestRunnerBuilder`. |
-| `pkgs/dartnative_go_api` | Host API: `discover`, `refresh`, `openProject`, `openWithLink`, `toggleTheme`, `openDevTools`, `verbose`, `reload`, `goHome`. No framework UI. |
-| `pkgs/dartnative_go_ui` | Launcher UI. Calls the API. `dngo start` in this package previews it inside the host. |
+| `pkgs/dngo_api` | Host API: `discover`, `refresh`, `openProject`, `openWithLink`, `toggleTheme`, `openDevTools`, `verbose`, `reload`, `goHome`. No framework UI. |
+| `pkgs/dngo_ui` | Launcher UI. Calls the API. `dngo start` in this package previews it inside the host. |
 | `lib/src/runner/guest_runner.dart` | Host-facing runtime interface + builder typedef implemented by `AstGuestRunner` and `InterpreterRunner`. |
 | `lib/src/preview/` | `PreviewScreen` + `PreviewState`: the pushed launch/preview route (splash → mounted guest). Error surfaces are drawn by the shell layer, not here. |
-| `pkgs/dartnative_go_ui/lib/src/launcher/` | Launcher route: recent projects, server URL entry, discovery. Calls `DartGoHost`. |
-| `pkgs/dartnative_go_ui/lib/src/devtool/` | Editable DevTools pill (`HostDevToolButton`) and sheet (`HostDevToolSheet`). The shell embeds these; a previewed UI renders its own copy. |
+| `pkgs/dngo_ui/lib/src/launcher/` | Launcher route: recent projects, server URL entry, discovery. Calls `DartGoHost`. |
+| `pkgs/dngo_ui/lib/src/devtool/` | Editable DevTools pill (`HostDevToolButton`) and sheet (`HostDevToolSheet`). The shell embeds these; a previewed UI renders its own copy. |
 | `lib/src/client/` | Persistence (`ProjectStorage`, `ThemeStorage`, `ErrorDisplayStorage`, `RuntimeModeStorage`), HTTP client, LAN scanner. |
-| `lib/src/devtool/` | Shell DevTools overlay (`DevToolOverlay`): shake detector, host-owned sheet, AST profile panel. Pill/sheet widgets come from `pkgs/dartnative_go_ui`. |
+| `lib/src/devtool/` | Shell DevTools overlay (`DevToolOverlay`): shake detector, host-owned sheet, AST profile panel. Pill/sheet widgets come from `pkgs/dngo_ui`. |
 | `lib/src/widgets/` | `GuestErrorBanner`, `InterpreterErrorView`, splash, breakpoint overlay. |
 | `lib/src/theme/` | shadcn tokens -> `ThemeData`; `themePreferenceProvider`. |
 
@@ -105,19 +105,19 @@ The shell app around the interpreted guest.
     and inherits nothing. `ThemeController` hydrates from `ThemeStorage` when its
     cache is cold rather than defaulting to `system`.
 - **Host API.** The launcher does not take shell callbacks. It calls
-  `DartGoHost` (`package:dartnative_go_api/host_api.dart`, re-exported as
+  `DartGoHost` (`package:dngo_api/host_api.dart`, re-exported as
   `package:dartnative_go/host_api.dart`). The shell installs a
   `ShellHostBinding` in `initState`. Both interpreter engines bridge those
   library URIs (`kDartGoHostApiUris`), and the AST bundler skips them, so a
   guest that imports the API hits the shell instead of an empty binding.
   The UI package cannot depend on `dartnative_go` — the shell depends on
-  the UI — so it imports `dartnative_go_api` directly.
-- **Preview the UI without a native rebuild.** From `pkgs/dartnative_go_ui`,
+  the UI — so it imports `dngo_api` directly.
+- **Preview the UI without a native rebuild.** From `pkgs/dngo_ui`,
   run `dngo start` and open that server in the already-built host. Saves
   hot-reload the launcher. Theme, discovery, open, DevTools, verbose,
   reload, and go-home call the shell through the bridge.
 - **DevTools follow the UI that draws them.** `HostLauncher` renders the pill
-  and sheet from `pkgs/dartnative_go_ui`, and the launcher app bar carries no
+  and sheet from `pkgs/dngo_ui`, and the launcher app bar carries no
   host actions (rescan, theme, mode, verbose, cache, reload, home live in the
   sheet). It renders them only while it is previewed: the shell's home route
   shows no pill, exactly as before, because `DartGoHost.isPreviewed` is `false`
@@ -137,8 +137,8 @@ The shell app around the interpreted guest.
 - Settings storages (`ThemeStorage`, `ErrorDisplayStorage`,
   `RuntimeModeStorage`) share one pattern; new settings should follow it.
 - Error display is a persisted mode: overlay banner (default) or full screen.
-- Theme tokens live in `pkgs/dartnative_go_ui/tool/shadcn_tokens.css`; from
-  `pkgs/dartnative_go_ui/` regenerate `lib/src/theme/shadcn_theme.dart` with
+- Theme tokens live in `pkgs/dngo_ui/tool/shadcn_tokens.css`; from
+  `pkgs/dngo_ui/` regenerate `lib/src/theme/shadcn_theme.dart` with
   `dart run tool/shadcn_to_dart.dart`, never hand-edit. The UI package is the
   single source of truth: `host_ui_theme.dart` aliases the generated
   `ShadcnThemeData` as `HostUiThemeData`.

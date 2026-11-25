@@ -1,6 +1,6 @@
 import 'package:dartnative/dartnative.dart';
 
-import 'package:dartnative_go_ui/dartnative_go_ui.dart';
+import 'package:dngo_ui/dngo_ui.dart';
 
 /// Dismissible error banner over the still-running guest app.
 ///

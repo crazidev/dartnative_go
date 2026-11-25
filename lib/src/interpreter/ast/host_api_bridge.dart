@@ -1,4 +1,4 @@
-import 'package:dartnative_go_api/host_api.dart';
+import 'package:dngo_api/host_api.dart';
 import 'package:tom_d4rt_ast/d4rt.dart';
 import 'package:tom_d4rt_ast/runtime.dart' as ast;
 

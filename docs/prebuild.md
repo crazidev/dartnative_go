@@ -16,7 +16,7 @@ At the project root:
 
 ```dart
 // dngo.config.dart
-import 'package:dartnative_go_config/dngo.dart';
+import 'package:dngo_config/dngo.dart';
 
 DngoConfig get dngoConfig => DngoConfig(
   app: AppConfig(
@@ -39,7 +39,7 @@ DngoConfig get dngoConfig => DngoConfig(
 );
 ```
 
-Add `dartnative_go_config` to the app `pubspec.yaml`, then:
+Add `dngo_config` to the app `pubspec.yaml`, then:
 
 ```sh
 dngo prebuild:init          # create dngo.config.dart from the native project
@@ -67,14 +67,14 @@ stays the package id). See [Dev Server & Protocol](dev_server.md).
 Apps should not have to copy your Android permissions and iOS usage strings
 into their config. Put them next to the package.
 
-### 1. Depend on `dartnative_go_config`
+### 1. Depend on `dngo_config`
 
 In the **plugin** `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  dartnative_go_config:
-    path: ../dartnative_go/pkgs/dartnative_go_config   # or a hosted version
+  dngo_config:
+    path: ../dartnative_go/pkgs/dngo_config   # or a hosted version
 ```
 
 ### 2. Add `build_config.dart` at the package root
@@ -82,7 +82,7 @@ dependencies:
 `lib/build_config.dart` also works. Prebuild looks for both.
 
 ```dart
-import 'package:dartnative_go_config/dngo.dart';
+import 'package:dngo_config/dngo.dart';
 
 /// Applied by `dngo prebuild` when an app depends on this package.
 DngoPluginConfig get dngoPluginConfig => const PluginBuildConfig(
@@ -161,7 +161,7 @@ Unrelated manual manifest / plist entries are left alone.
    (workspace members reuse the workspace file).
 2. For each package, if `build_config.dart` or `lib/build_config.dart` exists,
    parse `PluginBuildConfig(...)`.
-3. Skip tooling packages (`dartnative`, `dartnative_go_config`, `ffi`, …).
+3. Skip tooling packages (`dartnative`, `dngo_config`, `ffi`, …).
 4. Merge into the app config. App `plugins:` entries with the same name win.
 
 The parser is the same source reader used for `dngo.config.dart`. Stick to
@@ -242,7 +242,7 @@ If `plugins:` is missing from the prebuild output, the usual causes are:
 
 | Path | Role |
 | :--- | :--- |
-| `pkgs/dartnative_go_config/lib/src/plugin_config.dart` | `PluginBuildConfig` API |
+| `pkgs/dngo_config/lib/src/plugin_config.dart` | `PluginBuildConfig` API |
 | `lib/src/prebuild/plugin_discovery.dart` | Package-graph discovery |
 | `lib/src/prebuild/native_generator.dart` | Manifest / plist apply and removal |
 | `test/unit/plugin_discovery_test.dart` | Discovery and apply tests |

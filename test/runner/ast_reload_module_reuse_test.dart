@@ -323,5 +323,113 @@ void main() {
         reason: 'a generation-1 activation must survive a reload (logs: $logs)',
       );
     });
+
+    test(
+      'patch reload preserves unchanged module fingerprints and re-declares patched modules',
+      () async {
+        final runner = AstInterpreterRunner(onLog: logs.add);
+        addTearDown(runner.dispose);
+
+        // Initial full build (populates _lastModuleFingerprints + registry cache).
+        File(
+          '${projectDir.path}/lib/main.dart',
+        ).writeAsStringSync(_main('v1', body: 'void noop() {}'));
+        File('${projectDir.path}/lib/helper.dart').writeAsStringSync(_helperV1);
+        final outPath = '${projectDir.path}/patch_reuse.ast';
+        final b1 = await buildGuestAstBundle(
+          projectDir,
+          outputArg: outPath,
+          force: true,
+        );
+        expect(b1.success, isTrue, reason: b1.error);
+        final rootV1 = await runner.evaluateAstBundleAs<Widget>(
+          await File(outPath).readAsBytes(),
+          moduleFingerprints: b1.moduleFingerprints,
+        );
+        tap(rootV1, 1);
+        expect(logs.last, 'v1 sum=7');
+
+        // Incremental edit to main.dart ONLY -> patch has only main.dart.
+        // Simulate BundleLoader's fast patch path (empty moduleFingerprints).
+        final mainFile = File('${projectDir.path}/lib/main.dart');
+        final helperFile = File('${projectDir.path}/lib/helper.dart');
+        final swapsBefore = runner.declarationRegistry.swaps;
+        mainFile.writeAsStringSync(_main('v2', body: 'void noop() {}'));
+        final b2 = await buildGuestAstBundle(
+          projectDir,
+          outputArg: outPath,
+          changedFiles: {mainFile.path},
+        );
+        expect(b2.success, isTrue, reason: b2.error);
+        final patch2 = patchBytesForProject(projectDir);
+        expect(patch2, isNotNull);
+
+        final rootV2 = await runner.evaluateAstBundleAs<Widget>(
+          const [],
+          astPatchBytes: patch2,
+          isPatch: true,
+          isHotReload: true,
+        );
+        expect((_columnOf(rootV2).children[0] as Text).data, 'Gen: v2');
+        tap(rootV2, 1);
+        expect(logs.last, 'v2 sum=7');
+        // helper.dart was NOT in the patch, so it must be reused (only main.dart
+        // functions — main + noop + closure — swapped, not helperAdd).
+        final swapsAfterMainPatch = runner.declarationRegistry.swaps;
+        expect(
+          swapsAfterMainPatch - swapsBefore,
+          lessThanOrEqualTo(3),
+          reason: 'unchanged helper.dart must be reused across patch reloads',
+        );
+
+        // Now edit helper.dart -> patch contains helper.dart, so it MUST re-declare.
+        helperFile.writeAsStringSync(_helperV2);
+        final b3 = await buildGuestAstBundle(
+          projectDir,
+          outputArg: outPath,
+          changedFiles: {helperFile.path},
+        );
+        expect(b3.success, isTrue, reason: b3.error);
+        final patch3 = patchBytesForProject(projectDir);
+        expect(patch3, isNotNull);
+
+        final rootV3 = await runner.evaluateAstBundleAs<Widget>(
+          const [],
+          astPatchBytes: patch3,
+          isPatch: true,
+          isHotReload: true,
+        );
+        tap(rootV3, 1);
+        expect(
+          logs.last,
+          'v2 sum=43',
+          reason: 'patched helper.dart must be re-declared (3 + 4 * 10)',
+        );
+
+        // Revert helper.dart back to v1 -> must re-declare again, not resurrect.
+        helperFile.writeAsStringSync(_helperV1);
+        final b4 = await buildGuestAstBundle(
+          projectDir,
+          outputArg: outPath,
+          changedFiles: {helperFile.path},
+        );
+        expect(b4.success, isTrue, reason: b4.error);
+        final patch4 = patchBytesForProject(projectDir);
+        expect(patch4, isNotNull);
+
+        final rootV4 = await runner.evaluateAstBundleAs<Widget>(
+          const [],
+          astPatchBytes: patch4,
+          isPatch: true,
+          isHotReload: true,
+        );
+        tap(rootV4, 1);
+        expect(
+          logs.last,
+          'v2 sum=7',
+          reason: 'reverted helper.dart must re-declare, not resurrect v2',
+        );
+      },
+    );
   });
 }
