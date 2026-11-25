@@ -83,7 +83,7 @@ them could not boot headless:
 `DnHarness` gained `astBridgeOverrides` (and `AstInterpreterRunner.runner`) so
 fakes can shadow generated AST bridges.
 
-### Interpreter fixes (`pkgs/tom_d4rt_ast`)
+### Interpreter fixes (`third_party/tom_d4rt_ast`)
 
 Two library-scope semantics gaps blocked the playground's own code:
 
@@ -104,19 +104,28 @@ paths in `ast_widget_proxies.dart` prefer the widget-aware wrapper over
 (`PlaygroundTheme extends InheritedWidget`) failed its parent's build with
 `Invalid parameter "buildResult": expected Widget`.
 
-## Source engine (`tom_d4rt`) — separate, pre-existing limits
+## Source engine (`tom_d4rt`)
 
 The suite targets the AST engine because that is what `kUseAst` selects on
 device. Probing the same playground through the source engine
-(`InterpreterRunner`, `DnHarness(mode: source)`) surfaces two upstream
-interpreter gaps that the AST engine does not have. Both are in the `tom_d4rt`
-pub package (not vendored here), so they are recorded rather than patched:
+(`InterpreterRunner`, `DnHarness(mode: source)`) used to surface two upstream
+interpreter gaps that the AST engine never had. Both are **fixed** in the
+vendored `third_party/tom_d4rt` (1.279.0):
 
-| Symptom | Cause |
-| :--- | :--- |
-| `Unsupported operation: FrozenNameMap is frozen and cannot be mutated` while loading a module | Two playground modules declare a *private* class with the same name (`_SectionHeader`, `_Card`, …). The second module's Pass‑2 re-registers members on the already-frozen imported class object. |
-| `Undefined variable: _byLang` (`screens/media/demo_script.dart`) | A `static const` field is referenced by static getters declared *above* it; the source engine does not defer static-field initialisation for that ordering. |
+| Symptom (before) | Cause | Fixed in |
+| :--- | :--- | :--- |
+| `Unsupported operation: FrozenNameMap is frozen and cannot be mutated` while loading a module | Two modules declared a *private* class with the same name (`_SectionHeader`, `_Card`, …). Imports were merged before the declaration pass, so the second module filled in the *imported* (already frozen) class instead of creating its own placeholder. | `tom_d4rt` 1.244.0 — a library's own class, mixin or enum shadows an imported one of the same name (`Environment.holdsImportedTypeDeclaration`). |
+| `Undefined variable: _byLang` (`screens/media/demo_script.dart`) | A `static const` referenced by a member declared *above* it failed, because static initializers ran eagerly in declaration order. | `tom_d4rt` 1.233.0 — static and top-level initializers are lazy and may read later declarations. |
 
-Until those are fixed upstream, source-mode runs of apps with cross-module
-private-name collisions or forward static-const references will fail at module
-load; AST mode handles both.
+`test/unit/tom_d4rt_source_engine_regressions_test.dart` pins both behaviours
+through `DnHarness` in source mode.
+
+### Behaviour change that affects fixtures
+
+`tom_d4rt` 1.235.0 made a block body that runs off its end return `null`
+(Dart semantics) instead of its last statement's value. A guest `main()` that
+relied on the old behaviour — starting async work and letting `runApp` run in a
+continuation, as the playground's `runZonedGuarded(...)` entrypoint does — now
+returns `null` before `runApp` has run. `AstInterpreterRunner.evaluateAstBundleAs`
+therefore waits briefly for a late `runApp` capture before reporting a missing
+root.
