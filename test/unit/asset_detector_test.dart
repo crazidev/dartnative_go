@@ -73,7 +73,7 @@ dartnative_splash:
       'prefers dngo.config.dart icon, splash, and background over pubspec',
       () {
         File('${tempDir.path}/dngo.config.dart').writeAsStringSync('''
-import 'package:dartnative_go_config/dngo.dart';
+import 'package:dngo_config/dngo.dart';
 
 DngoConfig get dngoConfig => DngoConfig(
   app: AppConfig(
@@ -102,7 +102,7 @@ DngoConfig get dngoConfig => DngoConfig(
         '${tempDir.path}/pubspec.yaml',
       ).writeAsStringSync('name: asset_app\n');
       File('${tempDir.path}/dngo.config.dart').writeAsStringSync('''
-import 'package:dartnative_go_config/dngo.dart';
+import 'package:dngo_config/dngo.dart';
 
 DngoConfig get dngoConfig => DngoConfig(
   app: AppConfig(

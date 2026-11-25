@@ -1,9 +1,9 @@
-# dartnative_go_ui
+# dngo_ui
 
 The host launcher and DevTools, extracted so they can be previewed without a
 native rebuild.
 
-The widgets call `package:dartnative_go_api` (`discover`, `refresh`,
+The widgets call `package:dngo_api` (`discover`, `refresh`,
 `openProject`, `openWithLink`, `toggleTheme`, `openDevTools`, `verbose`,
 `reload`, `goHome`). The shell embeds this package as its home screen and
 bridges the same API, so an interpreted copy drives the real host.
@@ -14,7 +14,7 @@ The host app must already be installed (a build that includes this API).
 Then, from this directory:
 
 ```sh
-dart_go start
+dngo start
 ```
 
 Open that server from the host launcher (or let auto-connect pick it up).
@@ -26,7 +26,7 @@ callbacks.
 
 `HostDevToolButton` (floating pill) and `HostDevToolSheet` (native bottom
 sheet) live in `lib/src/devtool/` and are exported from
-`package:dartnative_go_ui/dartnative_go_ui.dart`.
+`package:dngo_ui/dngo_ui.dart`.
 
 - `HostLauncher` renders the pill and opens the sheet only when it runs as a
   previewed guest; the shell's home route shows no pill, as before. Host

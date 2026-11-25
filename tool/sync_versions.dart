@@ -1,6 +1,6 @@
 import 'dart:io';
 
-/// Regenerates `pkgs/dartnative_go_api/lib/version.dart` from:
+/// Regenerates `pkgs/dngo_api/lib/version.dart` from:
 /// - root `pubspec.yaml` → dngo / runtime version
 /// - root `dn_plugins.lock` → DartNative SDK (`Built with DartNative X.Y.Z`)
 ///
@@ -36,7 +36,7 @@ SyncedVersions syncVersions(Directory repoRoot) {
       '0.0.0';
 
   final out = File(
-    '${repoRoot.path}/pkgs/dartnative_go_api/lib/version.dart',
+    '${repoRoot.path}/pkgs/dngo_api/lib/version.dart',
   );
   out.parent.createSync(recursive: true);
   out.writeAsStringSync('''

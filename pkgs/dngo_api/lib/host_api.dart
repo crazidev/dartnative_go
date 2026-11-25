@@ -3,7 +3,7 @@
 /// Import this library from host UI code:
 ///
 /// ```dart
-/// import 'package:dartnative_go_api/host_api.dart';
+/// import 'package:dngo_api/host_api.dart';
 ///
 /// final projects = await DartGoHost.discover();
 /// await DartGoHost.openProject(projects.first);
@@ -24,8 +24,8 @@ import 'version.dart';
 /// bundled copy of this file (whose [DartGoHost.binding] would be a
 /// different static).
 const Set<String> kDartGoHostApiUris = {
-  'package:dartnative_go_api/host_api.dart',
-  'package:dartnative_go_api/dartnative_go_api.dart',
+  'package:dngo_api/host_api.dart',
+  'package:dngo_api/dngo_api.dart',
   'package:dartnative_go/host_api.dart',
 };
 
@@ -111,7 +111,7 @@ abstract class DartGoHostBinding {
 
   /// Tells the shell that this UI renders its own DevTools.
   ///
-  /// `dartnative_go_ui` calls this from its preview entrypoint: the shell hides
+  /// `dngo_ui` calls this from its preview entrypoint: the shell hides
   /// its floating DevTools pill and sheet so the guest's editable copy is the
   /// only one on screen. The shell restores its own DevTools on release or
   /// when the preview tears down.

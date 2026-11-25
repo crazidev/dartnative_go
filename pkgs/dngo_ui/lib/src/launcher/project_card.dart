@@ -1,5 +1,5 @@
 import 'package:dartnative/dartnative.dart';
-import 'package:dartnative_go_api/host_api.dart';
+import 'package:dngo_api/host_api.dart';
 
 import '../theme/host_ui_theme.dart';
 
@@ -93,7 +93,7 @@ class _ProjectCardState extends State<ProjectCard> {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
             curve: Curves.easeOut,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
             decoration: BoxDecoration(
               // color: _pressed ? theme.muted.withOpacity(0.55) : null,
               color: theme.secondary,
@@ -104,13 +104,19 @@ class _ProjectCardState extends State<ProjectCard> {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    border: Border.all(color: theme.border),
+                    // border: Border.all(color: theme.border),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Image.asset(
-                    'assets/dn-logo.png',
-                    fit: BoxFit.contain,
-                  ),
+                  child: widget.project.iconUrl != null
+                      ? Image.network(
+                          widget.project.iconUrl!,
+                          key: ValueKey(widget.project.iconUrl!),
+                          cachePolicy: ImageCachePolicy.standard,
+                        )
+                      : Image.asset(
+                          'assets/dn-logo.png',
+                          fit: BoxFit.contain,
+                        ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -135,6 +141,7 @@ class _ProjectCardState extends State<ProjectCard> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 12,
+                          fontFamily: 'Courier',
                           color: theme.mutedForeground,
                         ),
                       ),

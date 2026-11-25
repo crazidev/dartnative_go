@@ -1,5 +1,5 @@
-name: dartnative_go_ui
-description: DartNative Go host UI. Preview it with dart_go start; the shell embeds the same widgets.
+name: dngo_ui
+description: DartNative Go host UI. Preview it with dngo start; the shell embeds the same widgets.
 publish_to: "none"
 version: 0.1.0
 
@@ -10,8 +10,8 @@ resolution: workspace
 
 dependencies:
   dartnative: ^1.0.0
-  dartnative_go_api:
-    path: ../dartnative_go_api
+  dngo_api:
+    path: ../dngo_api
   native_bottomsheet:
     path: ../../../dartnative_bottomsheet
   # The generated theme persists its appearance via `ThemeStorage`.

@@ -1,6 +1,6 @@
 import 'package:dartnative/dartnative.dart';
-import 'package:dartnative_go_ui/src/theme/theme_storage.dart';
-import 'package:dartnative_go_ui/src/theme/shadcn_theme.dart';
+import 'package:dngo_ui/src/theme/theme_storage.dart';
+import 'package:dngo_ui/src/theme/shadcn_theme.dart';
 import 'package:test/test.dart';
 
 void main() {

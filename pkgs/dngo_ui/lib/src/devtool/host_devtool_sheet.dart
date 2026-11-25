@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:dartnative/dartnative.dart';
-import 'package:dartnative_go_api/dartnative_go_api.dart';
+import 'package:dngo_api/dngo_api.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
 
 import '../theme/host_ui_theme.dart';
@@ -186,7 +186,7 @@ class _HostDevToolSheetState extends State<HostDevToolSheet> {
       color: !isIOS26 ? theme.background : null,
       child: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 20, 12, 20),
+          padding: const EdgeInsets.fromLTRB(12, 15, 12, 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -308,7 +308,10 @@ class _HostDevToolSheetState extends State<HostDevToolSheet> {
                     Expanded(
                       child: Button(
                         title: widget.secondaryActionTitle,
-                        variant: ButtonVariant.glass,
+                        variant: ButtonVariant.bordered,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(100),
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         onPressed: () {
                           widget.controller.dismiss();
@@ -341,7 +344,7 @@ class _HostDevToolSheetState extends State<HostDevToolSheet> {
                       Text(
                         'DEV SERVER',
                         style: TextStyle(
-                          color: theme.mutedForeground,
+                          // color: theme.mutedForeground,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
@@ -394,7 +397,7 @@ class _HostDevToolSheetState extends State<HostDevToolSheet> {
                             Text(
                               'RUNTIME MODE',
                               style: TextStyle(
-                                color: theme.mutedForeground,
+                                // color: theme.mutedForeground,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.5,
@@ -426,7 +429,7 @@ class _HostDevToolSheetState extends State<HostDevToolSheet> {
                       Text(
                         'THEME',
                         style: TextStyle(
-                          color: theme.mutedForeground,
+                          // color: theme.mutedForeground,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
@@ -509,7 +512,7 @@ class _HostDevToolSheetState extends State<HostDevToolSheet> {
                             Text(
                               'VERBOSE LOGS',
                               style: TextStyle(
-                                color: theme.mutedForeground,
+                                // color: theme.mutedForeground,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.5,
@@ -546,16 +549,16 @@ class _HostDevToolSheetState extends State<HostDevToolSheet> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       children: [
-                        Text(
-                          "SDK",
-                          style: TextStyle(
-                            color: theme.mutedForeground,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        Text(DartGoHost.dartNativeVersion),
+                        // Text(
+                        //   "SDK",
+                        //   style: TextStyle(
+                        //     color: theme.mutedForeground,
+                        //     fontSize: 10,
+                        //     fontWeight: FontWeight.bold,
+                        //     letterSpacing: 0.5,
+                        //   ),
+                        // ),
+                        // Text(DartGoHost.dngoVersion),
                       ],
                     ),
                   ),
@@ -673,7 +676,7 @@ class DevToolContainers extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
         color: context.theme.secondary,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         children: children.map((child) => buildChild(context, child)).toList(),

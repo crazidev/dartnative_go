@@ -1,4 +1,4 @@
-import 'package:dartnative_go_ui/src/theme/shadcn_converter.dart';
+import 'package:dngo_ui/src/theme/shadcn_converter.dart';
 import 'package:test/test.dart';
 
 const _sampleCss = '''

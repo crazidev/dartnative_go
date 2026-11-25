@@ -1,6 +1,6 @@
 /// Host UI for DartNative Go.
 ///
-/// The shell embeds [HostLauncher]. `lib/main.dart` is the `dart_go start`
+/// The shell embeds [HostLauncher]. `lib/main.dart` is the `dngo start`
 /// entrypoint so the same widgets can be previewed as a guest.
 library;
 

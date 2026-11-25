@@ -1,4 +1,4 @@
-name: dartnative_go_config
+name: dngo_config
 description: Typed DartNative Go application and plugin configuration.
 publish_to: none
 version: 0.1.0

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:dartnative_go_config/dngo.dart';
+import 'package:dngo_config/dngo.dart';
 import 'package:yaml/yaml.dart';
 
 /// Detected assets for a DartNative project (App Icon and Splash Screen).

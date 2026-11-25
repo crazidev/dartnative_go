@@ -325,7 +325,7 @@ class _HostDevToolButtonState extends State<HostDevToolButton> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Image.asset('assets/app-logo.png', width: 22, height: 22),
+          Image.asset('assets/dn-logo.png', width: 22, height: 22),
           const SizedBox(width: 8),
           Text(
             'DevTool',

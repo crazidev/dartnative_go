@@ -1,5 +1,5 @@
 import 'package:dartnative/dartnative.dart';
-import 'package:dartnative_go_api/host_api.dart';
+import 'package:dngo_api/host_api.dart';
 
 import '../theme/host_ui_theme.dart';
 import 'project_card.dart';

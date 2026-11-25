@@ -418,7 +418,7 @@ class AndroidSplash {
 /// Flutter-only options (in-app splash behaviour) are intentionally excluded.
 class SplashConfig {
   final String image;
-  final ColorValue backgroundColor;
+  final ColorValue? backgroundColor;
   final ColorValue? backgroundDark;
   final String? backgroundImage;
   final String? backgroundImageDark;
@@ -456,7 +456,7 @@ class SplashConfig {
 
   const SplashConfig({
     required this.image,
-    required this.backgroundColor,
+    this.backgroundColor,
     this.backgroundDark,
     this.backgroundImage,
     this.backgroundImageDark,

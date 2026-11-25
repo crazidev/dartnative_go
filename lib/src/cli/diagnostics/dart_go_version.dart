@@ -4,11 +4,11 @@
 /// plugins and their corresponding versions. Developer projects targeting
 /// DartNative Go must match these supported plugin versions.
 ///
-/// Version number constants live in `package:dartnative_go_api/version.dart`
+/// Version number constants live in `package:dngo_api/version.dart`
 /// so the shell and guests share the same values at runtime.
 library;
 
-export 'package:dartnative_go_api/version.dart';
+export 'package:dngo_api/version.dart';
 
 /// Represents a native plugin requirement supported by this DartNative Go version.
 class SupportedPlugin {

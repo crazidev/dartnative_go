@@ -8,16 +8,16 @@ executables:
 
 workspace:
   - example
-  - pkgs/dartnative_go_api
-  - pkgs/dartnative_go_ui
-  - pkgs/dartnative_go_config
+  - pkgs/dngo_api
+  - pkgs/dngo_ui
+  - pkgs/dngo_config
 
 environment:
   sdk: ^3.9.0-0
 
 dependencies:
-  dartnative_go_config:
-    path: pkgs/dartnative_go_config
+  dngo_config:
+    path: pkgs/dngo_config
   xml: ^6.6.1
   dartnative: ^1.0.0
   dartnative_ios: ^1.0.0
@@ -47,10 +47,10 @@ dependencies:
   tom_ast_model: any
   analyzer: any
   yaml: ^3.1.2
-  dartnative_go_api:
-    path: pkgs/dartnative_go_api
-  dartnative_go_ui:
-    path: pkgs/dartnative_go_ui
+  dngo_api:
+    path: pkgs/dngo_api
+  dngo_ui:
+    path: pkgs/dngo_ui
   dartnative_live_activities: ^0.1.0
   quick_actions_kit: ^0.1.0
   local_auth_kit: ^0.2.0
@@ -71,7 +71,6 @@ dartnative:
     # `dn config --no-enable-lldb-debugging` setting for this project.
     # enable-lldb-debugging: true
   assets:
-    - assets/app-logo.png
     - assets/dn-logo.png
 
 dependency_overrides:

@@ -2,7 +2,7 @@
 ///
 /// Guests and the host UI import [host_api.dart]. The native shell installs
 /// a [DartGoHostBinding]; interpreted guests reach the same methods through
-/// the host bridge so `dart_go start` can preview the UI without a native
+/// the host bridge so `dngo start` can preview the UI without a native
 /// rebuild.
 library;
 

@@ -9,7 +9,7 @@
 // Defaults: tool/shadcn_tokens.css → lib/src/theme/shadcn_theme.dart
 import 'dart:io';
 
-import 'package:dartnative_go_ui/src/theme/shadcn_converter.dart';
+import 'package:dngo_ui/src/theme/shadcn_converter.dart';
 
 void main(List<String> args) {
   final cssPath = args.isNotEmpty ? args[0] : 'tool/shadcn_tokens.css';

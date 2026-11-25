@@ -9,7 +9,7 @@ import '../../lib/src/prebuild/plugin_discovery.dart';
 void main() {
   test('parses a plugin build_config.dart', () {
     final parsed = parsePluginBuildConfig('''
-import 'package:dartnative_go_config/dngo.dart';
+import 'package:dngo_config/dngo.dart';
 
 DngoPluginConfig get dngoPluginConfig => PluginBuildConfig(
   name: 'native_bottomsheet',

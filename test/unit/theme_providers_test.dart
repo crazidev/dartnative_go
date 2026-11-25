@@ -1,5 +1,5 @@
 import 'package:dartnative/dartnative.dart';
-import 'package:dartnative_go_ui/dartnative_go_ui.dart';
+import 'package:dngo_ui/dngo_ui.dart';
 import 'package:dartnative_go/src/theme/theme_providers.dart';
 import 'package:test/test.dart';
 

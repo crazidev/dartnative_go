@@ -1,5 +1,5 @@
 import 'package:dartnative/dartnative.dart';
-import 'package:dartnative_go_ui/dartnative_go_ui.dart';
+import 'package:dngo_ui/dngo_ui.dart';
 import 'package:native_bottomsheet/native_bottomsheet.dart';
 import 'package:riverpod_kit/riverpod_kit.dart';
 
@@ -26,7 +26,7 @@ class DevToolsHost {
 /// 2. Physical device shake detection to open the native DevTools bottomsheet.
 /// 3. Native bottomsheet powered by `native_bottomsheet` (`showBottomSheet`).
 ///
-/// The pill and sheet live in `dartnative_go_ui` so `dart_go start` can preview
+/// The pill and sheet live in `dngo_ui` so `dngo start` can preview
 /// and hot-reload them. When the previewed UI claims DevTools for itself
 /// (`DartGoHost.claimDevTools`), the shell disables this overlay.
 class DevToolOverlay extends ConsumerStatefulWidget {
@@ -144,7 +144,7 @@ class _DevToolOverlayState extends ConsumerState<DevToolOverlay> {
 
     _sheet = showBottomSheet(
       context,
-      detents: const [DNSheetDetent.medium, DNSheetDetent.large],
+      detents: const [DNSheetDetent.medium],
       initialDetent: DNSheetDetent.medium,
       showGrabber: true,
       builder: (ctx, controller) => Consumer(

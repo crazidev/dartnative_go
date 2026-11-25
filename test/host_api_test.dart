@@ -1,4 +1,4 @@
-import 'package:dartnative_go_api/host_api.dart';
+import 'package:dngo_api/host_api.dart';
 import 'package:test/test.dart';
 
 void main() {

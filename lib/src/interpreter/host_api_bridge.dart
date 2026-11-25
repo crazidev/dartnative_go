@@ -1,11 +1,11 @@
-import 'package:dartnative_go_api/host_api.dart';
+import 'package:dngo_api/host_api.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
 
 import 'host_api_listeners.dart';
 
 /// Source-engine (`tom_d4rt`) bridge for [DartGoHost].
 ///
-/// Guest code imports `package:dartnative_go_api/host_api.dart` (or the
+/// Guest code imports `package:dngo_api/host_api.dart` (or the
 /// `package:dartnative_go/host_api.dart` re-export). Those libraries are
 /// not bundled; this bridge supplies the classes and forwards to the
 /// binding the shell installed.
