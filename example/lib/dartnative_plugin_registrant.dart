@@ -78,6 +78,7 @@ abstract final class DartNativePluginRegistrant {
       'dartnative_url_launcher',
       'dartnative_webview',
       'local_auth_kit',
+      'lucide_kit',
       'native_bottomsheet',
       'quick_actions_kit',
       'riverpod_kit',

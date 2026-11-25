@@ -11,7 +11,6 @@ import 'package:equatable/equatable.dart';
 import 'package:example/plugins/native_bottomsheet.dart';
 import 'package:example/plugins/quick_actions_demo.dart';
 import 'package:lucide_kit/lucide_kit.dart';
-// import 'package:lucide_kit/lucide_kit.dart';
 
 class Plugins extends Equatable {
   final Widget widget;
