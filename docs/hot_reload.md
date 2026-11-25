@@ -326,13 +326,18 @@ from both halves. The AST reload line looks like:
 ```text
 AstInterpreter: AST evaluate (reload) 18ms
    {init: 0, decode: 2, exec: 14, core_runner: reused, decode_cache: hit,
-    decl_cells: 412, var_cells: 58, decl_swaps: 3}
+    decl_cells: 412 cells, var_cells: 58 cells, decl_swaps: 3 swaps}
 ```
 
 - `decode: 2` with `decode_cache: hit` — bundle bytes unchanged, decode skipped.
 - `core_runner: reused` — the persistent runner (not a restart).
-- `decl_swaps: 3` — three function bodies were swapped into live cells.
+- `decl_swaps: 3 swaps` — three function bodies were swapped into live cells.
 - `decl_cells` / `var_cells` — total declaration and variable cells alive.
+
+Code-only patch reloads preserve unchanged module fingerprints from the base
+generation (invalidating only URIs present in `/guest.ast.patch`) so
+`DeclarationRegistry.cachedModule` skips re-declaring untouched modules, and
+run icon-font manifest sync off the reload critical path.
 
 On the server, the matching line is `guest.ast rebuilt {modules: N, bytes: B}`
 or `guest.ast up to date {cache: hit}`.

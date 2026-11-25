@@ -44,7 +44,7 @@ no native build step, no app store, no cable.
 | `lib/src/cli/` | Everything the `dngo` CLI uses: `server.dart` (HTTP/WS/file-watch), `broadcaster.dart` (UDP beacons), `dep_packager.dart` (dependency zips), `ast_builder.dart` (guest.ast builds), `pubspec_validator.dart`, `asset_detector.dart`, `qr_code.dart`. |
 | `lib/src/runner/` | Guest execution: `interpreter_runner.dart` (source mode), `ast_interpreter_runner.dart` (AST mode), `bundle_loader.dart` (fetch + unpack bundles, patch lineage), `ast_profile.dart` (structured bundle profile), `live_connection.dart` (WebSocket client), `runtime_mode.dart`, `ui_probe.dart` (UI automation), `dep_cache.dart`. |
 | `lib/src/interpreter/` | The bridge surface: `dartscript.b.dart` plus one `*_bridges.b.dart` per plugin (generated), `widget_proxies.dart`, `asset_bridge.dart`, `debug_controller.dart`. Subfolder `ast/` holds the AST-mode equivalents. |
-| `pkgs/dartnative_go_ui/` | The project-picker UI you see when the app starts. Preview it with `dngo start` in that directory. |
+| `pkgs/dngo_ui/` | The project-picker UI you see when the app starts. Preview it with `dngo start` in that directory. |
 | `lib/src/devtool/` | The in-app developer overlay (logs, error surfaces, settings, AST bundle explorer). |
 | `lib/src/client/` | Persistence + networking for the launcher (project storage, network scanner, preferences). |
 | `bin/` | The `dngo` CLI entrypoint. |

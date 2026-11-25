@@ -124,7 +124,7 @@ Type these into the dev-server terminal:
 
 ## Next steps
 
-- **Preview the host UI**: `cd pkgs/dartnative_go_ui && dngo start`,
+- **Preview the host UI**: `cd pkgs/dngo_ui && dngo start`,
   then open that server in the host. UI edits hot-reload; the buttons call
   the shell API (`discover`, `openProject`, `toggleTheme`, …) so you do not
   rebuild the native app to change the launcher.
