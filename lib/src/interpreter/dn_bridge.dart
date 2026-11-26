@@ -4,6 +4,8 @@ import 'd4rt_dartnative_application.dart';
 import 'dartnative_bridges.b.dart' as dartnative_ui_bridges;
 import 'dartnative_sub_barrels.dart';
 import 'dartscript.b.dart';
+import 'media_gallery_ffi_bridge.dart';
+import 'state_signal_extensions.dart';
 import 'widget_proxies.dart';
 
 /// Helper to unwrap native Dart objects from d4rt's [BridgedInstance], interpreted widgets, or raw objects.
@@ -32,6 +34,8 @@ void registerDartNativeBridges(
 }) {
   DartnativeGoBridges.register(interpreter);
   registerDartNativeSubBarrels(interpreter);
+  registerSourceMediaGalleryFfiBridge(interpreter);
+  registerStateSignalExtensions(interpreter);
   registerWidgetInterfaceProxies(interpreter, onLog: onLog);
 }
 

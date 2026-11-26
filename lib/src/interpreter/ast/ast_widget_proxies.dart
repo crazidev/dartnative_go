@@ -1415,6 +1415,181 @@ class InterpretedInheritedWidget extends InheritedWidget
   }
 }
 
+/// Native proxy for AST-interpreted classes that are [TickerProvider]s.
+///
+/// `class _DemoState extends State<Demo> with SingleTickerProviderStateMixin`
+/// records the bridged mixin, and the mixin bridge declares
+/// `TickerProvider` in its supertypes — so `tryCreateInterfaceProxyWithVisitor`
+/// reaches this factory for both `SingleTickerProviderStateMixin` and
+/// `TickerProviderStateMixin` states.
+///
+/// Without it `AnimationController(vsync: this)` fails with
+/// `Invalid parameter "vsync": expected TickerProvider?, got
+/// InterpretedInstance(_DemoState)`.
+///
+/// The ticker is the framework's own (`Ticker(onTick)`): its constructor is
+/// real, only its lifecycle methods are supplied by the platform, so building
+/// one here is exactly what a native `State` does.
+class InterpretedTickerProvider implements TickerProvider, D4InterpretedProxy {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedTickerProvider(this.visitor, this.instance);
+
+  @override
+  Object get d4rtInstance => instance;
+
+  @override
+  Ticker createTicker(TickerCallback onTick) {
+    // A script may override createTicker(); honour it when it does. The mixin
+    // bridge's own `createTicker` is not an InterpretedFunction, so
+    // findInstanceMethod only returns a method the guest actually declared.
+    final method = instance.klass.findInstanceMethod('createTicker');
+    if (method != null) {
+      final result = instance
+          .bindMethodCached(method)
+          .call(visitor, [onTick], {});
+      if (result is Ticker) return result;
+    }
+    return Ticker(onTick);
+  }
+}
+
+/// Native proxy for AST-interpreted classes that mix in
+/// [WidgetsBindingObserver].
+///
+/// `WidgetsBinding.instance.addObserver(this)` takes a native
+/// `WidgetsBindingObserver`; a `State` mixed with the observer mixin is an
+/// `InterpretedInstance`, so the bridge rejects it with
+/// `expected WidgetsBindingObserver, got InterpretedInstance(_…State)`.
+///
+/// Dispatch looks at the **guest's own methods** only
+/// ([InterpretedClass.findInstanceMethod]), never the bridged mixin adapter:
+/// the adapter validates against this proxy and would call straight back into
+/// [didChangeAppLifecycleState], recursing forever.
+///
+/// Equality is by guest instance so the binding's `removeObserver(this)` can
+/// pair with the proxy created for `addObserver`, even though a fresh proxy
+/// is built at each bridge boundary.
+class InterpretedWidgetsBindingObserver extends WidgetsBindingObserver
+    implements D4InterpretedProxy {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedWidgetsBindingObserver(this.visitor, this.instance);
+
+  @override
+  Object get d4rtInstance => instance;
+
+  void _dispatch(String name, List<Object?> args) {
+    final method = instance.klass.findInstanceMethod(name);
+    if (method == null) return;
+    _runWithLogCapture(
+      () => instance.bindMethodCached(method).call(visitor, args, {}),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) =>
+      _dispatch('didChangeAppLifecycleState', [state]);
+
+  @override
+  void didChangeMetrics() => _dispatch('didChangeMetrics', const []);
+
+  @override
+  void didChangePlatformBrightness() =>
+      _dispatch('didChangePlatformBrightness', const []);
+
+  @override
+  void didChangeAccessibilityFeatures() =>
+      _dispatch('didChangeAccessibilityFeatures', const []);
+
+  @override
+  void didHaveMemoryPressure() => _dispatch('didHaveMemoryPressure', const []);
+
+  @override
+  bool operator ==(Object other) =>
+      other is InterpretedWidgetsBindingObserver &&
+      identical(other.instance, instance);
+
+  @override
+  int get hashCode => identityHashCode(instance);
+}
+
+/// Native proxy for AST-interpreted [CustomPainter] subclasses.
+///
+/// `CustomPaint(painter: …)` / `CanvasSurface(painter: …)` take a native
+/// `CustomPainter`; an interpreted subclass has no native super-object (the
+/// bridge registers no constructors for the abstract base), so it fails with
+/// `Invalid parameter "painter": expected CustomPainter?`.
+///
+/// Only members the guest actually declares are forwarded:
+/// `preferredHeight` is not abstract and the base implementation throws
+/// `UnimplementedError`, so a painter that does not override it must get
+/// `null` ("use the height I was given"), not an exception.
+class InterpretedCustomPainter extends CustomPainter
+    implements D4InterpretedProxy {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedCustomPainter(this.visitor, this.instance)
+    : super(repaint: _repaintOf(instance));
+
+  /// `super(repaint: …)` from the guest constructor, when it passed one.
+  ///
+  /// The super-call is skipped for a proxy-backed abstract base (there is no
+  /// constructor adapter to run), so the argument is only available when
+  /// [D4.markProxyCapturesSuperArgs] was set for `CustomPainter`.
+  static Listenable? _repaintOf(InterpretedInstance instance) {
+    final captured = instance.superCallNamedArgs?['repaint'];
+    return captured is Listenable ? captured : null;
+  }
+
+  @override
+  Object get d4rtInstance => instance;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final method = instance.klass.findInstanceMethod('paint');
+    if (method == null) return;
+    _runWithLogCapture(
+      () => instance.bindMethodCached(method).call(visitor, [
+        canvas,
+        size,
+      ], {}),
+    );
+  }
+
+  @override
+  double? preferredHeight(double availableWidth) {
+    final method = instance.klass.findInstanceMethod('preferredHeight');
+    if (method == null) return null;
+    final result = _runWithLogCapture(
+      () => instance.bindMethodCached(method).call(visitor, [
+        availableWidth,
+      ], {}),
+    );
+    return result is num ? result.toDouble() : null;
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    final method = instance.klass.findInstanceMethod('shouldRepaint');
+    if (method == null) return true;
+    // Compare against the previous guest instance, not the proxy: the
+    // parameter is `covariant CustomPainter`, so a script reads its own
+    // fields off it (`oldDelegate.progress`).
+    final CustomPainter delegate = oldDelegate;
+    final previous = delegate is D4InterpretedProxy
+        ? (delegate as D4InterpretedProxy).d4rtInstance
+        : delegate;
+    final result = _runWithLogCapture(
+      () => instance.bindMethodCached(method).call(visitor, [previous], {}),
+    );
+    return result == true;
+  }
+}
+
 /// Registers interface proxies for [StatelessWidget], [StatefulWidget], and
 /// [ConsumerWidget] into the [tom_d4rt_ast] interpreter runtime with log interception support.
 void registerAstWidgetInterfaceProxies(
@@ -1469,6 +1644,33 @@ void registerAstWidgetInterfaceProxies(
   D4.registerInterfaceProxy('InheritedWidget', (visitor, instance) {
     return InterpretedInheritedWidget(visitor, instance);
   });
+
+  // `AnimationController(vsync: this)` from a State using
+  // `SingleTickerProviderStateMixin` / `TickerProviderStateMixin`. Both mixin
+  // bridges list `TickerProvider` in their supertypes, so one registration
+  // serves both.
+  D4.registerInterfaceProxy('TickerProvider', (visitor, instance) {
+    return InterpretedTickerProvider(visitor, instance);
+  });
+
+  // `WidgetsBinding.instance.addObserver(this)` from a State mixing in
+  // `WidgetsBindingObserver`. Equality is by guest instance (see the class) so
+  // `removeObserver(this)` pairs with the observer `addObserver` kept.
+  D4.registerInterfaceProxy('WidgetsBindingObserver', (visitor, instance) {
+    return InterpretedWidgetsBindingObserver(visitor, instance);
+  });
+
+  // `CustomPaint(painter: …)` / `CanvasSurface(painter: …)`. Cached on the
+  // instance so the same painter object comes back for the same guest painter
+  // (the framework compares painters between builds).
+  D4.registerInterfaceProxy('CustomPainter', (visitor, instance) {
+    final existing = instance.nativeProxy;
+    if (existing is CustomPainter) return existing;
+    return InterpretedCustomPainter(visitor, instance);
+  });
+  // `super(repaint: …)` is skipped for the abstract base (no constructor
+  // adapter), so the argument has to be captured for the proxy to honour it.
+  D4.markProxyCapturesSuperArgs('CustomPainter');
 
   D4.registerInterfaceProxy('StatelessWidget', (visitor, instance) {
     return InterpretedStatelessWidget(visitor, instance);

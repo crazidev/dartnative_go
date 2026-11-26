@@ -1,6 +1,18 @@
 name: tom_d4rt
 description: "D4rt - A Dart interpreter and runtime with bridging, security sandboxing, and dynamic code execution. Fork of D4rt with extended features."
 version: 1.279.0
+# Vendored fork (path override from the dartnative_go app): the upstream 1.279.0
+# release plus the DartNative patches below. Keep the list current so upstream
+# syncs stay mechanical — see docs/architecture/README.md.
+#
+# DartNative patches on top of 1.279.0:
+# - `dart:developer` stdlib registrar (`stdlib/developer*`), ported from the
+#   AST engine: `Timeline`, `UserTag`, `Service`, `Flow` and the top-level
+#   `log` / `debugger` / `inspect` / `postEvent` / `registerExtension`
+#   functions. Without it a guest importing `dart:developer` (the playground's
+#   text-rendering screen does) fails to load the module.
+# - `dart:io` `ProcessInfo` bridge (`stdlib/io/process_info.dart`): `currentRss`
+#   / `maxRss` are host values like `Platform`, gated on DangerousPermission.
 repository: https://github.com/al-the-bear/tom_d4rt
 homepage: https://github.com/al-the-bear/tom_d4rt
 platforms:

@@ -9,10 +9,10 @@ instead of toy snippets.
 Run it with:
 
 ```sh
-dn test test/playground/playground_headless_test.dart
+dn test test/playground
 ```
 
-## What the suite proves
+## What the suites prove
 
 | Test | What runs |
 | :--- | :--- |
@@ -20,28 +20,92 @@ dn test test/playground/playground_headless_test.dart
 | `routes` | Every captured route is built through its `WidgetBuilder` (proving the interpreted-closure → native-builder coercion) and the screen's `build(context)` runs. |
 | `tabs` | The shell's `build` runs, the five tab bodies are reached from its tree, and each one builds. |
 
-Both engine paths are analyzer-free (`tom_d4rt_ast`, the engine `kUseAst`
-selects on device). Native-only plugins are shadowed by host fakes installed
-through `DnHarness.astBridgeOverrides` — the same policy the per-plugin suites
-use: the fake proves bridge wiring + guest logic, the real FFI call needs a
-device.
+`playground_headless_test.dart` drives `tom_d4rt_ast` (analyzer-free, the
+engine `kUseAst` selects on device) through
+`DnHarness.astBridgeOverrides`; `playground_source_headless_test.dart` drives
+`tom_d4rt` through `DnHarness.bridgeOverrides`. Native-only plugins are
+shadowed by host fakes in `test/test_lab/fakes/` — the same policy the
+per-plugin suites use: the fake proves bridge wiring + guest logic, the real
+FFI call needs a device.
 
 ## Results
 
-- **boot**: passes. The shell mounts with only a `SharedPreferences` host fake.
-- **routes**: 32/43 build. The 11 that do not are listed in `_knownGaps` in the
-  suite with the missing capability; anything outside that list fails the test.
-- **tabs**: all five tab bodies build.
+Both engine suites build the whole app:
 
-### Known gaps (runtime capability, not playground bugs)
+| Suite | Boot | Routes | Tabs |
+| :--- | :--- | :--- | :--- |
+| `playground_headless_test.dart` (AST) | passes | 43/43 | all five tab bodies build |
+| `playground_source_headless_test.dart` (source) | passes | 43/43 | n/a (AST suite owns the tab walk) |
 
-| Symptom | Missing capability | Affected |
+`_knownGaps` in the AST suite is **empty**: anything that fails a route fails
+the test, and a route that starts building again must be removed from the map
+(the suite asserts the map has no stale entries).
+
+### Runtime capabilities that were missing (all fixed)
+
+| Symptom | Capability | Fixed by |
 | :--- | :--- | :--- |
-| `AnimationController(vsync: this)` → `expected TickerProvider?, got InterpretedInstance(_…State)` | `TickerProvider` interface proxy for interpreted states using `SingleTickerProviderStateMixin` | `/chatgpt-picker`, `/stickers-keyboard` |
-| `CustomPaint(painter: …)` / `CanvasSurface(painter: …)` → `expected CustomPainter?` | `CustomPainter` interface proxy | `/live-text`, `/text-rendering`, `/canvas` |
-| `Bridged class 'Signal' has no instance method named 'watch'` | `riverpod_kit` `Signal.watch` is not in the bridged surface | `/state-store` |
-| `Late variable '_tab' … accessed before being assigned` | the field is assigned in `initState()`; this suite builds without mounting | `/storage-*` (4 routes) |
-| `type 'dynamic Function()' is not a subtype of 'VoidCallback'` | callback coercion for closures inside a collection literal | `/material3-badges` |
+| `AnimationController(vsync: this)` → `expected TickerProvider?, got InterpretedInstance(_…State)` | `TickerProvider` interface proxy | `InterpretedTickerProvider` in both `*_widget_proxies.dart` |
+| `CustomPaint(painter: …)` / `CanvasSurface(painter: …)` → `expected CustomPainter?` | `CustomPainter` interface proxy | `InterpretedCustomPainter` in both proxy files |
+| `addObserver(this)` → `expected WidgetsBindingObserver, got InterpretedInstance` | `WidgetsBindingObserver` interface proxy | `InterpretedWidgetsBindingObserver` in both proxy files |
+| `Bridged class 'Signal' has no instance method named 'watch'` | `Signal.watch` / `Computed.watch` extension | `lib/src/interpreter/state_signal_extensions.dart` |
+| `Late variable '_tab' … accessed before being assigned` | `initState` never ran | harness `_render` drives `initState` + `didChangeDependencies` |
+| `type 'dynamic Function()' is not a subtype of 'VoidCallback'` | collection-literal callback coercion | already fixed in the vendored 0.260 engine (`FunctionRuntimeType.isSubtypeOf` accepts a bridged function typedef) |
+| `Undefined variable: ProcessInfo` | `dart:io` `ProcessInfo` bridge | `stdlib/io/process_info.dart` in both engines |
+| `Undefined variable: MediaGalleryFFIBindings` | the generator never emitted this class | `lib/src/interpreter/media_gallery_ffi_bridge.dart` (hand-written, both engines) |
+
+### The three interface proxies
+
+An interpreted subclass of a bridged abstract type has no native
+super-object, so a bridge parameter typed as that abstract type rejects it
+(`expected CustomPainter?, got InterpretedInstance(_Painter)`). Each proxy
+implements the native interface and forwards only the members the guest
+actually declares:
+
+- **`InterpretedTickerProvider`** — one registration serves
+  `SingleTickerProviderStateMixin` and `TickerProviderStateMixin`, because both
+  mixin bridges list `TickerProvider` in their supertypes. The ticker is the
+  framework's own `Ticker(onTick)`; only its lifecycle methods are
+  platform-patched.
+- **`InterpretedCustomPainter`** — `preferredHeight` returns `null` when the
+  guest does not override it (the base implementation throws
+  `UnimplementedError`, and the widget wants "use the height I was given");
+  `shouldRepaint` receives the previous *guest* instance, not the proxy,
+  because the parameter is `covariant CustomPainter` and scripts read their own
+  fields off it. `super(repaint: …)` is captured through
+  `D4.markProxyCapturesSuperArgs('CustomPainter')`, since the abstract base has
+  no constructor adapter to run.
+- **`InterpretedWidgetsBindingObserver`** — dispatch reads the guest's own
+  methods (`InterpretedClass.findInstanceMethod`), never the bridged mixin
+  adapter, which would validate against the proxy and call straight back into
+  it. Equality is by guest instance so `removeObserver(this)` pairs with the
+  proxy `addObserver` kept.
+
+### `Signal.watch`
+
+`Signal<T>.watch(context)` and `Computed<T>.watch(context)` are declared by
+`extension SignalWatch<T> on _SignalBase<T>` in `package:dartnative/src/state.dart`.
+`_SignalBase` is library-private, so the bridge generator skips the extension:
+a generated bridge lives in another library and cannot name the `on` type.
+`state_signal_extensions.dart` registers it by hand against the two public
+subclasses (`Signal`, `Computed`) — one definition per type, since extension
+lookup is nominal on both engines. When there is no element to subscribe (the
+headless suite drives `build` on a synthetic context) the adapter falls back to
+`.value` instead of failing the build.
+
+### Host fakes
+
+Native-only plugins are shadowed per plugin, in `test/test_lab/fakes/`. Each
+fake `implements` the real class, so it stays assignable wherever the generated
+bridge and the guest's own fields expect one:
+
+| Fake | Replaces |
+| :--- | :--- |
+| `fake_shared_preferences.dart` / `_ast.dart` | `SharedPreferences` FFI store |
+| `fake_media_gallery_ast.dart` | `MediaGallery` (throws "gallery is not available" on a host) |
+| `fake_connectivity_ast.dart` | `Connectivity` / `InternetConnection` (asserts `loadSymbols()` first, inside an async stream listener the guest's `try` cannot see) |
+| `fake_audio_player_ast.dart` | `AudioPlayer` (same `loadSymbols()` assertion, reached from the Spotify demo's `initState`) |
+| `fake_system.dart`, `fake_notifications.dart`, `fake_local_auth.dart`, `fake_live_activities.dart` | their plugins, source engine |
 
 ## What was added to make this run
 
@@ -106,11 +170,12 @@ paths in `ast_widget_proxies.dart` prefer the widget-aware wrapper over
 
 ## Source engine (`tom_d4rt`)
 
-The suite targets the AST engine because that is what `kUseAst` selects on
-device. Probing the same playground through the source engine
-(`InterpreterRunner`, `DnHarness(mode: source)`) used to surface two upstream
-interpreter gaps that the AST engine never had. Both are **fixed** in the
-vendored `third_party/tom_d4rt` (1.279.0):
+`kUseAst` selects the AST engine on device, so that is the primary suite. The
+source engine is covered too, by
+`test/playground/playground_source_headless_test.dart`: it boots the same app
+through `InterpreterRunner` and builds every captured route (43/43). Probing it
+surfaced two upstream interpreter gaps the AST engine never had. Both are
+**fixed** in the vendored `third_party/tom_d4rt` (1.279.0):
 
 | Symptom (before) | Cause | Fixed in |
 | :--- | :--- | :--- |
@@ -120,12 +185,24 @@ vendored `third_party/tom_d4rt` (1.279.0):
 `test/unit/tom_d4rt_source_engine_regressions_test.dart` pins both behaviours
 through `DnHarness` in source mode.
 
+Booting the real playground through the source engine added two more gaps,
+both fixed by patching the vendored engine (listed in its `pubspec.yaml`):
+
+| Symptom | Cause | Fix |
+| :--- | :--- | :--- |
+| `Failed to load import "dart:developer": Dart library 'dart:developer' not supported` | the source engine had no `dart:developer` registrar (the AST engine did) | ported `stdlib/developer*` from the AST engine and registered it in `ModuleLoader._stdlibRegistrars` |
+| `Undefined variable: ProcessInfo` | `dart:io`'s `ProcessInfo` was never bridged | `stdlib/io/process_info.dart`, gated like `Platform` |
+
+The source engine also rejects statically undefined names at module load, so a
+guest `try`/`catch` around a missing bridge cannot run — that is how the
+`MediaGalleryFFIBindings` gap (see above) surfaced only here.
+
 ### Behaviour change that affects fixtures
 
 `tom_d4rt` 1.235.0 made a block body that runs off its end return `null`
 (Dart semantics) instead of its last statement's value. A guest `main()` that
 relied on the old behaviour — starting async work and letting `runApp` run in a
 continuation, as the playground's `runZonedGuarded(...)` entrypoint does — now
-returns `null` before `runApp` has run. `AstInterpreterRunner.evaluateAstBundleAs`
-therefore waits briefly for a late `runApp` capture before reporting a missing
-root.
+returns `null` before `runApp` has run. Both runners therefore wait briefly for
+a late `runApp` capture before reporting a missing root
+(`AstInterpreterRunner.evaluateAstBundleAs`, `InterpreterRunner.evaluate`).

@@ -16,7 +16,9 @@ import '../interpreter/ast/ast_widget_proxies.dart';
 import '../interpreter/ast/dartscript.b.dart' as ast_bridges;
 import '../interpreter/ast/isolate_compute_bridge.dart';
 import '../interpreter/ast/server_component_bridge.dart';
+import '../interpreter/media_gallery_ffi_bridge.dart';
 import '../interpreter/routes_bridge.dart';
+import '../interpreter/state_signal_extensions.dart';
 import '../interpreter/zoned_guarded_bridge.dart';
 import '../widgets/server_component_loader.dart';
 
@@ -192,6 +194,8 @@ class AstInterpreterRunner {
     // Full generated bridge surface (AST-typed via buildkit_ast.yaml).
     ast_bridges.DartnativeGoAstBridges.register(runner);
     registerAstDartNativeSubBarrels(runner);
+    registerAstMediaGalleryFfiBridge(runner);
+    registerAstStateSignalExtensions(runner);
     registerAstComputeBridge(runner);
     registerAstWidgetInterfaceProxies(
       runner,

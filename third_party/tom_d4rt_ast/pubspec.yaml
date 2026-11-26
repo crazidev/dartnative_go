@@ -33,6 +33,8 @@ version: 0.260.0
 # - `part` units resolved into the owning library environment (shared private
 #   names) with part-aware module fingerprints for hot reload.
 # - `dart:developer` stdlib bridge surface (adapted from upstream D4rt).
+# - `dart:io` `ProcessInfo` bridge (`stdlib/io/process_info.dart`): `currentRss`
+#   / `maxRss` are host values like `Platform`, gated on DangerousPermission.
 # - Async continuation slicing (`asyncSliceBudgetMicros`, 4 ms default): a spent
 #   budget hands the next continuation to a timer turn so an embedder's frame
 #   pipeline runs.

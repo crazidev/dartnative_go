@@ -44,14 +44,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `tool/d4rtgen_select.dart` allowing `tool/d4rtgen.dart` and `tool/d4rtgen_ast.dart` to target specific packages or modules instead of full regeneration.
   - Implemented fingerprint stamp tracking to skip unchanged packages and avoid rewriting shared barrels during partial runs.
   - Added generator post-fixes for Riverpod 3 skew (`StateNotifier`, `ProviderScope` type coercion, and member getters).
-- **Upstream `playground/` runs headless**: the reference DartNative app is
-  vendored as a fixture and covered by `test/playground/playground_headless_test.dart`
-  (`dn test test/playground/`). It boots the real `main.dart` (registrant, Skia,
-  SQLite pre-warm, Firebase/notifications, 43 `registerRoutes` calls, theme
-  restore) and builds every captured route plus the five tab bodies through the
-  analyzer-free engine. 32/43 routes build; the 11 that cannot are pinned in
-  `_knownGaps` with the missing runtime capability, so any new failure is a
-  regression. See `docs/architecture/playground-headless.md`.
+- **Upstream `playground/` runs headless on both engines**: the reference
+  DartNative app is vendored as a fixture and covered by
+  `test/playground/playground_headless_test.dart` (AST) and
+  `test/playground/playground_source_headless_test.dart` (source). Both boot
+  the real `main.dart` (registrant, Skia, SQLite pre-warm,
+  Firebase/notifications, 43 `registerRoutes` calls, theme restore) and build
+  **all 43 captured routes**; the AST suite also builds the five tab bodies.
+  `_knownGaps` is empty and a route that regresses fails the suite. See
+  `docs/architecture/playground-headless.md`.
+- **Interpreted proxies for the remaining abstract bridge parameters**:
+  `TickerProvider` (`AnimationController(vsync: this)` from
+  `SingleTickerProviderStateMixin` / `TickerProviderStateMixin`),
+  `CustomPainter` (`CustomPaint` / `CanvasSurface` painters) and
+  `WidgetsBindingObserver` (`WidgetsBinding.instance.addObserver(this)`) are
+  now materialised for interpreted subclasses in both engines
+  (`InterpretedTickerProvider`, `InterpretedCustomPainter`,
+  `InterpretedWidgetsBindingObserver`).
+- **`Signal.watch` / `Computed.watch` bridged by hand**
+  (`lib/src/interpreter/state_signal_extensions.dart`): the extension is
+  declared on the library-private `_SignalBase`, so the generator skips it.
+  Registered per public subclass on both engines; falls back to `.value` when
+  there is no element to subscribe (headless builds).
+- **`dart:io` `ProcessInfo` bridge** in both vendored engines
+  (`stdlib/io/process_info.dart`, gated on `DangerousPermission`).
+- **`dart:developer` stdlib for the source engine**
+  (`third_party/tom_d4rt/lib/src/stdlib/developer*`): ported from the AST
+  engine, so a guest importing `dart:developer` loads in source mode too.
+- **`MediaGalleryFFIBindings` host bridge**
+  (`lib/src/interpreter/media_gallery_ffi_bridge.dart`): the generator never
+  emitted the class, so `MediaGalleryFFIBindings.loadSymbols()` in the
+  playground's plugin registrant failed — fatally in source mode, where
+  statically undefined names are rejected before a guest `try` can run.
+- **Source-mode `runApp` capture**: `InterpreterRunner.evaluate` now waits
+  briefly for a late `runApp`, matching `AstInterpreterRunner`, because the
+  playground calls it from an async continuation.
+- **Playground host fakes**: `fake_media_gallery_ast.dart`,
+  `fake_connectivity_ast.dart` and `fake_audio_player_ast.dart` (each covering
+  both engines) shadow the plugins whose FFI asserts on a host.
 - **Bridges for the rest of the first-party plugin surface**:
   `dartnative_skia`, `_sqlite`, `_secure_storage`, `_hive`, `_social_sign_in`,
   `_firebase`, `_video_player`, `_audio`, `_permissions`, `_camera`,

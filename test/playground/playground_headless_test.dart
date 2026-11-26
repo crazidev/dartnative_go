@@ -34,6 +34,9 @@ import 'package:dartnative_go/src/interpreter/routes_bridge.dart';
 import 'package:dartnative_go/src/runner/ast_interpreter_runner.dart';
 import 'package:test/test.dart';
 
+import '../test_lab/fakes/fake_audio_player_ast.dart';
+import '../test_lab/fakes/fake_connectivity_ast.dart';
+import '../test_lab/fakes/fake_media_gallery_ast.dart';
 import '../test_lab/fakes/fake_shared_preferences_ast.dart';
 
 /// Minimal `BuildContext` for driving an interpreted `build(context)`.
@@ -47,9 +50,17 @@ class _FakeContext implements BuildContext {
 /// Interpreted widgets are native `StatefulWidget`/`StatelessWidget` subclasses
 /// whose `build` is a real method, so `createState()` + `build(context)` runs
 /// the guest code without an element tree or a render pass.
+///
+/// The state lifecycle is driven far enough to match what a mount does before
+/// the first build: `initState` and `didChangeDependencies` run first. The
+/// playground relies on that — `late StorageTab _tab;` is assigned in
+/// `initState`, and screens start their `AnimationController`s there — so
+/// skipping it hides real failures behind `LateInitializationError`.
 Widget _render(Widget widget, BuildContext context) {
   if (widget is StatefulWidget) {
     final state = widget.createState();
+    (state as dynamic).initState();
+    (state as dynamic).didChangeDependencies();
     return (state as dynamic).build(context) as Widget;
   }
   if (widget is StatelessWidget) {
@@ -82,29 +93,12 @@ List<Widget> _childrenOf(Widget w) {
 ///
 /// Each entry names the runtime capability that is missing, not a playground
 /// bug: the same screen runs on a device where the native side exists.
-const _knownGaps = <String, String>{
-  // `AnimationController(vsync: this)` from a State using
-  // `SingleTickerProviderStateMixin`: needs a `TickerProvider` interface proxy
-  // (there is none registered for the AST engine).
-  '/chatgpt-picker': 'missing TickerProvider interface proxy',
-  '/stickers-keyboard': 'missing TickerProvider interface proxy',
-  // Interpreted `CustomPainter` subclasses passed to `CustomPaint` /
-  // `CanvasSurface`: needs a `CustomPainter` interface proxy.
-  '/live-text': 'missing CustomPainter interface proxy',
-  '/text-rendering': 'missing CustomPainter interface proxy',
-  '/canvas': 'missing CustomPainter interface proxy',
-  // riverpod_kit `Signal` bridge exposes no `watch` method.
-  '/state-store': 'riverpod_kit Signal.watch is not bridged',
-  // `late` field initialized in `initState()`; this suite builds without
-  // mounting, so initState never runs.
-  '/storage-prefs': 'late field set in initState (not mounted)',
-  '/storage-secure': 'late field set in initState (not mounted)',
-  '/storage-cache': 'late field set in initState (not mounted)',
-  '/storage-sqlite': 'late field set in initState (not mounted)',
-  // `onTap: () => ...` inside a collection literal keeps the interpreted
-  // function's `dynamic Function()` shape instead of a `VoidCallback`.
-  '/material3-badges': 'VoidCallback coercion in a collection literal',
-};
+///
+/// Empty: the interpreter now supplies `TickerProvider` and `CustomPainter`
+/// proxies, the `Signal.watch` extension, `void`-callback coercion in
+/// collection literals, and the harness drives `initState`; native-only
+/// plugins come from `test/test_lab/fakes/`.
+const _knownGaps = <String, String>{};
 
 void main() {
   final playground = Directory('playground');
@@ -139,6 +133,9 @@ void main() {
     runner = AstInterpreterRunner(onLog: (_) {});
     runner.initRunner();
     installFakeSharedPreferencesAst(prefs)(runner.runner!);
+    installFakeMediaGalleryAst()(runner.runner!);
+    installFakeAudioPlayerAst()(runner.runner!);
+    installFakeConnectivityAst()(runner.runner!);
     root = await runner.evaluateAstBundleAs<Widget>(
       bytes,
       entryPoint: 'package:playground/main.dart',
@@ -180,10 +177,22 @@ void main() {
       }
     }
     final unexpected = <String>[];
+    final failed = <String>{};
     for (final failure in failures) {
       final path = failure.split(':').first;
+      failed.add(path);
       if (!_knownGaps.containsKey(path)) unexpected.add(failure);
     }
+    // The gap list must stay honest: a route that builds again has to leave
+    // it, otherwise the table silently documents capabilities that exist.
+    final stale = _knownGaps.keys.where((path) => !failed.contains(path));
+    expect(
+      stale,
+      isEmpty,
+      reason:
+          'these routes now build — remove them from _knownGaps:\n'
+          '${stale.join('\n')}',
+    );
     final covered = D4rtRoutes.routes.length - failures.length;
     // The playground's own smoke threshold: most routes must build, and no
     // route may fail for a reason we have not documented.
