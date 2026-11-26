@@ -104,10 +104,13 @@ class IconAnnotationScanner {
         final unit = entry.value;
         for (final decl in unit.declarations) {
           if (decl is! SClassDeclaration) continue;
-          final className = decl.name?.name ?? '';
+          final className = decl.namePart.typeName.name;
           if (className.isEmpty) continue;
           for (final annotation in decl.metadata) {
-            final name = annotation.name?.name;
+            final nameIdentifier = annotation.name;
+            final name = nameIdentifier is SSimpleIdentifier
+                ? nameIdentifier.name
+                : null;
             if (name == null || !annotationNames.contains(name)) continue;
             results.add(
               AnnotatedIconFont(
@@ -189,10 +192,10 @@ class IconAnnotationScanner {
     final args = annotation.arguments;
     if (args == null) return null;
     for (final arg in args.arguments) {
-      if (arg is SNamedExpression) {
-        if (arg.name?.label?.name == name &&
-            arg.expression is SSimpleStringLiteral) {
-          return (arg.expression as SSimpleStringLiteral).value;
+      if (arg is SNamedArgument) {
+        if (arg.name.name == name &&
+            arg.argumentExpression is SSimpleStringLiteral) {
+          return (arg.argumentExpression as SSimpleStringLiteral).value;
         }
       }
     }

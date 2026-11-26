@@ -1,0 +1,8679 @@
+import 'dart:async';
+import 'package:tom_d4rt_ast/runtime.dart';
+
+import 'call_stack.dart';
+import 'declaration_registry.dart';
+import 'environment.dart';
+import 'runtime_types.dart';
+
+/// Represents a yield operation in a generator function
+class YieldValue {
+  final Object? value;
+  final bool isYieldStar;
+
+  YieldValue(this.value, {this.isYieldStar = false});
+}
+
+/// Unwraps a BridgedInstance to get the native object if it's an exception
+Object _unwrapExceptionForPropagation(Object? thrownValue) {
+  if (thrownValue is BridgedInstance) {
+    // If it's a bridged instance, return the native object
+    return thrownValue.nativeObject;
+  }
+  // Otherwise, return the value as-is or a default exception
+  return thrownValue ?? Exception('Unknown error');
+}
+
+// Interface or base class for all "callable" entities
+abstract class Callable {
+  // Number of expected arguments
+  int get arity;
+  // Method to execute the callable
+  Object? call(
+    InterpreterVisitor visitor,
+    List<Object?> positionalArguments, [
+    Map<String, Object?> namedArguments,
+    List<RuntimeType>? typeArguments,
+  ]);
+}
+
+/// ghissues48 (GitHub #15): a generic function, method or bridged function
+/// referenced with explicit type arguments - `typeOf<List<int?>>`,
+/// `obj.m<int>` - without being called. A call runs [target] with
+/// [typeArguments], as `typeOf<List<int?>>()` would; Dart allows no further
+/// type arguments on an instantiated reference.
+///
+/// Two instantiations are equal when they reference the same callable with
+/// type arguments of the same names, which is what Dart's `==` on
+/// instantiated tear-offs compares. A reference handed to NATIVE code is
+/// converted like any callable (`D4.coerceCallableToFunction`) and still runs
+/// with its type arguments when called; native code cannot see them as a Dart
+/// generic instantiation.
+class InstantiatedCallable implements Callable {
+  InstantiatedCallable(this.target, this.typeArguments);
+
+  /// The referenced callable.
+  final Callable target;
+
+  /// The resolved type arguments, `?` and nesting kept.
+  final List<RuntimeType> typeArguments;
+
+  @override
+  int get arity => target.arity;
+
+  @override
+  Object? call(
+    InterpreterVisitor visitor,
+    List<Object?> positionalArguments, [
+    Map<String, Object?> namedArguments = const {},
+    List<RuntimeType>? typeArguments,
+  ]) {
+    if (typeArguments != null && typeArguments.isNotEmpty) {
+      throw RuntimeD4rtException(
+        'An instantiated generic function cannot take type arguments again '
+        '(it is already instantiated with '
+        '<${this.typeArguments.map((t) => t.name).join(', ')}>).',
+      );
+    }
+    return target.call(
+      visitor,
+      positionalArguments,
+      namedArguments,
+      this.typeArguments,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is InstantiatedCallable &&
+      other.target == target &&
+      other.typeArguments.length == typeArguments.length &&
+      [
+        for (var i = 0; i < typeArguments.length; i++)
+          other.typeArguments[i].name == typeArguments[i].name,
+      ].every((same) => same);
+
+  @override
+  int get hashCode =>
+      Object.hash(target, Object.hashAll(typeArguments.map((t) => t.name)));
+
+  @override
+  String toString() =>
+      '$target<${typeArguments.map((t) => t.name).join(', ')}>';
+}
+
+class _ExecutionPreparationResult {
+  final Environment environment;
+  final bool redirected;
+  _ExecutionPreparationResult(this.environment, this.redirected);
+}
+
+/// Visitor that collects direct children of an SAstNode.
+class _ChildCollectorVisitor extends SAstVisitor<void> {
+  final List<SAstNode> children = [];
+
+  @override
+  void visitNode(SAstNode node) {
+    children.add(node);
+  }
+}
+
+// Represents a function or method defined by the user
+class InterpretedFunction implements Callable {
+  /// DARTNATIVE (hot-reload generations): a function object is a STABLE SHELL
+  /// that reads its executable payload from a [FunctionCell] on every access.
+  /// Publishing a new [FunctionCode] into the cell is a body swap every
+  /// existing reference observes — tear-offs, timers, stream listeners and
+  /// class member tables — which is what makes an edited function body visible
+  /// without re-creating the objects that captured it.
+  ///
+  /// A shell the registry never adopts (closures, function expressions,
+  /// registry-less embedders) carries its payload inline via [_detachedCode]
+  /// and behaves exactly as before.
+
+  /// Registry cell backing this shell. Null while the shell is unregistered.
+  FunctionCell? _cell;
+
+  /// Inline payload for shells that are not (and will not be) registered.
+  FunctionCode? _detachedCode;
+
+  /// Environment that defines `this` for bound copies; null for the canonical
+  /// unbound shell, which resolves names through the cell's current home.
+  final Environment? _boundClosure;
+
+  /// Home environment for shells that were never adopted by a registry cell.
+  Environment? _detachedHome;
+
+  InterpretedFunction._detached(
+    SFormalParameterList? parameters,
+    SAstNode body,
+    Environment home,
+    String? name, {
+    List<SAstNode>? constructorInitializers,
+    bool isInitializer = false,
+    bool isGetter = false,
+    bool isSetter = false,
+    RuntimeType? ownerType,
+    bool isAbstract = false,
+    bool isAsync = false,
+    bool isGenerator = false,
+    bool isAsyncGenerator = false,
+    bool isFactory = false,
+    SConstructorName? redirectedFactoryTarget,
+    RuntimeType? declaredReturnType,
+    AppliedRuntimeType? declaredReturnTypeApplied,
+    bool isNullable = false,
+    List<String> typeParameterNames = const [],
+    Map<String, RuntimeType?> typeParameterBounds = const {},
+  }) : _boundClosure = null,
+       _detachedHome = home,
+       _detachedCode = FunctionCode(
+         parameters: parameters,
+         body: body,
+         name: name,
+         constructorInitializers: constructorInitializers,
+         isInitializer: isInitializer,
+         isGetter: isGetter,
+         isSetter: isSetter,
+         isAbstract: isAbstract,
+         isAsync: isAsync,
+         isGenerator: isGenerator,
+         isAsyncGenerator: isAsyncGenerator,
+         isFactory: isFactory,
+         isNullable: isNullable,
+         redirectedFactoryTarget: redirectedFactoryTarget,
+         ownerType: ownerType,
+         declaredReturnType: declaredReturnType,
+         declaredReturnTypeApplied: declaredReturnTypeApplied,
+         typeParameterNames: typeParameterNames,
+         typeParameterBounds: typeParameterBounds,
+       ) {
+    D4rtDiag.closureAllocs++;
+  }
+
+  /// Bound copy: shares [cell] with the unbound shell so body swaps are seen
+  /// through tear-offs, and pins the receiver in [boundClosure].
+  InterpretedFunction._bound(FunctionCell cell, Environment boundClosure)
+    : _cell = cell,
+      _detachedCode = null,
+      _boundClosure = boundClosure {
+    D4rtDiag.closureAllocs++;
+  }
+
+  /// The executable payload currently backing this shell.
+  FunctionCode get currentCode {
+    final cell = _cell;
+    if (cell != null) return cell.current;
+    return _detachedCode!;
+  }
+
+  /// Registry cell for this shell, or null when unregistered. Diagnostics.
+  FunctionCell? get codeCell => _cell;
+
+  /// Call-shape identity of the current payload. Two declarations with equal
+  /// shapes may share a cell across generations.
+  String get signatureKey => currentCode.signatureKey;
+
+  /// Points this shell at [cell] and makes it the cell's canonical shell.
+  /// Called by [DeclarationRegistry.stabilizeFunction].
+  void adoptCell(FunctionCell cell) {
+    _cell = cell;
+    _detachedCode = null;
+    cell.attach(this);
+  }
+
+  SFormalParameterList? get _parameters => currentCode.parameters;
+  SAstNode get _body => currentCode.body;
+  String? get _name => currentCode.name;
+  List<SAstNode>? get _constructorInitializers =>
+      currentCode.constructorInitializers;
+  bool get isInitializer => currentCode.isInitializer;
+  bool get isGetter => currentCode.isGetter;
+  bool get isSetter => currentCode.isSetter;
+  bool get isAbstract => currentCode.isAbstract;
+  bool get isAsync => currentCode.isAsync;
+  bool get isGenerator => currentCode.isGenerator;
+  bool get isAsyncGenerator => currentCode.isAsyncGenerator;
+  bool get isFactory => currentCode.isFactory;
+  bool get isNullable => currentCode.isNullable;
+  RuntimeType? get ownerType => currentCode.ownerType;
+  SConstructorName? get redirectedFactoryTarget =>
+      currentCode.redirectedFactoryTarget;
+
+  /// The function's declared name; null for a closure. Names the entry when
+  /// native code calls it (GitHub #19).
+  String? get entryName => _name;
+
+  /// GitHub #20 — a top-level function's return type may name a class of a
+  /// library in the same import cycle that has not declared it yet; the
+  /// interpreter builds the function without it and sets it here once the
+  /// outermost module load returns.
+  RuntimeType? _deferredDeclaredReturnType;
+  AppliedRuntimeType? _deferredDeclaredReturnTypeApplied;
+
+  /// The declared return type; null for none (dynamic).
+  RuntimeType? get declaredReturnType =>
+      _deferredDeclaredReturnType ?? currentCode.declaredReturnType;
+
+  /// DFUB6: the declared return type with its applied type arguments preserved
+  /// (e.g. `Box<int>` / `List<String>`), when the return type is a generic
+  /// `SNamedType`. Null for raw / unresolvable / non-generic return types.
+  AppliedRuntimeType? get declaredReturnTypeApplied =>
+      _deferredDeclaredReturnTypeApplied ??
+      currentCode.declaredReturnTypeApplied;
+
+  /// Records a return type resolved after the outermost module load.
+  void resolveDeferredReturnType(
+    RuntimeType? type, {
+    AppliedRuntimeType? applied,
+  }) {
+    _deferredDeclaredReturnType = type;
+    _deferredDeclaredReturnTypeApplied = applied;
+    _cachedCallableRuntimeType = null;
+  }
+
+  // Store type parameter names from the original declaration
+  List<String> get typeParameterNames => currentCode.typeParameterNames;
+
+  // Store type parameter bounds (constraints) from the original declaration
+  Map<String, RuntimeType?> get typeParameterBounds =>
+      currentCode.typeParameterBounds;
+
+  /// The environment the body resolves names in.
+  ///
+  /// A bound copy pins the environment that defines `this`; the canonical
+  /// unbound shell follows the cell's CURRENT home, so a body published by a
+  /// reload sees the reloaded generation's globals.
+  Environment get _closure =>
+      _boundClosure ?? _cell?.homeOrNull ?? _detachedHome!;
+
+  // Public getter for the closure environment
+  Environment get closure => _closure;
+
+  // Helper to check if a body node is async
+  static bool _isBodyAsync(SAstNode? body) {
+    if (body is SBlockFunctionBody) return body.isAsync;
+    if (body is SExpressionFunctionBody) return body.isAsync;
+    return false;
+  }
+
+  // Helper to check if a body node is a generator
+  static bool _isBodyGenerator(SAstNode? body) {
+    if (body is SBlockFunctionBody) return body.isGenerator;
+    return false;
+  }
+
+  // Helper to extract loop variable name from a SDeclaredIdentifier or SSimpleIdentifier
+  static String _loopVarName(SAstNode? loopVariable) {
+    if (loopVariable is SDeclaredIdentifier) {
+      return loopVariable.identifier?.name ?? '';
+    }
+    if (loopVariable is SSimpleIdentifier) return loopVariable.name;
+    return '';
+  }
+
+  // Parent links for AST node navigation (SAstNode has no .parent property),
+  // built lazily from each function body.
+  //
+  // DASY1: the links live in an [Expando] rather than in a static map cleared
+  // at every top-level execution. A run suspended at an `await` walks these
+  // links when it resumes; clearing them when another run started — on this
+  // runner or any other, the map being process-wide — made the resumed run
+  // lose its enclosing statement, and an `async main` returned null. The
+  // Expando needs no clearing: a link is collected with the tree it belongs
+  // to, which is what the clearing was there to approximate.
+  static final Expando<Object> _parentLinks = Expando<Object>('d4rt.astParent');
+
+  /// DARTNATIVE: clears the AST parent links between top-level executions.
+  ///
+  /// The 0.3 runtime keeps them in an [Expando], so they are collected with
+  /// their nodes and this is a no-op kept for the embedding runner's
+  /// generation boundary.
+  static void clearParentMap() {}
+
+  /// Build parent links for the given AST tree root.
+  /// Walks all children recursively and links each child to its parent.
+  /// Builds additively — existing links are kept, so nested async function
+  /// calls preserve the outer function's links.
+  static void _buildParentMap(SAstNode root) {
+    if (_parentLinks[root] != null) return; // Already built for this body
+    // A walked root links to `true`: it has no parent, and is told apart
+    // from a node that was never walked, which links to nothing.
+    _parentLinks[root] = true;
+    _walkChildren(root);
+  }
+
+  static void _walkChildren(SAstNode parent) {
+    final collector = _ChildCollectorVisitor();
+    parent.visitChildren(collector);
+    for (final child in collector.children) {
+      if (_parentLinks[child] == null) {
+        _parentLinks[child] = parent;
+        _walkChildren(child);
+      }
+    }
+  }
+
+  /// Get the parent of an AST node from its parent link.
+  static SAstNode? _parentOf(SAstNode? node) {
+    if (node == null) return null;
+    final link = _parentLinks[node];
+    return link is SAstNode ? link : null;
+  }
+
+  // Helper method to extract type parameter names from a STypeParameterList
+  static List<String> _extractTypeParameterNames(
+    STypeParameterList? typeParameters,
+  ) {
+    if (typeParameters == null) return [];
+    return typeParameters.typeParameters
+        .map((param) => param.name?.name ?? '')
+        .toList();
+  }
+
+  /// Extract type parameter bounds from a [STypeParameterList].
+  ///
+  /// SCE130: [lenient] records an unresolvable bound as `null` instead of
+  /// rethrowing. PASS 1 passes it; pass 2 does not, and the asymmetry is the
+  /// fix rather than a softening of it.
+  ///
+  /// Pass 1 ([DeclarationVisitor]) runs before type aliases are registered —
+  /// it must, because an alias may name a class whose placeholder pass 1 is
+  /// still creating — so `typedef N = num; T pick<T extends N>(T v)` asked the
+  /// environment for `N` before anything had defined it and the rethrow turned
+  /// a legal program into a hard failure. Pass 1 ALREADY substitutes a
+  /// placeholder for an unresolvable RETURN type on the very same declaration,
+  /// with a log line saying so; the bound was the one strict thing in an
+  /// otherwise lenient pass.
+  ///
+  /// Nothing is lost by being lenient there, because pass 2 REBUILDS the
+  /// function from its declaration after the alias fixpoint has run, and that
+  /// build is authoritative and strict. So an alias bound resolves and is
+  /// enforced, while a genuinely undefined bound still throws before `main`
+  /// runs — both measured, not assumed.
+  static Map<String, RuntimeType?> _extractTypeParameterBounds(
+    STypeParameterList? typeParameters,
+    Environment? resolveEnvironment, {
+    bool lenient = false,
+  }) {
+    final bounds = <String, RuntimeType?>{};
+    if (typeParameters == null) return bounds;
+
+    for (final typeParam in typeParameters.typeParameters) {
+      final paramName = typeParam.name?.name ?? '';
+      RuntimeType? bound;
+
+      if (typeParam.bound != null && resolveEnvironment != null) {
+        // Use dynamic type resolution instead of static hard-coded types
+        try {
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[InterpretedFunction._extractTypeParameterBounds] Resolving bound for type parameter '$paramName'",
+            );
+          }
+
+          // Use dynamic resolution to look up the bound type in the environment
+          bound = _resolveTypeAnnotationDynamic(
+            typeParam.bound!,
+            resolveEnvironment,
+          );
+
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[InterpretedFunction._extractTypeParameterBounds] Successfully resolved bound for '$paramName' to: ${bound.name}",
+            );
+          }
+        } catch (e) {
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[InterpretedFunction._extractTypeParameterBounds] Failed to resolve bound for '$paramName': $e",
+            );
+          }
+          // SCE130: lenient in pass 1, strict in pass 2. See the doc above.
+          if (!lenient) rethrow;
+          bound = null;
+        }
+      }
+
+      bounds[paramName] = bound;
+    }
+
+    return bounds;
+  }
+
+  // Helper method for dynamic type resolution (similar to InterpreterVisitor logic)
+  static RuntimeType _resolveTypeAnnotationDynamic(
+    SAstNode typeNode,
+    Environment env,
+  ) {
+    if (typeNode is SNamedType) {
+      final typeName = typeNode.name?.name ?? '';
+
+      if (Logger.isDebug) {
+        Logger.debug(
+          "[InterpretedFunction._resolveTypeAnnotationDynamic] Resolving SNamedType: $typeName",
+        );
+      }
+
+      // PR #8: `p.Name` is looked up through its prefix; the bare name would
+      // bind a same-named local class, or fail and leave the binding
+      // unchecked.
+      final prefix = typeNode.importPrefix?.name;
+      final resolved = env.get(prefix == null ? typeName : '$prefix.$typeName');
+      if (resolved is RuntimeType) {
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[InterpretedFunction._resolveTypeAnnotationDynamic] Resolved from environment to RuntimeType: ${resolved.name}",
+          );
+        }
+        return resolved;
+      } else {
+        throw RuntimeD4rtException(
+          "Symbol '$typeName' resolved to non-type value: $resolved",
+        );
+      }
+    } else if (typeNode is SRecordTypeAnnotation) {
+      // DFUB5: structural record type (also usable as a type-parameter bound).
+      final positional = <RuntimeType>[
+        for (final field in typeNode.positionalFields)
+          _resolveRecordFieldTypeDynamic(field, env),
+      ];
+      final named = <String, RuntimeType>{};
+      for (final field in typeNode.namedFields) {
+        named[field.name?.name ?? ''] = _resolveRecordFieldTypeDynamic(
+          field,
+          env,
+        );
+      }
+      return RecordRuntimeType(
+        positionalFieldTypes: positional,
+        namedFieldTypes: named,
+      );
+    } else if (typeNode is SGenericFunctionType) {
+      // DFUB5: structural function type.
+      final returnTypeNode = typeNode.returnType;
+      final returnType = returnTypeNode == null
+          ? const NamedRuntimeType('dynamic')
+          : _resolveTypeAnnotationDynamic(returnTypeNode, env);
+      final positional = <RuntimeType>[];
+      final optionalPositional = <RuntimeType>[];
+      final named = <String, RuntimeType>{};
+      final params = typeNode.parameters?.parameters ?? const [];
+      for (final param in params) {
+        final paramType = _paramRuntimeType(param, env);
+        if (param.isNamed) {
+          named[param.name?.name ?? ''] = paramType;
+        } else if (param.isOptionalPositional) {
+          optionalPositional.add(paramType);
+        } else {
+          positional.add(paramType);
+        }
+      }
+      return FunctionRuntimeType(
+        returnType: returnType,
+        positionalParameterTypes: positional,
+        optionalPositionalParameterTypes: optionalPositional,
+        namedParameterTypes: named,
+      );
+    } else {
+      throw RuntimeD4rtException(
+        "Unsupported type annotation for constraint: ${typeNode.runtimeType}",
+      );
+    }
+  }
+
+  /// DGUB8: resolve one record-type-annotation field's declared type.
+  ///
+  /// [SRecordTypeField.type] is nullable — malformed source, or a bundle
+  /// serialised before the field node existed — where the analyzer's own
+  /// `RecordTypeAnnotationField.type` is not. `dynamic` is the neutral element
+  /// for the structural comparison, so an unknown field type widens the record
+  /// type rather than making the whole annotation unresolvable.
+  static RuntimeType _resolveRecordFieldTypeDynamic(
+    SRecordTypeField field,
+    Environment env,
+  ) {
+    final typeNode = field.type;
+    if (typeNode == null) return const NamedRuntimeType('dynamic');
+    final resolved = _resolveTypeAnnotationDynamic(typeNode, env);
+    // ghissues23: a field keeps its `?` (NullableRuntimeType).
+    return typeNode.isNullable ? NullableRuntimeType(resolved) : resolved;
+  }
+
+  /// DFUB5: resolve a single formal parameter's declared type, falling back to
+  /// `dynamic` when unannotated or unresolvable.
+  static RuntimeType _paramRuntimeType(
+    SFormalParameter param,
+    Environment env,
+  ) {
+    // A function-typed parameter (`int cb(String)`) carries its RETURN type in
+    // `type`, so it has no single annotation to resolve here.
+    final STypeAnnotation? typeNode =
+        param is SRegularFormalParameter && param.functionTypedSuffix != null
+        ? null
+        : param.type;
+    if (typeNode == null) {
+      return const NamedRuntimeType('dynamic');
+    }
+    try {
+      return _resolveTypeAnnotationDynamic(typeNode, env);
+    } catch (_) {
+      return const NamedRuntimeType('dynamic');
+    }
+  }
+
+  /// The value to bind to [paramName], after checking it against the declared
+  /// type of [param]. Picks the annotation off whichever parameter shape this
+  /// is and defers to [checkBindingType], which owns the check itself.
+  ///
+  /// Call this only for arguments the *caller* supplied. A value the declaration
+  /// produced — an omitted optional's implicit `null`, an evaluated default — is
+  /// a case real Dart rejects at compile time, so checking it here can only fire
+  /// on programs the analyzer already refuses, while breaking the interpreted
+  /// scripts that rely on `[String s]` meaning "may be absent". That restriction
+  /// belongs to the CALLER of this method, not to [checkBindingType]: a for-in
+  /// loop variable is always a value the iterable supplied, so it has no
+  /// equivalent exemption.
+  static Object? _checkArgumentType(
+    Environment env,
+    SFormalParameter param,
+    String paramName,
+    Object? value,
+  ) {
+    // A function-typed parameter (`void f(int cb(String))`) is a structural
+    // shape, handled like the annotation check's own structural exits.
+    if (param is SRegularFormalParameter && param.functionTypedSuffix != null) {
+      return value;
+    }
+    return checkBindingType(env, param.type, value, describedAs: paramName);
+  }
+
+  /// The value to bind to a written type [typeNode], after checking it and
+  /// applying the one conversion Dart applies here.
+  ///
+  /// Returns the value to bind — normally [value] unchanged, or its `double`
+  /// widening — and throws [D4rtTypeError] when the value cannot inhabit the
+  /// annotation. A null [typeNode] is an unannotated binding (`var x`), which
+  /// admits anything.
+  ///
+  /// SCC29 wrote this for parameter binding; SCD63 made the for-each loop
+  /// variable the second caller. It is deliberately NOT the `is` predicate
+  /// (`_valueHasType` in the visitor): `is` is a QUESTION, which must answer
+  /// "no" when it cannot resolve the type, while this is a BINDING CHECK, which
+  /// must wave through what it cannot resolve — and which has a conversion in
+  /// it that `is` has no business performing.
+  static Object? checkBindingType(
+    Environment env,
+    STypeAnnotation? typeNode,
+    Object? value, {
+    String? describedAs,
+  }) {
+    final binding = resolveBinding(env, typeNode, describedAs: describedAs);
+    return binding == null ? value : binding.bind(env, value);
+  }
+
+  /// The value-independent half of a binding check, resolved once.
+  ///
+  /// Returns null when the annotation admits everything, so the caller can skip
+  /// the check entirely rather than call a predicate that always says yes.
+  ///
+  /// **Permissive wherever it cannot be sure.** A false positive rejects a
+  /// correct program, which is worse than the silent pass these checks replace,
+  /// so every case the resolver cannot answer confidently returns null here:
+  /// unannotated bindings, `dynamic` / `void`, annotations that fail to
+  /// resolve, type parameters (which resolve to a placeholder rather than to
+  /// the type actually supplied), and the structural function/record
+  /// annotations whose comparison is a larger question than this check.
+  ///
+  /// Split out from [checkBindingType] by SCD63 so a for-each loop can resolve
+  /// its annotation once and check every element against the result. That is
+  /// not a micro-optimisation: on a 200 000-element typed loop the resolution
+  /// measured ~86% of the check's total cost (+16% over an unchecked loop, of
+  /// which the subtype test itself was ~2%), because resolving a name walks the
+  /// environment chain while comparing two resolved types does not.
+  static ResolvedBinding? resolveBinding(
+    Environment env,
+    STypeAnnotation? typeNode, {
+    String? describedAs,
+  }) {
+    // An unannotated binding admits anything.
+    if (typeNode == null) return null;
+    // DFIN5 (dguc8): a RECORD annotation is checked structurally. A record's
+    // runtime type is exact (its fields' values are known), so the comparison
+    // cannot reject a correct program the way a function-type check would.
+    if (typeNode is SRecordTypeAnnotation) {
+      final RuntimeType declaredType;
+      try {
+        declaredType = _resolveTypeAnnotationDynamic(typeNode, env);
+      } catch (_) {
+        return null;
+      }
+      return ResolvedBinding._(
+        declaredType,
+        declaredType.name,
+        typeNode.isNullable,
+        describedAs == null ? '' : " of '$describedAs'",
+        null,
+      );
+    }
+    // Function annotations stay unchecked: the interpreter infers no context
+    // type for a closure literal, so `(x) => x + 1` passed where an
+    // `int Function(int)` is declared has the runtime type
+    // `dynamic Function(dynamic)`, and a structural check would reject a
+    // correct callback.
+    if (typeNode is! SNamedType) return null;
+
+    // Cheap spelling-level exit, before the environment lookup below. The same
+    // test is repeated on the RESOLVED type, which is the one that matters: a
+    // type parameter left unbound by a raw generic (`Box()` rather than
+    // `Box<int>()`) is spelled `T` but resolves to `dynamic`.
+    if (_isUncheckableTypeName(typeNode.name?.name ?? '')) return null;
+
+    final RuntimeType declaredType;
+    try {
+      declaredType = _resolveTypeAnnotationDynamic(typeNode, env);
+    } catch (_) {
+      // Unresolvable annotation — stay permissive, as the return-type check
+      // does.
+      return null;
+    }
+    // A type parameter stands for a type that is not bound at this point, so a
+    // comparison would be against the placeholder rather than against what the
+    // caller actually supplied.
+    if (declaredType is TypeParameter) return null;
+
+    // ghissues48: a type parameter bound to a nullable type - `T` with
+    // `T = int?` from `g<int?>(...)` or `typeOf<int?>` - resolves to a
+    // NullableRuntimeType; the binding admits null and checks the rest against
+    // the inner type, as a written `int?` annotation does.
+    if (declaredType is NullableRuntimeType) {
+      final inner = declaredType.inner;
+      if (inner is TypeParameter) return null;
+      return ResolvedBinding._(
+        inner,
+        inner.name,
+        true,
+        describedAs == null ? '' : " of '$describedAs'",
+        null,
+      );
+    }
+
+    final declaredName = declaredType.name;
+    // SCD90 removed a by-name repeat of the top-type test that used to stand
+    // here (`declaredName == 'dynamic' || declaredName == 'void'`). It was a
+    // workaround: `BridgedClass.isSubtypeOf` did not treat `dynamic` as a top
+    // type, so a raw generic's unbound `T` — which is spelled `T` and RESOLVES
+    // to `dynamic` — rejected a correct argument. The predicate answers that
+    // question itself now, for every kind of target, so repeating it here would
+    // be a spelling test standing in for a type question, which is the shape
+    // SCC28 spent its whole budget removing. The cheap pre-resolution exit on
+    // the ANNOTATION's lexeme stays: it skips an environment walk, and a
+    // spelling test is the only thing available before resolution.
+
+    return ResolvedBinding._(
+      declaredType,
+      declaredName,
+      typeNode.isNullable,
+      describedAs == null ? '' : " of '$describedAs'",
+      _appliedDeclaredType(env, typeNode, declaredType),
+    );
+  }
+
+  /// SCD92: the declared type with its WRITTEN type arguments resolved, or null
+  /// when the annotation carries none the check can act on.
+  ///
+  /// [resolveBinding]'s own resolution goes through
+  /// [_resolveTypeAnnotationDynamic], which reads a `NamedType`'s name and
+  /// ignores its `typeArguments` — so `List<String>` resolves to the bare `List`
+  /// bridge. Rather than change that resolver, whose result is also a type
+  /// parameter's bound and a callable's structural type, the arguments are
+  /// resolved here and paired with the base type it already produced.
+  ///
+  /// Null — no applied check — wherever the arguments carry nothing to compare:
+  /// an argument that fails to resolve, a type parameter (which stands for a
+  /// type not bound at this point, the same reason a bare `T` annotation is
+  /// skipped), and an argument list that is entirely top types, where the
+  /// applied check could only repeat the base one.
+  static AppliedRuntimeType? _appliedDeclaredType(
+    Environment env,
+    SNamedType typeNode,
+    RuntimeType declaredType,
+  ) {
+    final argNodes = typeNode.typeArguments?.arguments;
+    if (argNodes == null || argNodes.isEmpty) return null;
+    final args = <RuntimeType>[];
+    for (final argNode in argNodes) {
+      final RuntimeType arg;
+      try {
+        arg = _resolveTypeAnnotationDynamic(argNode, env);
+      } catch (_) {
+        return null;
+      }
+      if (arg is TypeParameter) return null;
+      args.add(arg);
+    }
+    if (args.every((a) => isTopTypeName(a.name))) return null;
+    return AppliedRuntimeType(declaredType, args);
+  }
+
+  /// The value to bind to a for-each loop variable for one iteration, checked
+  /// against the variable's written type.
+  ///
+  /// SCD63: a typed for-each variable used to bind whatever the iterable
+  /// produced — `for (final int x in [1, 'two', 3])` ran its body with a String
+  /// in a variable its own declaration rules out, and the body then computed a
+  /// wrong value rather than failing (`x + 1` concatenated). Real Dart raises
+  /// `TypeError` on the offending element, after the earlier iterations have
+  /// run, which is what this reproduces.
+  ///
+  /// Every for-each execution path calls this or [resolveForEachBinding]: the
+  /// visitor's three (statement, collection-literal element, await-for item
+  /// list) and the async state machine's and sync generator's own copies in
+  /// this file. They are separate implementations of one construct, so a check
+  /// added to any subset of them would hold only for the loops that happen to
+  /// run on that path — and whether a given loop runs on the state machine's
+  /// path depends on nothing more visible than whether its enclosing function
+  /// is `async`.
+  static Object? checkForEachBinding(
+    Environment env,
+    SAstNode? loopVariable,
+    Object? element,
+  ) {
+    final binding = resolveForEachBinding(env, loopVariable);
+    return binding == null ? element : binding.bind(env, element);
+  }
+
+  /// [resolveBinding] for a for-each loop variable: the resolved check, or null
+  /// when the loop needs none.
+  ///
+  /// A path with a real loop to hoist out of calls this ONCE before iterating
+  /// and then [ResolvedBinding.bind] per element. The async state machine and
+  /// the sync generator re-enter per item and have no such place to stand, so
+  /// they call [checkForEachBinding] and pay the resolution each time.
+  ///
+  /// A `SSimpleIdentifier` loop variable (`for (x in xs)`) carries no
+  /// annotation here — its type was written at its own declaration, which this
+  /// node does not reach — so it binds unchecked.
+  static ResolvedBinding? resolveForEachBinding(
+    Environment env,
+    SAstNode? loopVariable,
+  ) {
+    if (loopVariable is! SDeclaredIdentifier) return null;
+    return resolveBinding(env, loopVariable.type);
+  }
+
+  /// Type names that carry no information the argument check can act on.
+  ///
+  /// `Object` is absent on purpose: it admits every non-null value but still
+  /// rejects `null` when spelled without `?`, so it needs the null branch rather
+  /// than an early exit.
+  static bool _isUncheckableTypeName(String name) =>
+      name == 'dynamic' || name == 'void';
+
+  // DFUB5: cached structural function type for this function.
+  FunctionRuntimeType? _cachedCallableRuntimeType;
+
+  /// DFUB5: the structural function type of this callable, used by `is`/`as`
+  /// and return-type checks against `T Function(...)` annotations.
+  RuntimeType get callableRuntimeType {
+    final cached = _cachedCallableRuntimeType;
+    if (cached != null) return cached;
+    final returnType = declaredReturnType ?? const NamedRuntimeType('dynamic');
+    final positional = <RuntimeType>[];
+    final optionalPositional = <RuntimeType>[];
+    final named = <String, RuntimeType>{};
+    final params = _parameters?.parameters;
+    if (params != null) {
+      for (final param in params) {
+        final paramType = _paramRuntimeType(param, _closure);
+        if (param.isNamed) {
+          named[param.name?.name ?? ''] = paramType;
+        } else if (param.isOptionalPositional) {
+          optionalPositional.add(paramType);
+        } else {
+          positional.add(paramType);
+        }
+      }
+    }
+    return _cachedCallableRuntimeType = FunctionRuntimeType(
+      returnType: returnType,
+      positionalParameterTypes: positional,
+      optionalPositionalParameterTypes: optionalPositional,
+      namedParameterTypes: named,
+    );
+  }
+
+  // Private constructor for bind
+  InterpretedFunction._internal(
+    SFormalParameterList? parameters,
+    SAstNode body,
+    Environment closure,
+    String? name, {
+    bool isInitializer = false,
+    List<SAstNode>? constructorInitializers,
+    bool isGetter = false,
+    bool isSetter = false,
+    RuntimeType? ownerType,
+    bool isAbstract = false,
+    bool isAsync = false,
+    bool isGenerator = false,
+    bool isAsyncGenerator = false,
+    bool isFactory = false,
+    SConstructorName? redirectedFactoryTarget,
+    RuntimeType? declaredReturnType,
+    AppliedRuntimeType? declaredReturnTypeApplied,
+    bool isNullable = false,
+    List<String> typeParameterNames = const [],
+    Map<String, RuntimeType?> typeParameterBounds = const {},
+  }) : this._detached(
+         parameters,
+         body,
+         closure,
+         name,
+         constructorInitializers: constructorInitializers,
+         isInitializer: isInitializer,
+         isGetter: isGetter,
+         isSetter: isSetter,
+         ownerType: ownerType,
+         isAbstract: isAbstract,
+         isAsync: isAsync,
+         isGenerator: isGenerator,
+         isAsyncGenerator: isAsyncGenerator,
+         isFactory: isFactory,
+         redirectedFactoryTarget: redirectedFactoryTarget,
+         declaredReturnType: declaredReturnType,
+         declaredReturnTypeApplied: declaredReturnTypeApplied,
+         isNullable: isNullable,
+         typeParameterNames: typeParameterNames,
+         typeParameterBounds: typeParameterBounds,
+       );
+
+
+  // Constructor for declared functions (top-level or nested, not methods)
+  InterpretedFunction.declaration(
+    SFunctionDeclaration declaration,
+    Environment closure,
+    RuntimeType? declaredReturnType,
+    bool isNullable, {
+    AppliedRuntimeType? declaredReturnTypeApplied,
+    // SCE130: passed by PASS 1 only — see [_extractTypeParameterBounds].
+    bool lenientBounds = false,
+  }) : this._internal(
+         declaration.functionExpression?.parameters,
+         declaration.functionExpression!.body!,
+         closure,
+         declaration.name?.name ?? '',
+         isGetter: declaration.isGetter, // Pass getter flag
+         isSetter: declaration.isSetter, // Pass setter flag
+         ownerType: null, // Not defined within a class/enum
+         isAbstract: false, // Non-method functions cannot be abstract
+         isAsync: _isBodyAsync(
+           declaration.functionExpression?.body,
+         ), // Pass async flag
+         isGenerator: _isBodyGenerator(
+           declaration.functionExpression?.body,
+         ), // Pass generator flag
+         isAsyncGenerator:
+             _isBodyAsync(declaration.functionExpression?.body) &&
+             _isBodyGenerator(
+               declaration.functionExpression?.body,
+             ), // Pass async generator flag
+         declaredReturnType: declaredReturnType,
+         declaredReturnTypeApplied: declaredReturnTypeApplied,
+         isNullable: isNullable,
+         typeParameterNames: _extractTypeParameterNames(
+           declaration.functionExpression?.typeParameters,
+         ),
+         typeParameterBounds: _extractTypeParameterBounds(
+           declaration.functionExpression?.typeParameters,
+           closure,
+           lenient: lenientBounds,
+         ),
+       );
+
+  // Constructor for function expressions (anonymous)
+  InterpretedFunction.expression(
+    SFunctionExpression expression,
+    Environment closure,
+  ) : this._internal(
+        expression.parameters,
+        expression.body!,
+        closure,
+        null,
+        ownerType: null, // Not defined within a class/enum
+        isAbstract: false, // Anonymous functions cannot be abstract
+        isAsync: _isBodyAsync(expression.body), // Pass async flag
+        isGenerator: _isBodyGenerator(expression.body), // Pass generator flag
+        isAsyncGenerator:
+            _isBodyAsync(expression.body) &&
+            _isBodyGenerator(expression.body), // Pass async generator flag
+        typeParameterNames: _extractTypeParameterNames(
+          expression.typeParameters,
+        ),
+        typeParameterBounds: _extractTypeParameterBounds(
+          expression.typeParameters,
+          closure,
+        ),
+      );
+
+  // Constructor for methods
+  // [lenientBounds]: see [resolveTypeParameterBounds].
+  InterpretedFunction.method(
+    SMethodDeclaration declaration,
+    Environment closure,
+    RuntimeType? owner, {
+    bool lenientBounds = false,
+  }) : this._internal(
+         declaration.parameters,
+         declaration.body!,
+         closure,
+         declaration.name?.name ?? '',
+         // Consider factory methods later
+         isInitializer: false, // Methods are not initializers (usually)
+         isGetter: declaration.isGetter, // Pass getter flag
+         isSetter: declaration.isSetter, // Pass setter flag
+         ownerType: owner, // Pass the owner type (class or enum)
+         isAbstract: declaration.isAbstract, // Set the abstract flag
+         isAsync: _isBodyAsync(declaration.body), // Pass async flag
+         isGenerator: _isBodyGenerator(declaration.body), // Pass generator flag
+         isAsyncGenerator:
+             _isBodyAsync(declaration.body) &&
+             _isBodyGenerator(declaration.body), // Pass async generator flag
+         typeParameterNames: _extractTypeParameterNames(
+           declaration.typeParameters,
+         ),
+         typeParameterBounds: _extractTypeParameterBounds(
+           declaration.typeParameters,
+           closure,
+           lenient: lenientBounds,
+         ),
+       );
+
+  /// The bounds of [typeParameters] resolved STRICTLY in [env]: an undefined
+  /// bound throws.
+  ///
+  /// GitHub #9 — a method created while a module load is in progress is built
+  /// with lenient bounds, because its bound may name a class a barrel has not
+  /// exported yet (intl's `parseWith<R, P extends NumberParserBase<R>>`, which
+  /// reaches `NumberParserBase` only through `intl.dart`). The bounds left
+  /// unresolved are filled from this once the outermost load returns.
+  static Map<String, RuntimeType?> resolveTypeParameterBounds(
+    STypeParameterList? typeParameters,
+    Environment env,
+  ) => _extractTypeParameterBounds(typeParameters, env);
+
+  // Constructor for constructors
+  InterpretedFunction.constructor(
+    SConstructorDeclaration declaration,
+    Environment closure,
+    RuntimeType? owner,
+  ) : this._internal(
+        declaration.parameters,
+        declaration.body ?? SEmptyFunctionBody(offset: 0, length: 0),
+        closure,
+        declaration.name?.name ?? '', // Use '' for unnamed constructor
+        isInitializer:
+            !declaration.isFactory, // Factory constructors are not initializers
+        constructorInitializers:
+            declaration.initializers, // Pass to renamed param
+        ownerType: owner, // Pass the owner type (class or enum)
+        isAbstract: false, // Constructors cannot be abstract
+        isAsync: false, // Constructors cannot be async
+        isFactory: declaration.isFactory, // Detect factory constructors
+        // OPEN B.1 — capture the redirect target for `factory X() = Y`.
+        redirectedFactoryTarget: declaration.redirectedConstructor,
+        // Constructors don't have their own type parameters - they inherit from their class
+        typeParameterNames: const [],
+        typeParameterBounds: const {},
+      );
+
+  @override
+  int get arity {
+    if (isSetter) return 1; // Setters always take one argument
+    // Original logic for required positional parameters
+    final params = _parameters?.parameters;
+    if (params == null) return 0;
+    return params.where((p) => p.isRequiredPositional).length;
+  }
+
+  /// The number of positional parameters this function *can* accept — required
+  /// and optional together.
+  ///
+  /// Distinct from [arity], which counts only the **required** positional
+  /// parameters. For `(Object e, [StackTrace? st])` [arity] is 1 while this is
+  /// 2, and the difference matters whenever a caller must decide how many
+  /// arguments to supply: native Dart passes both arguments to that closure,
+  /// because `Function(Object, [StackTrace])` is a subtype of
+  /// `Function(Object, StackTrace)`. Selecting on [arity] would drop the second
+  /// argument for the optional form. See `errorHandlerArgs`.
+  int get maxPositionalArity {
+    final params = _parameters?.parameters;
+    if (params == null) return 0;
+    return params.where((p) => p.isPositional).length;
+  }
+
+  /// GEN-095 (D8f): true when the function can be called with no arguments,
+  /// i.e. it has no required positional parameters and no required-named
+  /// parameters. Used by the binary-expression visitor to decide whether to
+  /// auto-invoke a function value (legitimate for zero-arg thunks, wrong for
+  /// any callback that takes arguments — see semantics_gesture_delegate_test
+  /// where `onHorizontalDrag == null` was crashing because the comparison
+  /// auto-invoked the `(DragUpdateDetails d) {}` callback with []).
+  bool get canCallWithoutArgs {
+    final params = _parameters?.parameters;
+    if (params == null || params.isEmpty) return true;
+    for (final param in params) {
+      // Optional positional is fine to omit; required-named
+      // (`{required ...}`) is not. A required `super.x` named parameter has
+      // never been counted as required here.
+      if (param.isOptionalPositional) continue;
+      if (param.isNamed) {
+        if (param.isRequired && param is! SSuperFormalParameter) return false;
+        continue;
+      }
+      // A required positional parameter of any shape.
+      return false;
+    }
+    return true;
+  }
+
+  /// Get all positional parameter names (required and optional).
+  List<String> get positionalParameterNames {
+    final params = _parameters?.parameters;
+    if (params == null) return [];
+    // `super.x` parameters are not listed, as they never were.
+    return params
+        .where((p) => p.isPositional && p is! SSuperFormalParameter)
+        .map((p) => p.name?.name ?? '')
+        .where((n) => n.isNotEmpty)
+        .toList();
+  }
+
+  /// Get all named parameter names.
+  List<String> get namedParameterNames {
+    final params = _parameters?.parameters;
+    if (params == null) return [];
+    // `super.x` parameters are not listed, as they never were.
+    return params
+        .where((p) => p.isNamed && p is! SSuperFormalParameter)
+        .map((p) => p.name?.name ?? '')
+        .where((n) => n.isNotEmpty)
+        .toList();
+  }
+
+  /// Binds 'this' to a specific instance, returning a new callable
+  /// where the closure has 'this' defined.
+  Callable bind(RuntimeValue instance) {
+    if (ownerType == null) {
+      // Check ownerType instead of definingClass
+      throw RuntimeD4rtException(
+        "Cannot bind 'this' to a non-method function.",
+      );
+    }
+    // Create a new environment that encloses the original function closure,
+    // but defines 'this' locally.
+    final boundEnvironment = Environment(enclosing: closure);
+    boundEnvironment.define('this', instance);
+
+    // Define class type parameters in bound environment
+    if (instance is InterpretedInstance && ownerType is InterpretedClass) {
+      final klass = ownerType as InterpretedClass;
+      final instTypeArgs = instance.typeArguments ?? [];
+      for (int i = 0; i < klass.typeParameterNames.length; i++) {
+        final paramName = klass.typeParameterNames[i];
+        final typeArg = i < instTypeArgs.length
+            ? instTypeArgs[i]
+            : TypeParameter(paramName);
+        boundEnvironment.define(paramName, typeArg);
+      }
+    }
+
+    // G-DOV3-1 FIX: Handle extension type instances - define the representation field
+    // so that `value` (or whatever the field is named) is accessible in the getter/method body
+    if (instance is InterpretedExtensionTypeInstance &&
+        ownerType is InterpretedExtensionType) {
+      final extType = ownerType as InterpretedExtensionType;
+      // Define the representation field name (e.g., 'value') to point to the wrapped value
+      boundEnvironment.define(
+        extType.representationFieldName,
+        instance.representationValue,
+      );
+    }
+
+    // DARTNATIVE (Phase 2): a bound copy of a REGISTERED shell shares its
+    // [FunctionCell], so a body published by a hot reload is observed through
+    // cached bound methods and tear-offs instead of being frozen at bind time.
+    final cell = _cell;
+    if (cell != null) {
+      return InterpretedFunction._bound(cell, boundEnvironment);
+    }
+
+    // An unregistered shell (a closure, a function expression, a
+    // registry-less embedder) carries its payload inline, as before.
+    final boundFunction = InterpretedFunction._internal(
+      _parameters,
+      _body,
+      boundEnvironment,
+      _name,
+      isInitializer: isInitializer,
+      constructorInitializers: _constructorInitializers,
+      isGetter: isGetter,
+      isSetter: isSetter,
+      ownerType: ownerType, // Pass ownerType
+      isAbstract: isAbstract,
+      isAsync: isAsync,
+      isGenerator: isGenerator,
+      isAsyncGenerator: isAsyncGenerator,
+      isFactory: isFactory, // Copy the factory flag
+      redirectedFactoryTarget: redirectedFactoryTarget, // Copy redirect target
+      declaredReturnType: declaredReturnType,
+      declaredReturnTypeApplied: declaredReturnTypeApplied,
+      typeParameterNames: typeParameterNames, // Copy type parameter names
+      typeParameterBounds: typeParameterBounds, // Copy type parameter bounds
+    );
+    return boundFunction;
+  }
+
+  /// Helper to setup environment, bind args, and run initializers.
+  /// Returns the execution environment and whether redirection occurred.
+  _ExecutionPreparationResult _prepareExecutionEnvironment(
+    InterpreterVisitor visitor,
+    List<Object?> positionalArguments,
+    Map<String, Object?> namedArguments,
+    List<RuntimeType>? typeArguments,
+  ) {
+    final executionEnvironment = Environment(enclosing: _closure);
+
+    // For static methods, add static members of the owner class to the execution environment
+    // This allows static methods to call other static methods without prefixing the class name
+    bool hasThis = false;
+    try {
+      _closure.get('this');
+      hasThis = true;
+    } on RuntimeD4rtException {
+      hasThis = false;
+    }
+
+    // DARTNATIVE (Phase 3c): an enum's own static members resolve unqualified
+    // inside its methods, exactly like a class's. Statics are cell-backed so a
+    // bare write mutates the authoritative storage.
+    if (ownerType is InterpretedEnum && !isInitializer && !hasThis) {
+      final ownerEnum = ownerType as InterpretedEnum;
+      ownerEnum.staticMethods.forEach((name, method) {
+        executionEnvironment.define(name, method);
+      });
+      ownerEnum.staticGetters.forEach((name, getter) {
+        executionEnvironment.define(name, getter);
+      });
+      ownerEnum.staticSetters.forEach((name, setter) {
+        executionEnvironment.define(name, setter);
+      });
+      ownerEnum.staticCells.forEach((name, cell) {
+        if (cell is VariableCell) executionEnvironment.defineCell(name, cell);
+      });
+      ownerEnum.staticFields.forEach((name, value) {
+        if (ownerEnum.staticCells.containsKey(name)) return;
+        executionEnvironment.define(name, value);
+      });
+    }
+
+    if (ownerType is InterpretedClass && !isInitializer && !hasThis) {
+      final ownerClass = ownerType as InterpretedClass;
+      if (Logger.isDebug) {
+        Logger.debug(
+          "[InterpretedFunction._prepareExecutionEnvironment] Adding static members of class '${ownerClass.name}' to execution environment.",
+        );
+      }
+
+      // Add all static methods
+      for (final entry in ownerClass.staticMethods.entries) {
+        final methodName = entry.key;
+        final method = entry.value;
+        executionEnvironment.define(methodName, method);
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[InterpretedFunction._prepareExecutionEnvironment] Added static method '$methodName' to execution environment.",
+          );
+        }
+      }
+
+      // Add all static getters
+      for (final entry in ownerClass.staticGetters.entries) {
+        final getterName = entry.key;
+        final getter = entry.value;
+        executionEnvironment.define(getterName, getter);
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[InterpretedFunction._prepareExecutionEnvironment] Added static getter '$getterName' to execution environment.",
+          );
+        }
+      }
+
+      // Add all static setters
+      for (final entry in ownerClass.staticSetters.entries) {
+        final setterName = entry.key;
+        final setter = entry.value;
+        // SCF25: under its setter name, `v=`, so a static getter of the same
+        // name keeps its binding and a bare `v = x` finds the setter.
+        executionEnvironment.define(Environment.setterKey(setterName), setter);
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[InterpretedFunction._prepareExecutionEnvironment] Added static setter '$setterName' to execution environment.",
+          );
+        }
+      }
+
+      // DARTNATIVE (Phase 3): cell-backed statics are installed as their CELL,
+      // not as a copied value, so a bare-identifier read sees the authoritative
+      // storage and a bare write mutates it directly — no snapshot write-back
+      // needed. Without this a method's `hits++` on a static field failed with
+      // "Assigning to undefined variable 'hits'".
+      ownerClass.staticCells.forEach((fieldName, cell) {
+        if (cell is VariableCell) {
+          executionEnvironment.defineCell(fieldName, cell);
+        }
+      });
+
+      // Add all static fields
+      for (final entry in ownerClass.staticFields.entries) {
+        final fieldName = entry.key;
+        if (ownerClass.staticCells.containsKey(fieldName)) continue;
+        final fieldValue = entry.value;
+        executionEnvironment.define(fieldName, fieldValue);
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[InterpretedFunction._prepareExecutionEnvironment] Added static field '$fieldName' to execution environment.",
+          );
+        }
+      }
+
+      // OPEN B.9 — mark this scope as the static-field snapshot owner so that a
+      // bare-identifier write to a snapshotted field (`value = value + 1`) is
+      // propagated back to the class's authoritative static slot, not just the
+      // discarded local snapshot. See [Environment.staticFieldSnapshotOwner].
+      // QR1: the parameters and locals defined after this replace the
+      // snapshot binding of their name, and are not propagated.
+      executionEnvironment.markStaticFieldSnapshot(
+        ownerClass,
+        ownerClass.staticFields.keys,
+      );
+    }
+
+    // Handle type parameters (generics) if provided
+    if (typeArguments != null && typeArguments.isNotEmpty) {
+      // Use the stored type parameter names from the declaration
+      for (
+        int i = 0;
+        i < typeArguments.length && i < typeParameterNames.length;
+        i++
+      ) {
+        final paramName = typeParameterNames[i];
+        final typeArg = typeArguments[i];
+
+        // Define the type parameter in the execution environment
+        executionEnvironment.define(paramName, typeArg);
+
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[InterpretedFunction._prepareExecutionEnvironment] Defined type parameter '$paramName' = ${typeArg.name}",
+          );
+        }
+      }
+    }
+
+    // Also handle declared type parameters without explicit type arguments
+    // (needed for cases where a method has type parameters but no explicit type args are provided)
+    if (typeParameterNames.isNotEmpty) {
+      for (final paramName in typeParameterNames) {
+        // Only define if not already defined by type arguments above
+        if (!executionEnvironment.isDefinedLocally(paramName)) {
+          // Create a placeholder TypeParameter
+          final typeParam = TypeParameter(paramName);
+          executionEnvironment.define(paramName, typeParam);
+
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[InterpretedFunction._prepareExecutionEnvironment] Defined placeholder type parameter '$paramName'",
+            );
+          }
+        }
+      }
+    }
+
+    final params = _parameters?.parameters;
+    int positionalArgIndex = 0;
+    final providedNamedArgs = namedArguments;
+    final processedParamNames = <String>{};
+
+    // Bug-96 FIX: Track super.param forwarding values.
+    // These are collected during parameter processing and forwarded
+    // to the super constructor call.
+    final superPositionalForwards = <Object?>[];
+    final superNamedForwards = <String, Object?>{};
+
+    if (params != null) {
+      for (final param in params) {
+        String? paramName;
+        SExpression? defaultValueExpr;
+        bool isRequired = false;
+        bool isOptionalPositional = false;
+        bool isNamed = false;
+        bool isRequiredNamed = false;
+        bool isFieldInitializing = false; // NEW flag
+        bool isSuperParameter = false; // Bug-96: super.param forwarding
+
+        // Determine parameter info. A default value is the parameter's own
+        // default clause.
+        final SFormalParameter actualParam = param;
+        defaultValueExpr = param.defaultClause?.value;
+        paramName = actualParam.name?.name;
+        isRequired = actualParam.isRequiredPositional;
+        isOptionalPositional = actualParam.isOptionalPositional;
+        isNamed = actualParam.isNamed;
+        isRequiredNamed = actualParam.isRequiredNamed;
+        // Check if it's specifically a field-initializing parameter (this.x)
+        if (actualParam is SFieldFormalParameter) {
+          isFieldInitializing = true;
+        }
+        // Bug-96: Check if it's a super-forwarding parameter (super.x)
+        if (actualParam is SSuperFormalParameter) {
+          isSuperParameter = true;
+        }
+
+        if (paramName == null) {
+          throw StateD4rtException("Parameter missing name");
+        }
+        processedParamNames.add(paramName);
+
+        // Find corresponding argument and value
+        Object? valueToDefine;
+        bool argumentProvided = false;
+
+        if (isOptionalPositional || isRequired) {
+          if (positionalArgIndex < positionalArguments.length) {
+            valueToDefine = positionalArguments[positionalArgIndex++];
+            argumentProvided = true;
+          }
+        } else if (isNamed) {
+          if (providedNamedArgs.containsKey(paramName)) {
+            valueToDefine = providedNamedArgs[paramName];
+            argumentProvided = true;
+          }
+        } else {
+          // This should not happen if logic above is correct
+          throw StateD4rtException(
+            "Parameter '$paramName' is neither positional nor named?",
+          );
+        }
+
+        // Handle defaults and required checks
+        if (!argumentProvided) {
+          if (defaultValueExpr != null) {
+            final previousVisitorEnv = visitor.environment;
+            try {
+              // Default values evaluated in the *calling* scope (closure of the function)
+              visitor.environment = _closure;
+              valueToDefine = defaultValueExpr.accept<Object?>(visitor);
+            } finally {
+              visitor.environment = previousVisitorEnv;
+            }
+          } else if (isRequired || isRequiredNamed) {
+            throw RuntimeD4rtException(
+              "Missing required ${isNamed ? 'named' : ''} argument for '$paramName' in function '${_name ?? '<anonymous>'}'.",
+            );
+          } else {
+            // Optional parameters default to null if no default value specified
+            valueToDefine = null;
+          }
+        }
+
+        // SCC29: check the argument against the declared parameter type. Only
+        // for values the caller supplied — see [_checkArgumentType] for why an
+        // omitted optional and an evaluated default are deliberately outside
+        // the check. This is the one point every call shape funnels through, so
+        // direct, dynamic, method, constructor and closure calls are all
+        // covered by the single site.
+        if (argumentProvided) {
+          valueToDefine = _checkArgumentType(
+            executionEnvironment,
+            actualParam,
+            paramName,
+            valueToDefine,
+          );
+        }
+
+        // DFUB8: an optional super parameter (`[super.x]` / `{super.x}`) that
+        // the caller omits and that carries no default in THIS constructor must
+        // not be forwarded — otherwise we pass an explicit `null` to the parent
+        // constructor and clobber the parent's own default. Skipping the
+        // forward lets the parent apply its declared default (e.g.
+        // `Parent(this.name, [this.value = 0])`). Required super params never
+        // reach here unprovided (they throw above), so this only affects
+        // genuinely omitted optionals.
+        final omittedOptionalSuperParam =
+            isSuperParameter &&
+            !argumentProvided &&
+            defaultValueExpr == null &&
+            !(isRequired || isRequiredNamed);
+
+        // Define variable in execution scope OR Initialize field
+        if (isSuperParameter) {
+          // Bug-96: It's a `super.paramName` parameter. Collect the value
+          // to forward to the super constructor call.
+          if (!omittedOptionalSuperParam) {
+            if (isNamed || isRequiredNamed) {
+              superNamedForwards[paramName] = valueToDefine;
+            } else {
+              superPositionalForwards.add(valueToDefine);
+            }
+          }
+          // Also define it in the local scope so it can be referenced in the body
+          executionEnvironment.define(paramName, valueToDefine);
+          // Bug-96b: also store on `this` so plain `this.<paramName>` access
+          // works in the script body. Real Dart's super-formal-parameter
+          // shorthand is sugar for forwarding to the bridged super
+          // constructor that holds the value as a field; for an interpreted
+          // subclass of a bridged class with no realised bridgedSuperObject
+          // (typical for `super.key` on Widget subclasses), no native
+          // store-site exists, so the value would otherwise be unreachable
+          // from the body. Mirroring `this.<paramName>` field-initializing
+          // semantics keeps `this.key`, `this.child`, etc. resolvable.
+          try {
+            final thisValue = _closure.get('this');
+            if (thisValue is RuntimeValue) {
+              thisValue.set(paramName, valueToDefine);
+            }
+          } catch (_) {
+            // No 'this' in scope (top-level constructor of unrelated owner);
+            // forwarding alone is enough.
+          }
+        } else if (isFieldInitializing) {
+          // It's a `this.fieldName` parameter. Initialize the field directly.
+          final thisValue =
+              _closure.get('this')
+                  as RuntimeValue; // Get 'this' as RuntimeValue
+          // Directly call set on the RuntimeValue (works for both Instance and EnumValue)
+          // We don't need the visitor here, as field init parameters don't call setters.
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[_prepareEnv] Attempting to set this.$paramName = $valueToDefine for instance ${thisValue.hashCode}",
+            );
+          }
+          thisValue.set(paramName, valueToDefine);
+        } else {
+          // It's a regular parameter. Define it in the execution environment.
+          executionEnvironment.define(paramName, valueToDefine);
+          // ghissues49: the written type, for an extension call on it.
+          final writtenType = actualParam.type;
+          if (writtenType != null) {
+            executionEnvironment.declareAnnotation(paramName, writtenType);
+          }
+        }
+      }
+
+      // Final Validation
+      if (positionalArgIndex < positionalArguments.length) {
+        throw RuntimeD4rtException(
+          "Too many positional arguments. Expected at most $maxPositionalArity, got ${positionalArguments.length}.",
+        );
+      }
+      for (final providedName in providedNamedArgs.keys) {
+        if (!processedParamNames.contains(providedName)) {
+          throw RuntimeD4rtException(
+            "Function '${_name ?? '<anonymous>'}' does not have a parameter named '$providedName'.",
+          );
+        }
+      }
+    } else if (positionalArguments.isNotEmpty || providedNamedArgs.isNotEmpty) {
+      throw RuntimeD4rtException(
+        "Function '${_name ?? '<anonymous>'}' takes no arguments, but arguments were provided.",
+      );
+    }
+
+    bool explicitSuperCalled = false; // Track if super() or this() was called
+    bool redirected = false;
+    if (isInitializer) {
+      // Only run initializers for constructors
+      // Determine superclass ONLY if owner is a class
+      InterpretedClass? superClass;
+      if (ownerType is InterpretedClass) {
+        final ownerClass = ownerType as InterpretedClass; // Cast to local var
+        superClass = ownerClass.superclass;
+      }
+
+      // Get 'this' which could be InterpretedInstance OR InterpretedEnumValue
+      final RuntimeValue thisValue = _closure.get('this') as RuntimeValue;
+
+      // Captured in a local: [_constructorInitializers] is a getter onto the
+      // current [FunctionCode], so it does not promote across a body swap.
+      final initializers = _constructorInitializers;
+      if (initializers != null && initializers.isNotEmpty) {
+        final originalVisitorEnv = visitor.environment;
+        try {
+          // Initializers run in the environment of the constructor *body*,
+          // which encloses the closure (with 'this') and params.
+          visitor.environment = executionEnvironment;
+
+          for (final initializer in initializers) {
+            if (initializer is SConstructorFieldInitializer) {
+              // Handles: this.fieldName = expression
+              final fieldName = initializer.fieldName!.name;
+              final value = initializer.expression!.accept<Object?>(visitor);
+              if (value is AsyncSuspensionRequest) {
+                // Await in constructor field initializers is not allowed in Dart
+                // The parser would normally catch this, but if it gets here we should provide guidance
+                throw RuntimeD4rtException(
+                  "Dart language does not allow 'await' expressions in constructor field initializers. "
+                  "Consider using a static async factory method instead: "
+                  "static Future<${ownerType?.name ?? 'YourClass'}> create() async { /* await initialization */ }",
+                );
+              }
+              thisValue.set(
+                fieldName,
+                value,
+              ); // No visitor needed for direct field init
+            } else if (initializer is SSuperConstructorInvocation) {
+              // Handles: super(...) or super.named(...)
+              if (explicitSuperCalled) {
+                throw RuntimeD4rtException(
+                  "Cannot call 'super' or 'this' multiple times in a constructor initializer list.",
+                );
+              }
+              if (ownerType is! InterpretedClass) {
+                // Should not happen if this is called from a constructor
+                throw StateD4rtException(
+                  "Super constructor call outside of class context.",
+                );
+              }
+              final ownerClass = ownerType as InterpretedClass;
+              final InterpretedClass? dartSuperClass = ownerClass.superclass;
+              final BridgedClass? bridgedSuperClass =
+                  ownerClass.bridgedSuperclass;
+
+              if (dartSuperClass == null && bridgedSuperClass == null) {
+                throw RuntimeD4rtException(
+                  "Cannot call 'super' in constructor of class '${ownerType?.name}' because it has no superclass.",
+                ); // Use ownerType?.name
+              }
+
+              final superConstructorName =
+                  initializer.constructorName?.name ?? '';
+
+              if (dartSuperClass != null) {
+                final superConstructor = dartSuperClass.findConstructor(
+                  superConstructorName,
+                );
+                if (superConstructor == null) {
+                  throw RuntimeD4rtException(
+                    "Superclass '${dartSuperClass.name}' does not have a constructor named '$superConstructorName'.",
+                  );
+                }
+                // Evaluate arguments (existing logic)
+                final (
+                  superPositionalArgs,
+                  superNamedArgs,
+                ) = _evaluateArgumentsForInvocation(
+                  visitor,
+                  initializer.argumentList!,
+                  "super()",
+                );
+                // Cluster C: merge super-formal parameter forwards (Bug-96)
+                // into the explicit super-call argument lists. A constructor
+                // like `_AnchorDelegate({required super.config}) :
+                // super(modeName: 'anchor')` must forward `config` to the
+                // super constructor in addition to the explicit `modeName`.
+                // Positional forwards prepend (Dart spec: super-formals
+                // occupy the leading positions); named forwards fill in only
+                // if not already explicitly supplied.
+                final mergedPositional = List<Object?>.from(
+                  superPositionalForwards,
+                )..addAll(superPositionalArgs);
+                final mergedNamed = Map<String, Object?>.from(superNamedArgs);
+                for (final entry in superNamedForwards.entries) {
+                  mergedNamed.putIfAbsent(entry.key, () => entry.value);
+                }
+                // Call Dart super constructor (existing logic)
+                final superCallResult = superConstructor
+                    .bind(thisValue)
+                    .call(visitor, mergedPositional, mergedNamed);
+                if (superCallResult is AsyncSuspensionRequest) {
+                  throw StateD4rtException(
+                    "Internal error: Super constructor call returned SuspendedState.",
+                  );
+                }
+              } else if (bridgedSuperClass != null) {
+                final constructorAdapter = bridgedSuperClass
+                    .findConstructorAdapter(superConstructorName);
+                if (constructorAdapter == null) {
+                  // Bug-46 FIX: abstract widget base classes like
+                  //   SingleChildRenderObjectWidget,
+                  //   MultiChildRenderObjectWidget,
+                  //   LeafRenderObjectWidget,
+                  //   RenderObjectWidget,
+                  //   ProxyWidget,
+                  //   InheritedWidget
+                  // are emitted by the bridge generator with empty
+                  // `constructors: {}` because they are normally only
+                  // subclassed, not instantiated directly. When a script
+                  // subclass calls `super(child: child)` we used to throw
+                  // "Bridged superclass 'X' does not have a constructor
+                  //  named ''." — even though the script's super-call is
+                  // semantically a no-op (its purpose is to forward the
+                  // child/key field to the framework, which the proxy
+                  // wrapper takes care of at the bridge boundary).
+                  //
+                  // When an interface proxy is registered for this bridged
+                  // type via D4.registerInterfaceProxy, the proxy will be
+                  // created by tryCreateInterfaceProxyWithVisitor on the
+                  // first bridge boundary that needs a native instance —
+                  // and that proxy reads its child/key/etc. from the
+                  // InterpretedInstance fields. Skipping the super-call
+                  // is therefore correct: all relevant state lives on the
+                  // InterpretedInstance, which proceeds to be initialized
+                  // by its own field initializers.
+                  if (D4.hasInterfaceProxy(bridgedSuperClass.name)) {
+                    // C7: A small set of opt-in proxies need the script's
+                    // `super(...)` argument list captured onto the
+                    // InterpretedInstance so their `create()` factory can
+                    // forward to the native super-constructor (e.g.
+                    // TwoDimensionalScrollView/Viewport/RenderTwoDim..
+                    // Viewport, whose constructors are abstract-stripped).
+                    // Capturing for *every* registered proxy is unsafe — the
+                    // captured `child` / `children` args leak across the
+                    // secondary rendering test stream and produce 30 s HTTP
+                    // timeouts on `render_error_box_test.dart` onward — so
+                    // capture is gated by `D4.proxyCapturesSuperArgs(name)`.
+                    // Legacy proxies (Intent / Action / InheritedWidget tag
+                    // wrappers, Stateless/StatefulWidget, the RenderObject
+                    // widget bases, …) keep the previous behaviour.
+                    if (thisValue is InterpretedInstance &&
+                        D4.proxyCapturesSuperArgs(bridgedSuperClass.name)) {
+                      try {
+                        List<Object?> capturedPositional = <Object?>[];
+                        Map<String, Object?> capturedNamed =
+                            <String, Object?>{};
+                        if (initializer.argumentList != null) {
+                          final (p, n) = _evaluateArgumentsForInvocation(
+                            visitor,
+                            initializer.argumentList!,
+                            "super()",
+                          );
+                          capturedPositional = List<Object?>.from(p);
+                          capturedNamed = Map<String, Object?>.from(n);
+                        }
+                        // Merge in super-formal forwards (super.foo
+                        // parameters declared in the user constructor).
+                        capturedPositional.insertAll(
+                          0,
+                          superPositionalForwards,
+                        );
+                        for (final entry in superNamedForwards.entries) {
+                          capturedNamed.putIfAbsent(
+                            entry.key,
+                            () => entry.value,
+                          );
+                        }
+                        thisValue.superCallPositionalArgs = capturedPositional;
+                        thisValue.superCallNamedArgs = capturedNamed;
+                      } catch (e) {
+                        if (Logger.isDebug) {
+                          Logger.debug(
+                            "[SuperCall] Argument evaluation failed for proxy-only bridged super '${bridgedSuperClass.name}': $e — proceeding without capture.",
+                          );
+                        }
+                      }
+                    }
+                    if (Logger.isDebug) {
+                      Logger.debug(
+                        "[SuperCall] Bridged superclass '${bridgedSuperClass.name}' has no '$superConstructorName' constructor adapter, but an interface proxy is registered — skipping super() call (the proxy will be created at the bridge boundary).",
+                      );
+                    }
+                    explicitSuperCalled = true;
+                    continue; // Move on to next initializer in the loop.
+                  }
+                  // Plan I (deferred): a broader runtime no-op for abstract
+                  // bridged superclasses without constructor adapters caused
+                  // cross-test contamination in the gii suite (scripts that
+                  // previously aborted at super() now ran through and left
+                  // Flutter widget state lingering between tests). The
+                  // `isAbstract` flag is still emitted by the generator and
+                  // surfaced on `BridgedClass` for future targeted fixes,
+                  // but the runtime fallback here intentionally only fires
+                  // for explicitly-registered interface proxies (above).
+                  // TwoDimensionalScrollView et al. need a dedicated
+                  // interface proxy in d4rt_runtime_registrations.dart.
+                  throw RuntimeD4rtException(
+                    "Bridged superclass '${bridgedSuperClass.name}' does not have a constructor named '$superConstructorName'. Check bridge definition.",
+                  );
+                }
+                // Evaluate arguments (using helper)
+                final (
+                  superPositionalArgs,
+                  superNamedArgs,
+                ) = _evaluateArgumentsForInvocation(
+                  visitor,
+                  initializer.argumentList!,
+                  "super()",
+                );
+                // Call the bridged constructor adapter
+                try {
+                  // Adapter needs the *visitor* and args. It does NOT operate on 'thisValue' directly.
+                  // The adapter is responsible for finding/creating the native object.
+                  final nativeSuperObject = constructorAdapter(
+                    visitor,
+                    superPositionalArgs,
+                    superNamedArgs,
+                  );
+
+                  // We need to associate this new native object with our current instance.
+                  if (thisValue is InterpretedInstance) {
+                    // Store the returned native object in the public field
+                    thisValue.bridgedSuperObject =
+                        nativeSuperObject; // Use the public field
+                    if (Logger.isDebug) {
+                      Logger.debug(
+                        "[SuperCall] Stored native object from bridged super constructor '$superConstructorName' ($nativeSuperObject)",
+                      );
+                    }
+                  } else {
+                    // This case (e.g., calling super() from an enum constructor?) seems unlikely/invalid.
+                    throw StateD4rtException(
+                      "Cannot call super() constructor on non-instance 'this'.",
+                    );
+                  }
+                } on RuntimeD4rtException catch (e) {
+                  // SCD34: carry the preserved trace across the re-wrap.
+                  throw RuntimeD4rtException(
+                    "Error during bridged super constructor '$superConstructorName': ${e.message}",
+                    originalStackTrace: e.originalStackTrace,
+                    originalException: e.originalException,
+                  );
+                } catch (e, s) {
+                  throw RuntimeD4rtException(
+                    "Native error during bridged super constructor '$superConstructorName': $e",
+                    originalException: e,
+                    originalStackTrace: s,
+                  );
+                }
+              } else {
+                // Should be impossible given the check at the start
+                throw StateD4rtException(
+                  "Internal error: No superclass found despite initial check.",
+                );
+              }
+              explicitSuperCalled = true;
+            } else if (initializer is SRedirectingConstructorInvocation) {
+              // Handles: this(...)
+              if (explicitSuperCalled) {
+                throw RuntimeD4rtException(
+                  "Cannot call 'super' or 'this' multiple times in a constructor initializer list.",
+                );
+              }
+
+              final targetConstructorName =
+                  initializer.constructorName?.name ?? '';
+              InterpretedFunction? targetConstructor;
+              if (ownerType is InterpretedClass) {
+                final ownerClass =
+                    ownerType as InterpretedClass; // Cast to local var
+                targetConstructor = ownerClass.findConstructor(
+                  targetConstructorName,
+                );
+              }
+              if (targetConstructor == null) {
+                throw RuntimeD4rtException(
+                  "Class '${ownerType?.name ?? '<unknown>'}' does not have a constructor named '$targetConstructorName' for redirection.",
+                ); // Use ownerType?.name
+              }
+
+              // Evaluate arguments for this(...) call.
+              // Dart 3 permits named arguments anywhere in the argument list,
+              // so we no longer enforce a "named must come last" ordering.
+              final List<Object?> targetPositionalArgs = [];
+              final Map<String, Object?> targetNamedArgs = {};
+              for (final arg in initializer.argumentList!.arguments) {
+                final argValue = arg.accept<Object?>(visitor);
+                if (argValue is AsyncSuspensionRequest) {
+                  throw RuntimeD4rtException(
+                    "Dart language does not allow 'await' expressions in redirecting constructor call arguments. "
+                    "Consider using a static async factory method instead: "
+                    "static Future<${ownerType?.name ?? 'YourClass'}> create() async { /* await initialization */ }",
+                  );
+                }
+
+                if (arg is SNamedArgument) {
+                  final name = arg.name.name;
+                  // Use already evaluated value
+                  if (targetNamedArgs.containsKey(name)) {
+                    throw RuntimeD4rtException(
+                      "Named argument '$name' provided multiple times to this().",
+                    );
+                  }
+                  targetNamedArgs[name] = argValue;
+                } else {
+                  targetPositionalArgs.add(
+                    argValue,
+                  ); // Use already evaluated value
+                }
+              }
+
+              // Call the target constructor, bound to the *same* instance
+              // NOTE: Redirecting constructor call CANNOT suspend
+              final redirectCallResult = targetConstructor
+                  .bind(thisValue)
+                  .call(visitor, targetPositionalArgs, targetNamedArgs);
+              if (redirectCallResult is AsyncSuspensionRequest) {
+                // Should not happen as constructors are not async
+                throw StateD4rtException(
+                  "Internal error: Redirecting constructor call returned SuspendedState.",
+                );
+              }
+
+              explicitSuperCalled = true;
+              redirected = true; // Mark that redirection occurred
+            } else if (initializer is SAssertInitializer) {
+              // Handles: assert(condition) or assert(condition, message)
+              final conditionValue = initializer.condition!.accept<Object?>(
+                visitor,
+              );
+              if (conditionValue is AsyncSuspensionRequest) {
+                throw RuntimeD4rtException(
+                  "Dart language does not allow 'await' expressions in constructor assert initializers.",
+                );
+              }
+              if (conditionValue != true) {
+                // Evaluate message if provided
+                String? messageValue;
+                if (initializer.message != null) {
+                  final msgResult = initializer.message!.accept<Object?>(
+                    visitor,
+                  );
+                  if (msgResult is AsyncSuspensionRequest) {
+                    throw RuntimeD4rtException(
+                      "Dart language does not allow 'await' expressions in constructor assert initializers.",
+                    );
+                  }
+                  messageValue = msgResult?.toString();
+                }
+                // Escapes the `on RuntimeD4rtException` re-wrap in
+                // RuntimeType.instantiate ("Error during constructor execution
+                // for class 'X': ...") precisely because it is no longer one —
+                // so the AssertionError reaches the script intact.
+                throw AssertionError(
+                  messageValue ?? "Assertion failed in constructor initializer",
+                );
+              }
+            } else {
+              throw StateD4rtException(
+                "Unknown constructor initializer type: ${initializer.runtimeType}",
+              );
+            }
+          }
+        } finally {
+          visitor.environment =
+              originalVisitorEnv; // Restore visitor environment
+        }
+      }
+
+      // If no explicit super() or this() was called, and there IS a superclass,
+      // implicitly call the superclass's unnamed constructor.
+      // Bug-96 FIX: Pass any collected super.param forwarding values.
+      if (!explicitSuperCalled && superClass != null) {
+        final defaultSuperConstructor = superClass.findConstructor('');
+        if (defaultSuperConstructor != null) {
+          // Call the default super constructor, bound to the *current* instance
+          // NOTE: Default super constructor call CANNOT suspend
+          final defaultSuperResult = defaultSuperConstructor
+              .bind(thisValue)
+              .call(visitor, superPositionalForwards, superNamedForwards);
+          if (defaultSuperResult is AsyncSuspensionRequest) {
+            // Should not happen as constructors are not async
+            throw StateD4rtException(
+              "Internal error: Implicit super constructor call returned SuspendedState.",
+            );
+          }
+        } else if (superClass.constructors.isNotEmpty) {
+          // Superclass has explicit constructors but no default one - error
+          throw RuntimeD4rtException(
+            "Implicit call to superclass '${superClass.name}' default constructor failed: No default constructor found.",
+          );
+        }
+        // If superclass has NO explicit constructors, it uses the implicit default
+        // constructor which does nothing - no need to call it explicitly
+      }
+
+      // RC-5: Implicit super() for bridged superclasses.
+      // When an interpreted class extends a bridged class (e.g., `class CounterNotifier extends ChangeNotifier`)
+      // and has no explicit super() call, the bridged default constructor must be invoked
+      // to initialize `bridgedSuperObject`. Without this, inherited method lookups fail.
+      if (!explicitSuperCalled &&
+          superClass == null &&
+          ownerType is InterpretedClass) {
+        final ownerClass = ownerType as InterpretedClass;
+        final bridgedSuperClass = ownerClass.bridgedSuperclass;
+        if (bridgedSuperClass != null &&
+            thisValue is InterpretedInstance &&
+            thisValue.bridgedSuperObject == null) {
+          final defaultBridgedCtor = bridgedSuperClass.findConstructorAdapter(
+            '',
+          );
+          if (defaultBridgedCtor != null) {
+            try {
+              final nativeSuperObject = defaultBridgedCtor(visitor, [], {});
+              thisValue.bridgedSuperObject = nativeSuperObject;
+              if (Logger.isDebug) {
+                Logger.debug(
+                  "[ImplicitSuperCall] Stored native object from bridged super constructor '' ($nativeSuperObject)",
+                );
+              }
+            } on RuntimeD4rtException catch (e) {
+              // SCD34: carry the preserved trace across the re-wrap.
+              throw RuntimeD4rtException(
+                "Error during implicit bridged super constructor: ${e.message}",
+                originalStackTrace: e.originalStackTrace,
+                originalException: e.originalException,
+              );
+            } catch (e, s) {
+              throw RuntimeD4rtException(
+                "Native error during implicit bridged super constructor: $e",
+                originalException: e,
+                originalStackTrace: s,
+              );
+            }
+          }
+        }
+      }
+    }
+
+    return _ExecutionPreparationResult(executionEnvironment, redirected);
+  }
+
+  /// Validate type arguments for generic functions/methods
+  void _validateTypeArguments(
+    List<RuntimeType>? typeArguments,
+    List<Object?> positionalArguments,
+    Map<String, Object?> namedArguments,
+  ) {
+    if (typeArguments == null || typeArguments.isEmpty) {
+      return; // No type arguments to validate
+    }
+
+    // For factory constructors, type arguments come from the class, not the method
+    // Skip validation if this is a factory constructor or regular constructor
+    if (isFactory || isInitializer) {
+      return; // Factory constructors inherit type parameters from their class
+    }
+
+    // Validate that the number of type arguments matches the number of type parameters
+    if (typeArguments.length > typeParameterNames.length) {
+      throw RuntimeD4rtException(
+        "Too many type arguments for function '${_name ?? '<anonymous>'}'. Expected at most ${typeParameterNames.length}, got ${typeArguments.length}.",
+      );
+    }
+
+    // Check type bounds for each type argument
+    _validateTypeBounds(typeArguments);
+
+    // Validate parameter types against type arguments
+    _validateParameterTypes(typeArguments, positionalArguments, namedArguments);
+
+    // Check return type constraints (will be validated at return time)
+    // Return type validation happens in visitReturnStatement
+
+    if (Logger.isDebug) {
+      Logger.debug(
+        "[InterpretedFunction._validateTypeArguments] Validated ${typeArguments.length} type arguments for function '${_name ?? '<anonymous>'}'",
+      );
+    }
+  }
+
+  /// Validate that type arguments respect their bounds constraints
+  void _validateTypeBounds(List<RuntimeType> typeArguments) {
+    for (
+      int i = 0;
+      i < typeArguments.length && i < typeParameterNames.length;
+      i++
+    ) {
+      final typeArg = typeArguments[i];
+      final paramName = typeParameterNames[i];
+      final bound = typeParameterBounds[paramName];
+
+      if (Logger.isDebug) {
+        Logger.debug(
+          "[InterpretedFunction._validateTypeBounds] Type parameter '$paramName' bound check for argument '${typeArg.name}'",
+        );
+      }
+
+      if (bound != null) {
+        // Check if the type argument satisfies the bound constraint
+        bool satisfiesBound = _checkTypeSatisfiesBound(typeArg, bound);
+
+        if (!satisfiesBound) {
+          throw RuntimeD4rtException(
+            "Type argument '${typeArg.name}' for type parameter '$paramName' does not satisfy bound '${bound.name}' in function '${_name ?? '<anonymous>'}'",
+          );
+        }
+
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[InterpretedFunction._validateTypeBounds] Type parameter '$paramName' with argument '${typeArg.name}' satisfies bound '${bound.name}'",
+          );
+        }
+      } else {
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[InterpretedFunction._validateTypeBounds] Type parameter '$paramName' has no bound constraint",
+          );
+        }
+      }
+
+      // Example basic validation - could be extended
+      if (typeArg.name == 'Null') {
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[InterpretedFunction._validateTypeBounds] Warning: Null type argument for parameter '$paramName'",
+          );
+        }
+      }
+    }
+  }
+
+  /// Check if a type argument satisfies a bound constraint
+  bool _checkTypeSatisfiesBound(RuntimeType typeArg, RuntimeType bound) {
+    // If the type argument is the same as the bound, it satisfies the constraint
+    if (typeArg == bound || typeArg.name == bound.name) {
+      return true;
+    }
+
+    // Special handling for common native types
+    if (bound.name == 'num') {
+      // Check if typeArg is a numeric type
+      if (typeArg is BridgedClass) {
+        return typeArg.nativeType == int ||
+            typeArg.nativeType == double ||
+            typeArg.nativeType == num;
+      }
+      // For other types, check the name
+      return typeArg.name == 'int' ||
+          typeArg.name == 'double' ||
+          typeArg.name == 'num';
+    }
+
+    if (bound.name == 'Object') {
+      // Everything extends Object (except possibly void/dynamic)
+      return typeArg.name != 'void';
+    }
+
+    if (bound.name == 'Comparable') {
+      // Check if the type implements Comparable
+      if (typeArg is BridgedClass) {
+        try {
+          // G-DOV2-4 FIX: Add num to the list of comparable types
+          // num is the supertype of int and double and implements Comparable<num>
+          return typeArg.nativeType == String ||
+              typeArg.nativeType == int ||
+              typeArg.nativeType == double ||
+              typeArg.nativeType == num ||
+              typeArg.nativeType == DateTime;
+        } catch (e) {
+          return false;
+        }
+      }
+      // G-DOV2-4 FIX: Add num to the list of comparable types
+      return typeArg.name == 'String' ||
+          typeArg.name == 'int' ||
+          typeArg.name == 'double' ||
+          typeArg.name == 'num';
+    }
+
+    // Check if the type argument is a subtype of the bound
+    try {
+      return typeArg.isSubtypeOf(bound);
+    } catch (e) {
+      if (Logger.isDebug) {
+        Logger.debug(
+          "[InterpretedFunction._checkTypeSatisfiesBound] Error checking subtype relationship: $e",
+        );
+      }
+      // If we can't determine the relationship, default to allowing it
+      // In a stricter implementation, this might default to false
+      return true;
+    }
+  }
+
+  /// Validate that positional and named arguments match the expected types
+  void _validateParameterTypes(
+    List<RuntimeType> typeArguments,
+    List<Object?> positionalArguments,
+    Map<String, Object?> namedArguments,
+  ) {
+    // Basic validation - check if arguments are compatible with function signature
+    // This is a simplified implementation
+
+    if (Logger.isDebug) {
+      Logger.debug(
+        "[InterpretedFunction._validateParameterTypes] Validating ${positionalArguments.length} positional and ${namedArguments.length} named arguments",
+      );
+    }
+
+    // For each positional argument, try basic type compatibility check
+    for (int i = 0; i < positionalArguments.length; i++) {
+      final argument = positionalArguments[i];
+
+      if (argument != null) {
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[InterpretedFunction._validateParameterTypes] Argument $i: ${argument.runtimeType}",
+          );
+        }
+
+        // Additional type checking could be implemented here
+        // For example, checking against expected parameter types from function signature
+      }
+    }
+
+    // For each named argument, try basic type compatibility check
+    for (final entry in namedArguments.entries) {
+      final argName = entry.key;
+      final argValue = entry.value;
+
+      if (argValue != null) {
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[InterpretedFunction._validateParameterTypes] Named argument '$argName': ${argValue.runtimeType}",
+          );
+        }
+      }
+    }
+
+    // More sophisticated validation would require:
+    // 1. Access to the function's parameter type annotations
+    // 2. Type substitution logic for generic parameters
+    // 3. Runtime type compatibility checking
+  }
+
+  @override
+  Object? call(
+    InterpreterVisitor visitor,
+    List<Object?> positionalArguments, [
+    Map<String, Object?> namedArguments = const {},
+    List<RuntimeType>? typeArguments,
+  ]) {
+    // Establish `D4.activeVisitor` for the duration of every interpreted
+    // function call. This makes the visitor available to any native code
+    // path that the user function triggers — most importantly the
+    // `InterpretedInstance.==` / `.hashCode` overrides, which dispatch
+    // through the active visitor when native Dart collections
+    // (`Map<UserCell, …>`, `Set<UserCell>`, …) look up keys. Without this
+    // wrap, native container operations downstream of a `targetValue[key]`
+    // (visitIndexExpression) read `D4.activeVisitor == null` and silently
+    // fall back to identity hashing, breaking content-equality lookups.
+    //
+    // Hot path: push/pop the active visitor directly rather than via
+    // `withActiveVisitor`, whose `T Function()` argument allocates a closure on
+    // every interpreted function call. The save/set/restore semantics are
+    // identical (nesting included).
+    final previousActiveVisitor = D4.pushActiveVisitor(visitor);
+    // The interpreted call stack (D4rtCallStack): an error leaving this call
+    // is snapshotted against the stack as it stood when it was raised.
+    final callStack = visitor.callStack;
+    callStack.enter(_name ?? '<anonymous>');
+    // Until the body's first statement runs, the frame is at the body — which
+    // is all an expression-bodied function ever has.
+    callStack.current = _body;
+    // DARTNATIVE: the guest frame list `formatGuestStackTrace` renders. The
+    // 0.260 runtime tracks its own `D4rtCallStack` for error snapshots, but a
+    // guest trace also needs the member/module/current-node triple.
+    final previousFunction = visitor.currentFunction;
+    visitor.pushCallFrame(this, initialNode: _body);
+    try {
+      visitor.currentFunction = this;
+      return _callImpl(
+        visitor,
+        positionalArguments,
+        namedArguments,
+        typeArguments,
+      );
+    } catch (error) {
+      callStack.recordEscape(error);
+      rethrow;
+    } finally {
+      visitor.currentFunction = previousFunction;
+      visitor.popCallFrame();
+      callStack.exit();
+      D4.popActiveVisitor(previousActiveVisitor);
+    }
+  }
+
+  Object? _callImpl(
+    InterpreterVisitor visitor,
+    List<Object?> positionalArguments,
+    Map<String, Object?> namedArguments,
+    List<RuntimeType>? typeArguments,
+  ) {
+    // Build parent map for AST navigation (SAstNode has no .parent)
+    _buildParentMap(_body);
+    if (Logger.isDebug) {
+      Logger.debug(
+        "[InterpretedFunction.call] Called '${_name ?? 'anonymous'}' with ${positionalArguments.length} positional, ${namedArguments.length} named arguments.",
+      );
+    }
+
+    final previousFunction = visitor.currentFunction;
+    final previousAsyncState = visitor.currentAsyncState;
+
+    D4rtDiag.enterCall();
+    try {
+      visitor.currentFunction = this;
+
+      // OPEN B.1 — redirecting factory `factory X(..) = Y(.named)`: resolve the
+      // redirect target and instantiate it, forwarding the call arguments.
+      // The factory body is empty, so this short-circuits normal execution.
+      // The outer finally restores visitor.currentFunction.
+      if (isFactory && redirectedFactoryTarget != null) {
+        return _instantiateRedirectedFactory(
+          visitor,
+          positionalArguments,
+          namedArguments,
+        );
+      }
+
+      final preparationResult = _prepareExecutionEnvironment(
+        visitor,
+        positionalArguments,
+        namedArguments,
+        typeArguments,
+      );
+
+      // Validate generic type arguments if provided
+      _validateTypeArguments(
+        typeArguments,
+        positionalArguments,
+        namedArguments,
+      );
+
+      final executionEnvironment = preparationResult.environment;
+      final redirected = preparationResult.redirected;
+
+      final previousCurrentFunction = visitor.currentFunction; // Save previous
+      visitor.currentFunction = this; // Set current function
+      final previousAsyncState =
+          visitor.currentAsyncState; // Save current async state
+
+      try {
+        if (isAsyncGenerator) {
+          // Handle async* functions - return a Stream
+          return _createAsyncGeneratorStream(
+            visitor,
+            executionEnvironment,
+            redirected,
+          );
+        } else if (isGenerator) {
+          // Handle sync* functions - return an Iterable
+          return _createSyncGeneratorIterable(
+            visitor,
+            executionEnvironment,
+            redirected,
+          );
+        } else if (isAsync) {
+          final completer = Completer<Object?>();
+
+          // Determine the first state (AST node)
+          SAstNode? initialStateIdentifier;
+          final bodyToExecute = _body;
+          if (!redirected) {
+            if (bodyToExecute is SBlockFunctionBody) {
+              initialStateIdentifier =
+                  bodyToExecute.block!.statements.firstOrNull;
+            } else if (bodyToExecute is SExpressionFunctionBody) {
+              initialStateIdentifier = bodyToExecute.expression;
+            } else if (bodyToExecute is SEmptyFunctionBody) {
+              initialStateIdentifier =
+                  null; // Empty function, completes immediately
+            } else {
+              throw StateD4rtException(
+                "Unhandled function body type for async state machine: ${bodyToExecute.runtimeType}",
+              );
+            }
+          } else {
+            // Redirecting constructor, completes with 'this'
+            initialStateIdentifier = null;
+          }
+
+          // Create the initial state
+          final asyncState = AsyncExecutionState(
+            environment: executionEnvironment,
+            completer: completer,
+            nextStateIdentifier: initialStateIdentifier,
+            function: this,
+          );
+
+          // Handle cases where the function completes immediately
+          if (initialStateIdentifier == null) {
+            if (redirected) {
+              completer.complete(executionEnvironment.get('this'));
+            } else {
+              completer.complete(null); // Empty function
+            }
+          } else {
+            // The engine will take care of scheduling (ex: via Future.microtask)
+            // Put the visitor in the initial state for the engine
+            visitor.currentAsyncState = asyncState;
+            _startAsyncStateMachine(visitor, asyncState);
+          }
+
+          // Return immediately the Future
+          return completer.future;
+        } else {
+          Object? syncResult;
+          final previousVisitorEnv = visitor.environment; // Save env
+          try {
+            if (isAbstract) {
+              throw RuntimeD4rtException(
+                "Cannot call abstract method '${_name ?? '<abstract>'}'.",
+              );
+            }
+
+            final bodyToExecute = _body;
+
+            if (!redirected) {
+              if (bodyToExecute is SBlockFunctionBody) {
+                // PR #6: a block body that runs off its end returns null; only
+                // `return` yields a value, and it arrives as a
+                // ReturnException. executeBlock's own result is the LAST
+                // STATEMENT's value, which used to leak (`Object? f() {
+                // probe(); }` returned probe's result). A suspension request
+                // is kept for the check below.
+                final completion = visitor.executeBlock(
+                  bodyToExecute.block!.statements,
+                  executionEnvironment,
+                );
+                syncResult = completion is AsyncSuspensionRequest
+                    ? completion
+                    : null;
+              } else if (bodyToExecute is SExpressionFunctionBody) {
+                visitor.environment = executionEnvironment;
+                syncResult = bodyToExecute.expression!.accept<Object?>(visitor);
+              } else if (bodyToExecute is SEmptyFunctionBody) {
+                if (!isInitializer && _name != null) {
+                  throw RuntimeD4rtException(
+                    "Cannot execute non-constructor function $_name' with empty body.",
+                  );
+                }
+                syncResult = null;
+              } else {
+                throw StateD4rtException(
+                  "Unhandled function body type: ${bodyToExecute.runtimeType}",
+                );
+              }
+            } else {
+              if (Logger.isDebug) {
+                Logger.debug(
+                  " [InterpretedFunction.call sync] Body skipped due to redirecting constructor for $_name",
+                );
+              }
+              // If redirected, the value is 'this'
+              syncResult = _closure.get('this');
+            }
+          } on ReturnException catch (returnExc) {
+            syncResult = returnExc.value;
+          } finally {
+            visitor.currentFunction =
+                previousCurrentFunction; // Restore function
+            visitor.environment = previousVisitorEnv; // Restore environment
+          }
+
+          // For initializers (constructors), always return 'this'
+          if (isInitializer) {
+            try {
+              return _closure.get('this');
+            } catch (_) {
+              throw StateD4rtException(
+                "Internal error: 'this' not found in bound constructor environment.",
+              );
+            }
+          } else {
+            // Check if the synchronous execution resulted in a suspension (shouldn't happen if await is blocked)
+            if (syncResult is AsyncSuspensionRequest) {
+              throw StateD4rtException(
+                "Internal error: Synchronous function returned SuspendedState.",
+              );
+            }
+            return syncResult; // Return sync result
+          }
+        }
+      } on ReturnException catch (e) {
+        // Catch return from synchronous functions
+        return e.value;
+      } finally {
+        visitor.currentFunction = previousCurrentFunction; // Restore previous
+
+        // Restaurer l'état asynchrone précédent au lieu de l'écraser
+        visitor.currentAsyncState = previousAsyncState;
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [InterpretedFunction.call FINALLY] Restored currentFunction and currentAsyncState. AsyncState is now: ${visitor.currentAsyncState?.hashCode}",
+          );
+        }
+      }
+    } on ReturnException catch (e) {
+      // Catch return from asynchronous functions
+      return e.value;
+    } finally {
+      visitor.currentFunction = previousFunction;
+      visitor.currentAsyncState = previousAsyncState;
+      D4rtDiag.exitCall();
+    }
+  }
+
+  /// OPEN B.1 — resolve a redirecting factory's target (`factory X(..) = Y` or
+  /// `= Y.named`) and instantiate it, forwarding the already-evaluated call
+  /// arguments. Supports interpreted and bridged target classes. Generic
+  /// redirect targets (`= Y<int>`) instantiate `Y`; explicit type arguments on
+  /// the redirect target are not separately bound (rare; covered by the target
+  /// class's own type-argument handling).
+  Object? _instantiateRedirectedFactory(
+    InterpreterVisitor visitor,
+    List<Object?> positionalArguments,
+    Map<String, Object?> namedArguments,
+  ) {
+    final target = redirectedFactoryTarget!;
+    final SNamedType? typeNode = target.type;
+    if (typeNode == null) {
+      throw RuntimeD4rtException(
+        "Redirecting factory '${_name ?? '<factory>'}' has no target type.",
+      );
+    }
+
+    // Resolve the target class name and optional named-constructor part. The
+    // unresolved parser can place `Y` in importPrefix and the named-ctor part
+    // in name for a redirect like `= Circle.r` (mirrors the ambiguity handled
+    // in visitInstanceCreationExpression).
+    String className;
+    String namedCtorPart;
+    if (target.name != null) {
+      className = typeNode.name?.name ?? '';
+      namedCtorPart = target.name!.name;
+    } else if (typeNode.importPrefix != null) {
+      final possibleClassName = typeNode.importPrefix!.name;
+      Object? possibleType;
+      try {
+        possibleType = _closure.get(possibleClassName);
+      } on RuntimeD4rtException {
+        possibleType = null;
+      }
+      if (possibleType is InterpretedClass || possibleType is BridgedClass) {
+        className = possibleClassName;
+        namedCtorPart = typeNode.name?.name ?? '';
+      } else {
+        className = typeNode.name?.name ?? '';
+        namedCtorPart = '';
+      }
+    } else {
+      className = typeNode.name?.name ?? '';
+      namedCtorPart = '';
+    }
+
+    Object? typeValue;
+    try {
+      typeValue = _closure.get(className);
+    } on RuntimeD4rtException {
+      throw RuntimeD4rtException(
+        "Redirecting factory target '$className' not found for '${_name ?? '<factory>'}'.",
+      );
+    }
+
+    if (typeValue is InterpretedClass) {
+      final klass = typeValue;
+      final targetConstructor = klass.findConstructor(namedCtorPart);
+      if (targetConstructor == null) {
+        throw RuntimeD4rtException.resolutionFailure(
+          "Redirecting factory target '$className' has no constructor named '$namedCtorPart'.",
+        );
+      }
+      if (targetConstructor.isFactory) {
+        return targetConstructor.call(
+          visitor,
+          positionalArguments,
+          namedArguments,
+        );
+      }
+      final instance = klass.createAndInitializeInstance(visitor, null);
+      final boundConstructor = targetConstructor.bind(instance);
+      boundConstructor.call(visitor, positionalArguments, namedArguments);
+      return instance;
+    } else if (typeValue is BridgedClass) {
+      final bridgedClass = typeValue;
+      final constructorAdapter = bridgedClass.findConstructorAdapter(
+        namedCtorPart,
+      );
+      if (constructorAdapter == null) {
+        throw RuntimeD4rtException.resolutionFailure(
+          "Redirecting factory target bridged class '$className' has no constructor named '$namedCtorPart'.",
+        );
+      }
+      final nativeObject = D4.withActiveVisitor(
+        visitor,
+        () => constructorAdapter(visitor, positionalArguments, namedArguments),
+      );
+      if (nativeObject is Future || nativeObject is Stream) {
+        return nativeObject;
+      }
+      if (nativeObject == null) {
+        throw RuntimeD4rtException(
+          "Redirecting factory target bridged constructor for '$className' returned null unexpectedly.",
+        );
+      }
+      // SCD98: the bare native, like every other bridged-constructor route.
+      return nativeObject;
+    }
+
+    throw RuntimeD4rtException(
+      "Redirecting factory target '$className' is not a class.",
+    );
+  }
+
+  // Main engine of the async state machine
+  // Scheduled via Future.microtask to start execution
+  //
+  // DASY1: an async function resumed after an await runs outside the `call`
+  // that started it, so its interpreted frame is no longer on the call stack
+  // and an error raised now would leave no trace. Each resumption re-enters
+  // the frame for the segment it runs. The segment never awaits (it suspends
+  // by returning), so it has finished — and the frame is exited — before
+  // anything else can run on this visitor.
+  static Future<void> _runStateMachine(
+    InterpreterVisitor visitor,
+    AsyncExecutionState currentState,
+  ) {
+    final callStack = visitor.callStack;
+    callStack.enter(currentState.function._name ?? '<anonymous>');
+    try {
+      return _runStateMachineSegment(visitor, currentState);
+    } finally {
+      callStack.exit();
+    }
+  }
+
+  static Future<void> _runStateMachineSegment(
+    InterpreterVisitor visitor,
+    AsyncExecutionState currentState,
+  ) async {
+    Object? lastResult;
+    SAstNode? currentNode = currentState.nextStateIdentifier;
+
+    // Main loop of state machine execution
+    while (currentNode != null) {
+      // Save current visitor environment (in case of error)
+      final originalVisitorEnv = visitor.environment;
+      final previousAsyncState = visitor.currentAsyncState;
+
+      // Configure the visitor for the current state: the innermost scope the
+      // node sits in - a loop's, a catch clause's (SCE79), an if-case's
+      // (ghissues62) or a block's (ghissues63). See [_scopeFor].
+      visitor.environment = _scopeFor(currentState, currentNode);
+      currentState.lastScopedNode = currentNode;
+      visitor.currentAsyncState = currentState;
+      // Set currentFunction from the state - important for async callbacks
+      // that may run after the original call() returns
+      visitor.currentFunction = currentState.function;
+      // The position a trace reports for this frame, if an error leaves it.
+      visitor.callStack.current = currentNode;
+
+      // SCC12: an error that was only passing through a `finally` block resumes
+      // here, now that the block has finished — see
+      // `AsyncExecutionState.errorAfterFinally`. It is re-dispatched from
+      // *outside* the try it was held for, so the search for a handler starts at
+      // the enclosing try instead of finding the same one again and re-running
+      // its finally for ever.
+      if (currentState.resumeErrorAfterFinally) {
+        currentState.resumeErrorAfterFinally = false;
+        final heldTry = currentState.errorAfterFinallyTry!;
+        currentState.errorAfterFinallyTry = null;
+        currentState.currentError = currentState.errorAfterFinally;
+        currentState.currentStackTrace =
+            currentState.errorAfterFinallyStackTrace;
+        currentState.errorAfterFinally = null;
+        currentState.errorAfterFinallyStackTrace = null;
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [StateMachine] Finally block finished; re-raising the error it was "
+            "holding: ${currentState.currentError}",
+          );
+        }
+        _handleAsyncError(visitor, currentState, _parentOf(heldTry) ?? heldTry);
+        visitor.environment = originalVisitorEnv;
+        visitor.currentAsyncState = previousAsyncState;
+        return;
+      }
+
+      if (Logger.isDebug) {
+        Logger.debug(
+          " [StateMachine] Executing state: ${currentNode.runtimeType} in state env ${currentState.environment.hashCode}, loop stack depth: ${currentState.loopEnvironmentStack.length}. Visitor env set to: ${visitor.environment.hashCode}",
+        );
+      }
+
+      try {
+        // Case: While loop
+        if (currentNode is SWhileStatement) {
+          final whileNode = currentNode;
+          Logger.debug("[StateMachine] Handling SWhileStatement condition.");
+          // Evaluate the condition
+          final conditionResult = whileNode.condition!.accept<Object?>(visitor);
+
+          if (conditionResult is AsyncSuspensionRequest) {
+            // The condition itself is asynchronous, suspend
+            Logger.debug(
+              " [StateMachine] While condition suspended. Waiting...",
+            );
+            lastResult =
+                conditionResult; // Update lastResult for the processing below
+          } else if (conditionResult is bool) {
+            _endReplayedEvaluation(currentState);
+            // Synchronous condition
+            if (conditionResult) {
+              // True condition: the next state is the body of the loop
+              if (Logger.isDebug) {
+                Logger.debug(
+                  "[StateMachine] While condition TRUE. Next node is body: ${whileNode.body.runtimeType}",
+                );
+              }
+              // If the body is a block, take the first statement
+              if (whileNode.body is SBlock) {
+                currentNode = (whileNode.body as SBlock).statements.firstOrNull;
+                // SCE102: an empty body leaves `currentNode` null, and this
+                // machine's own loop is `while (currentNode != null)` — so it
+                // would end the FUNCTION, not the loop. Fall back to the loop
+                // node, which is what SCE19 already does at the do-while entry.
+                // Re-entering the while re-evaluates the condition, which is
+                // exactly what `while (c) {}` means.
+                currentNode ??= whileNode;
+              } else {
+                currentNode = whileNode.body;
+              }
+              currentState.nextStateIdentifier = currentNode;
+              continue; // Restart the while loop of the state machine with the new node
+            } else {
+              // False condition: skip the loop, find the next node after the while
+              Logger.debug(
+                "[StateMachine] While condition FALSE. Finding node after while.",
+              );
+              currentNode = _findNextSequentialNode(visitor, whileNode);
+              currentState.nextStateIdentifier = currentNode;
+              continue; // Restart the while loop of the state machine
+            }
+          } else {
+            // The condition did not return a boolean or suspension
+            throw RuntimeD4rtException(
+              "While loop condition must evaluate to a boolean, but got ${conditionResult?.runtimeType}.",
+            );
+          }
+        } else if (currentNode is SDoStatement) {
+          final doNode = currentNode;
+          // The logic of SDoStatement is particular:
+          // 1. If we arrive on the SDoStatement the *first time* (or after a true condition),
+          //    we need to execute the body.
+          // 2. If we arrive on the SDoStatement after having executed the *last* instruction of the body
+          //    (detected by _findNextSequentialNode returning the SDoStatement),
+          //    we need to evaluate the condition.
+
+          // SCE19: the two arrivals are told apart by `doBodiesStarted`. This
+          // used to assume the second one always — the comment that stood here
+          // said so, and said what it would cost: "if we entered the loop in a
+          // non-standard way, this could fail". Arriving from the statement
+          // before the loop IS the standard way, and it failed:
+          // `do { n++; } while (false);` answered 0 where Dart, and this
+          // interpreter's own synchronous visitor, answer 1. A loop whose
+          // condition is true on entry was unaffected, which is why it survived.
+          if (!currentState.doBodiesStarted.contains(doNode)) {
+            Logger.debug(
+              "[StateMachine] Entering DoStatement body for the first time.",
+            );
+            currentState.doBodiesStarted.add(doNode);
+            if (doNode.body is SBlock) {
+              currentNode = (doNode.body as SBlock).statements.firstOrNull;
+              // An empty body would leave `currentNode` null and stop the
+              // machine, so fall back to the loop itself: the condition then
+              // decides, which is what `do {} while (c);` means.
+              currentNode ??= doNode;
+              if (identical(currentNode, doNode)) {
+                currentState.nextStateIdentifier = currentNode;
+                continue;
+              }
+            } else {
+              currentNode = doNode.body;
+            }
+            currentState.nextStateIdentifier = currentNode;
+            continue;
+          }
+
+          Logger.debug(
+            "[StateMachine] Handling SDoStatement. Evaluating condition.",
+          );
+          // Evaluate the condition
+          final conditionResult = doNode.condition!.accept<Object?>(visitor);
+
+          if (conditionResult is AsyncSuspensionRequest) {
+            // The condition is asynchronous, suspend
+            Logger.debug(
+              " [StateMachine] DoWhile condition suspended. Waiting...",
+            );
+            lastResult =
+                conditionResult; // Update lastResult for the processing below
+          } else if (conditionResult is bool) {
+            _endReplayedEvaluation(currentState);
+            // Synchronous condition
+            if (conditionResult) {
+              // True condition: the next state is the beginning of the loop body
+              if (Logger.isDebug) {
+                Logger.debug(
+                  "[StateMachine] DoWhile condition TRUE. Next node is body: ${doNode.body.runtimeType}",
+                );
+              }
+              if (doNode.body is SBlock) {
+                currentNode = (doNode.body as SBlock).statements.firstOrNull;
+                // SCE102: an empty body leaves `currentNode` null, and this
+                // machine's own loop is `while (currentNode != null)` — so it
+                // would end the FUNCTION, not the loop. Fall back to the loop
+                // node, which is what SCE19 already does at the do-while entry.
+                // `doBodiesStarted` already holds this node, so re-entering it
+                // evaluates the condition rather than restarting the body.
+                currentNode ??= doNode;
+              } else {
+                currentNode = doNode.body;
+              }
+              currentState.nextStateIdentifier = currentNode;
+              continue; // Restart the state machine loop with the beginning of the body
+            } else {
+              // False condition: exit the loop, find the next node after the do-while
+              Logger.debug(
+                "[StateMachine] DoWhile condition FALSE. Finding node after do-while.",
+              );
+              // SCE19: the loop is over, so the next arrival at this node is a
+              // fresh entry. A `do` nested in another loop runs again on the
+              // outer loop's next iteration, and would otherwise check its
+              // condition before its body — the original bug, one level in.
+              currentState.doBodiesStarted.remove(doNode);
+              currentNode = _findNextSequentialNode(visitor, doNode);
+              currentState.nextStateIdentifier = currentNode;
+              continue; // Restart the state machine loop
+            }
+          } else {
+            // The condition did not return a boolean or suspension
+            throw RuntimeD4rtException(
+              "DoWhile loop condition must evaluate to a boolean, but got ${conditionResult?.runtimeType}.",
+            );
+          }
+          // If the condition was suspended, lastResult contains AsyncSuspensionRequest
+          // and will be handled by the suspension logic below.
+        } else if (currentNode is SForStatement &&
+            (currentNode.forLoopParts is SForEachPartsWithDeclaration ||
+                currentNode.forLoopParts is SForEachPartsWithIdentifier)) {
+          final forNode = currentNode;
+          final parts = forNode.forLoopParts!;
+          // Extract the iterable from the parts (both types have it)
+          final SAstNode? partsIterable =
+              (parts is SForEachPartsWithDeclaration)
+              ? parts.iterable
+              : (parts as SForEachPartsWithIdentifier).iterable;
+
+          // Check if this is an await for loop
+          final bool isAwaitFor =
+              (parts is SForEachPartsWithDeclaration && parts.isAwait) ||
+              (parts is SForEachPartsWithIdentifier && parts.isAwait);
+          if (isAwaitFor) {
+            // This is an await for loop - handle it natively in the state machine
+            Logger.debug(
+              "[StateMachine] Detected await for loop, handling natively.",
+            );
+
+            // SCE16: `await for` is driven by a StreamIterator — one
+            // suspension on `moveNext()` per element — rather than by reading
+            // the whole stream into a list and walking it. See
+            // AsyncExecutionState.awaitingStreamMoveNext for what that cost.
+            //
+            // Three cases, and the handler is re-entered for each of them:
+            //   1. the loop is not on the stack  -> evaluate the stream, make
+            //      an iterator, suspend on moveNext();
+            //   2. the loop is on the stack with an element in hand -> bind it
+            //      and run the body;
+            //   3. the loop is on the stack with no element -> suspend on
+            //      moveNext() again.
+            // A resumption from moveNext() lands in case 2 or ends the loop,
+            // and a resumption from the body's own await lands in case 3.
+            final awaitForLoopIndex = currentState.awaitForNodeStack.indexOf(
+              forNode,
+            );
+            final bool isExistingAwaitForLoop = awaitForLoopIndex >= 0;
+
+            if (!isExistingAwaitForLoop) {
+              // ── Case 1: first encounter ───────────────────────────────────
+              Logger.debug("[StateMachine] AwaitForIn: Evaluating stream.");
+              final streamResult = partsIterable!.accept<Object?>(visitor);
+
+              if (streamResult is AsyncSuspensionRequest) {
+                // `await for (x in await f())` — the stream expression itself
+                // suspends. Resuming re-enters this handler, still in case 1.
+                Logger.debug(
+                  "[StateMachine] AwaitForIn stream evaluation suspended. Waiting...",
+                );
+                lastResult = streamResult;
+              } else {
+                Object? streamValue;
+                if (visitor.toBridgedInstance(streamResult).$2) {
+                  final bridgedInstance = visitor
+                      .toBridgedInstance(streamResult)
+                      .$1!;
+                  if (bridgedInstance.nativeObject is Stream) {
+                    streamValue = bridgedInstance.nativeObject;
+                  } else {
+                    throw RuntimeD4rtException(
+                      'Value used in await for-in loop must be a Stream, but got BridgedInstance containing ${bridgedInstance.nativeObject.runtimeType}',
+                    );
+                  }
+                } else if (streamResult is Stream) {
+                  streamValue = streamResult;
+                } else {
+                  throw RuntimeD4rtException(
+                    'Value used in await for-in loop must be a Stream, but got ${streamResult?.runtimeType}',
+                  );
+                }
+
+                if (streamValue is Stream) {
+                  final iterator = StreamIterator<Object?>(streamValue);
+                  currentState.recordLoopEntry(forNode);
+                  currentState.awaitForNodeStack.add(forNode);
+                  currentState.awaitForIteratorStack.add(iterator);
+                  currentState.awaitForHasElementStack.add(false);
+                  // The loop gets its environment and its place on the loop
+                  // stack NOW, before the first element: `break` in the body
+                  // needs to find it (SCD4), and so does the binding below.
+                  _beginAwaitForIteration(currentState, forNode);
+                  currentState.awaitingStreamMoveNext = true;
+                  lastResult = AsyncSuspensionRequest(
+                    iterator.moveNext(),
+                    currentState,
+                  );
+                }
+              }
+            } else {
+              final iterator =
+                  currentState.awaitForIteratorStack[awaitForLoopIndex];
+
+              // A moveNext() has just completed: its bool says whether the
+              // loop continues.
+              if (currentState.awaitingStreamMoveNext) {
+                currentState.awaitingStreamMoveNext = false;
+                final hasElement = currentState.lastAwaitResult == true;
+                currentState.awaitForHasElementStack[awaitForLoopIndex] =
+                    hasElement;
+              }
+
+              if (currentState.awaitForHasElementStack[awaitForLoopIndex]) {
+                // ── Case 2: an element is in hand ──────────────────────────
+                final currentItem = iterator.current;
+                currentState.awaitForHasElementStack[awaitForLoopIndex] = false;
+                if (Logger.isDebug) {
+                  Logger.debug(
+                    "[StateMachine] AwaitForIn: Processing $currentItem (stack level ${currentState.awaitForNodeStack.length})",
+                  );
+                }
+
+                // The loop's environment is the one it pushed on entry, at the
+                // environment depth recorded then.
+                final entryDepths = currentState.loopEntryDepths[forNode];
+                if (entryDepths != null &&
+                    entryDepths.environments <
+                        currentState.loopEnvironmentStack.length) {
+                  visitor.environment = currentState
+                      .loopEnvironmentStack[entryDepths.environments];
+                }
+
+                if (parts is SForEachPartsWithDeclaration) {
+                  // G-DOV-12: define-then-assign, because an async resumption
+                  // can land in an environment where the variable is not yet
+                  // defined.
+                  final varName = _loopVarName(parts.loopVariable);
+                  final boundItem = checkForEachBinding(
+                    visitor.environment,
+                    parts.loopVariable,
+                    currentItem,
+                  );
+                  try {
+                    visitor.environment.assign(varName, boundItem);
+                  } on RuntimeD4rtException {
+                    visitor.environment.define(varName, boundItem);
+                  }
+                } else if (parts is SForEachPartsWithIdentifier) {
+                  visitor.environment.assign(
+                    parts.identifier!.name,
+                    currentItem,
+                  );
+                }
+
+                if (forNode.body is SBlock) {
+                  currentNode = (forNode.body as SBlock).statements.firstOrNull;
+                  // SCE102: an empty body leaves `currentNode` null, and this
+                  // machine's own loop is `while (currentNode != null)` — so it
+                  // would end the FUNCTION, not the loop. Fall back to the loop
+                  // node, which is what SCE19 already does at the do-while entry.
+                  // Re-entering the await-for awaits the next `moveNext`.
+                  currentNode ??= forNode;
+                } else {
+                  currentNode = forNode.body;
+                }
+                currentState.nextStateIdentifier = currentNode;
+                continue; // Let the state machine execute the body.
+              } else if (currentState.lastAwaitResult == false &&
+                  !currentState.awaitingStreamMoveNext) {
+                // ── The stream is done ─────────────────────────────────────
+                if (Logger.isDebug) {
+                  Logger.debug(
+                    "[StateMachine] AwaitForIn: Stream exhausted at stack level ${currentState.awaitForNodeStack.length}.",
+                  );
+                }
+                final entryDepths = currentState.loopEntryDepths[forNode];
+                if (entryDepths != null) {
+                  // Truncation cancels the iterator. Harmless on a stream that
+                  // already ended, and it is the one place that cannot be
+                  // forgotten.
+                  currentState.truncateLoopStacks(entryDepths);
+                }
+                visitor.environment =
+                    currentState.loopEnvironmentStack.isNotEmpty
+                    ? currentState.loopEnvironmentStack.last
+                    : currentState.environment;
+
+                currentNode = _findNextSequentialNode(visitor, forNode);
+                currentState.nextStateIdentifier = currentNode;
+                continue;
+              } else {
+                // ── Case 3: ask for the next element ───────────────────────
+                Logger.debug(
+                  "[StateMachine] AwaitForIn: Requesting next element.",
+                );
+                currentState.awaitingStreamMoveNext = true;
+                lastResult = AsyncSuspensionRequest(
+                  iterator.moveNext(),
+                  currentState,
+                );
+              }
+            }
+          } else {
+            // Regular for-in loop handling
+            // Check if this loop already has an iterator on the stack
+            final loopIndex = currentState.loopNodeStack.indexOf(forNode);
+            Iterator<Object?>? iterator;
+
+            if (Logger.isDebug) {
+              Logger.debug(
+                "[StateMachine] ForIn: Checking for existing loop. loopIndex=$loopIndex, stack size=${currentState.loopNodeStack.length}, forNode hashCode=${forNode.hashCode}",
+              );
+            }
+            if (Logger.isDebug) {
+              Logger.debug(
+                "[StateMachine] ForIn: forInIteratorMap size=${currentState.forInIteratorMap.length}",
+              );
+            }
+            if (currentState.loopNodeStack.isNotEmpty) {
+              if (Logger.isDebug) {
+                Logger.debug(
+                  "[StateMachine] ForIn: Stack nodes hashCodes: ${currentState.loopNodeStack.map((n) => n.hashCode).join(', ')}",
+                );
+              }
+            }
+
+            // Check if iterator exists for this forNode in the map
+            if (currentState.forInIteratorMap.containsKey(forNode)) {
+              // This loop is already initialized, retrieve its iterator
+              iterator = currentState.forInIteratorMap[forNode];
+              if (Logger.isDebug) {
+                Logger.debug(
+                  "[StateMachine] ForIn: Resumed existing loop at index $loopIndex",
+                );
+              }
+            }
+
+            // First time OR node in stack but no iterator yet?
+            if (iterator == null && loopIndex == -1) {
+              // First time seeing this loop - evaluate iterable and create iterator
+              Logger.debug(
+                " [StateMachine] Handling ForIn: Evaluating iterable (first time).",
+              );
+              final iterableResult = partsIterable!.accept<Object?>(visitor);
+
+              // Handle if the iterable evaluation is suspended
+              if (iterableResult is AsyncSuspensionRequest) {
+                Logger.debug(
+                  "[StateMachine] ForIn iterable suspended. Waiting...",
+                );
+                lastResult = iterableResult;
+                // The suspension logic below will handle it.
+              } else if (iterableResult is Iterable) {
+                iterator = iterableResult.iterator;
+                currentState.currentForInIterator =
+                    iterator; // Save the iterator (keep for compatibility)
+                // Add node and iterator to map/stack immediately
+                currentState.recordLoopEntry(forNode);
+                currentState.loopNodeStack.add(forNode);
+                currentState.forInIteratorMap[forNode] = iterator;
+                if (Logger.isDebug) {
+                  Logger.debug(
+                    "[StateMachine] ForIn: Iterator created and added to stacks at index ${currentState.loopNodeStack.length - 1}",
+                  );
+                }
+              } else {
+                throw RuntimeD4rtException(
+                  "The value iterate over in a for-in loop must be an Iterable, but got ${iterableResult?.runtimeType}.",
+                );
+              }
+            }
+
+            // If we have an iterator (either created or resumed), we continue the loop
+            if (iterator != null && lastResult is! AsyncSuspensionRequest) {
+              bool hasNext;
+              try {
+                hasNext = iterator.moveNext();
+              } catch (e, s) {
+                Logger.warn(
+                  "[StateMachine] Error during iterator.moveNext(): $e\n$s",
+                );
+                throw RuntimeD4rtException("Error during iteration: $e");
+              }
+
+              if (hasNext) {
+                // Next item available
+                final currentItem = iterator.current;
+                if (Logger.isDebug) {
+                  Logger.debug(
+                    "[StateMachine] ForIn: Got next item: $currentItem",
+                  );
+                }
+
+                if (parts is SForEachPartsWithDeclaration) {
+                  final loopVariable = parts.loopVariable;
+                  // Find the environment for this loop
+                  final loopIndex = currentState.loopNodeStack.indexOf(forNode);
+                  // Check if environment exists at this index
+                  if (loopIndex >= 0 &&
+                      loopIndex < currentState.loopEnvironmentStack.length) {
+                    // Environment already exists, use it and assign the variable
+                    visitor.environment =
+                        currentState.loopEnvironmentStack[loopIndex];
+                    // Assign (not define) the loop variable for the current iteration
+                    currentState.loopEnvironmentStack[loopIndex].assign(
+                      _loopVarName(loopVariable),
+                      checkForEachBinding(
+                        visitor.environment,
+                        loopVariable,
+                        currentItem,
+                      ),
+                    );
+                  } else {
+                    // Environment doesn't exist yet - create it
+                    // Note: node and iterator were already added to stacks above
+                    // ghissues63: the scope at the loop's position.
+                    final parentEnv = _scopeFor(currentState, forNode);
+                    final newLoopEnvironment = Environment(
+                      enclosing: parentEnv,
+                    );
+                    currentState.forLoopEnvironment = newLoopEnvironment;
+                    currentState.loopEnvironmentStack.add(newLoopEnvironment);
+                    visitor.environment = newLoopEnvironment;
+                    // Define the loop variable in this environment
+                    newLoopEnvironment.define(
+                      _loopVarName(loopVariable),
+                      checkForEachBinding(
+                        newLoopEnvironment,
+                        loopVariable,
+                        currentItem,
+                      ),
+                    );
+                    if (Logger.isDebug) {
+                      Logger.debug(
+                        "[StateMachine] ForIn: Created environment at index ${currentState.loopEnvironmentStack.length - 1}",
+                      );
+                    }
+                  }
+                } else if (parts is SForEachPartsWithIdentifier) {
+                  // No declaration, assign in the current environment
+                  currentState.environment.assign(
+                    parts.identifier!.name,
+                    currentItem,
+                  );
+                  // Ensure we don't use a residual loop environment
+                  currentState.forLoopEnvironment = null;
+                  visitor.environment = currentState.environment;
+                } else {
+                  throw StateD4rtException(
+                    "Unknown ForEachParts type: \\${parts.runtimeType}",
+                  );
+                }
+
+                // The next state is the body of the loop
+                if (Logger.isDebug) {
+                  Logger.debug(
+                    "[StateMachine] ForIn: Next node is body: \\${forNode.body.runtimeType}",
+                  );
+                }
+                if (forNode.body is SBlock) {
+                  currentNode = (forNode.body as SBlock).statements.firstOrNull;
+                  // SCE102: an empty body leaves `currentNode` null, and this
+                  // machine's own loop is `while (currentNode != null)` — so it
+                  // would end the FUNCTION, not the loop. Fall back to the loop
+                  // node, which is what SCE19 already does at the do-while entry.
+                  // Re-entering the for-in advances the iterator.
+                  currentNode ??= forNode;
+                } else {
+                  currentNode = forNode.body;
+                }
+                currentState.nextStateIdentifier = currentNode;
+                continue; // Restart the state machine loop with the beginning of the body
+              } else {
+                // End of iteration
+                if (Logger.isDebug) {
+                  Logger.debug(
+                    "[StateMachine] ForIn: Iteration finished. Finding node after loop. (forNode: \\${forNode.runtimeType}, env: \\${visitor.environment.hashCode})",
+                  );
+                }
+                currentState.currentForInIterator = null; // Clean the iterator
+                // Clean the loop environment if it existed
+                currentState.forLoopEnvironment = null;
+                // Remove from stacks and map
+                final loopIndex = currentState.loopNodeStack.indexOf(forNode);
+                if (loopIndex >= 0) {
+                  currentState.loopNodeStack.removeAt(loopIndex);
+                  if (loopIndex < currentState.loopEnvironmentStack.length) {
+                    currentState.loopEnvironmentStack.removeAt(loopIndex);
+                  }
+                  currentState.forInIteratorMap.remove(forNode);
+                }
+                visitor.environment = currentState.environment;
+                currentNode = _findNextSequentialNode(visitor, forNode);
+                if (Logger.isDebug) {
+                  Logger.debug(
+                    "[StateMachine] ForIn: After _findNextSequentialNode, currentNode: \\${currentNode?.runtimeType}",
+                  );
+                }
+                currentState.nextStateIdentifier = currentNode;
+                continue; // Restart the state machine loop
+              }
+            }
+            // If the iterable evaluation was suspended, lastResult contains
+            // AsyncSuspensionRequest and will be handled by the logic below.
+          } // End of else block for regular for-in loops
+        } else if (currentNode is SForStatement &&
+            (currentNode.forLoopParts is SForPartsWithDeclarations ||
+                currentNode.forLoopParts is SForPartsWithExpression)) {
+          final forNode = currentNode;
+          final parts = forNode.forLoopParts;
+          bool cameFromBody = false; // Flag to know if we came from the body
+
+          // Check if this SForStatement is already on the stack (returning to existing loop)
+          // vs a new nested SForStatement (needs initialization)
+          bool isExistingLoop =
+              currentState.loopNodeStack.isNotEmpty &&
+              currentState.loopNodeStack.contains(forNode);
+
+          bool currentLoopInitialized = false;
+          if (isExistingLoop) {
+            // This is a return to an existing loop, check its initialization status
+            currentLoopInitialized =
+                currentState.loopInitializedStack.isNotEmpty
+                ? currentState.loopInitializedStack.last
+                : currentState.forLoopInitialized;
+
+            if (currentState.loopEnvironmentStack.isNotEmpty &&
+                currentLoopInitialized &&
+                !currentState.resumedFromInitializer) {
+              // We came from the body if the env exists, is initialized, and we didn't resume from the initializer
+              cameFromBody = true;
+            }
+          }
+          // Reset the flag after having used it
+          currentState.resumedFromInitializer = false;
+
+          if (!currentLoopInitialized) {
+            Logger.debug(" [StateMachine] Handling For: Initializing.");
+            // Create the loop environment once using the currently active environment as parent
+            final newLoopEnvironment = Environment(
+              enclosing: visitor.environment,
+            );
+            currentState.forLoopEnvironment = newLoopEnvironment;
+            currentState.recordLoopEntry(forNode);
+            // Push the new environment, initialization state, and SForStatement node onto the stacks
+            currentState.loopEnvironmentStack.add(newLoopEnvironment);
+            currentState.loopInitializedStack.add(
+              false,
+            ); // Start as uninitialized
+            currentState.loopNodeStack.add(
+              forNode,
+            ); // Track which SForStatement this corresponds to
+            visitor.environment = newLoopEnvironment;
+
+            SAstNode? initNode;
+            if (parts is SForPartsWithDeclarations) {
+              initNode = parts.variables;
+            } else if (parts is SForPartsWithExpression) {
+              initNode = parts.initialization;
+            }
+
+            if (initNode != null) {
+              lastResult = initNode.accept<Object?>(
+                visitor,
+              ); // Execute in forLoopEnvironment
+
+              if (lastResult is AsyncSuspensionRequest) {
+                // Suspended during initialization
+                Logger.debug(
+                  "[StateMachine] For loop initialization suspended. Will resume.",
+                );
+                // Mark as initialized so the suspension logic will resume
+                if (currentState.loopInitializedStack.isNotEmpty) {
+                  currentState.loopInitializedStack[currentState
+                              .loopInitializedStack
+                              .length -
+                          1] =
+                      true;
+                } else {
+                  currentState.forLoopInitialized = true;
+                }
+                // Leave lastResult as is, the general suspension logic will handle it
+                // Do NOT continue to the condition or updaters now.
+                // The 'finally' will restore the env, and the .then() will restart _runStateMachine.
+              } else {
+                // Synchronous initialization completed
+                if (currentState.loopInitializedStack.isNotEmpty) {
+                  currentState.loopInitializedStack[currentState
+                              .loopInitializedStack
+                              .length -
+                          1] =
+                      true;
+                } else {
+                  currentState.forLoopInitialized = true;
+                }
+                cameFromBody = false; // Do NOT go to updaters
+                // Continue to the condition IN THIS SAME ITERATION of the loop
+              }
+            } else {
+              // No initialization
+              if (currentState.loopInitializedStack.isNotEmpty) {
+                currentState.loopInitializedStack[currentState
+                            .loopInitializedStack
+                            .length -
+                        1] =
+                    true;
+              } else {
+                currentState.forLoopInitialized = true;
+              }
+              cameFromBody = false;
+            }
+            // Do NOT restore the environment here, we will need it for the condition/updaters
+            // visitor.environment = currentState.environment; // Do NOT restore here
+          }
+
+          // Runs only if we are not suspended by the initialization
+          bool currentLoopInitialized2 =
+              currentState.loopInitializedStack.isNotEmpty
+              ? currentState.loopInitializedStack.last
+              : currentState.forLoopInitialized;
+          if (cameFromBody &&
+              currentLoopInitialized2 &&
+              lastResult is! AsyncSuspensionRequest) {
+            Logger.debug(" [StateMachine] Handling For: Running updaters.");
+            // Use the current loop environment from the stack
+            if (currentState.loopEnvironmentStack.isNotEmpty) {
+              visitor.environment = currentState.loopEnvironmentStack.last;
+              if (Logger.isDebug) {
+                Logger.debug(
+                  " [DEBUG] Updater: Using stack environment ${currentState.loopEnvironmentStack.last.hashCode}, stack depth: ${currentState.loopEnvironmentStack.length}",
+                );
+              }
+            } else {
+              visitor.environment = currentState.forLoopEnvironment!;
+              if (Logger.isDebug) {
+                Logger.debug(
+                  " [DEBUG] Updater: Using fallback forLoopEnvironment ${currentState.forLoopEnvironment!.hashCode}",
+                );
+              }
+            }
+
+            // Debug: check what variables are available in the current environment
+            try {
+              final envVars = <String>[];
+              Environment? currentEnv = visitor.environment;
+              while (currentEnv != null) {
+                envVars.add(
+                  "Env ${currentEnv.hashCode}: ${currentEnv.values.keys.join(', ')}",
+                );
+                currentEnv = currentEnv.enclosing;
+              }
+              if (Logger.isDebug) {
+                Logger.debug(
+                  " [DEBUG] Environment chain: ${envVars.join(' -> ')}",
+                );
+              }
+            } catch (e) {
+              if (Logger.isDebug) {
+                Logger.debug(" [DEBUG] Error checking environment chain: $e");
+              }
+            }
+            List<SAstNode>? updaters;
+            if (parts is SForPartsWithDeclarations) {
+              updaters = parts.updaters;
+            } else if (parts is SForPartsWithExpression) {
+              updaters = parts.updaters;
+            }
+
+            if (updaters != null) {
+              for (final updateExpr in updaters) {
+                lastResult = updateExpr.accept<Object?>(
+                  visitor,
+                ); // Execute in forLoopEnvironment
+                if (lastResult is AsyncSuspensionRequest) {
+                  // Suspended during the update
+                  Logger.debug("[StateMachine] For loop updater suspended.");
+                  // Keep the environment for the suspension logic
+                  break; // Exit the updaters loop, the suspension will be handled
+                }
+              }
+            }
+            // Do NOT restore the environment here, we will need it for the condition
+            // visitor.environment = currentState.environment;
+            // After the updaters (or if there are no updaters), we go to the condition
+            cameFromBody =
+                false; // Do NOT consider we came from the body for the condition
+          }
+
+          // Condition (if initialized and not suspended during init/updater)\
+          // Runs after init (if sync) or after updater (if sync)
+          bool currentLoopInitialized3 =
+              currentState.loopInitializedStack.isNotEmpty
+              ? currentState.loopInitializedStack.last
+              : currentState.forLoopInitialized;
+          if (currentLoopInitialized3 &&
+              lastResult is! AsyncSuspensionRequest) {
+            Logger.debug(" [StateMachine] Handling For: Evaluating condition.");
+            // Use the current loop environment from the stack
+            if (currentState.loopEnvironmentStack.isNotEmpty) {
+              visitor.environment = currentState.loopEnvironmentStack.last;
+            } else {
+              visitor.environment = currentState.forLoopEnvironment!;
+            }
+            SAstNode? condition;
+            if (parts is SForPartsWithDeclarations) {
+              condition = parts.condition;
+            } else if (parts is SForPartsWithExpression) {
+              condition = parts.condition;
+            }
+
+            bool conditionValue = true; // The condition is true if absent
+            if (condition != null) {
+              lastResult = condition.accept<Object?>(
+                visitor,
+              ); // Execute in forLoopEnvironment
+              if (lastResult is AsyncSuspensionRequest) {
+                // Suspended during the condition
+                Logger.debug("[StateMachine] For loop condition suspended.");
+                // ghissues62: resumed by re-evaluating the condition.
+                currentState.forConditionsSuspended.add(forNode);
+                // Keep the environment for the suspension logic
+              } else if (lastResult is bool) {
+                _endReplayedEvaluation(currentState);
+                conditionValue = lastResult;
+              } else {
+                // Restore the environment before throwing the error
+                visitor.environment = currentState.environment;
+                throw RuntimeD4rtException(
+                  "For loop condition must be a boolean, but got ${lastResult?.runtimeType}",
+                );
+              }
+            }
+            // Do NOT restore the environment here if we continue in the body
+
+            // Decision based on the condition (if not suspended)\
+            if (lastResult is! AsyncSuspensionRequest) {
+              if (conditionValue) {
+                // Condition true: the next state is the body
+                if (Logger.isDebug) {
+                  Logger.debug(
+                    "[StateMachine] For condition TRUE. Next node is body: ${forNode.body.runtimeType}",
+                  );
+                }
+                // The loop environment remains active for the body execution
+                if (forNode.body is SBlock) {
+                  currentNode = (forNode.body as SBlock).statements.firstOrNull;
+                } else {
+                  currentNode = forNode.body;
+                }
+                // If the body is empty, we loop directly to the updaters
+                if (currentNode == null) {
+                  Logger.debug(
+                    "[StateMachine] For loop body is empty. Proceeding to updaters/condition.",
+                  );
+                  // Simulate that we came from the body to trigger the updaters
+                  visitor.environment =
+                      currentState.environment; // Restore before continuing
+                  // SCE102: this branch had the intent and not the assignment.
+                  // `continue` re-tests `while (currentNode != null)` with
+                  // `currentNode` still null, so the machine exited here and
+                  // the function returned the condition it had just evaluated.
+                  // Setting the state identifier alone is half a fix, and at
+                  // the call site it reads exactly like a whole one.
+                  currentNode = forNode; // Go back to the SForStatement
+                  currentState.nextStateIdentifier = forNode;
+                  continue;
+                } else {
+                  currentState.nextStateIdentifier = currentNode;
+                  // Do NOT restore the environment, the body will execute in it
+                  continue; // Restart the state machine loop with the body
+                }
+              } else {
+                // Condition false: exit the loop
+                Logger.debug(
+                  "[StateMachine] For condition FALSE. Finding node after loop.",
+                );
+                // Clean the loop state and pop from all stacks
+                if (currentState.loopInitializedStack.isNotEmpty) {
+                  currentState.loopInitializedStack.removeLast();
+                } else {
+                  currentState.forLoopInitialized = false;
+                }
+                currentState.forLoopEnvironment = null;
+                if (currentState.loopEnvironmentStack.isNotEmpty) {
+                  currentState.loopEnvironmentStack.removeLast();
+                }
+                if (currentState.loopNodeStack.isNotEmpty) {
+                  currentState.loopNodeStack.removeLast();
+                }
+                visitor.environment =
+                    currentState.environment; // Restore the environment
+                currentNode = _findNextSequentialNode(visitor, forNode);
+                currentState.nextStateIdentifier = currentNode;
+                continue; // Restart the state machine loop with the next node
+              }
+            }
+          }
+          // If suspended (lastResult is AsyncSuspensionRequest), the general suspension logic takes over.
+          // The visitor environment must be restored in the finally of the main loop.
+        } else if (currentNode is SLabeledStatement) {
+          // Step into the labelled statement so a labelled loop runs here, in
+          // the state machine, like an unlabelled one. Accepting it whole
+          // would hand the loop to the synchronous visitor, which cannot
+          // suspend on an `await` in its body. The label needs no bookkeeping:
+          // `_jumpTarget` reads it from the AST.
+          currentNode =
+              currentNode.statement ??
+              _findNextSequentialNode(visitor, currentNode);
+          currentState.nextStateIdentifier = currentNode;
+          continue;
+        } else if (currentNode is SBlock) {
+          // SCD42: step into a bare block, for the same reason as the labelled
+          // statement above and exactly as the if / for / while bodies already
+          // do a few branches down. Accepting it whole hands it to
+          // `visitBlock`, which opens a CHILD environment and runs the
+          // statements synchronously -- so an `await` inside suspends, the
+          // machine resumes at a statement *inside* the block, and that child
+          // environment is gone. A local declared in the block then reports
+          // `Undefined variable`, which is what `{ var log = [];
+          // log.add(await f()); }` did.
+          //
+          // Stepping in gives the block's declarations the block's own
+          // environment ([_blockEnvironmentFor], ghissues63), as every block
+          // the machine steps into gets: the machine flattens the statement
+          // tree, and the scopes are recovered structurally.
+          final blockNode = currentNode;
+          currentNode =
+              blockNode.statements.firstOrNull ??
+              _findNextSequentialNode(visitor, blockNode);
+          currentState.nextStateIdentifier = currentNode;
+          continue;
+        } else if (currentNode is STryStatement) {
+          // When entering a STryStatement, register it
+          currentState.activeTryStatement = currentNode;
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[StateMachine] Entering STryStatement: ${currentNode.offset}. Proceeding to body.",
+            );
+          }
+          // The next state is the first instruction of the try block
+          currentNode = currentNode.body!.statements.firstOrNull;
+          // If the try block is empty, find the next node after the try
+          if (currentNode == null) {
+            Logger.debug(
+              " [StateMachine] Try block is empty. Finding node after STryStatement.",
+            );
+            // Is there a finally? If yes, go to it.
+            if (currentState.activeTryStatement?.finallyBlock != null) {
+              Logger.debug(
+                "[StateMachine] Empty try block, jumping to finally.",
+              );
+              currentState.pendingFinallyBlock =
+                  currentState.activeTryStatement!.finallyBlock;
+              currentNode =
+                  currentState.pendingFinallyBlock!.statements.firstOrNull;
+              currentState.pendingFinallyBlock =
+                  null; // Le finally est maintenant en cours
+            } else {
+              // No finally, find the node after the Try
+              currentNode = _findNextSequentialNode(
+                visitor,
+                currentState.activeTryStatement!,
+              );
+              currentState.activeTryStatement = null; // End of try
+            }
+          }
+          currentState.nextStateIdentifier = currentNode;
+          continue; // Continue with the first state of the try (or finally or after)
+        } else if (currentNode is SIfStatement) {
+          final ifNode = currentNode;
+          Logger.debug("[StateMachine] Handling SIfStatement condition.");
+          // Evaluate the condition
+          Object? conditionResult = ifNode.condition!.accept<Object?>(visitor);
+          // ghissues62: an if-case matches its pattern (and guard) against
+          // the value; its variables are bound in an environment its then
+          // branch runs in ([AsyncExecutionState.caseEnvironments]). It was
+          // read as a plain condition: "If condition must evaluate to a
+          // boolean, but got int".
+          final caseClause = ifNode.caseClause;
+          if (caseClause != null &&
+              conditionResult is! AsyncSuspensionRequest) {
+            final caseEnvironment = Environment(enclosing: visitor.environment);
+            conditionResult = visitor.matchCaseClause(
+              caseClause,
+              conditionResult,
+              caseEnvironment,
+            );
+            if (conditionResult == true) {
+              currentState.caseEnvironments[ifNode] = caseEnvironment;
+            }
+          }
+
+          if (conditionResult is AsyncSuspensionRequest) {
+            // The condition is asynchronous, suspend
+            Logger.debug(" [StateMachine] If condition suspended. Waiting...");
+            lastResult =
+                conditionResult; // Update lastResult for the processing below
+            // The general suspension logic will handle the await and resume
+          } else if (conditionResult is bool) {
+            _endReplayedEvaluation(currentState);
+            // Synchronous condition
+            if (conditionResult) {
+              // Condition true: the next state is the 'then' branch
+              if (Logger.isDebug) {
+                Logger.debug(
+                  "[StateMachine] If condition TRUE. Next node is thenBranch: ${ifNode.thenStatement.runtimeType}",
+                );
+              }
+              // If then is a block, take the first instruction
+              if (ifNode.thenStatement is SBlock) {
+                currentNode =
+                    (ifNode.thenStatement as SBlock).statements.firstOrNull;
+              } else {
+                currentNode = ifNode.thenStatement;
+              }
+              // If the 'then' branch is empty, go to the next instruction
+              if (currentNode == null) {
+                Logger.debug(
+                  "[StateMachine] If 'then' branch is empty. Finding node after SIfStatement.",
+                );
+                currentNode = _findNextSequentialNode(visitor, ifNode);
+              }
+              currentState.nextStateIdentifier = currentNode;
+              continue; // Restart the state machine loop with the new node
+            } else {
+              // Condition false: check the 'else' branch
+              if (ifNode.elseStatement != null) {
+                if (Logger.isDebug) {
+                  Logger.debug(
+                    "[StateMachine] If condition FALSE. Next node is elseBranch: ${ifNode.elseStatement?.runtimeType}",
+                  );
+                }
+                // If else is a block, take the first instruction
+                if (ifNode.elseStatement is SBlock) {
+                  currentNode =
+                      (ifNode.elseStatement as SBlock).statements.firstOrNull;
+                } else {
+                  currentNode = ifNode.elseStatement;
+                }
+                // If the 'else' branch is empty, go to the next instruction
+                if (currentNode == null) {
+                  Logger.debug(
+                    "[StateMachine] If 'else' branch is empty. Finding node after SIfStatement.",
+                  );
+                  currentNode = _findNextSequentialNode(visitor, ifNode);
+                }
+              } else {
+                // No 'else' branch, find the next instruction after the if
+                Logger.debug(
+                  "[StateMachine] If condition FALSE, no else branch. Finding node after SIfStatement.",
+                );
+                currentNode = _findNextSequentialNode(visitor, ifNode);
+              }
+              currentState.nextStateIdentifier = currentNode;
+              continue; // Restart the state machine loop
+            }
+          } else {
+            // The condition did not return a boolean or a suspension
+            throw RuntimeD4rtException(
+              "If condition must evaluate to a boolean, but got ${conditionResult?.runtimeType}.",
+            );
+          }
+          // If the condition was suspended, lastResult contains AsyncSuspensionRequest
+          // and will be handled by the suspension logic below.
+        } else {
+          if (currentNode is SReturnStatement) {
+            try {
+              final checkX = visitor.environment.get('x');
+              if (Logger.isDebug) {
+                Logger.debug(
+                  "[StateMachine] BEFORE ACCEPT SReturnStatement: env=${visitor.environment.hashCode}, x=$checkX (${checkX?.runtimeType})",
+                );
+              }
+            } catch (_) {
+              /* ignore if x not defined */
+            }
+          } else if (currentNode is SSimpleIdentifier &&
+              currentNode.name == 'x') {
+            try {
+              final checkX = visitor.environment.get('x');
+              if (Logger.isDebug) {
+                Logger.debug(
+                  "[StateMachine] BEFORE ACCEPT SSimpleIdentifier('x'): env=${visitor.environment.hashCode}, x=$checkX (${checkX?.runtimeType})",
+                );
+              }
+            } catch (_) {
+              /* ignore */
+            }
+          }
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[StateMachine] About to accept node ${currentNode.runtimeType}. Visitor env: ${visitor.environment.hashCode}, State env: ${currentState.environment.hashCode}",
+            );
+          }
+          try {
+            lastResult = currentNode.accept<Object?>(visitor);
+          } on ReturnException {
+            rethrow; // Re-throw to be caught by the ReturnException catch below
+          } on BreakException {
+            rethrow; // Propagate to the outer catch
+          } on ContinueException {
+            rethrow; // Propagate to the outer catch
+          } catch (error, stackTrace) {
+            if (error is InternalInterpreterD4rtException) {
+              // This is a thrown exception (from throw statement). Try to handle it.
+              Logger.debug(
+                " [StateMachine] Caught InternalInterpreterException from accept(). Attempting to handle with try/catch.",
+              );
+              // Store the error and try to find a catch block
+              currentState.currentError = error;
+              currentState.currentStackTrace = stackTrace;
+              _handleAsyncError(visitor, currentState, currentNode);
+              return; // Stop this iteration, _handleAsyncError will reschedule if caught
+            } else {
+              // Standard synchronous error during accept(): store and try to handle
+              if (Logger.isDebug) {
+                Logger.debug(
+                  " [StateMachine] Caught standard SYNC error during accept(): $error",
+                );
+              }
+              currentState.currentError = error;
+              currentState.currentStackTrace = stackTrace;
+              _handleAsyncError(visitor, currentState, currentNode);
+              return; // Exit, _handleAsyncError will take care of the rest
+            }
+          }
+        }
+
+        // Analyze the result (can come from accept() or from condition evaluation in while)
+        if (lastResult is AsyncSuspensionRequest) {
+          // Check if accept() returned a suspension
+          final AsyncSuspensionRequest suspension = lastResult;
+
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[StateMachine] Suspension requested (from ${currentNode.runtimeType}). Waiting for Future...",
+            );
+          }
+
+          // Attach the callbacks to the Future
+          suspension.future
+              .then((futureResult) {
+                if (Logger.isDebug) {
+                  Logger.debug(
+                    " [StateMachine] Future completed successfully with: $futureResult",
+                  );
+                }
+                // SCC12: this callback runs *after* the state machine loop's own
+                // `finally` has restored `visitor.currentAsyncState`, so by the time
+                // we get here the field is stale — null, for the outermost async
+                // function. Everything below acts on behalf of `currentState`, and
+                // parts of it read that field back: `_findNextSequentialNode` only
+                // clears `activeTryStatement` when it can see a state, and
+                // `_determineNextNodeAfterAwait` re-executes AST nodes that may
+                // suspend again. With the field null, a finally block whose *last*
+                // statement was an `await` never un-marked its enclosing try, so the
+                // `return` that followed the try was diverted back into the finally,
+                // ran it again, suspended again — for ever. Re-assert the invariant
+                // that while we are working for state S the visitor's current async
+                // state is S.
+                final previousAsyncStateForResumption =
+                    visitor.currentAsyncState;
+                visitor.currentAsyncState = currentState;
+                try {
+                  // Update the state with the result
+                  currentState.lastAwaitResult = futureResult;
+                  // SCC40: also file it against the await site it belongs to, so
+                  // re-evaluating the statement replays this value at THIS await
+                  // and keeps suspending at the ones not yet reached.
+                  final resolvedAwaitNode = suspension.awaitNode;
+                  if (resolvedAwaitNode != null) {
+                    currentState.resolvedAwaitResults[resolvedAwaitNode] =
+                        futureResult;
+                  }
+                  currentState.lastAwaitError = null;
+                  currentState.lastAwaitStackTrace = null;
+                  currentState.currentError =
+                      null; // Clear any previous error state
+                  currentState.currentStackTrace = null;
+
+                  if (currentState.pendingFinallyBlock != null) {
+                    Logger.debug(
+                      "[StateMachine] Resuming after await, pending finally found. Executing finally block first.",
+                    );
+                    // The next state is the beginning of the finally block
+                    final finallyBlock = currentState.pendingFinallyBlock!;
+                    currentState.pendingFinallyBlock = null; // Consumed
+                    currentState.nextStateIdentifier =
+                        finallyBlock.statements.firstOrNull;
+                    if (currentState.nextStateIdentifier == null) {
+                      // The finally block is empty, find the node after the try
+                      Logger.debug(
+                        "[StateMachine] Pending finally block was empty. Finding node after STryStatement.",
+                      );
+                      if (currentState.activeTryStatement != null) {
+                        currentState.nextStateIdentifier =
+                            _findNextSequentialNode(
+                              visitor,
+                              currentState.activeTryStatement!,
+                            );
+                        currentState.activeTryStatement =
+                            null; // End of try handling
+                      } else {
+                        Logger.warn(
+                          "[StateMachine] Cannot find node after empty finally block without active STryStatement.",
+                        );
+                        currentState.nextStateIdentifier = null; // Safe stop
+                      }
+                    }
+                    _scheduleStateMachineRun(visitor, currentState);
+                    return; // Do not determine the next normal node
+                  }
+
+                  // Determine the next state based on the AST context
+                  SAstNode? nextNodeAfterAwait;
+
+                  if (suspension.isYieldSuspension) {
+                    // For yield suspensions, simply continue with the next sequential node
+                    nextNodeAfterAwait = _findNextSequentialNode(
+                      visitor,
+                      currentNode!,
+                    ); // The SYieldStatement that caused the suspension
+                    if (Logger.isDebug) {
+                      Logger.debug(
+                        "[StateMachine] Yield suspension completed. Next node: ${nextNodeAfterAwait?.runtimeType}",
+                      );
+                    }
+                  } else {
+                    // For await suspensions, use the complex await logic
+                    currentState.resumingStatementHasMoreAwaits = false;
+                    nextNodeAfterAwait = _determineNextNodeAfterAwait(
+                      visitor,
+                      currentState,
+                      currentNode!,
+                    ); // The node that caused the suspension
+                    // SCC40: the per-site cache is scoped to ONE evaluation of
+                    // the suspended statement. Once that evaluation is done the
+                    // entries must go, because a loop body re-enters the
+                    // identical AST node and would otherwise replay the previous
+                    // iteration's value.
+                    if (!currentState.resumingStatementHasMoreAwaits) {
+                      currentState.clearStatementReplay();
+                    }
+                  }
+
+                  currentState.nextStateIdentifier = nextNodeAfterAwait;
+
+                  // Reschedule the state machine execution
+                  _scheduleStateMachineRun(visitor, currentState);
+                } finally {
+                  visitor.currentAsyncState = previousAsyncStateForResumption;
+                }
+              })
+              .catchError((Object error, StackTrace stackTrace) {
+                if (Logger.isDebug) {
+                  Logger.debug(
+                    " [StateMachine] Future completed with ERROR: $error",
+                  ); // Do not display stackTrace here, too long
+                }
+                // Store the error and stack trace in the state
+                currentState.lastAwaitError =
+                    error; // For info if someone uses it
+                currentState.lastAwaitStackTrace = stackTrace;
+                currentState.currentError = error; // Active error to handle
+                currentState.currentStackTrace = stackTrace;
+                currentState.lastAwaitResult = null; // No valid result
+
+                // Try to handle the error (find catch/finally)
+                _handleAsyncError(visitor, currentState, currentNode!);
+                // _handleAsyncError will either find a catch/finally and reschedule,
+                // or complete the completer with the error.
+              });
+
+          // IMPORTANT: Exit the _runStateMachine function.
+          // Execution will resume in the .then() or _handleAsyncError
+          return;
+        } else {
+          // Clear error state if we executed successfully
+          currentState.currentError = null;
+          currentState.currentStackTrace = null;
+
+          // SCD121: a statement that was being re-run to replay its resolved
+          // await sites has now completed without suspending, so that
+          // evaluation is over and its per-site cache must go. SCC40 scoped
+          // this cache to ONE evaluation of ONE statement for a reason: a loop
+          // body re-enters the identical AST node, and a surviving entry would
+          // replay the previous iteration's value. The await callback clears it
+          // on the routes that finish inside `_determineNextNodeAfterAwait`
+          // (`return` completes there by returning null); a declaration
+          // finishes HERE instead, by being executed, so this is the only place
+          // that can see it end.
+          if (currentState.resumingStatementHasMoreAwaits) {
+            currentState.resumingStatementHasMoreAwaits = false;
+            currentState.clearStatementReplay();
+          }
+
+          // Determine the next sequential normal state
+          // Use _findNextSequentialNode which now handles try/catch/finally
+          final nextNode = _findNextSequentialNode(visitor, currentNode);
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[StateMachine] Sync execution finished. Next node from _findNext: ${nextNode?.runtimeType}",
+            );
+          }
+          currentNode = nextNode;
+          currentState.nextStateIdentifier = currentNode;
+        }
+      } on ReturnException catch (e) {
+        // SCF6: a return replaces any break / continue still waiting for the
+        // finallys it crossed — Dart's rule for an abrupt completion raised
+        // inside a finally.
+        currentState.pendingJump = null;
+        // The function returned a value
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [StateMachine] Caught ReturnException. Completing with: ${e.value}",
+          );
+        }
+        // SCE139: a `return` whose expression held awaits finishes by throwing
+        // from HERE, not through the `else` branch above, so this is the only
+        // place that can see that evaluation end. The per-site cache is scoped
+        // to one evaluation (SCC40) and must not outlive it — a finally block
+        // this return is about to be diverted into keeps the state running.
+        if (currentState.resumingStatementHasMoreAwaits) {
+          currentState.resumingStatementHasMoreAwaits = false;
+          currentState.clearStatementReplay();
+        }
+        STryStatement? currentTry =
+            currentState.activeTryStatement; // Use currentState
+        // SCE78: a return issued BY this try's own finally, rather than held
+        // FOR it.
+        //
+        // The branch below stores the value and jumps to the finally's first
+        // statement so the finally runs before the function completes. When the
+        // `return` is written INSIDE that same finally, `activeTryStatement` is
+        // still this try, so the jump went back to the top of the block that
+        // had just issued the return — and did it again, forever. That is why
+        // `try { throw StateError('x'); } finally { return 5; }` hung the async
+        // path while the synchronous path answered 5.
+        //
+        // Dart's rule is that the finally's abrupt completion REPLACES whatever
+        // the try body was doing, so the pending exception is discarded and the
+        // value is the function's result. The finally has already run — we are
+        // standing in it — so there is nothing left to run before completing.
+        //
+        // Structural, per SCD41's recorded decision and the way SCD43 fixed the
+        // error half of this: whether the return sits inside this try's finally
+        // is a property of the AST, not of what else has run, so it needs no
+        // new field on `AsyncExecutionState`.
+        if (currentTry != null &&
+            currentTry.finallyBlock != null &&
+            _isInsideFinallyBlockOf(currentNode, currentTry)) {
+          currentState.isHandlingErrorForRethrow = false;
+          currentState.originalErrorForRethrow = null;
+          currentState.currentError = null;
+          currentState.currentStackTrace = null;
+          currentState.returnAfterFinally = null;
+
+          // The return still has to leave through any ENCLOSING try's finally,
+          // exactly as SCD43's error half continues its search outside the try
+          // whose finally raised. Completing here instead was measurably wrong:
+          // `try { try { throw X } finally { return 1; } } finally { return 2; }`
+          // answered 1 where Dart answers 2, because the outer finally never
+          // ran and so never issued the return that replaces it.
+          STryStatement? outer = _findEnclosingTryStatement(
+            _parentOf(currentTry),
+          );
+          while (outer != null &&
+              (outer.finallyBlock == null ||
+                  outer.finallyBlock!.statements.isEmpty)) {
+            outer = _findEnclosingTryStatement(_parentOf(outer));
+          }
+          if (outer != null) {
+            currentState.returnAfterFinally = e.value;
+            currentState.activeTryStatement = outer;
+            currentNode = outer.finallyBlock!.statements.firstOrNull;
+            currentState.nextStateIdentifier = currentNode;
+            continue;
+          }
+
+          if (!currentState.completer.isCompleted) {
+            currentState.completer.complete(e.value);
+          }
+          return;
+        }
+        if (currentTry != null && currentTry.finallyBlock != null) {
+          // Check currentTry != null
+          Logger.debug(
+            "[StateMachine] Return caught inside try with finally. Executing finally first.",
+          );
+          currentState.returnAfterFinally = e.value; // Use currentState
+          // Reset rethrow state if jumping to finally
+          currentState.isHandlingErrorForRethrow = false;
+          currentState.originalErrorForRethrow = null;
+          currentNode =
+              currentTry.finallyBlock!.statements.firstOrNull; // Now sure
+          currentState.nextStateIdentifier = currentNode; // Use currentState
+          continue; // Execute the finally
+        }
+        if (!currentState.completer.isCompleted) {
+          currentState.completer.complete(e.value);
+        }
+        return; // Stop the state machine
+      } on BreakException catch (e) {
+        // SCD4: the statement a break leaves is found in the AST, not taken
+        // from the top of a stack — see `_jumpTarget`.
+        final from = currentNode!;
+        final target = _jumpTarget(from, e.label, isContinue: false);
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [StateMachine] Caught BreakException (label: ${e.label}); leaving "
+            "${target?.runtimeType}.",
+          );
+        }
+        if (target == null) {
+          if (!currentState.completer.isCompleted) {
+            currentState.completer.completeError(
+              RuntimeD4rtException(
+                e.label == null
+                    ? "Break statement outside of a loop."
+                    : "Break to label '${e.label}', which no enclosing "
+                          "statement carries.",
+              ),
+              StackTrace.current,
+            );
+          }
+          return;
+        }
+        currentNode = _startJump(
+          visitor,
+          currentState,
+          PendingJump(from: from, target: target, isContinue: false),
+        );
+        currentState.nextStateIdentifier = currentNode;
+        continue;
+      } on ContinueException catch (e) {
+        final from = currentNode!;
+        final target = _jumpTarget(from, e.label, isContinue: true);
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [StateMachine] Caught ContinueException (label: ${e.label}); "
+            "restarting ${target?.runtimeType}.",
+          );
+        }
+        if (target == null) {
+          if (!currentState.completer.isCompleted) {
+            currentState.completer.completeError(
+              RuntimeD4rtException(
+                e.label == null
+                    ? "Continue statement outside of a loop."
+                    : "Continue to label '${e.label}', which no enclosing "
+                          "loop carries.",
+              ),
+              StackTrace.current,
+            );
+          }
+          return;
+        }
+        currentNode = _startJump(
+          visitor,
+          currentState,
+          PendingJump(from: from, target: target, isContinue: true),
+        );
+        currentState.nextStateIdentifier = currentNode;
+        continue;
+      } catch (error, stackTrace) {
+        // Other error during state execution (SYNC)
+
+        _recordAsyncEscape(visitor, error);
+        // ghissues62: a re-run statement that ends in an error (`throw await
+        // f()`) has finished its evaluation too; its per-site cache must not
+        // replay into the next evaluation of the same node.
+        if (currentState.resumingStatementHasMoreAwaits) {
+          currentState.resumingStatementHasMoreAwaits = false;
+          currentState.clearStatementReplay();
+        }
+
+        // Check if the error comes from rethrow
+        if (error is InternalInterpreterD4rtException) {
+          // This is an exception rethrown by rethrow. Do not handle it here.
+          // Propagate it by completing the Future with the original error.
+          Logger.debug(
+            " [StateMachine] Caught InternalInterpreterException from rethrow. Propagating.",
+          );
+          // Reset rethrow state before completing with error
+          currentState.isHandlingErrorForRethrow = false;
+          currentState.originalErrorForRethrow = null;
+          if (!currentState.completer.isCompleted) {
+            // Propagate the original error and its associated stack trace (if available in the internal exception)
+            // or the current stack trace if the internal one does not have one.
+            // Note: InternalInterpreterException does not store the stack trace for now.
+            // Using the captured stackTrace here is the best choice.
+            final errorToComplete = _unwrapExceptionForPropagation(
+              error.originalThrownValue,
+            );
+            currentState.completer.completeError(errorToComplete, stackTrace);
+          }
+          return; // Stop the state machine execution
+        } else {
+          // Standard synchronous error: Try to handle via internal try/catch/finally
+          if (Logger.isDebug) {
+            Logger.debug(
+              " [StateMachine] Caught standard SYNC Error during non-accept state execution: $error\\n$stackTrace",
+            );
+          }
+          currentState.currentError = error; // Utiliser currentState
+          currentState.currentStackTrace = stackTrace;
+          _handleAsyncError(
+            visitor,
+            currentState,
+            currentNode ?? currentState.function._body,
+          ); // Use currentState
+          return; // Exit, _handleAsyncError will take care of the rest
+        }
+      } finally {
+        // Restore the visitor environment if it was changed
+        visitor.environment = originalVisitorEnv;
+        visitor.currentAsyncState = previousAsyncState;
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [StateMachine] Restored visitor env (${originalVisitorEnv.hashCode}) and async state in finally block.",
+          );
+        }
+      }
+    }
+
+    // SCD40: an error held across a finally block must survive to the end of
+    // the function. SCC12 parks it on `errorAfterFinally` so the main loop's
+    // per-statement clearing of `currentError` cannot drop it, and
+    // `_findNextSequentialNode` re-raises it when the finally block ends — but
+    // only by handing it to the NEXT node. When the try is the last thing in
+    // the function there is no next node, the loop simply ends, and the three
+    // exits below looked at `returnAfterFinally` and `currentError` and never
+    // at the hold. The error was discarded and the function completed with
+    // `lastResult`, i.e. the finally block's last evaluated value: a program
+    // that answers, with the wrong answer.
+    //
+    // Checked BEFORE the pending return: the two are set by different abrupt
+    // completions of the same try, and when the try body threw, Dart propagates
+    // that error. (A `return` written INSIDE a finally does override a pending
+    // error in real Dart; d4rt hangs on that shape today, which is a separate
+    // defect and not one this ordering can decide.)
+    if (currentState.errorAfterFinally != null &&
+        !currentState.completer.isCompleted) {
+      final heldError = currentState.errorAfterFinally;
+      final heldStackTrace = currentState.errorAfterFinallyStackTrace;
+      currentState.errorAfterFinally = null;
+      currentState.errorAfterFinallyStackTrace = null;
+      currentState.errorAfterFinallyTry = null;
+      currentState.resumeErrorAfterFinally = false;
+      currentState.isHandlingErrorForRethrow = false;
+      currentState.originalErrorForRethrow = null;
+      if (Logger.isDebug) {
+        Logger.debug(
+          " [StateMachine] Loop finished with an error held across a finally; "
+          "propagating it: $heldError",
+        );
+      }
+      currentState.completer.completeError(
+        _unwrapExceptionForPropagation(
+          heldError ?? Exception("Unknown error after finally"),
+        ),
+        heldStackTrace,
+      );
+      return;
+    }
+
+    // Handle a return that was suspended by a finally
+    if (currentState.returnAfterFinally != null &&
+        !currentState.completer.isCompleted) {
+      if (Logger.isDebug) {
+        Logger.debug(
+          " [StateMachine] Completing with stored return value after finally: ${currentState.returnAfterFinally}",
+        );
+      }
+      // Reset rethrow state before completing
+      currentState.isHandlingErrorForRethrow = false;
+      currentState.originalErrorForRethrow = null;
+      currentState.completer.complete(currentState.returnAfterFinally);
+      return;
+    }
+
+    // If the loop ends and there was an error (not caught but after a finally executed)
+    if (currentState.currentError != null &&
+        !currentState.completer.isCompleted) {
+      if (Logger.isDebug) {
+        Logger.debug(
+          " [StateMachine] Loop finished, propagating unhandled error after finally: ${currentState.currentError}",
+        );
+      }
+      // Reset rethrow state before completing with error
+      currentState.isHandlingErrorForRethrow = false;
+      currentState.originalErrorForRethrow = null;
+      currentState.completer.completeError(
+        currentState.currentError ?? Exception("Unknown error after finally"),
+        currentState.currentStackTrace,
+      );
+    }
+    // If the loop ends normally (no more nodes to execute)
+    else if (!currentState.completer.isCompleted) {
+      if (Logger.isDebug) {
+        Logger.debug(
+          " [StateMachine] Loop finished normally. Completing with last result: $lastResult (State has await result: ${currentState.lastAwaitResult})",
+        );
+      }
+      // Reset rethrow state before completing normally
+      currentState.isHandlingErrorForRethrow = false;
+      currentState.originalErrorForRethrow = null;
+
+      // PR #6: a BLOCK body that runs off its end completes with null - a
+      // `return` completed the future already. Only an expression body
+      // (`async => e`) completes with the value it computed, which may be
+      // the result of its last await.
+      Object? finalCompletionValue;
+      if (currentState.function._body is! SBlockFunctionBody) {
+        finalCompletionValue = lastResult;
+        if (lastResult == null && currentState.lastAwaitResult != null) {
+          finalCompletionValue = currentState.lastAwaitResult;
+          if (Logger.isDebug) {
+            Logger.debug(
+              " [StateMachine] Loop finished after await. Using await result for completion: $finalCompletionValue",
+            );
+          }
+        }
+      }
+      currentState.completer.complete(finalCompletionValue);
+    }
+  }
+
+  // DARTNATIVE: cooperative async continuation slicing.
+  //
+  // Interpreted continuations used to be queued exclusively as microtasks, and
+  // every pending microtask drains before the embedder regains control. A long
+  // chain of interpreted `await`s therefore starved the embedder's event loop —
+  // on DartNative that means a frozen UI for the duration of, say, a `dio`
+  // request. While one event-loop turn stays under [asyncSliceBudgetMicros]
+  // continuations keep the microtask fast path; once the budget is spent the
+  // next continuation is deferred to a zero-duration timer so the embedder gets
+  // a fresh turn (and can render a frame) before interpretation resumes.
+  static final Stopwatch _asyncSliceClock = Stopwatch()..start();
+  static int _asyncSliceTurnStartMicros = 0;
+
+  /// Wall-clock budget, in microseconds, for one uninterrupted event-loop turn
+  /// of interpreted async work. ~4 ms keeps a 60 fps embedder responsive (one
+  /// frame is ~16 ms) while leaving throughput high. Set to `0` to disable
+  /// slicing — every continuation then runs as a microtask, which is the
+  /// historical behaviour.
+  static int asyncSliceBudgetMicros = 4000;
+
+  // Schedule the state machine execution via microtask, unless the current
+  // event-loop turn has spent its slice budget — then defer to a timer turn.
+  static void _scheduleStateMachineRun(
+    InterpreterVisitor visitor,
+    AsyncExecutionState state,
+  ) {
+    // Check if the completer is already completed to avoid unnecessary executions
+    if (state.completer.isCompleted) {
+      Logger.debug(
+        " [_scheduleStateMachineRun] Completer already completed. Skipping schedule.",
+      );
+      return;
+    }
+
+    void onUncaught(Object error, StackTrace stackTrace) {
+      // Catch errors not caught by the internal logic of _runStateMachine
+      if (!state.completer.isCompleted) {
+        Logger.error(
+          "[StateMachine] Uncaught async error in microtask: $error\n$stackTrace",
+        );
+        state.completer.completeError(error, stackTrace);
+      }
+    }
+
+    final budget = asyncSliceBudgetMicros;
+    final nowMicros = _asyncSliceClock.elapsedMicroseconds;
+    if (budget <= 0 || nowMicros - _asyncSliceTurnStartMicros < budget) {
+      Future.microtask(() => _runStateMachine(visitor, state)).catchError(
+        onUncaught,
+      );
+      return;
+    }
+
+    // Budget spent: start a new turn as a macrotask so the embedder's event
+    // loop (and therefore its frame pipeline) can run in between.
+    _asyncSliceTurnStartMicros = nowMicros;
+    Timer.run(() {
+      try {
+        _runStateMachine(visitor, state);
+      } catch (error, stackTrace) {
+        onUncaught(error, stackTrace);
+      }
+    });
+  }
+
+  /// DASY1: an error raised in an async function's resumed segment is traced
+  /// like one leaving a synchronous call, against the frame [_runStateMachine]
+  /// re-entered for the segment. The value the function's Future fails with is
+  /// the unwrapped one, so that carries the trace as well. An error that
+  /// already has a trace — one an awaited interpreted call raised — keeps it.
+  static void _recordAsyncEscape(InterpreterVisitor visitor, Object? error) {
+    if (error == null) return;
+    final callStack = visitor.callStack;
+    callStack.recordEscape(error);
+    callStack.recordEscape(
+      error is InternalInterpreterD4rtException
+          ? _unwrapExceptionForPropagation(error.originalThrownValue)
+          : _unwrapExceptionForPropagation(error),
+    );
+  }
+
+  static void _handleAsyncError(
+    InterpreterVisitor visitor,
+    AsyncExecutionState state,
+    SAstNode nodeWhereErrorOccurred,
+  ) {
+    _recordAsyncEscape(visitor, state.currentError);
+    // SCF6: an error that escapes the finally a pending break / continue is
+    // running replaces the jump, as Dart replaces any abrupt completion. One
+    // caught by a try written INSIDE that finally is local to it and leaves
+    // the jump waiting.
+    if (state.pendingJump != null) {
+      final running = _tryOwningFinallyBlockOf(nodeWhereErrorOccurred);
+      final handler = _findEnclosingTryStatement(nodeWhereErrorOccurred);
+      final local =
+          running != null &&
+          handler != null &&
+          _isWithin(handler, running.finallyBlock!);
+      if (!local) state.pendingJump = null;
+    }
+    Object? error = state.currentError;
+    if (error is InternalInterpreterD4rtException) {
+      error = error.originalThrownValue;
+    }
+    final stackTrace = state.currentStackTrace;
+    // ghissues12: a native error thrown behind a bridged call arrives wrapped
+    // in a RuntimeD4rtException carrying it. The catch clause is chosen for,
+    // and binds, the native error and its own trace, as `visitTryStatement`
+    // does for a synchronous body (OPEN B.5, SCC11); `on FormatException` and
+    // `e is UnsupportedError` missed it in an `async` function. An error no
+    // clause takes propagates as it arrived.
+    final caught =
+        error is RuntimeD4rtException && error.originalException != null
+        ? error.originalException
+        : error;
+    final caughtStackTrace =
+        (error is RuntimeD4rtException ? error.originalStackTrace : null) ??
+        stackTrace;
+
+    if (Logger.isDebug) {
+      Logger.debug(
+        "[_handleAsyncError] Handling error: $error from node: ${nodeWhereErrorOccurred.runtimeType} at offset ${nodeWhereErrorOccurred.offset}",
+      );
+    }
+
+    // Check if this is a rethrow - if so, skip the current try/catch
+    bool isRethrow = state.isCurrentlyRethrowing;
+    STryStatement? currentTry = state.activeTryStatement;
+
+    // 1. Find an enclosing STryStatement
+    STryStatement? enclosingTry = _findEnclosingTryStatement(
+      nodeWhereErrorOccurred,
+    );
+    // Fallback: use state.activeTryStatement if parent-walk didn't find one
+    enclosingTry ??= currentTry;
+
+    // If this is a rethrow and we found the same try statement, look for an outer one
+    // SCD41: the try a `rethrow` must skip is the one whose CATCH CLAUSE
+    // lexically contains it, which the AST answers directly. It used to be
+    // read from `state.activeTryStatement` -- a single mutable field that any
+    // try completing in between clears. Then the test below failed, the error
+    // was re-offered to the same try, its catch rethrew again, and the function
+    // HUNG. A nested `try` inside a catch block is enough to trigger it.
+    //
+    // Deliberately NOT fixed by making that field a stack: its only
+    // load-bearing read is this one, the answer is structural, and a stack
+    // would add push/pop obligations to every suspension and resumption path
+    // in a machine that has already produced six defects. Reading the AST
+    // removes the dependence instead of maintaining it. `currentTry` stays as
+    // a fallback for a rethrow that is not lexically inside a catch clause.
+    final rethrowOwner = isRethrow
+        ? _tryOwningCatchClauseOf(nodeWhereErrorOccurred)
+        : null;
+    if (isRethrow &&
+        enclosingTry != null &&
+        (identical(enclosingTry, rethrowOwner) ||
+            (rethrowOwner == null && enclosingTry == currentTry))) {
+      Logger.debug(
+        " [_handleAsyncError] Rethrow detected - skipping current try/catch and looking for outer one",
+      );
+      // SCE205: NOT past a try that still has a finally to run. Dart runs a
+      // try's finally before an exception leaves it, including one leaving by
+      // `rethrow` from that try's own catch; stepping over the owner skipped
+      // it by construction. Kept in the search instead, SCD169's rule takes
+      // over: the error came from one of this try's catch clauses, so none of
+      // them may match, and the `matchingCatchClause == null` branch runs the
+      // finally and then releases the error outward. Only when the owner is
+      // known LEXICALLY — the fallback `currentTry` owner has no catch clause
+      // containing the rethrow, so the selection guard could not protect it.
+      final ownerFinally = enclosingTry.finallyBlock;
+      final keepOwner =
+          rethrowOwner != null &&
+          ownerFinally != null &&
+          ownerFinally.statements.isNotEmpty;
+      if (!keepOwner) {
+        // Find the next enclosing try outside the OWNER. SCE212: this used to
+        // start from `currentTry` — the mutable `state.activeTryStatement`
+        // SCD41 stopped trusting for the ownership test above. A try that ran
+        // inside the catch leaves that field pointing somewhere else, so the
+        // search started from the wrong place and the rethrow skipped the
+        // outer catch that should have caught it (F-SCD41-7 in exec's scc12).
+        // Walking from the owner itself is structural, like the test above.
+        enclosingTry = _findEnclosingTryStatement(enclosingTry);
+      }
+      // Reset the flag after handling
+      state.isCurrentlyRethrowing = false;
+    }
+
+    // SCD43: an error raised INSIDE a try's own finally block must be offered
+    // to the try enclosing that try. Without this the search returned the very
+    // try whose finally was running, the machine scheduled that finally again,
+    // and it threw again -- the program never completed.
+    //
+    // The held error is dropped in the same step, and that is the language
+    // rule rather than bookkeeping: Dart specifies that an exception raised in
+    // a finally REPLACES one propagating from the try body, and the replaced
+    // one is lost. Leaving scd40's hold in place would make the ORIGINAL
+    // surface at the state machine's terminal exits -- a fix that stops the
+    // loop and still answers wrongly.
+    final finallyOwner = _tryOwningFinallyBlockOf(nodeWhereErrorOccurred);
+    if (enclosingTry != null && identical(enclosingTry, finallyOwner)) {
+      if (Logger.isDebug) {
+        Logger.debug(
+          " [_handleAsyncError] Error raised inside the finally of "
+          "${enclosingTry.offset}; continuing the search outside that try.",
+        );
+      }
+      if (identical(state.errorAfterFinallyTry, enclosingTry)) {
+        state.errorAfterFinally = null;
+        state.errorAfterFinallyStackTrace = null;
+        state.errorAfterFinallyTry = null;
+        state.resumeErrorAfterFinally = false;
+      }
+      // A pending return is replaced too, for the same reason.
+      state.returnAfterFinally = null;
+      enclosingTry = _findEnclosingTryStatement(_parentOf(enclosingTry));
+    }
+
+    // SCC12: walk outward past every try that cannot do anything with the error.
+    // A try with no catch clauses and no (non-empty) finally block is not a
+    // handler, and the search has to continue at the try enclosing *it* — the
+    // single-level lookup used to stop there and propagate straight to the
+    // function's Future, so an enclosing `catch` in the same function never ran.
+    //
+    // SCD169 widened the first condition. A try whose catch clauses are all
+    // INELIGIBLE — because the error came from one of them — is equally not a
+    // handler, and the search has to continue outside it. A try that still has
+    // a finally is not skipped here: it can do something with the error, and
+    // the `matchingCatchClause == null` branch below runs that finally before
+    // the error carries on outward, which is what the synchronous path does.
+    while (enclosingTry != null &&
+        (enclosingTry.catchClauses.isEmpty ||
+            _isInsideCatchClauseOf(nodeWhereErrorOccurred, enclosingTry)) &&
+        (enclosingTry.finallyBlock == null ||
+            enclosingTry.finallyBlock!.statements.isEmpty)) {
+      Logger.debug(
+        " [_handleAsyncError] STryStatement has no catch and no finally; "
+        "looking further out.",
+      );
+      enclosingTry = _findEnclosingTryStatement(_parentOf(enclosingTry));
+    }
+
+    SCatchClause? matchingCatchClause;
+    if (enclosingTry != null) {
+      if (Logger.isDebug) {
+        Logger.debug(
+          " [_handleAsyncError] Found enclosing STryStatement: ${enclosingTry.offset}",
+        );
+      }
+      state.activeTryStatement = enclosingTry; // Marquer comme actif
+
+      // 2. Find a matching SCatchClause (simplified: take the first one)
+      //
+      // SCC31: except for an undefined name, which no clause may claim. The
+      // guard has to be here as well as in `visitTryStatement` — this path is
+      // the one an `async` function takes, and it does not type-match at all,
+      // so without it a typo inside an `async` body was swallowed even by a
+      // clause as specific as `on FormatException`.
+      // SCD41: ask the SAME question the synchronous path asks. This used to
+      // be `catchClauses.first` with a comment admitting it was "simplified",
+      // so `on StateError catch` ran for an `ArgumentError` and a clause that
+      // must not match caught anyway -- the same script behaving differently
+      // depending only on whether the enclosing function is `async`.
+      // `selectCatchClause` also owns the SCC31 undefined-name rule, so the
+      // guard that used to sit here inline lives in one place now.
+      // SCD169: no clause of this try may claim an error that came from one of
+      // its OWN catch blocks. Without this the machine re-entered the clause
+      // that had just thrown, forever.
+      if (enclosingTry.catchClauses.isNotEmpty &&
+          !_isInsideCatchClauseOf(nodeWhereErrorOccurred, enclosingTry)) {
+        matchingCatchClause = visitor.selectCatchClause(enclosingTry, caught);
+        Logger.debug(
+          matchingCatchClause == null
+              ? " [_handleAsyncError] No clause of the TryStatement handles "
+                    "this error."
+              : " [_handleAsyncError] Selected the catch clause whose type "
+                    "matches.",
+        );
+      } else {
+        Logger.debug(
+          " [_handleAsyncError] No CatchClauses found in the STryStatement.",
+        );
+      }
+    }
+
+    if (matchingCatchClause != null && enclosingTry != null) {
+      // 3. Error caught: Prepare the jump to the Catch block
+      state.nextStateIdentifier = matchingCatchClause
+          .body!
+          .statements
+          .firstOrNull; // Start of the catch block
+
+      // SCC22: an *empty* catch body has no first statement, and a null
+      // `nextStateIdentifier` stops the state machine — the async function was
+      // abandoned where the catch would have started and resolved to whatever
+      // happened to be in `lastResult`. Swallowing an error with `catch (e) {}`
+      // is a legal, ordinary idiom, so resume where a non-empty catch resumes
+      // after its last statement: the finally block if there is a non-empty
+      // one, otherwise the node after the whole try. This mirrors the empty-try
+      // and empty-finally handling already in `_runStateMachine`.
+      if (state.nextStateIdentifier == null) {
+        final finallyBlock = enclosingTry.finallyBlock;
+        if (finallyBlock != null && finallyBlock.statements.isNotEmpty) {
+          Logger.debug(
+            " [_handleAsyncError] Empty catch block, jumping to finally.",
+          );
+          state.nextStateIdentifier = finallyBlock.statements.first;
+        } else {
+          Logger.debug(
+            " [_handleAsyncError] Empty catch block and no finally; "
+            "continuing after the STryStatement.",
+          );
+          state.nextStateIdentifier = _findNextSequentialNode(
+            visitor,
+            enclosingTry,
+          );
+          state.activeTryStatement = null;
+        }
+      }
+
+      // Update the state for rethrow - store the original error
+      final internalError = InternalInterpreterD4rtException(
+        caught ?? Exception("Unknown error caught"),
+      ); // Pass only the error
+      state.originalErrorForRethrow = internalError;
+      // NOTE: We set isHandlingErrorForRethrow to true here to indicate we're in a catch block
+      // and ready to handle potential rethrow statements
+      state.isHandlingErrorForRethrow = true;
+
+      // SCE79: the catch block gets its OWN environment, as
+      // `visitTryStatement` has always given the synchronous path.
+      //
+      // This used to define the exception variable in the FUNCTION's
+      // environment — the comment here said "can cause collisions" — so the
+      // variable outlived its block and, in the shape that actually bites,
+      // silently overwrote a caller's local of the same name. Measured: with
+      // `var e = 'outer';` ahead of the try, an async function returned the
+      // exception where Dart and d4rt's own sync path return `'outer'`.
+      // Nothing threw and nothing logged.
+      //
+      // THE PARENT IS DERIVED, not taken from `visitor.environment`. That was
+      // the first attempt and it was wrong on the await-callback path: this
+      // runs from a Future continuation as well as from the state machine, and
+      // there `visitor.environment` is whatever the callback left set, so a
+      // catch block could not even assign to a local of its own function
+      // (`Assigning to undefined variable 'result'`).
+      //
+      // Derived from the state: the scope at the try's position ([_scopeFor]) -
+      // an enclosing catch clause's or block's environment, the innermost
+      // loop's, or the function's.
+      final catchEnvironment = Environment(
+        enclosing: _scopeFor(state, _parentOf(matchingCatchClause)),
+      );
+      state.catchEnvironments[matchingCatchClause] = catchEnvironment;
+
+      final exceptionParameter = matchingCatchClause.exceptionParameter;
+      if (exceptionParameter != null) {
+        final varName = exceptionParameter.name;
+        catchEnvironment.define(varName, caught);
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [_handleAsyncError] Defined exception variable '$varName' in the "
+            "catch block's own environment.",
+          );
+        }
+
+        // Handle the stack trace parameter if it exists
+        final stackTraceParameter = matchingCatchClause.stackTraceParameter;
+        if (stackTraceParameter != null) {
+          final stackVarName = stackTraceParameter.name;
+          catchEnvironment.define(stackVarName, caughtStackTrace);
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[_handleAsyncError] Defined stack trace variable '$stackVarName' "
+              "in the catch block's own environment.",
+            );
+          }
+        }
+      }
+
+      // Clear the error state because it is handled
+      state.currentError = null;
+      state.currentStackTrace = null;
+
+      // Reschedule the execution to start the catch block
+      Logger.debug(
+        " [_handleAsyncError] Scheduling run for SCatchClause block.",
+      );
+      _scheduleStateMachineRun(visitor, state);
+    } else {
+      // 4. Error not caught or no try:
+      //    a) Check if there is a finally to execute anyway
+      if (enclosingTry != null && enclosingTry.finallyBlock != null) {
+        // Reset rethrow state if jumping to finally
+        state.isHandlingErrorForRethrow = false;
+        state.originalErrorForRethrow = null;
+
+        Logger.debug(
+          " [_handleAsyncError] Error not caught, but finally block exists. Jumping to finally.",
+        );
+        // The next state is the start of the finally block
+        state.nextStateIdentifier =
+            enclosingTry.finallyBlock!.statements.firstOrNull;
+
+        // SCC12: hold the error on the state instead of leaving it in
+        // `currentError`. The main loop clears `currentError` after every
+        // statement that completes normally, so an error parked there does not
+        // survive even the first statement of the finally block — it was dropped
+        // silently, and an enclosing `catch` never ran. The hold is released by
+        // `_findNextSequentialNode` when the block ends.
+        state.errorAfterFinally = error;
+        state.errorAfterFinallyStackTrace = stackTrace;
+        state.errorAfterFinallyTry = enclosingTry;
+        state.currentError = null;
+        state.currentStackTrace = null;
+        _scheduleStateMachineRun(visitor, state);
+      } else {
+        //    b) Propagate the error by completing the main Future
+        // Reset rethrow state before propagating
+        state.isHandlingErrorForRethrow = false;
+        state.originalErrorForRethrow = null;
+
+        Logger.debug(
+          " [_handleAsyncError] Error not caught and no finally block. Propagating error.",
+        );
+        if (!state.completer.isCompleted) {
+          // Unwrap BridgedInstance exceptions to get native objects
+          final errorToComplete = _unwrapExceptionForPropagation(
+            error ?? Exception("Unknown error"),
+          );
+          state.completer.completeError(errorToComplete, stackTrace);
+        }
+      }
+    }
+  }
+
+  /// The statement a `break` (or, with [isContinue], a `continue`) raised
+  /// while running [from] jumps to, or null when no enclosing statement of
+  /// the current function qualifies.
+  ///
+  /// Without a label that is the innermost enclosing loop — or `switch`, for a
+  /// break. With one it is the statement the label is written on, which for a
+  /// continue must be a loop.
+  ///
+  /// SCD4: this used to be "whatever loop is on top of `loopNodeStack`". Only
+  /// `for` loops are pushed there, so `while` and `do` could not be left at
+  /// all, a break in a `while` nested in a `for` left the `for`, and labels
+  /// were ignored. The AST says which statement a jump targets; asking it
+  /// makes the answer independent of what the loops happened to push. The
+  /// mirror AST has no `.parent`, so the walk goes through [_parentOf].
+  static SAstNode? _jumpTarget(
+    SAstNode from,
+    String? label, {
+    required bool isContinue,
+  }) {
+    bool isLoop(SAstNode node) =>
+        node is SForStatement ||
+        node is SWhileStatement ||
+        node is SDoStatement;
+    for (
+      SAstNode? node = _parentOf(from);
+      node != null && node is! SFunctionBody;
+      node = _parentOf(node)
+    ) {
+      if (label == null) {
+        if (isLoop(node) || (!isContinue && node is SSwitchStatement)) {
+          return node;
+        }
+      } else if (node is SLabeledStatement &&
+          node.labels.any((l) => l.name.name == label)) {
+        SAstNode? statement = node.statement;
+        while (statement is SLabeledStatement) {
+          statement = statement.statement;
+        }
+        if (statement == null) return null;
+        return !isContinue || isLoop(statement) ? statement : null;
+      }
+    }
+    return null;
+  }
+
+  /// The next node after a `break` / `continue` [jump] has been raised.
+  ///
+  /// SCF6: a jump that leaves a try with a non-empty finally runs that finally
+  /// first, as Dart does — innermost first, and only the finallys between the
+  /// jump and its target. The jump is parked on [AsyncExecutionState.pendingJump]
+  /// and resumed by [_completeOrContinueJump] where each finally ends. It used
+  /// to go straight to its target, so
+  /// `for (..) { try { break; } finally { log.add('f'); } }` never logged.
+  ///
+  /// A new jump replaces a pending one only when it LEAVES the finally that is
+  /// running; a jump whose target sits inside that finally — a loop written
+  /// in it — is local to it and leaves the pending jump alone.
+  static SAstNode? _startJump(
+    InterpreterVisitor visitor,
+    AsyncExecutionState state,
+    PendingJump jump,
+  ) {
+    final pending = state.pendingJump;
+    if (pending != null) {
+      final running = _tryOwningFinallyBlockOf(jump.from);
+      final local =
+          running != null && _isWithin(jump.target, running.finallyBlock!);
+      if (!local) state.pendingJump = null;
+    }
+    final crossed = _nextFinallyTryBefore(jump.from, jump.target);
+    if (crossed == null) return _finishJump(visitor, state, jump);
+    state.pendingJump = jump;
+    state.activeTryStatement = crossed;
+    return crossed.finallyBlock!.statements.first;
+  }
+
+  /// Where a finally that a pending jump crossed has ended: run the next
+  /// crossed finally, or complete the jump.
+  static SAstNode? _completeOrContinueJump(
+    InterpreterVisitor visitor,
+    AsyncExecutionState state,
+    STryStatement endedTry,
+  ) {
+    final jump = state.pendingJump!;
+    final next = _nextFinallyTryBefore(endedTry, jump.target);
+    if (next != null) {
+      state.activeTryStatement = next;
+      return next.finallyBlock!.statements.first;
+    }
+    state.pendingJump = null;
+    return _finishJump(visitor, state, jump);
+  }
+
+  /// Complete [jump]: leave the loops it crosses and go to the node after its
+  /// target (`break`) or back to the target (`continue`).
+  static SAstNode? _finishJump(
+    InterpreterVisitor visitor,
+    AsyncExecutionState state,
+    PendingJump jump,
+  ) {
+    _leaveLoopsFor(
+      state,
+      jump.from,
+      jump.target,
+      leaveTarget: !jump.isContinue,
+    );
+    state.activeTryStatement = _findEnclosingTryStatement(jump.target);
+    // Loops nested inside a continue's target are left; the target itself
+    // goes on to its next iteration: its condition, its updaters, its next
+    // element.
+    return jump.isContinue
+        ? jump.target
+        : _findNextSequentialNode(visitor, jump.target);
+  }
+
+  /// The innermost `try` with a non-empty finally that [from] leaves on its
+  /// way to [target], or null when [target] is reached first.
+  ///
+  /// [_nextEnclosingFinallyTry] with the walk bounded by the jump's target
+  /// rather than the function: a `return` crosses every finally up to the
+  /// function boundary, a jump only those inside the statement it leaves. A
+  /// try whose finally contains [from] is skipped, as there: that finally is
+  /// the one running.
+  static STryStatement? _nextFinallyTryBefore(SAstNode from, SAstNode target) {
+    SAstNode? child = from;
+    for (
+      SAstNode? current = _parentOf(from);
+      current != null && !identical(current, target);
+      child = current, current = _parentOf(current)
+    ) {
+      if (current is SFunctionBody) return null;
+      if (current is! STryStatement) continue;
+      final finallyBlock = current.finallyBlock;
+      if (finallyBlock == null || finallyBlock.statements.isEmpty) continue;
+      if (identical(child, finallyBlock)) continue;
+      return current;
+    }
+    return null;
+  }
+
+  /// Whether [node] is [ancestor] or lies inside it.
+  static bool _isWithin(SAstNode node, SAstNode ancestor) {
+    for (SAstNode? n = node; n != null; n = _parentOf(n)) {
+      if (identical(n, ancestor)) return true;
+    }
+    return false;
+  }
+
+  /// Unwinds the loop stacks for a jump from [from] to [target]: every loop
+  /// between the two is left, and [target] as well when [leaveTarget].
+  ///
+  /// Only loops that pushed onto the stacks have entry depths, so a `while`
+  /// on the way costs nothing; the outermost loop that did is the one the
+  /// stacks are restored to, which removes everything nested inside it too.
+  static void _leaveLoopsFor(
+    AsyncExecutionState state,
+    SAstNode from,
+    SAstNode target, {
+    required bool leaveTarget,
+  }) {
+    LoopStackDepths? outermost;
+    for (SAstNode? node = from; node != null; node = _parentOf(node)) {
+      final atTarget = identical(node, target);
+      if (atTarget && !leaveTarget) break;
+      // SCE19: a `do` being LEFT must forget that its body started, or a later
+      // entry would check the condition first. `continue` stops above without
+      // reaching here for its target, which is what keeps the condition being
+      // evaluated for it (F-SCD4-13).
+      if (node is SDoStatement) state.doBodiesStarted.remove(node);
+      outermost = state.loopEntryDepths[node] ?? outermost;
+      if (atTarget) break;
+    }
+    if (outermost != null) state.truncateLoopStacks(outermost);
+  }
+
+  /// The `try` whose FINALLY BLOCK lexically contains [node], or null when
+  /// [node] is not inside one.
+  ///
+  /// SCD43: a finally block is not protected by its own try, so an error
+  /// raised inside one must be offered to the try ENCLOSING that try.
+  /// `_findEnclosingTryStatement` returns the owner itself, which has a
+  /// finally, so the machine scheduled that finally again -- and it threw
+  /// again, for ever.
+  ///
+  /// Structural for the same reason as [_tryOwningCatchClauseOf]: whether a
+  /// node sits inside a given finally block is a fact about the AST that no
+  /// amount of prior execution can change, so it needs no flag on the state.
+  /// And like that one it stops at the FIRST enclosing finally, so a `try`
+  /// written inside a finally block is found by [_findEnclosingTryStatement]
+  /// first and handles its own errors normally.
+  static STryStatement? _tryOwningFinallyBlockOf(SAstNode? node) {
+    SAstNode? current = node;
+    while (current != null) {
+      final parent = _parentOf(current);
+      if (parent is STryStatement && identical(parent.finallyBlock, current)) {
+        return parent;
+      }
+      if (current is SFunctionBody) return null;
+      current = parent;
+    }
+    return null;
+  }
+
+  /// The `try` whose CATCH CLAUSE lexically contains [node], or null when
+  /// [node] is not inside one.
+  ///
+  /// SCD41: this is how a `rethrow` learns which try it is already inside and
+  /// must therefore skip. Note what it does NOT do: it stops at the first
+  /// enclosing catch clause, so a `try` written *inside* a catch block is found
+  /// by [_findEnclosingTryStatement] first and handles its own errors normally.
+  /// Skipping to the owner unconditionally would make such a try unable to
+  /// catch anything a rethrow passed through it.
+  /// Whether [node] sits inside a catch clause belonging to [owner].
+  ///
+  /// SCD169: an exception raised in a catch block of `T` is not catchable by
+  /// `T` — the handler that would claim it is the one already running. The
+  /// async machine had no such rule, so `_findEnclosingTryStatement` returned
+  /// `T`, `selectCatchClause` matched the same clause again, the clause threw
+  /// again, and the state machine looped. Measured before the fix: the catch
+  /// block of a four-line script ran 135,239 times in six seconds. That is why
+  /// the symptom is a HANG rather than an unresolved future, and why no
+  /// Dart-level timeout contains it — a spinning isolate never runs the Timer.
+  ///
+  /// Structural for the same reason as [_tryOwningCatchClauseOf] and
+  /// [_tryOwningFinallyBlockOf]: whether a throw is lexically inside a given
+  /// try's catch block is a property of the AST, not of what else has run.
+  /// Unlike [_tryOwningCatchClauseOf] this answers about a SPECIFIC try rather
+  /// than the nearest one, because the rule has to hold at every level — a try
+  /// nested inside another try's catch block is not catchable by either.
+  static bool _isInsideCatchClauseOf(SAstNode? node, STryStatement owner) {
+    SAstNode? current = node;
+    while (current != null) {
+      if (current is SCatchClause && identical(_parentOf(current), owner)) {
+        return true;
+      }
+      if (current is SFunctionBody) return false;
+      current = _parentOf(current);
+    }
+    return false;
+  }
+
+  /// Whether [node] sits inside the finally block belonging to [owner].
+  ///
+  /// SCE78. The companion to [_isInsideCatchClauseOf], and it answers about a
+  /// SPECIFIC try for the same reason: the question is not "is this inside some
+  /// finally" but "is this inside the finally of the try that is currently
+  /// holding a return". A try nested inside a finally legitimately holds its
+  /// own returns for its own finally, so the nearest-enclosing form would
+  /// confuse the two.
+  static bool _isInsideFinallyBlockOf(SAstNode? node, STryStatement owner) {
+    SAstNode? current = node;
+    while (current != null) {
+      if (identical(current, owner.finallyBlock)) return true;
+      if (current is SFunctionBody) return false;
+      current = _parentOf(current);
+    }
+    return false;
+  }
+
+  /// The environment for the innermost catch clause, or if-case then branch,
+  /// [node] sits inside, or null when it is in none that has one.
+  ///
+  /// SCE79. The lookup is structural — the AST says which clause a node is in —
+  /// which is why the binding needs no stack and no popping. Stops at a
+  /// `FunctionBody` so a closure written inside a catch block does not inherit
+  /// the clause's scope by accident. ghissues62 added the if-case's then
+  /// branch ([AsyncExecutionState.caseEnvironments]), which binds the
+  /// pattern's variables the same way.
+  static Environment? _clauseEnvironmentFor(
+    AsyncExecutionState state,
+    SAstNode? node,
+  ) {
+    if (state.catchEnvironments.isEmpty && state.caseEnvironments.isEmpty) {
+      return null;
+    }
+    SAstNode? current = node;
+    while (current != null) {
+      if (current is SCatchClause) {
+        final found = state.catchEnvironments[current];
+        if (found != null) return found;
+      }
+      final parent = _parentOf(current);
+      if (parent is SIfStatement && identical(parent.thenStatement, current)) {
+        final found = state.caseEnvironments[parent];
+        if (found != null) return found;
+      }
+      if (current is SFunctionBody) return null;
+      current = parent;
+    }
+    return null;
+  }
+
+  /// The environment a node runs in: the innermost of the scopes it sits in.
+  ///
+  /// The candidates are the innermost loop's environment (or the function's),
+  /// the environment of the innermost catch clause or if-case then branch
+  /// ([_clauseEnvironmentFor]) and that of the innermost block
+  /// ([_blockEnvironmentFor]). Scopes nest as the AST does, so the innermost
+  /// one reaches the others through its parents, and it is the one chosen: a
+  /// loop INSIDE a catch built its environment as a child of the catch's and
+  /// wins; a catch INSIDE a loop built its environment as a child of the
+  /// loop's and wins. That one rule is what makes every nesting come out right
+  /// without ordering bookkeeping (SCE79's rule, generalised by ghissues63).
+  static Environment _scopeFor(AsyncExecutionState state, SAstNode? node) {
+    final loopOrFunction = state.loopEnvironmentStack.isNotEmpty
+        ? state.loopEnvironmentStack.last
+        : state.environment;
+    final candidates = <Environment>[
+      loopOrFunction,
+      ?_clauseEnvironmentFor(state, node),
+      ?_blockEnvironmentFor(state, node),
+    ];
+    for (final candidate in candidates.reversed) {
+      if (candidates.every((other) => _chainReaches(candidate, other))) {
+        return candidate;
+      }
+    }
+    // Not reached while scopes nest as the AST does: keep SCE79's order.
+    var chosen = loopOrFunction;
+    for (final candidate in candidates.skip(1)) {
+      if (!_chainReaches(chosen, candidate)) chosen = candidate;
+    }
+    return chosen;
+  }
+
+  /// The environment of the innermost block [node] sits in, or null when it
+  /// sits directly in the function body.
+  ///
+  /// ghissues63. The state machine runs a block's statements one by one
+  /// rather than through `visitBlock`, so a block's locals went into the
+  /// enclosing scope - `var x = 1; { var x = 2; } return x;` answered 2 in an
+  /// async function, and a closure captured one variable for every iteration
+  /// of a loop body. Each block now has an environment of its own, selected
+  /// structurally like [AsyncExecutionState.catchEnvironments]: it is created
+  /// when the machine ENTERS the block - the node executed before is not
+  /// strictly inside it (it is the statement before the block, the block
+  /// itself, the `if` or the loop) - and reused while the machine stays inside
+  /// it, a resumption after an `await` included. A loop body is entered again
+  /// every iteration, so each iteration gets a fresh one, as in Dart. Its
+  /// parent is the scope at the block's own position ([_scopeFor]).
+  static Environment? _blockEnvironmentFor(
+    AsyncExecutionState state,
+    SAstNode? node,
+  ) {
+    final block = _innermostScopedBlock(node);
+    if (block == null) return null;
+    final existing = state.blockEnvironments[block];
+    final previous = state.lastScopedNode;
+    if (existing != null &&
+        previous != null &&
+        !identical(previous, block) &&
+        _isWithin(previous, block)) {
+      return existing;
+    }
+    final created = Environment(enclosing: _scopeFor(state, block));
+    state.blockEnvironments[block] = created;
+    return created;
+  }
+
+  /// The innermost block enclosing [node] (not [node] itself) that has a
+  /// scope of its own: every block but a function body's, whose scope is the
+  /// function's environment. Stops at a function body, so a closure's blocks
+  /// are its own.
+  static SBlock? _innermostScopedBlock(SAstNode? node) {
+    for (SAstNode? current = node == null ? null : _parentOf(node);
+        current != null;
+        current = _parentOf(current)) {
+      if (current is SFunctionBody) return null;
+      if (current is SBlock) {
+        return _parentOf(current) is SBlockFunctionBody ? null : current;
+      }
+    }
+    return null;
+  }
+
+  /// Whether [target] is [from] or one of its enclosing environments.
+  static bool _chainReaches(Environment? from, Environment target) {
+    Environment? current = from;
+    while (current != null) {
+      if (identical(current, target)) return true;
+      current = current.enclosing;
+    }
+    return false;
+  }
+
+  /// The `CascadeExpression` whose SECTION list contains [node], or null.
+  ///
+  /// SCE81. Structural, like the try/catch walkers below: whether a node is a
+  /// cascade section is a property of the AST. Stops at a `FunctionBody` so a
+  /// closure written inside a section is not mistaken for one.
+  static SCascadeExpression? _enclosingCascadeOf(SAstNode? node) {
+    // The context node is sometimes the STATEMENT rather than the section —
+    // measured: an `await` in a cascade's method argument reports the section,
+    // an `await` on the right of `..[k] = v` reports the whole
+    // `ExpressionStatement`. Looking only upward found the first and missed the
+    // second, so that shape silently applied none of its sections.
+    if (node is SExpressionStatement) {
+      final expression = node.expression;
+      if (expression is SCascadeExpression) return expression;
+    }
+    SAstNode? current = node;
+    while (current != null) {
+      final parent = _parentOf(current);
+      if (parent is SCascadeExpression &&
+          parent.cascadeSections.any((s) => identical(s, current))) {
+        return parent;
+      }
+      if (current is SFunctionBody) return null;
+      current = parent;
+    }
+    return null;
+  }
+
+  static STryStatement? _tryOwningCatchClauseOf(SAstNode? node) {
+    SAstNode? current = node;
+    while (current != null) {
+      if (current is SCatchClause) {
+        final parent = _parentOf(current);
+        return parent is STryStatement ? parent : null;
+      }
+      if (current is SFunctionBody) return null;
+      current = _parentOf(current);
+    }
+    return null;
+  }
+
+  static STryStatement? _findEnclosingTryStatement(SAstNode? node) {
+    // Walk up the parent chain using the parent links to find enclosing TryStatement
+    SAstNode? current = _parentOf(node);
+    while (current != null) {
+      if (current is STryStatement) return current;
+      // Do not search beyond the current function's limit
+      if (current is SFunctionBody) return null;
+      current = _parentOf(current);
+    }
+    return null;
+  }
+
+  // Determine the next AST node to execute after the resolution of an awaited Future.
+  /// The node the state machine can re-execute to finish evaluating [node],
+  /// or null when re-entering it would restart a construct.
+  ///
+  /// SCE139: a variable declaration, an expression statement and a return each
+  /// evaluate their expression once and then complete, so re-entering one
+  /// replays the await sites already resolved and finishes the statement.
+  ///
+  /// SCF29 added the rest of what the machine can safely re-enter:
+  ///
+  /// * an `=>` body, whose unit of re-execution is its EXPRESSION — the same
+  ///   node the expression-body tail of [_determineNextNodeAfterAwait] hands
+  ///   back when no invocation is involved;
+  /// * an `if`, a `while` or a `do` reached from its CONDITION. Reaching one
+  ///   of these before any other statement means the await sits in the
+  ///   condition — a body's statements are statements of their own and are
+  ///   met first. The machine's branch for each is stateless on re-entry: an
+  ///   `if` and a `while` just evaluate the condition, and a `do` whose body
+  ///   has started (`doBodiesStarted`) evaluates it rather than restarting
+  ///   the body. Each clears the replay cache when the condition completes.
+  ///
+  /// A `for` is not re-entered: its node initialises the loop on arrival.
+  ///
+  /// ghissues62 added the statements of [_reEnteredWhole].
+  static SAstNode? _resumableNodeFor(SAstNode node) {
+    SAstNode? parent = node;
+    while (parent != null &&
+        parent is! SStatement &&
+        parent is! SExpressionFunctionBody) {
+      parent = _parentOf(parent);
+    }
+    if (parent is SExpressionFunctionBody) return parent.expression;
+    if (parent is SVariableDeclarationStatement ||
+        parent is SExpressionStatement ||
+        parent is SReturnStatement ||
+        parent is SIfStatement ||
+        parent is SWhileStatement ||
+        parent is SDoStatement ||
+        (parent != null && _reEnteredWhole(parent))) {
+      return parent;
+    }
+    return null;
+  }
+
+  /// ghissues62: the statements whose await, wherever it sits in them, is
+  /// resumed by evaluating the statement again with the resolved await sites
+  /// replaying (SCC40): a `switch` (scrutinee, guards), an `assert`, a
+  /// pattern declaration, a pattern assignment or `throw` statement, and an
+  /// if-case. Each evaluates up to its first await before anything it guards
+  /// runs, so evaluating it again repeats nothing. Without this an await in
+  /// one of them had no resumption: the machine stopped and the function
+  /// completed with null, or kept the suspension itself as a value.
+  static bool _reEnteredWhole(SAstNode node) =>
+      node is SSwitchStatement ||
+      node is SAssertStatement ||
+      node is SPatternVariableDeclarationStatement ||
+      (node is SIfStatement && node.caseClause != null) ||
+      (node is SExpressionStatement &&
+          (node.expression is SPatternAssignment ||
+              node.expression is SThrowExpression));
+
+  /// Whether [expression] is an `await` and nothing more, parentheses aside —
+  /// the one shape whose value `lastAwaitResult` already is (SCF29).
+  static bool _isTheAwait(SExpression? expression) =>
+      expression is SAwaitExpression ||
+      (expression is SParenthesizedExpression &&
+          _isTheAwait(expression.expression));
+
+  /// SCF29: ends a replayed evaluation that finished without suspending, so
+  /// its per-site cache (SCC40) cannot leak into the next evaluation of the
+  /// same node — a loop condition re-evaluates the identical AST every
+  /// iteration.
+  static void _endReplayedEvaluation(AsyncExecutionState state) {
+    if (state.resumingStatementHasMoreAwaits) {
+      state.resumingStatementHasMoreAwaits = false;
+      state.clearStatementReplay();
+    }
+  }
+
+  static SAstNode? _determineNextNodeAfterAwait(
+    InterpreterVisitor visitor,
+    AsyncExecutionState state,
+    SAstNode nodeThatCausedSuspension,
+  ) {
+    Object? futureResult = state.lastAwaitResult;
+    // ghissues63: the scope the suspended node runs in, block scopes included.
+    final currentExecutionEnvironment = _scopeFor(
+      state,
+      nodeThatCausedSuspension,
+    );
+    if (Logger.isDebug) {
+      Logger.debug(
+        "[_determineNextNodeAfterAwait] Modifying environment: ${currentExecutionEnvironment.hashCode} (state.environment: ${state.environment.hashCode}, loop stack depth: ${state.loopEnvironmentStack.length})",
+      );
+    }
+
+    if (Logger.isDebug) {
+      Logger.debug(
+        "[_determineNextNodeAfterAwait] Resuming after await. Node causing suspension: ${nodeThatCausedSuspension.runtimeType}, Result: $futureResult",
+      );
+    }
+
+    // The node that caused the suspension is either the SAwaitExpression itself,
+    // or a parent node (like SWhileStatement) if the await was in its condition.
+
+    // Determine the actual context of the await.
+    SAstNode awaitContextNode;
+    SAstNode? awaitExpression;
+
+    if (nodeThatCausedSuspension is SAwaitExpression) {
+      awaitExpression = nodeThatCausedSuspension;
+      // Use _parentOf to get the parent as context (mirrors analyzer .parent)
+      awaitContextNode =
+          _parentOf(nodeThatCausedSuspension) ?? nodeThatCausedSuspension;
+    } else if (nodeThatCausedSuspension is SExpressionStatement &&
+        nodeThatCausedSuspension.expression is SAwaitExpression) {
+      // Case where the await was directly the expression of an SExpressionStatement
+      awaitExpression = nodeThatCausedSuspension.expression as SAwaitExpression;
+      awaitContextNode = nodeThatCausedSuspension;
+    } else if (nodeThatCausedSuspension is SWhileStatement &&
+        nodeThatCausedSuspension.condition is SAwaitExpression) {
+      // Special case: the await was directly the condition of a SWhileStatement
+      awaitContextNode =
+          nodeThatCausedSuspension; // The SWhileStatement is the context
+      awaitExpression = nodeThatCausedSuspension.condition as SAwaitExpression;
+    } else if (nodeThatCausedSuspension is SDoStatement &&
+        nodeThatCausedSuspension.condition is SAwaitExpression) {
+      // Special case: the await was directly the condition of a SDoStatement
+      awaitContextNode =
+          nodeThatCausedSuspension; // The SDoStatement is the context
+      awaitExpression = nodeThatCausedSuspension.condition as SAwaitExpression;
+    } else if (nodeThatCausedSuspension is SMethodInvocation) {
+      // Special case: the await was in the arguments of a method invocation
+      awaitContextNode = nodeThatCausedSuspension;
+      awaitExpression = null; // The await is nested in arguments
+      Logger.debug(
+        "[_determineNextNodeAfterAwait] Await context is SMethodInvocation with arguments containing await.",
+      );
+    } else if (nodeThatCausedSuspension is SFunctionExpressionInvocation) {
+      // Special case: the await was in the arguments of a function expression invocation
+      awaitContextNode = nodeThatCausedSuspension;
+      awaitExpression = null; // The await is nested in arguments
+      Logger.debug(
+        "[_determineNextNodeAfterAwait] Await context is SFunctionExpressionInvocation with arguments containing await.",
+      );
+    } else if (nodeThatCausedSuspension is SInstanceCreationExpression) {
+      // Special case: the await was in the arguments of a constructor call
+      awaitContextNode = nodeThatCausedSuspension;
+      awaitExpression = null; // The await is nested in arguments
+      Logger.debug(
+        "[_determineNextNodeAfterAwait] Await context is SInstanceCreationExpression with arguments containing await.",
+      );
+    } else {
+      // Try to find await context by analyzing the node structure
+      SAstNode? foundInvocation = _findInvocationWithAwaitInArguments(
+        nodeThatCausedSuspension,
+      );
+      if (foundInvocation != null) {
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[_determineNextNodeAfterAwait] Found invocation with await in arguments: ${foundInvocation.runtimeType}",
+          );
+        }
+        awaitContextNode = foundInvocation;
+        awaitExpression = null; // The await is nested in arguments
+      } else {
+        // We don't know how to extract the await, use the node directly
+        // (may lead to errors if the logic below does not handle this node)
+        awaitContextNode = nodeThatCausedSuspension;
+        awaitExpression = null; // We don't know where the await was exactly
+        Logger.warn(
+          "[_determineNextNodeAfterAwait] Could not determine exact await context for node type ${nodeThatCausedSuspension.runtimeType}. Using node as context.",
+        );
+      }
+    }
+
+    // SCE81: a cascade SECTION cannot be re-executed on its own.
+    //
+    // The chain above lands on the nearest enclosing invocation, and for
+    // `sb..write(await f())` that is the `write(...)` section — whose target is
+    // implicit, so accepting it standalone resolves `write` as a bare name and
+    // the script author saw `Undefined variable: write`. The node that can be
+    // re-executed is the whole `CascadeExpression`.
+    //
+    // Re-executing it is SAFE rather than merely possible, and that is the
+    // other half of this fix: `visitCascadeExpression` memoises the target and
+    // records which sections have completed, so the replay evaluates the
+    // target once and skips the sections whose side effects already happened.
+    // Without that, lifting here would trade a wrong error for a doubled
+    // `write`.
+    final cascadeOwner = _enclosingCascadeOf(awaitContextNode);
+    if (cascadeOwner != null) {
+      Logger.debug(
+        "[_determineNextNodeAfterAwait] Await context is a cascade section; "
+        "re-executing the enclosing CascadeExpression instead.",
+      );
+      awaitContextNode = cascadeOwner;
+    }
+
+    if (Logger.isDebug) {
+      Logger.debug(
+        "[_determineNextNodeAfterAwait] Determined await context: ${awaitContextNode.runtimeType}",
+      );
+    }
+
+    // ghissues62: a statement re-entered whole, the resolved awaits replaying.
+    if (_reEnteredWhole(awaitContextNode)) {
+      if (Logger.isDebug) {
+        Logger.debug(
+          "[_determineNextNodeAfterAwait] Re-running "
+          "${awaitContextNode.runtimeType} so the resolved await sites replay.",
+        );
+      }
+      state.resumingStatementHasMoreAwaits = true;
+      if (visitor.environment != currentExecutionEnvironment) {
+        visitor.environment = currentExecutionEnvironment;
+      }
+      return awaitContextNode;
+    }
+
+    // Logic based on the type of node that contained the await (awaitContextNode)
+
+    // Case: Method/Function/Constructor invocation with await in arguments
+    if (awaitContextNode is SMethodInvocation ||
+        awaitContextNode is SFunctionExpressionInvocation ||
+        awaitContextNode is SInstanceCreationExpression ||
+        // SCE81: a cascade is re-executed the same way, and must be.
+        awaitContextNode is SCascadeExpression) {
+      if (Logger.isDebug) {
+        Logger.debug(
+          "[_determineNextNodeAfterAwait] Handling ${awaitContextNode.runtimeType} with await in arguments. Re-executing the invocation...",
+        );
+      }
+
+      // SCE139: evaluate NOTHING here when the state machine can re-run the
+      // statement instead.
+      //
+      // Re-executing the invocation below runs every await site the machine has
+      // not yet resolved a SECOND time. That evaluation's suspension cannot be
+      // registered with the machine — the machine only ever attaches to a
+      // suspension raised by executing a node — so it is discarded and the node
+      // is executed again anyway. With `next()` incrementing a counter,
+      // `return add(await next(), await next())` called it three times and
+      // answered 4 instead of 3: the discarded pass consumed the value the
+      // second site should have received, so this was never only a call-count
+      // bug.
+      //
+      // SCD121 repaired the declaration route by handing the statement back to
+      // the machine. The sites already resolved replay from
+      // `resolvedAwaitResults`, the first one not yet reached suspends for real,
+      // and the pass on which nothing suspends is the one that does the work —
+      // one evaluation per pass, which is what keeps the counts right.
+      final SAstNode? resumableNode = _resumableNodeFor(awaitContextNode);
+      if (resumableNode != null) {
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[_determineNextNodeAfterAwait] Re-running "
+            "${resumableNode.runtimeType} so the resolved await sites "
+            "replay.",
+          );
+        }
+        state.resumingStatementHasMoreAwaits = true;
+        if (visitor.environment != currentExecutionEnvironment) {
+          visitor.environment = currentExecutionEnvironment;
+        }
+        return resumableNode;
+      }
+
+      // Re-execute the invocation with the resolved await value
+      try {
+        // Temporarily restore the async state to enable await processing
+        final previousAsyncState = visitor.currentAsyncState;
+        visitor.currentAsyncState = state;
+
+        // Enable invocation resumption mode so await expressions return the resolved value
+        final previousResumptionMode = state.isInvocationResumptionMode;
+        state.isInvocationResumptionMode = true;
+
+        // SCC40: see the SReturnStatement branch below — re-evaluation now
+        // genuinely re-reads operands, so it must run in the frame's own scope.
+        final previousVisitorEnv = visitor.environment;
+        visitor.environment = currentExecutionEnvironment;
+
+        final result = awaitContextNode.accept<Object?>(visitor);
+
+        // Restore the previous modes
+        state.isInvocationResumptionMode = previousResumptionMode;
+        visitor.currentAsyncState = previousAsyncState;
+        visitor.environment = previousVisitorEnv;
+
+        if (result is AsyncSuspensionRequest) {
+          Logger.debug(
+            "[_determineNextNodeAfterAwait] Another await encountered during invocation continuation.",
+          );
+          // SCC40: keep the per-site results — the next pass over this node has
+          // to replay them, or the awaits already resolved would suspend again
+          // and the statement would never finish.
+          state.resumingStatementHasMoreAwaits = true;
+          return awaitContextNode; // Stay on the same node to handle the next await
+        }
+
+        // The call completed successfully
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[_determineNextNodeAfterAwait] Invocation completed successfully with result: $result",
+          );
+        }
+
+        // CRITICAL FIX: Store the invocation result so it can be used as the final completion value
+        // This ensures that when the state machine finishes, it uses the correct result
+        // instead of falling back to lastAwaitResult
+        state.lastAwaitResult = result;
+
+        // Now we need to handle the result based on the parent context
+        // Walk up using the parent links to find the enclosing Statement
+        SAstNode? parentStatement = awaitContextNode;
+        while (parentStatement != null && parentStatement is! SStatement) {
+          parentStatement = _parentOf(parentStatement);
+        }
+
+        if (parentStatement is SVariableDeclarationStatement) {
+          // This is a variable declaration with the invocation as initializer
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[_determineNextNodeAfterAwait] Completing variable declaration with invocation result: $result",
+            );
+          }
+
+          // Find the variable declaration and assign the result
+          final varList = parentStatement.variables;
+          if (varList!.variables.isNotEmpty) {
+            final varDecl = varList.variables.first;
+            final varName = varDecl.name!.name;
+
+            // Set the variable in the current environment
+            final currentEnv = currentExecutionEnvironment;
+            currentEnv.define(varName, result);
+            if (Logger.isDebug) {
+              Logger.debug(
+                "[_determineNextNodeAfterAwait] Assigned invocation result to variable '$varName' = $result",
+              );
+            }
+          }
+
+          // Find the next statement after the variable declaration
+          return _findNextSequentialNode(visitor, parentStatement);
+        } else if (parentStatement is SExpressionStatement) {
+          // This is a standalone expression statement
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[_determineNextNodeAfterAwait] Completed expression statement with invocation result: $result",
+            );
+          }
+
+          // Find the next statement after the expression statement
+          return _findNextSequentialNode(visitor, parentStatement);
+        } else {
+          // For other cases, continue with finding the next node
+          Logger.debug(
+            "[_determineNextNodeAfterAwait] Invocation in other context. Finding next node.",
+          );
+          return _findNextSequentialNode(visitor, awaitContextNode);
+        }
+      } catch (e, s) {
+        Logger.error(
+          "[_determineNextNodeAfterAwait] Error during invocation continuation: $e\n$s",
+        );
+        if (!state.completer.isCompleted) {
+          state.completer.completeError(e, s);
+        }
+        return null; // Stop execution
+      }
+    }
+
+    // Case 1: Variable declaration (var x = await f();)
+    if (awaitContextNode is SVariableDeclarationStatement) {
+      // This case handles when the await occurs directly in the initializer.
+      // It's triggered when `visitVariableDeclarationList` returns the suspension.
+      // Assign the result to the variable(s)
+      final varList = awaitContextNode.variables!;
+      // Find the *specific* variable whose initializer was the awaitExpression
+      // Note: awaitExpression might be null if context couldn't be refined.
+      // We assume the *first* variable in the list if awaitExpression is null or not found directly.
+      // This might be fragile if multiple variables have initializers.
+      SVariableDeclaration? targetVar = varList.variables.firstWhereOrNull(
+        (v) =>
+            v.initializer == awaitExpression ||
+            (v.initializer is SParenthesizedExpression &&
+                (v.initializer as SParenthesizedExpression).expression ==
+                    awaitExpression),
+      );
+      targetVar ??= varList.variables.first; // Fallback to first
+
+      // SCD121: the fast path below binds `futureResult` — the value of ONE
+      // await — straight to the variable and moves on. That is right only when
+      // the initializer IS that await. When the initializer merely CONTAINS it,
+      // everything around it was discarded: `var s = (await a) + (await b);`
+      // bound `s = 1` instead of 3, and `var s = '${await a},${await b}';`
+      // bound the raw int, so the next line failed with a type error about a
+      // value the script never wrote. The other operands WERE evaluated and
+      // then thrown away — measured by counting calls, so this was never a
+      // missing-evaluation bug, it was a discarded-result one.
+      //
+      // SCC40 fixed the same family on the RETURN route; this branch never got
+      // the treatment.
+      //
+      // THE REPAIR IS TO EVALUATE NOTHING HERE. Hand the statement back to the
+      // state machine and let it execute the declaration again: the await sites
+      // already resolved replay from `resolvedAwaitResults`, the first one not
+      // yet reached suspends for real, and `visitVariableDeclarationList` binds
+      // the variable on the pass where nothing suspends. One evaluation per
+      // pass, which is what keeps the call counts right.
+      //
+      // The tempting alternative — re-evaluate the initializer here, the way
+      // the return route re-evaluates its expression — was measured and is
+      // wrong for a statement with side effects. That evaluation's suspension
+      // cannot be registered with the machine (the machine only ever attaches
+      // to a suspension raised by executing a node), so it is discarded and the
+      // node is re-executed anyway: every not-yet-resolved await runs TWICE per
+      // pass. With `next()` incrementing a counter, `(await next()) + (await
+      // next())` gave 5 instead of 3. The return route still carries that
+      // double evaluation; it is invisible there only because its cases await
+      // side-effect-free futures.
+      //
+      // `(await f).prop` keeps its own fast path below — it is a working
+      // special case with its own coverage, and it has a single await site.
+      final SExpression? initializer = targetVar.initializer;
+      final bool initializerIsTheAwait =
+          initializer == awaitExpression ||
+          (initializer is SParenthesizedExpression &&
+              initializer.expression == awaitExpression);
+      final bool initializerIsHandledPropertyAccess =
+          initializer is SPropertyAccess &&
+          initializer.target is SParenthesizedExpression;
+      if (initializer != null &&
+          !initializerIsTheAwait &&
+          !initializerIsHandledPropertyAccess) {
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[_determineNextNodeAfterAwait] Initializer of "
+            "'${targetVar.name!.name}' contains more than the await; "
+            "re-running the declaration so the resolved sites replay.",
+          );
+        }
+        // Keep the per-site results for that re-run. The machine clears them
+        // once the statement completes without suspending.
+        state.resumingStatementHasMoreAwaits = true;
+        if (visitor.environment != currentExecutionEnvironment) {
+          visitor.environment = currentExecutionEnvironment;
+        }
+        return awaitContextNode;
+      }
+
+      if (targetVar.initializer is SPropertyAccess) {
+        final propertyAccess = targetVar.initializer as SPropertyAccess;
+        if (propertyAccess.target is SParenthesizedExpression) {
+          // We want to access the property on the resolved Future value
+          final propertyName = propertyAccess.propertyName!.name;
+          final (bridgedInstance, isBridgedInstance) = visitor
+              .toBridgedInstance(futureResult);
+          if (isBridgedInstance) {
+            final getterAdapter = bridgedInstance!.bridgedClass
+                .findInstanceGetterAdapter(propertyName);
+            if (getterAdapter != null) {
+              final getterResult = getterAdapter(
+                visitor,
+                bridgedInstance.nativeObject,
+              );
+
+              futureResult = getterResult;
+            }
+
+            final methodAdapter = bridgedInstance.bridgedClass
+                .findInstanceMethodAdapter(propertyName);
+            if (methodAdapter != null) {
+              // Return a callable bound to the instance
+              final boundCallable = BridgedMethodCallable(
+                bridgedInstance,
+                methodAdapter,
+                propertyName,
+              );
+
+              futureResult = boundCallable;
+            }
+          }
+        }
+      }
+      currentExecutionEnvironment.define(targetVar.name!.name, futureResult);
+      if (Logger.isDebug) {
+        Logger.debug(
+          " [_determineNextNodeAfterAwait] Defined awaited result for variable '${targetVar.name!.name}' = $futureResult in env ${currentExecutionEnvironment.hashCode} (Case 1). Finding next node.",
+        );
+      }
+      if (Logger.isDebug) {
+        Logger.debug(
+          " [_determineNextNodeAfterAwait] Assigned awaited result to variable '${targetVar.name!.name}' (Case 1). Finding next node.",
+        );
+      }
+
+      if (visitor.environment != currentExecutionEnvironment) {
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [_determineNextNodeAfterAwait] Updating visitor environment from ${visitor.environment.hashCode} to ${currentExecutionEnvironment.hashCode}",
+          );
+        }
+        visitor.environment = currentExecutionEnvironment;
+      }
+
+      // Find the next sequential node to execute AFTER the await context node.
+      return _findNextSequentialNode(visitor, awaitContextNode);
+    }
+    // NEW CASE 1.5: Resume after await in the initializer of a declaration IN a block.
+    // This happens when `nodeThatCausedSuspension` is the SExpressionStatement or SVariableDeclarationStatement itself,
+    // but `_determineNextNodeAfterAwait` is called *after* the Future resolves.
+    else if (nodeThatCausedSuspension is SVariableDeclarationStatement) {
+      final varDeclStatement = nodeThatCausedSuspension;
+      final varList = varDeclStatement.variables!;
+      // Like in Case 1, find the variable that awaited.
+      SVariableDeclaration? targetVar = varList.variables.firstWhereOrNull(
+        (v) => v.initializer is SAwaitExpression,
+        // We need a better way to link the suspension back to the SAwaitExpression node
+        // For now, assume the FIRST variable with an SAwaitExpression initializer in this statement
+      );
+      targetVar ??=
+          varList.variables.first; // Fallback: assume it was the first variable
+
+      // Use define() because the variable was not defined during the initial visit
+      currentExecutionEnvironment.define(targetVar.name!.name, futureResult);
+      // SPECULATIVE FIX: Try assigning immediately after defining
+      try {
+        currentExecutionEnvironment.assign(targetVar.name!.name, futureResult);
+      } catch (assignError) {
+        Logger.warn(
+          "[_determineNextNodeAfterAwait] Speculative assign after define failed: $assignError",
+        );
+      }
+      // ADD DEBUG:
+      try {
+        final checkValue = currentExecutionEnvironment.get(
+          targetVar.name!.name,
+        );
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [_determineNextNodeAfterAwait] Check after define+assign: '${targetVar.name!.name}' in env ${currentExecutionEnvironment.hashCode} is $checkValue (${checkValue?.runtimeType}) <Expected: $futureResult>",
+          );
+        }
+      } catch (e) {
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [_determineNextNodeAfterAwait] Check after define+assign FAILED for '${targetVar.name!.name}': $e",
+          );
+        }
+      }
+      // END ADD DEBUG
+      if (Logger.isDebug) {
+        Logger.debug(
+          " [_determineNextNodeAfterAwait] Defined/Assigned variable '${targetVar.name!.name}' = $futureResult (Case 1.5). Finding next node.",
+        );
+      }
+
+      // Find the next instruction AFTER this declaration
+      return _findNextSequentialNode(visitor, varDeclStatement);
+    }
+    // Case 2: Expression statement (await f(); or var x = await f(); or x = await f(); etc.)
+    else if (awaitContextNode is SExpressionStatement) {
+      // Check the type of expression inside the statement
+      final expression = awaitContextNode.expression;
+
+      if (expression is SAwaitExpression) {
+        // Simple case: await f(); The result is ignored.
+        Logger.debug(
+          " [_determineNextNodeAfterAwait] Resumed from SExpressionStatement (SAwaitExpression). Finding next sequential node.",
+        );
+        return _findNextSequentialNode(visitor, awaitContextNode);
+      } else if (expression is SVariableDeclarationList) {
+        // Case: var awaitedValue = await getValue(i);
+        // The suspension actually happened *during* the visitVariableDeclarationList call,
+        // but _determineNextNodeAfterAwait sees the SExpressionStatement as the context.
+        Logger.debug(
+          " [_determineNextNodeAfterAwait] Resumed from SExpressionStatement (SVariableDeclarationList). Defining variable.",
+        );
+
+        // Cast expression to SVariableDeclarationList to access variables
+        // Note: SVariableDeclarationList extends SDeclaration, not SExpression,
+        // so the is-check above doesn't promote. Use explicit cast.
+        final varList = expression as SVariableDeclarationList;
+
+        // Find the variable that had the await (assuming first with SAwaitExpression initializer)
+        SVariableDeclaration? targetVar = varList.variables.firstWhereOrNull(
+          (v) => v.initializer is SAwaitExpression,
+          // Need a reliable way to know which specific await finished
+          // Fallback: assume first variable if none match perfectly
+        );
+        targetVar ??= varList.variables.first;
+
+        // Assign the result in the correct environment (the loop environment if inside one)
+        final currentEnv = currentExecutionEnvironment;
+        // Use define() because the variable was not defined during the initial visit
+        currentEnv.define(targetVar.name!.name, futureResult);
+        // SPECULATIVE FIX: Try assigning immediately after defining
+        try {
+          currentEnv.assign(targetVar.name!.name, futureResult);
+        } catch (assignError) {
+          Logger.warn(
+            "[_determineNextNodeAfterAwait] Speculative assign after define failed (VarDeclList): $assignError",
+          );
+        }
+        try {
+          final checkValue2 = currentEnv.get(targetVar.name!.name);
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[_determineNextNodeAfterAwait] Check after define+assign: '${targetVar.name!.name}' in env ${currentEnv.hashCode} is $checkValue2 (${checkValue2?.runtimeType}) <Expected: $futureResult>",
+            );
+          }
+        } catch (e) {
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[_determineNextNodeAfterAwait] Check after define+assign FAILED for '${targetVar.name!.name}': $e",
+            );
+          }
+        }
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [_determineNextNodeAfterAwait] Defined/Assigned variable '${targetVar.name!.name}' = $futureResult (Case 2 - VarDecl). Finding next node.",
+          );
+        }
+
+        // Find the next statement after this SExpressionStatement
+        return _findNextSequentialNode(visitor, awaitContextNode);
+      } else if (expression is SAssignmentExpression) {
+        // Case: x += await f(); or x = await f();
+        // This is the primary handler now as the context is the SExpressionStatement.
+        final assignmentNode = expression; // Already cast
+
+        // SCF29: the code below assigns `lastAwaitResult` — the value of ONE
+        // await — as the whole right-hand side. That is right only when the
+        // RHS IS that await. `s = (await a) + (await b);` bound `s` to the
+        // first await's value and never reached the second at all (one call,
+        // not two): SCD121's original defect, on the assignment route rather
+        // than the declaration route. The repair is SCD121's: evaluate
+        // nothing here, hand the statement back, and let the resolved sites
+        // replay. `(await f).prop` keeps its fast path below, as it does in
+        // the declaration route.
+        final rhs = assignmentNode.rightHandSide;
+        final rhsIsTheAwait =
+            rhs is SAwaitExpression ||
+            (rhs is SParenthesizedExpression &&
+                rhs.expression is SAwaitExpression);
+        final rhsIsHandledPropertyAccess =
+            rhs is SPropertyAccess && rhs.target is SParenthesizedExpression;
+        if (!rhsIsTheAwait && !rhsIsHandledPropertyAccess) {
+          Logger.debug(
+            "[_determineNextNodeAfterAwait] Assignment RHS contains more than "
+            "the await; re-running the statement so the resolved sites replay.",
+          );
+          state.resumingStatementHasMoreAwaits = true;
+          if (visitor.environment != currentExecutionEnvironment) {
+            visitor.environment = currentExecutionEnvironment;
+          }
+          return awaitContextNode;
+        }
+        Object? resolvedRhs = state.lastAwaitResult; // La valeur résolue
+        final operatorType = assignmentNode.operator;
+        final lhs = assignmentNode.leftHandSide;
+        final currentEnv = currentExecutionEnvironment;
+
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [_determineNextNodeAfterAwait] Resuming SExpressionStatement(SAssignmentExpression Op: $operatorType). RHS: $resolvedRhs (${resolvedRhs?.runtimeType})",
+          );
+        }
+
+        // Determine the next node AFTER the SExpressionStatement
+        final SAstNode? nextNode = _findNextSequentialNode(
+          visitor,
+          awaitContextNode,
+        );
+        final propertyAccess = expression.rightHandSide;
+        if (propertyAccess != null && propertyAccess is SPropertyAccess) {
+          if (propertyAccess.target is SParenthesizedExpression) {
+            // We want to access the property on the resolved Future value
+            final propertyName = propertyAccess.propertyName!.name;
+            final (bridgedInstance, isBridgedInstance) = visitor
+                .toBridgedInstance(resolvedRhs);
+            if (isBridgedInstance) {
+              final getterAdapter = bridgedInstance!.bridgedClass
+                  .findInstanceGetterAdapter(propertyName);
+              if (getterAdapter != null) {
+                final getterResult = getterAdapter(
+                  visitor,
+                  bridgedInstance.nativeObject,
+                );
+
+                resolvedRhs = getterResult;
+              }
+
+              final methodAdapter = bridgedInstance.bridgedClass
+                  .findInstanceMethodAdapter(propertyName);
+              if (methodAdapter != null) {
+                // Return a callable bound to the instance
+                final boundCallable = BridgedMethodCallable(
+                  bridgedInstance,
+                  methodAdapter,
+                  propertyName,
+                );
+
+                resolvedRhs = boundCallable;
+              }
+            }
+          }
+        }
+        if (operatorType == '=') {
+          if (lhs is SSimpleIdentifier) {
+            final varName = lhs.name;
+            try {
+              currentEnv.assign(varName, resolvedRhs);
+              if (Logger.isDebug) {
+                Logger.debug(
+                  "[_determineNextNodeAfterAwait] Assigned $varName = $resolvedRhs (Case 2 - Simple Assign)",
+                );
+              }
+            } catch (e) {
+              Logger.error("Assigning simple await result: $e");
+            }
+          } else {
+            // SCE223: this IS the implementation for `o.x = await f()` and
+            // `l[i] = await f()`, not a gap. Re-visiting the assignment
+            // resolves the await from the cached result, so the RHS is not
+            // re-run and the LHS is evaluated once (pinned by F-SCE223-1..3).
+            // It used to log "not implemented" on every such assignment.
+            Logger.debug(
+              "[_determineNextNodeAfterAwait] Resuming assignment to a non-identifier LHS by re-visiting it with the awaited value cached (Case 2).",
+            );
+            // Attempt: Re-execute the assignment now that RHS is known (may fail)
+            // This approach is risky because it re-evaluates the LHS.
+            final originalVisitorEnv = visitor.environment;
+            try {
+              visitor.environment = currentEnv;
+              assignmentNode.accept(
+                visitor,
+              ); // Might re-trigger await if LHS is complex?
+            } catch (e) {
+              Logger.warn("Re-visiting simple assignment failed: $e");
+            } finally {
+              visitor.environment = originalVisitorEnv;
+            }
+          }
+        } else {
+          final originalVisitorEnv = visitor.environment;
+          Object? lhsValue;
+          try {
+            visitor.environment = currentEnv; // Use correct scope
+            // IMPORTANT: Re-evaluating LHS here. Assumes it's safe/idempotent.
+            lhsValue = lhs!.accept<Object?>(visitor);
+            if (Logger.isDebug) {
+              Logger.debug(
+                " [_determineNextNodeAfterAwait] Re-evaluated LHS for compound assign to: $lhsValue (${lhsValue?.runtimeType})",
+              );
+            }
+          } catch (e, s) {
+            Logger.error("Re-evaluating LHS for compound assign: $e\n$s");
+            if (!state.completer.isCompleted) {
+              state.completer.completeError(e, s);
+            }
+            return null; // Stop
+          } finally {
+            visitor.environment = originalVisitorEnv;
+          }
+
+          // Calculate the result
+          Object? resultValue;
+          try {
+            // Call computeCompoundValue from the visitor instance
+            resultValue = visitor.computeCompoundValue(
+              lhsValue,
+              resolvedRhs,
+              operatorType,
+            );
+            if (Logger.isDebug) {
+              Logger.debug(
+                " [_determineNextNodeAfterAwait] Computed compound value: $resultValue",
+              );
+            }
+          } catch (e, s) {
+            Logger.error("Computing compound value after await: $e\n$s");
+            if (!state.completer.isCompleted) {
+              state.completer.completeError(e, s);
+            }
+            return null; // Stop
+          }
+
+          // Assign the computed result back
+          if (lhs is SSimpleIdentifier) {
+            final varName = lhs.name;
+            try {
+              currentEnv.assign(varName, resultValue);
+              if (Logger.isDebug) {
+                Logger.debug(
+                  "[_determineNextNodeAfterAwait] Assigned $varName = $resultValue (Case 2 - Compound Assign)",
+                );
+              }
+            } catch (e) {
+              Logger.error("Assigning compound await result: $e");
+            }
+          } else {
+            Logger.warn(
+              "[_determineNextNodeAfterAwait] Resumption for compound assignment to complex LHS not fully implemented. Trying standard assign visit.",
+            );
+            // Tentative: Ré-exécuter l'assignation avec la valeur calculée (peut échouer)
+            // Need to fake the RHS with the computed value somehow? This is hard.
+            // For now, let it fail or proceed without assigning complex LHS.
+          }
+        }
+        // Return the next node found earlier
+        return nextNode;
+      } else {
+        // Other expression types within SExpressionStatement after await?
+        Logger.warn(
+          "[_determineNextNodeAfterAwait] Resumed from SExpressionStatement with unexpected inner expression: ${expression.runtimeType}. Finding next sequential node.",
+        );
+        return _findNextSequentialNode(visitor, awaitContextNode);
+      }
+    }
+    // Case 3: Return statement with await in expression
+    // Handles both direct await (return await f();) and nested await (return 'Value: ${await f()}';)
+    else if (awaitContextNode is SReturnStatement) {
+      final returnNode = awaitContextNode;
+
+      if (awaitExpression != null && returnNode.expression == awaitExpression) {
+        // Direct await: return await f();
+        // The result is already in lastAwaitResult, just trigger a return with it
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[_determineNextNodeAfterAwait] Resuming SReturnStatement with direct await. Result: $futureResult",
+          );
+        }
+        // The return statement will be re-executed with the resolved value
+        // We need to mark the function as complete with this value
+        state.lastAwaitResult = futureResult;
+        // Return null to signal completion - the state machine will use lastAwaitResult
+        return null;
+      } else {
+        // Nested await: return 'Value: ${await f()}';
+        //
+        // SCE139: hand the return back to the state machine rather than
+        // re-evaluating its expression here — see the invocation branch above
+        // for why the local re-evaluation ran every not-yet-resolved await
+        // twice and answered 4 for `return (await next()) + (await next())`.
+        //
+        // Re-running the statement also puts the RIGHT party in charge of
+        // completing the function. Completing here meant setting
+        // `lastAwaitResult` and returning null, which bypasses the machine's
+        // `ReturnException` handler and with it the jump into any enclosing
+        // finally: `try { return "${await f()}"; } finally { ... }` never ran
+        // its finally. `visitReturnStatement` throws for real on the pass where
+        // nothing suspends, and that handler routes the return correctly.
+        Logger.debug(
+          "[_determineNextNodeAfterAwait] Resuming SReturnStatement with nested "
+          "await; re-running the statement so the resolved sites replay.",
+        );
+        state.resumingStatementHasMoreAwaits = true;
+        if (visitor.environment != currentExecutionEnvironment) {
+          visitor.environment = currentExecutionEnvironment;
+        }
+        return returnNode;
+      }
+    }
+    // Case 4: Function body expression (=> await f();)
+    else if (awaitContextNode is SExpressionFunctionBody &&
+        awaitExpression != null) {
+    }
+    // Case 5: Assignment (x = await f(); or x += await f();)
+    else if (awaitContextNode is SAssignmentExpression) {
+      final assignmentNode = awaitContextNode;
+      final resolvedRhs = state.lastAwaitResult; // The resolved Future value
+      final operatorType = assignmentNode.operator;
+      final lhs = assignmentNode.leftHandSide;
+      // Use the correct environment (the loop environment if applicable)
+      final currentEnv = currentExecutionEnvironment;
+
+      if (Logger.isDebug) {
+        Logger.debug(
+          " [_determineNextNodeAfterAwait] Resuming SAssignmentExpression (Operator: $operatorType). RHS resolved to: $resolvedRhs (${resolvedRhs?.runtimeType})",
+        );
+      }
+
+      // Determine the next node BEFORE making the assignment (because _findNext may depend on the parent)
+      SAstNode? parentStatement = assignmentNode;
+      while (parentStatement != null && parentStatement is! SStatement) {
+        parentStatement = _parentOf(parentStatement);
+      }
+      final SAstNode? nextNode = (parentStatement is SStatement)
+          ? _findNextSequentialNode(visitor, parentStatement)
+          : null;
+
+      if (operatorType == '=') {
+        if (lhs is SSimpleIdentifier) {
+          final varName = lhs.name;
+          try {
+            currentEnv.assign(varName, resolvedRhs);
+            if (Logger.isDebug) {
+              Logger.debug(
+                " [_determineNextNodeAfterAwait] Assigned $varName = $resolvedRhs (Simple Assign)",
+              );
+            }
+          } catch (e) {
+            Logger.error("Assigning simple await result: $e");
+          }
+        } else {
+          Logger.warn(
+            "[_determineNextNodeAfterAwait] Resumption for simple assignment to complex LHS not fully implemented. Trying standard assign visit.",
+          );
+
+          final originalVisitorEnv = visitor.environment;
+          try {
+            visitor.environment = currentEnv;
+            assignmentNode.accept(
+              visitor,
+            ); // Might re-trigger await if LHS is complex?
+          } catch (e) {
+            Logger.error("Re-visiting simple assignment failed: $e");
+          } finally {
+            visitor.environment = originalVisitorEnv;
+          }
+        }
+      } else {
+        final originalVisitorEnv = visitor.environment;
+        Object? lhsValue;
+        try {
+          visitor.environment = currentEnv; // Use correct scope for LHS
+          lhsValue = lhs!.accept<Object?>(visitor);
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[_determineNextNodeAfterAwait] Re-evaluated LHS for compound assignment to: $lhsValue (${lhsValue?.runtimeType})",
+            );
+          }
+        } catch (e, s) {
+          Logger.error("Re-evaluating LHS for compound assign: $e\n$s");
+          // Cannot proceed without LHS value
+          if (!state.completer.isCompleted) state.completer.completeError(e, s);
+          return null; // Stop
+        } finally {
+          visitor.environment = originalVisitorEnv;
+        }
+
+        // Calculate the result using computeCompoundValue
+        Object? resultValue;
+        try {
+          // computeCompoundValue needs the visitor for potential extension methods
+          resultValue = visitor.computeCompoundValue(
+            lhsValue,
+            resolvedRhs,
+            operatorType,
+          );
+        } catch (e, s) {
+          Logger.error("Computing compound value after await: $e\n$s");
+          if (!state.completer.isCompleted) state.completer.completeError(e, s);
+          return null; // Stop
+        }
+
+        // Assign the computed result back to the LHS target
+        if (lhs is SSimpleIdentifier) {
+          final varName = lhs.name;
+          try {
+            currentEnv.assign(varName, resultValue);
+            if (Logger.isDebug) {
+              Logger.debug(
+                " [_determineNextNodeAfterAwait] Assigned $varName = $resultValue (Compound Assign)",
+              );
+            }
+          } catch (e) {
+            Logger.error("Assigning compound await result: $e");
+          }
+        } else {
+          Logger.warn(
+            "[_determineNextNodeAfterAwait] Resumption for compound assignment to complex LHS not fully implemented. Trying standard assign visit.",
+          );
+          // Tentative: Ré-exécuter l'assignation avec la valeur calculée (peut échouer)
+          // Need to fake the RHS with the computed value somehow? This is hard.
+          // For now, let it fail or proceed without assigning complex LHS.
+        }
+      }
+
+      // Return the next node determined earlier
+      if (nextNode == null) {
+        Logger.warn(
+          "[_determineNextNodeAfterAwait] Could not find next node for SAssignmentExpression after await. Stopping.",
+        );
+      }
+      return nextNode;
+    }
+    // Case 6: If condition (if (await f()))
+    else if (awaitContextNode is SIfStatement && awaitExpression != null) {
+      // ... (unchanged logic, but ensure it uses awaitContextNode) ...
+    } else if (awaitContextNode is SWhileStatement) {
+      // SCF29: the code below reads `lastAwaitResult` as the WHOLE condition,
+      // which is right only when the condition IS the await. Anything more —
+      // `(await a) + (await b) == 3`, `!await f()` — is re-entered so the
+      // machine re-evaluates the condition with the resolved sites replaying.
+      if (!_isTheAwait(awaitContextNode.condition)) {
+        state.resumingStatementHasMoreAwaits = true;
+        if (visitor.environment != currentExecutionEnvironment) {
+          visitor.environment = currentExecutionEnvironment;
+        }
+        return awaitContextNode;
+      }
+      // The await was in the condition
+      final conditionResult = state.lastAwaitResult;
+      if (Logger.isDebug) {
+        Logger.debug(
+          " [_determineNextNodeAfterAwait] Resuming While condition with awaited result: $conditionResult",
+        );
+      }
+
+      if (conditionResult is! bool) {
+        final error = RuntimeD4rtException(
+          "While condition (after await) must evaluate to a boolean, but got ${conditionResult?.runtimeType}.",
+        );
+        if (!state.completer.isCompleted) {
+          state.completer.completeError(error);
+        }
+        return null;
+      }
+
+      if (conditionResult) {
+        // Condition true -> Go to body
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [_determineNextNodeAfterAwait] While condition TRUE. Next node is body: ${awaitContextNode.body.runtimeType}",
+          );
+        }
+        if (awaitContextNode.body is SBlock) {
+          return (awaitContextNode.body as SBlock).statements.firstOrNull;
+        } else {
+          return awaitContextNode.body;
+        }
+      } else {
+        // Condition false -> Exit loop
+        Logger.debug(
+          " [_determineNextNodeAfterAwait] While condition FALSE. Finding node after loop.",
+        );
+        return _findNextSequentialNode(visitor, awaitContextNode);
+      }
+    } else if (awaitContextNode is SDoStatement) {
+      // SCF29: the code below reads `lastAwaitResult` as the WHOLE condition,
+      // which is right only when the condition IS the await. Anything more —
+      // `(await a) + (await b) == 3`, `!await f()` — is re-entered so the
+      // machine re-evaluates the condition with the resolved sites replaying.
+      if (!_isTheAwait(awaitContextNode.condition)) {
+        state.resumingStatementHasMoreAwaits = true;
+        if (visitor.environment != currentExecutionEnvironment) {
+          visitor.environment = currentExecutionEnvironment;
+        }
+        return awaitContextNode;
+      }
+      // The await was in the condition
+      final conditionResult = state.lastAwaitResult;
+      if (Logger.isDebug) {
+        Logger.debug(
+          " [_determineNextNodeAfterAwait] Resuming DoWhile condition with awaited result: $conditionResult",
+        );
+      }
+
+      if (conditionResult is! bool) {
+        final error = RuntimeD4rtException(
+          "DoWhile condition (after await) must evaluate to a boolean, but got ${conditionResult?.runtimeType}.",
+        );
+        if (!state.completer.isCompleted) {
+          state.completer.completeError(error);
+        }
+        return null;
+      }
+
+      if (conditionResult) {
+        // Condition true: the next state is the beginning of the loop body
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [_determineNextNodeAfterAwait] DoWhile condition TRUE. Next node is body: ${awaitContextNode.body.runtimeType}",
+          );
+        }
+        if (awaitContextNode.body is SBlock) {
+          return (awaitContextNode.body as SBlock).statements.firstOrNull;
+        } else {
+          return awaitContextNode.body;
+        }
+      } else {
+        // Condition false: find the next instruction after the do-while
+        Logger.debug(
+          " [_determineNextNodeAfterAwait] DoWhile condition FALSE. Finding node after do-while.",
+        );
+        return _findNextSequentialNode(visitor, awaitContextNode);
+      }
+    } else if (awaitContextNode is SIfStatement) {
+      // SCF29: the code below reads `lastAwaitResult` as the WHOLE condition,
+      // which is right only when the condition IS the await. Anything more —
+      // `(await a) + (await b) == 3`, `!await f()` — is re-entered so the
+      // machine re-evaluates the condition with the resolved sites replaying.
+      if (!_isTheAwait(awaitContextNode.condition)) {
+        state.resumingStatementHasMoreAwaits = true;
+        if (visitor.environment != currentExecutionEnvironment) {
+          visitor.environment = currentExecutionEnvironment;
+        }
+        return awaitContextNode;
+      }
+      // The await was in the condition
+      final ifNode = awaitContextNode;
+      final conditionResult = state.lastAwaitResult;
+      if (Logger.isDebug) {
+        Logger.debug(
+          " [_determineNextNodeAfterAwait] Resuming If condition with awaited result: $conditionResult",
+        );
+      }
+
+      if (conditionResult is! bool) {
+        final error = RuntimeD4rtException(
+          "If condition (after await) must evaluate to a boolean, but got ${conditionResult?.runtimeType}.",
+        );
+        if (!state.completer.isCompleted) {
+          state.completer.completeError(error);
+        }
+        return null; // Arrêter
+      }
+
+      if (conditionResult) {
+        // Condition true: the next state is the 'then' branch
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [_determineNextNodeAfterAwait] If condition TRUE. Next node is thenBranch: ${ifNode.thenStatement.runtimeType}",
+          );
+        }
+        if (ifNode.thenStatement is SBlock) {
+          return (ifNode.thenStatement as SBlock).statements.firstOrNull;
+        } else {
+          return ifNode.thenStatement;
+        }
+      } else {
+        // Condition false: check the 'else' branch
+        if (ifNode.elseStatement != null) {
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[_determineNextNodeAfterAwait] If condition FALSE. Next node is elseBranch: ${ifNode.elseStatement?.runtimeType}",
+            );
+          }
+          if (ifNode.elseStatement is SBlock) {
+            return (ifNode.elseStatement as SBlock).statements.firstOrNull;
+          } else {
+            return ifNode.elseStatement;
+          }
+        } else {
+          // No 'else' branch, find the next instruction after the if
+          Logger.debug(
+            "[_determineNextNodeAfterAwait] If condition FALSE, no else branch. Finding node after SIfStatement.",
+          );
+          return _findNextSequentialNode(visitor, ifNode);
+        }
+      }
+    } else if (awaitContextNode is SForStatement &&
+        (awaitContextNode.forLoopParts is SForPartsWithDeclarations ||
+            awaitContextNode.forLoopParts is SForPartsWithExpression)) {
+      final forNode = awaitContextNode;
+      // ghissues62: the CONDITION suspended. Re-enter the loop as a
+      // resumption (no updaters run) so the condition is evaluated again with
+      // the resolved awaits replaying; it clears the replay cache once it
+      // yields a bool.
+      if (state.forConditionsSuspended.remove(forNode)) {
+        state.resumedFromInitializer = true;
+        state.resumingStatementHasMoreAwaits = true;
+        return forNode;
+      }
+      // Use nodeThatCausedSuspension to find where the await occurred
+      // SAstNode? nodeThatContainedAwait = nodeThatCausedSuspension; // Can be SAwaitExpression or SForStatement if await in condition/updater
+      final awaitResult = state.lastAwaitResult;
+
+      if (Logger.isDebug) {
+        Logger.debug(
+          " [_determineNextNodeAfterAwait] Resuming For loop. Suspension node: ${nodeThatCausedSuspension.runtimeType}, Context node: ${awaitContextNode.runtimeType}, Result: $awaitResult",
+        );
+      }
+
+      // Check if we are resuming specifically from initializer suspension
+      // We know we suspended during initialization if:
+      // 1. The context node is the SForStatement itself.
+      // 2. The loop environment exists (currentState.loopEnvironmentStack is not empty).
+      // 3. The loop is marked as initialized (currentState.forLoopInitialized == true or stack indicates initialized)
+      //    (because the SM marks it initialized *before* waiting on the init suspension).
+      // 4. We haven't already processed the initializer resumption (currentState.resumedFromInitializer == false).
+      bool isLoopInitialized = state.loopInitializedStack.isNotEmpty
+          ? state.loopInitializedStack.last
+          : state.forLoopInitialized;
+      bool resumingFromInitializer =
+          (awaitContextNode ==
+              forNode) && // Suspended *while processing* the SForStatement node
+          state.loopEnvironmentStack.isNotEmpty &&
+          isLoopInitialized && // Was set before waiting
+          !state.resumedFromInitializer; // Haven't resumed the init part yet
+
+      if (resumingFromInitializer) {
+        Logger.debug(
+          " [_determineNextNodeAfterAwait] Detected resumption from For initializer. Assigning result and proceeding to condition.",
+        );
+
+        // Assign the result to the loop variable
+        if (state.loopEnvironmentStack.isEmpty) {
+          throw StateD4rtException(
+            "Internal error: For loop environment stack empty after initializer await resumption.",
+          );
+        }
+        final parts = forNode.forLoopParts;
+        if (parts is SForPartsWithDeclarations) {
+          // Assuming a single variable declaration for now, as before
+          if (parts.variables!.variables.length == 1) {
+            final loopVarName = parts.variables!.variables.first.name!.name;
+            // Assign the actual result now. The var was defined as null previously by visitVariableDeclarationList.
+            state.loopEnvironmentStack.last.assign(loopVarName, awaitResult);
+            if (Logger.isDebug) {
+              Logger.debug(
+                " [_determineNextNodeAfterAwait] Assigned awaited result $awaitResult to for loop variable '$loopVarName' in env ${currentExecutionEnvironment.hashCode}.",
+              );
+            }
+          } else {
+            // SCE223: genuinely unsupported, and stated exactly. The awaited
+            // initializer suspended the declaration list partway, so the
+            // variables after it were never initialized; resuming them is not
+            // implemented. Pinned by F-SCE223-4.
+            throw UnimplementedD4rtException(
+              "An 'await' in the initializer of a 'for' loop that declares more "
+              "than one variable is not supported (for example "
+              "`for (var i = await f(), j = 0; ...)`). Declare the awaited "
+              "variable before the loop.",
+            );
+          }
+        } else if (parts is SForPartsWithExpression) {
+          // If init is an expression like `i = await f()`, SAssignmentExpression should handle it.
+          // If init is just `await f()`, the result is discarded, just proceed.
+          Logger.debug(
+            "[_determineNextNodeAfterAwait] Resumed from SForPartsWithExpression initializer (await result ignored or handled by SAssignmentExpression).",
+          );
+        }
+
+        // Mark that we have now processed the initializer resumption
+        state.resumedFromInitializer = true;
+
+        // Next state is the SForStatement itself to evaluate the condition
+        return forNode;
+      } else {
+        // Resumption wasn't from initializer, try condition/updater/body logic
+        SAstNode? nodeThatContainedAwait =
+            nodeThatCausedSuspension; // Where did the await physically occur?
+        bool inCondition = false;
+        bool inUpdater = false;
+        final parts = forNode.forLoopParts;
+
+        // Try detecting condition await more reliably
+        if ((parts is SForPartsWithDeclarations &&
+                parts.condition == nodeThatContainedAwait) ||
+            (parts is SForPartsWithExpression &&
+                parts.condition == nodeThatContainedAwait)) {
+          inCondition = true;
+        }
+        // Try detecting updater await more reliably
+        else if ((parts is SForPartsWithDeclarations) ||
+            (parts is SForPartsWithExpression)) {
+          final List<SAstNode> currentUpdaters =
+              (parts is SForPartsWithDeclarations)
+              ? parts.updaters
+              : (parts as SForPartsWithExpression).updaters;
+          SAstNode? current = nodeThatContainedAwait;
+          while (current != null &&
+              !(_parentOf(current) is SAstNode &&
+                  _parentOf(current) == currentUpdaters.firstOrNull)) {
+            current = _parentOf(current);
+          }
+          if (current != null) {
+            // Found the await expression within the updaters list
+            inUpdater = true;
+          }
+        }
+
+        if (inCondition) {
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[_determineNextNodeAfterAwait] Resumed from For condition. Result: $awaitResult",
+            );
+          }
+          if (awaitResult is! bool) {
+            final error = RuntimeD4rtException(
+              "For loop condition (after await) must be a boolean, but got ${awaitResult?.runtimeType}",
+            );
+            if (!state.completer.isCompleted) {
+              state.completer.completeError(error);
+            }
+            return null; // Arrêter
+          }
+          if (awaitResult) {
+            // Condition true -> Go to body
+            Logger.debug(
+              " [_determineNextNodeAfterAwait] For condition TRUE. Next node is body.",
+            );
+            if (forNode.body is SBlock) {
+              return (forNode.body as SBlock).statements.firstOrNull;
+            } else {
+              return forNode.body;
+            }
+          } else {
+            // Condition false -> Exit loop
+            Logger.debug(
+              " [_determineNextNodeAfterAwait] For condition FALSE. Finding node after loop.",
+            );
+            state.forLoopInitialized = false; // Clean up state
+            state.forLoopEnvironment = null;
+            if (state.loopEnvironmentStack.isNotEmpty) {
+              state.loopEnvironmentStack.removeLast();
+            }
+            if (state.loopNodeStack.isNotEmpty) {
+              state.loopNodeStack.removeLast();
+            }
+            return _findNextSequentialNode(visitor, forNode);
+          }
+        } else if (inUpdater) {
+          Logger.debug(
+            "[_determineNextNodeAfterAwait] Resumed from For updater. Proceeding to condition check.",
+          );
+          // After updater, always go back to SForStatement for condition check
+          return forNode;
+        } else {
+          // If not initializer, condition, or updater, assume it was in the body.
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[_determineNextNodeAfterAwait] Assuming await was in For loop body. Finding next node after suspension point: ${nodeThatCausedSuspension.runtimeType}. Visitor env: ${visitor.environment.hashCode}",
+            );
+          }
+          // Reset the initializer flag just in case
+          state.resumedFromInitializer = false;
+          // Find the node *after* the statement that contained the await
+          SAstNode? parentStatement = nodeThatCausedSuspension;
+          // Climb up until we find the Statement that is a direct child of the loop's body SBlock,
+          // or the body itself if it's not a SBlock.
+          while (parentStatement != null &&
+              _parentOf(parentStatement) !=
+                  forNode
+                      .body && // Stop if parent is the body itself (non-block)
+              !(_parentOf(parentStatement) is SBlock &&
+                  _parentOf(parentStatement) ==
+                      forNode.body)) // Stop if parent is the body block
+          {
+            parentStatement = _parentOf(parentStatement);
+          }
+
+          if (parentStatement != null) {
+            // Found the statement within the body that contained the await
+            SAstNode? nextInBody = _findNextSequentialNode(
+              visitor,
+              parentStatement,
+            );
+            if (Logger.isDebug) {
+              Logger.debug(
+                " [_determineNextNodeAfterAwait] Found parent statement in body: ${parentStatement.runtimeType}. Next sequential node is: ${nextInBody?.runtimeType}",
+              );
+            }
+            // If _findNextSequentialNode returns the SForStatement, it means we finished the body
+            return nextInBody;
+          } else {
+            // Could not find the statement in the body, maybe await was the body itself?
+            if (forNode.body == nodeThatCausedSuspension) {
+              Logger.debug(
+                "[_determineNextNodeAfterAwait] Await was the single statement body of the For loop.",
+              );
+              // After single statement body, go back to SForStatement for updater/condition
+              return forNode;
+            } else {
+              // Fallback / Error case
+              Logger.warn(
+                "[_determineNextNodeAfterAwait] Could not determine sequence after await in For loop body. Context: ${awaitContextNode.runtimeType}, Suspension: ${nodeThatCausedSuspension.runtimeType}. Stopping.",
+              );
+              state.forLoopInitialized = false;
+              state.forLoopEnvironment = null;
+              if (state.loopEnvironmentStack.isNotEmpty) {
+                state.loopEnvironmentStack.removeLast();
+              }
+              if (state.loopNodeStack.isNotEmpty) {
+                state.loopNodeStack.removeLast();
+              }
+              return null;
+            }
+          }
+        }
+      }
+    }
+
+    // Handle await for loops specifically
+    if (awaitContextNode is SForStatement &&
+        ((awaitContextNode.forLoopParts is SForEachPartsWithDeclaration &&
+                (awaitContextNode.forLoopParts as SForEachPartsWithDeclaration)
+                    .isAwait) ||
+            (awaitContextNode.forLoopParts is SForEachPartsWithIdentifier &&
+                (awaitContextNode.forLoopParts as SForEachPartsWithIdentifier)
+                    .isAwait))) {
+      Logger.debug(
+        "[_determineNextNodeAfterAwait] Handling await for loop suspension.",
+      );
+
+      // SCE16: every await-for suspension — the stream expression, and each
+      // `moveNext()` — resumes at the ForStatement itself, which decides what
+      // to do from `awaitingStreamMoveNext` and `lastAwaitResult`. It used to
+      // advance an index here, which only made sense while the loop was
+      // walking a pre-read list.
+      return awaitContextNode;
+    }
+
+    // SCE17: an `await` ANYWHERE inside an expression-bodied async function.
+    //
+    // `=> "x${await a()}y"` returned 2 rather than "x2y"; `=> (await a()) + 10`
+    // returned 2 rather than 12; and `=> [await a(), 9]` put the interpreter's
+    // own `AsyncSuspensionRequest` into the list. All three are the same
+    // failure: no case above recognises the context, the tail returned null,
+    // the machine stopped, and the function completed with `lastAwaitResult` —
+    // the awaited value standing in for the whole expression.
+    //
+    // A BLOCK body never had this, which is what made it look like a string
+    // problem: `return "x${await a()}y";` is a ReturnStatement, which SCC40
+    // already re-runs with per-site replay. An expression body has no
+    // statement, so nothing re-ran.
+    //
+    // The repair is SCC40's, applied to the only other unit the machine
+    // executes: hand the body expression back and let it be evaluated again.
+    // Await sites already resolved replay from `resolvedAwaitResults`, the
+    // first one not yet reached suspends for real, and the pass where nothing
+    // suspends produces the value. `resumingStatementHasMoreAwaits` keeps that
+    // cache alive across the re-run — without it the machine clears the map
+    // immediately below and every replay would suspend again instead.
+    //
+    // This also covers `=> await a()`, which used to arrive at the `return
+    // null` below and be right by accident: the machine stopped and the
+    // awaited value WAS the whole expression. It now takes the same route as
+    // every other shape and gets there on purpose.
+    final enclosingExpressionBody = _enclosingExpressionFunctionBody(
+      awaitExpression ?? nodeThatCausedSuspension,
+    );
+    if (enclosingExpressionBody != null) {
+      Logger.debug(
+        "[_determineNextNodeAfterAwait] Await inside an expression body; "
+        "re-running the body expression so the resolved sites replay.",
+      );
+      state.resumingStatementHasMoreAwaits = true;
+      if (visitor.environment != currentExecutionEnvironment) {
+        visitor.environment = currentExecutionEnvironment;
+      }
+      return enclosingExpressionBody.expression;
+    }
+
+    Logger.warn(
+      "_determineNextNodeAfterAwait - Unhandled await context: ${awaitContextNode.runtimeType} (suspension from: ${nodeThatCausedSuspension.runtimeType}). Stopping state machine.",
+    );
+    return null; // Default stop state machine
+  }
+
+  /// The next enclosing `try` with a non-empty `finally` that [from] is
+  /// unwinding out of, or null when the function boundary is reached first.
+  ///
+  /// SCE18. Used while an abrupt completion is pending, to find the finally
+  /// blocks that still have to run. Two things it deliberately does NOT match:
+  ///
+  ///   * a try whose FINALLY (rather than body or catch) contains [from] — that
+  ///     finally is the one already running, and re-entering it would loop;
+  ///   * a try whose finally block is empty — there is nothing to run, so the
+  ///     walk continues past it rather than scheduling a no-op.
+  static STryStatement? _nextEnclosingFinallyTry(SAstNode from) {
+    SAstNode? child = from;
+    for (
+      SAstNode? current = _parentOf(from);
+      current != null;
+      child = current, current = _parentOf(current)
+    ) {
+      if (current is SFunctionBody) return null;
+      if (current is! STryStatement) continue;
+      final finallyBlock = current.finallyBlock;
+      if (finallyBlock == null || finallyBlock.statements.isEmpty) continue;
+      // Reached from the finally itself: already running, do not re-enter.
+      if (identical(child, finallyBlock)) continue;
+      return current;
+    }
+    return null;
+  }
+
+  /// The [SExpressionFunctionBody] that [node] sits inside, or null.
+  ///
+  /// Stops at the FIRST function body reached, so an await in a nested block
+  /// body does not find an outer `=>` body and re-run the wrong unit. A block
+  /// body answers null on purpose: its statements are already the machine's
+  /// unit of re-execution.
+  static SExpressionFunctionBody? _enclosingExpressionFunctionBody(
+    SAstNode node,
+  ) {
+    for (
+      SAstNode? current = node;
+      current != null;
+      current = _parentOf(current)
+    ) {
+      if (current is SExpressionFunctionBody) return current;
+      if (current is SFunctionBody) return null;
+    }
+    return null;
+  }
+
+  /// Give the `await for` [forNode] its environment and its place on the loop
+  /// stack, before its first element arrives.
+  ///
+  /// SCD4: the loop used to be put on `loopNodeStack` only on a path that the
+  /// resumption never took, so `break` and `continue` in the body found no
+  /// loop and failed with "outside of a loop". Both loop-variable forms get an
+  /// environment: a declared variable lives in it, and an existing one is
+  /// assigned through it to the scope that owns it.
+  ///
+  /// SCE16: called once on entry rather than once the stream had been read,
+  /// because there is no longer a moment when the whole stream is in hand —
+  /// and `break` must work from the first element, which arrives after this.
+  static void _beginAwaitForIteration(
+    AsyncExecutionState state,
+    SForStatement forNode,
+  ) {
+    // ghissues63: the scope at the loop's position.
+    final loopEnvironment = Environment(enclosing: _scopeFor(state, forNode));
+    final parts = forNode.forLoopParts;
+    if (parts is SForEachPartsWithDeclaration) {
+      loopEnvironment.define(_loopVarName(parts.loopVariable), null);
+    }
+    state.loopEnvironmentStack.add(loopEnvironment);
+    state.loopNodeStack.add(forNode);
+  }
+
+  // Implementation of the logic to find the next sequential node
+  static SAstNode? _findNextSequentialNode(
+    InterpreterVisitor visitor,
+    SAstNode currentNode,
+  ) {
+    SAstNode? parent = _parentOf(currentNode);
+    AsyncExecutionState? state =
+        visitor.currentAsyncState; // Can be null if not async
+
+    if (Logger.isDebug) {
+      Logger.debug(
+        "[_findNextSequentialNode] Finding next node after: ${currentNode.runtimeType} (parent: ${parent?.runtimeType})",
+      );
+    }
+
+    // Handle the end of an instruction in a block
+    if (parent is SBlock) {
+      final block = parent;
+      final index = block.statements.indexOf(currentNode as SStatement);
+      bool isLastStatement =
+          (index != -1 && index == block.statements.length - 1);
+
+      if (!isLastStatement && index != -1) {
+        // Simple case: next instruction in the same block
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [_findNextSequentialNode] Next sequential node in block: ${block.statements[index + 1].runtimeType}",
+          );
+        }
+        return block.statements[index + 1];
+      } else if (isLastStatement) {
+        // It was the last instruction in the block. What next?
+        Logger.debug(" [_findNextSequentialNode] Reached end of a SBlock.");
+
+        SAstNode? blockParent = _parentOf(block);
+
+        // Case 1: End of a Try block
+        if (blockParent is STryStatement && blockParent.body == block) {
+          Logger.debug("[_findNextSequentialNode] End of Try block.");
+          // Are there any catch clauses?
+          if (blockParent.catchClauses.isNotEmpty) {
+            // If there are catch clauses, normal execution skips them.
+            // They are only reached by an exception handled by _handleAsyncError.
+            // So, after the try, we look for the finally or the next code.
+            Logger.debug(
+              " [_findNextSequentialNode] Try block finished normally, skipping catches.",
+            );
+          }
+          // Check if there is a finally block
+          if (blockParent.finallyBlock != null) {
+            Logger.debug(
+              " [_findNextSequentialNode] Found finally block after Try. Jumping to finally.",
+            );
+            // The next node is the beginning of the finally block
+            final firstFinallyStmt =
+                blockParent.finallyBlock!.statements.firstOrNull;
+            if (firstFinallyStmt != null) {
+              return firstFinallyStmt;
+            } else {
+              // Finally block is empty, find what follows the STryStatement
+              Logger.debug(
+                "[_findNextSequentialNode] Finally block is empty. Finding node after STryStatement.",
+              );
+              if (state != null) {
+                state.activeTryStatement = null; // End of try handling
+              }
+              return _findNextSequentialNode(visitor, blockParent);
+            }
+          } else {
+            // No catch (normally skipped) and no finally, skip after the STryStatement
+            Logger.debug(
+              " [_findNextSequentialNode] No finally block after Try. Finding node after STryStatement.",
+            );
+            if (state != null) {
+              state.activeTryStatement = null; // End of try handling
+            }
+            return _findNextSequentialNode(visitor, blockParent);
+          }
+        }
+        // Case 2: End of a Catch block
+        else if (blockParent is SCatchClause) {
+          Logger.debug("[_findNextSequentialNode] End of Catch block.");
+          STryStatement? tryStatement = _findEnclosingTryStatement(blockParent);
+          // After a catch, we must ALWAYS execute the finally if it exists
+          if (tryStatement != null && tryStatement.finallyBlock != null) {
+            Logger.debug(
+              " [_findNextSequentialNode] Found finally block after Catch. Jumping to finally.",
+            );
+            // The next node is the beginning of the finally block
+            final firstFinallyStmt =
+                tryStatement.finallyBlock!.statements.firstOrNull;
+            if (firstFinallyStmt != null) {
+              return firstFinallyStmt;
+            } else {
+              // Finally block is empty, find what follows the STryStatement
+              Logger.debug(
+                "[_findNextSequentialNode] Finally block is empty (after catch). Finding node after STryStatement.",
+              );
+              if (state != null) {
+                state.activeTryStatement = null; // End of try handling
+              }
+              return _findNextSequentialNode(visitor, tryStatement);
+            }
+          } else {
+            // No finally, skip after the STryStatement
+            Logger.debug(
+              " [_findNextSequentialNode] No finally block after Catch. Finding node after STryStatement.",
+            );
+            if (state != null) {
+              state.activeTryStatement = null; // End of try handling
+            }
+            return _findNextSequentialNode(
+              visitor,
+              tryStatement ?? blockParent,
+            ); // Go back to the Try or Catch
+          }
+        }
+        // Case 3: End of a Finally block
+        else if (blockParent is STryStatement &&
+            blockParent.finallyBlock == block) {
+          Logger.debug("[_findNextSequentialNode] End of Finally block.");
+          // After a finally, we look for the next node after the STryStatement
+          if (state != null) {
+            state.activeTryStatement = null; // End of try handling
+            // SCC12: release an error that was only passing through this finally
+            // block. The main loop re-raises it before executing the node
+            // returned below.
+            if (state.errorAfterFinallyTry == blockParent) {
+              state.resumeErrorAfterFinally = true;
+            }
+
+            // SCE18: a RETURN was deferred into this finally. The function is
+            // unwinding, so what follows the try must NOT run — only the
+            // finally blocks still between here and the function boundary.
+            //
+            // This line used to fall straight through to the node after the
+            // try, which lost the return entirely:
+            //
+            //   try { return 'r'; } finally { l.add(1); } return 'end';
+            //
+            // answered 'end'. It looked like it worked whenever the try was the
+            // LAST thing in the function — there was no next node, the machine
+            // stopped, and the exit at the bottom of the loop completed with
+            // the stored value. That is why the shape in the todo that opened
+            // this ("`return` already has this mechanism") reads as working.
+            // With anything after the try it did not, and an intervening
+            // statement ran too: the nested case answered 'end:A,MID,B' where
+            // Dart, and this interpreter's own synchronous visitor, answer 'x'.
+            if (state.returnAfterFinally != null) {
+              final nextFinally = _nextEnclosingFinallyTry(blockParent);
+              if (nextFinally != null) {
+                Logger.debug(
+                  "[_findNextSequentialNode] Return pending; running the next "
+                  "enclosing finally before completing.",
+                );
+                state.activeTryStatement = nextFinally;
+                return nextFinally.finallyBlock!.statements.first;
+              }
+              Logger.debug(
+                "[_findNextSequentialNode] Return pending and no finally left; "
+                "stopping so the loop completes with the stored value.",
+              );
+              return null;
+            }
+
+            // SCF6: a break / continue was deferred into this finally.
+            if (state.pendingJump != null) {
+              return _completeOrContinueJump(visitor, state, blockParent);
+            }
+          }
+          return _findNextSequentialNode(visitor, blockParent);
+        }
+        // Case 4: End of a loop block (While, DoWhile, For, ForIn)
+        else if (blockParent is SWhileStatement && blockParent.body == block) {
+          Logger.debug(
+            "[_findNextSequentialNode] End of While body SBlock. Returning SWhileStatement node.",
+          );
+          return blockParent; // Go back to the SWhileStatement to re-evaluate the condition
+        } else if (blockParent is SDoStatement && blockParent.body == block) {
+          Logger.debug(
+            "[_findNextSequentialNode] End of DoWhile body SBlock. Returning SDoStatement node.",
+          );
+          return blockParent; // Go back to the SDoStatement to re-evaluate the condition
+        } else if (blockParent is SForStatement && blockParent.body == block) {
+          // Applies to both standard For and For-In
+          Logger.debug(
+            "[_findNextSequentialNode] End of For/For-In body SBlock. Returning SForStatement node.",
+          );
+          return blockParent; // Go back to the SForStatement to evaluate the next iteration/condition
+        }
+        // Case 5: End of an If/Else block
+        else if (blockParent is SIfStatement) {
+          // Whether it's the end of the 'then' or the 'else', we look after the entire SIfStatement
+          Logger.debug(
+            "[_findNextSequentialNode] End of If/Else SBlock. Finding node after SIfStatement.",
+          );
+          return _findNextSequentialNode(visitor, blockParent);
+        }
+        // Generic case: end of an unhandled block
+        else {
+          if (Logger.isDebug) {
+            Logger.debug(
+              "[_findNextSequentialNode] End of generic SBlock (parent: ${blockParent?.runtimeType}). Finding node after parent SBlock.",
+            );
+          }
+          // Go back to the parent of the block to find the next node
+          return _findNextSequentialNode(visitor, block);
+        }
+      }
+      // If index == -1 (should not happen unless internal error), go back
+      else {
+        Logger.warn(
+          "[_findNextSequentialNode] Statement not found in parent block? Finding node after parent block.",
+        );
+        return _findNextSequentialNode(visitor, parent);
+      }
+    }
+
+    SAstNode? currentSearchNode = currentNode;
+    while (currentSearchNode != null) {
+      parent = _parentOf(currentSearchNode);
+
+      // Handle the end of the body (single statement) of a While loop
+      if (parent is SWhileStatement && parent.body == currentSearchNode) {
+        Logger.debug(
+          " [_findNextSequentialNode] End of While body (single statement). Returning SWhileStatement node.",
+        );
+        return parent;
+      }
+
+      // Handle the end of the body (single statement) of a DoWhile loop
+      if (parent is SDoStatement && parent.body == currentSearchNode) {
+        Logger.debug(
+          " [_findNextSequentialNode] End of DoWhile body (single statement). Returning SDoStatement node.",
+        );
+        return parent;
+      }
+
+      // Handle the end of the body (single statement) of a standard For loop or For-In loop
+      if (parent is SForStatement && parent.body == currentSearchNode) {
+        Logger.debug(
+          " [_findNextSequentialNode] End of standard For/For-In body (single statement). Returning SForStatement node.",
+        );
+        return parent;
+      }
+
+      // Handle the end of the 'then' branch (single statement) of an SIfStatement
+      if (parent is SIfStatement && parent.thenStatement == currentSearchNode) {
+        // SCE20: whether or not there is an `else`, what follows a taken `then`
+        // is the node after the whole SIfStatement — the same answer the `else`
+        // case below has always given.
+        //
+        // This used to return null when an `else` was present, reasoning that
+        // "there is no next sequential node after the then if there is an
+        // else". There is: the else is the branch NOT taken, and control
+        // resumes after the if. Returning null stopped the state machine, so
+        // the function completed with the last value it had evaluated:
+        //
+        //   var x = 0; var c = true;
+        //   if (c) x = 1; else x = 2;
+        //   return x + 10;                  // answered 1, not 11
+        //
+        // Braced branches were unaffected, because a `{ … }` then-branch ends
+        // at the block-end case above instead, which never had this. That is
+        // why it survived: almost all Dart is braced.
+        //
+        // In a loop body it was worse than a wrong value — the loop never
+        // advanced and the function answered null.
+        Logger.debug(
+          "[_findNextSequentialNode] End of If 'then' (single statement). "
+          "Finding node after SIfStatement.",
+        );
+        return _findNextSequentialNode(visitor, parent);
+      }
+
+      // Handle the end of the 'else' branch (single statement) of an SIfStatement
+      if (parent is SIfStatement && parent.elseStatement == currentSearchNode) {
+        // After the 'else', we always look for the node AFTER the entire SIfStatement.
+        Logger.debug(
+          " [_findNextSequentialNode] End of If 'else' (single statement). Finding node after SIfStatement.",
+        );
+        return _findNextSequentialNode(visitor, parent);
+      }
+
+      // If we didn't find a specific control structure parent,
+      // check if the parent is a statement that can be sequenced.
+
+      if (parent is SBlock) {
+        // The statement reached by climbing sits in this SBlock, so the block
+        // logic at the top applies to IT: the next statement in the block, or
+        // the block's own end. Recursing with the SBlock instead skipped the
+        // rest of the block — SCD4 found it through `label: for (...)`, the
+        // first shape that climbs to a block from a statement nested in
+        // another statement.
+        Logger.debug(
+          " [_findNextSequentialNode] Ascending into a SBlock. Re-evaluating block logic for the statement in it.",
+        );
+        return _findNextSequentialNode(
+          visitor,
+          currentSearchNode is SStatement ? currentSearchNode : parent,
+        );
+      } else if (parent is SBlockFunctionBody ||
+          parent is SExpressionFunctionBody ||
+          parent is SEmptyFunctionBody ||
+          parent is SCompilationUnit) {
+        // Reached the limit of the function or file
+        Logger.debug(
+          " [_findNextSequentialNode] Reached FunctionBody or SCompilationUnit. Returning null.",
+        );
+        return null;
+      } else if (parent is SAstNode) {
+        // If the parent is another statement, continue ascending
+        // to find the enclosing block or function.
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [_findNextSequentialNode] Ascending from node (${currentSearchNode.runtimeType}) to parent (${parent.runtimeType}).",
+          );
+        }
+        currentSearchNode = parent;
+      } else if (parent == null) {
+        // Reached the root of the AST
+        Logger.debug(
+          " [_findNextSequentialNode] Reached top level (null parent). Returning null.",
+        );
+        return null;
+      }
+    }
+
+    Logger.debug(
+      "[_findNextSequentialNode] Could not determine next sequential node (fell through). Returning null.",
+    );
+    return null; // Fallback
+  }
+
+  // Replace the old placeholder _startAsyncStateMachine
+  /// ghissues77: runs this function's body, its parameters already bound
+  /// into [environment] (an extension method's), as the async function or
+  /// sync* / async* generator it is; [notSuspending] for a plain function,
+  /// which the caller runs itself. An extension method ran an async body
+  /// synchronously: the first `await` handed back a suspension nothing
+  /// resumed, so nothing after it ran (Slang's `loadLocale` never stored the
+  /// translations it loaded).
+  Object? runAsBoundBody(InterpreterVisitor visitor, Environment environment) {
+    // The mirror AST has no `.parent`; the state machine walks this map, as
+    // in [_callImpl].
+    _buildParentMap(_body);
+    if (isAsyncGenerator) {
+      return _createAsyncGeneratorStream(visitor, environment, false);
+    }
+    if (isGenerator) {
+      return _createSyncGeneratorIterable(visitor, environment, false);
+    }
+    if (!isAsync) return notSuspending;
+    final completer = Completer<Object?>();
+    final body = _body;
+    final SAstNode? first = switch (body) {
+      SBlockFunctionBody() => body.block!.statements.firstOrNull,
+      SExpressionFunctionBody() => body.expression,
+      _ => null,
+    };
+    if (first == null) {
+      completer.complete(null);
+      return completer.future;
+    }
+    final previousAsyncState = visitor.currentAsyncState;
+    final state = AsyncExecutionState(
+      environment: environment,
+      completer: completer,
+      nextStateIdentifier: first,
+      function: this,
+    );
+    visitor.currentAsyncState = state;
+    try {
+      _startAsyncStateMachine(visitor, state);
+    } finally {
+      visitor.currentAsyncState = previousAsyncState;
+    }
+    return completer.future;
+  }
+
+  /// What [runAsBoundBody] answers for a function that is neither async nor
+  /// a generator.
+  static const Object notSuspending = Object();
+
+  void _startAsyncStateMachine(
+    InterpreterVisitor visitor,
+    AsyncExecutionState initialState,
+  ) {
+    if (Logger.isDebug) {
+      Logger.debug(
+        "[_startAsyncStateMachine] Scheduling state machine run for initial state: ${initialState.nextStateIdentifier?.runtimeType}",
+      );
+    }
+    _scheduleStateMachineRun(visitor, initialState);
+  }
+
+  @override
+  String toString() => '<fn ${_name ?? '<anonymous>'}>';
+
+  // Helper to recursively search for invocations with await in arguments
+  static SAstNode? _findInvocationWithAwaitInArguments(SAstNode node) {
+    // Check if this node is an invocation with await in arguments
+    if (node is SMethodInvocation ||
+        node is SFunctionExpressionInvocation ||
+        node is SInstanceCreationExpression) {
+      if (_hasAwaitInArguments(node)) {
+        return node;
+      }
+    }
+
+    // Recursively search in child nodes
+    final collector = _ChildCollectorVisitor();
+    node.visitChildren(collector);
+    for (final child in collector.children) {
+      final found = _findInvocationWithAwaitInArguments(child);
+      if (found != null) {
+        return found;
+      }
+    }
+
+    return null;
+  }
+
+  // Helper to check if an invocation has await in its arguments
+  static bool _hasAwaitInArguments(SAstNode invocation) {
+    SArgumentList? argumentList;
+
+    if (invocation is SMethodInvocation) {
+      argumentList = invocation.argumentList;
+    } else if (invocation is SFunctionExpressionInvocation) {
+      argumentList = invocation.argumentList;
+    } else if (invocation is SInstanceCreationExpression) {
+      argumentList = invocation.argumentList;
+    }
+
+    if (argumentList == null) return false;
+
+    // Check each argument for await expressions
+    for (final arg in argumentList.arguments) {
+      if (_containsAwait(arg)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // Helper to recursively check if a node contains await
+  static bool _containsAwait(SAstNode node) {
+    if (node is SAwaitExpression) {
+      return true;
+    }
+
+    // Recursively check child nodes
+    final collector = _ChildCollectorVisitor();
+    node.visitChildren(collector);
+    for (final child in collector.children) {
+      if (_containsAwait(child)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // Helper to evaluate arguments for constructor/super/this invocations
+  (List<Object?>, Map<String, Object?>) _evaluateArgumentsForInvocation(
+    InterpreterVisitor visitor,
+    SArgumentList argumentList,
+    String invocationType, // e.g., "super()", "this()"
+  ) {
+    final List<Object?> positionalArgs = [];
+    final Map<String, Object?> namedArgs = {};
+
+    // Dart 3 permits named arguments anywhere in the argument list, so we no
+    // longer enforce a "named must come last" ordering for $invocationType.
+    for (final arg in argumentList.arguments) {
+      // A named argument is unwrapped here rather than dispatched: dispatching
+      // it and *then* re-reading `arg.expression` below would evaluate the
+      // argument twice, running its side effects twice.
+      if (arg is SNamedArgument) {
+        final name = arg.name.name;
+        final value = arg.argumentExpression.accept<Object?>(
+          visitor,
+        ); // Evaluate the expression part
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [_evalArgs] Evaluated NAMED arg expression '$name' = $value (${value?.runtimeType})",
+          );
+        }
+        if (value is AsyncSuspensionRequest) {
+          // SCE223: not a gap — a constructor cannot be async, so Dart
+          // rejects an `await` in a `super(...)` / `this(...)` initializer.
+          // Only an invalid program reaches this.
+          throw RuntimeD4rtException(
+            "'await' cannot appear in the arguments of a $invocationType "
+            "constructor initializer: a constructor cannot be async.",
+          );
+        }
+        if (namedArgs.containsKey(name)) {
+          throw RuntimeD4rtException(
+            "Named argument '$name' provided multiple times to $invocationType.",
+          );
+        }
+        namedArgs[name] = value;
+      } else {
+        final argValue = arg.accept<Object?>(visitor);
+        if (argValue is AsyncSuspensionRequest) {
+          // SCE223: not a gap — a constructor cannot be async, so Dart
+          // rejects an `await` in a `super(...)` / `this(...)` initializer.
+          // Only an invalid program reaches this.
+          throw RuntimeD4rtException(
+            "'await' cannot appear in the arguments of a $invocationType "
+            "constructor initializer: a constructor cannot be async.",
+          );
+        }
+        positionalArgs.add(argValue);
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [_evalArgs] Evaluated POSITIONAL arg = $argValue (${argValue?.runtimeType})",
+          );
+        }
+      }
+    }
+    return (positionalArgs, namedArgs);
+  }
+
+  // Create a Stream for async* generator functions using real async state machine
+  Stream<Object?> _createAsyncGeneratorStream(
+    InterpreterVisitor visitor,
+    Environment executionEnvironment,
+    bool redirected,
+  ) {
+    late StreamController<Object?> controller;
+    // SCF4: the body's link to what its listener asks for.
+    final gate = AsyncGeneratorGate();
+
+    controller = StreamController<Object?>(
+      onResume: gate.resume,
+      onCancel: gate.cancel,
+      onListen: () async {
+        try {
+          final previousVisitorEnv = visitor.environment;
+          final previousCurrentFunction = visitor.currentFunction;
+          final previousAsyncState = visitor.currentAsyncState;
+
+          try {
+            visitor.environment = executionEnvironment;
+            visitor.currentFunction = this;
+
+            if (isAbstract) {
+              controller.addError(
+                RuntimeD4rtException(
+                  "Cannot call abstract method '${_name ?? '<abstract>'}'.",
+                ),
+              );
+              return;
+            }
+
+            final bodyToExecute = _body;
+            if (!redirected && bodyToExecute is SBlockFunctionBody) {
+              // Use the real async state machine for generators
+              await _runAsyncGenerator(
+                visitor,
+                bodyToExecute,
+                controller,
+                executionEnvironment,
+                gate,
+              );
+            } else if (bodyToExecute is SExpressionFunctionBody) {
+              final result = bodyToExecute.expression!.accept<Object?>(visitor);
+              if (result is YieldValue) {
+                if (result.isYieldStar) {
+                  await _handleYieldStar(result.value, controller);
+                } else {
+                  controller.add(result.value);
+                }
+              }
+            }
+          } on ReturnException catch (_) {
+            // Generator completed with return
+          } finally {
+            visitor.environment = previousVisitorEnv;
+            visitor.currentFunction = previousCurrentFunction;
+            visitor.currentAsyncState = previousAsyncState;
+          }
+        } catch (e, stackTrace) {
+          // SCF4: a cancelled generator ends quietly — its listener is gone.
+          if (e is! GeneratorCancelledSignal) {
+            controller.addError(e, stackTrace);
+          }
+        } finally {
+          gate.finished();
+          if (!controller.isClosed) controller.close();
+        }
+      },
+    );
+
+    return controller.stream;
+  }
+
+  // Run async* generator using the real async state machine
+  Future<void> _runAsyncGenerator(
+    InterpreterVisitor visitor,
+    SBlockFunctionBody body,
+    StreamController<Object?> controller,
+    Environment executionEnvironment,
+    AsyncGeneratorGate gate,
+  ) async {
+    final completer = Completer<Object?>();
+
+    // Determine the first state (AST node)
+    SAstNode? initialStateIdentifier = body.block!.statements.firstOrNull;
+
+    // Create the async state with generator support
+    final asyncState = AsyncExecutionState(
+      environment: executionEnvironment,
+      completer: completer,
+      nextStateIdentifier: initialStateIdentifier,
+      function: this,
+      generatorStreamController: controller, // Enable generator mode
+      generatorGate: gate,
+    );
+
+    // Set the async state in visitor
+    final previousAsyncState = visitor.currentAsyncState;
+    visitor.currentAsyncState = asyncState;
+
+    try {
+      // Schedule the real state machine to run
+      _scheduleStateMachineRun(visitor, asyncState);
+
+      // Wait for the generator to complete
+      await completer.future;
+    } finally {
+      visitor.currentAsyncState = previousAsyncState;
+    }
+  }
+
+  // Create an Iterable for sync* generator functions
+  Iterable<Object?> _createSyncGeneratorIterable(
+    InterpreterVisitor visitor,
+    Environment executionEnvironment,
+    bool redirected,
+  ) {
+    return _SyncGeneratorIterable(
+      this,
+      visitor,
+      executionEnvironment,
+      redirected,
+    );
+  }
+
+  // Handle yield* expressions
+  Future<void> _handleYieldStar(
+    Object? value,
+    StreamController<Object?> controller,
+  ) async {
+    if (value is Stream) {
+      await for (final item in value) {
+        controller.add(item);
+      }
+    } else if (value is Iterable) {
+      for (final item in value) {
+        controller.add(item);
+      }
+    } else {
+      throw RuntimeD4rtException(
+        "yield* expression must be a Stream or Iterable, got ${value.runtimeType}",
+      );
+    }
+  }
+}
+
+/// Exception used to pause sync* generator execution at a yield point
+class SyncGeneratorYieldSuspension implements Exception {
+  final Object? value;
+  final bool isYieldStar;
+  SyncGeneratorYieldSuspension(this.value, {this.isYieldStar = false});
+}
+
+// Iterable implementation for sync* generators
+class _SyncGeneratorIterable extends Iterable<Object?> {
+  final InterpretedFunction function;
+  final InterpreterVisitor visitor;
+  final Environment executionEnvironment;
+  final bool redirected;
+
+  _SyncGeneratorIterable(
+    this.function,
+    this.visitor,
+    this.executionEnvironment,
+    this.redirected,
+  );
+
+  @override
+  Iterator<Object?> get iterator => _LazySyncGeneratorIterator(
+    function,
+    visitor,
+    executionEnvironment,
+    redirected,
+  );
+}
+
+// Lazy iterator implementation for sync* generators
+// Uses Dart's native sync* to produce values lazily
+// This works by setting isLazySyncGeneratorContext which causes yield to throw
+// SyncGeneratorYieldSuspension, which we catch and convert to a native yield.
+class _LazySyncGeneratorIterator implements Iterator<Object?> {
+  final InterpretedFunction function;
+  final InterpreterVisitor visitor;
+  final Environment executionEnvironment;
+  final bool redirected;
+
+  Iterator<Object?>? _nativeIterator;
+  Object? _current;
+
+  _LazySyncGeneratorIterator(
+    this.function,
+    this.visitor,
+    this.executionEnvironment,
+    this.redirected,
+  );
+
+  @override
+  Object? get current => _current;
+
+  @override
+  bool moveNext() {
+    _nativeIterator ??= _createLazyGenerator().iterator;
+    if (_nativeIterator!.moveNext()) {
+      _current = _nativeIterator!.current;
+      return true;
+    }
+    return false;
+  }
+
+  /// Creates a lazy generator using Dart's native sync*
+  /// This approach runs the generator body, catching SyncGeneratorYieldSuspension
+  /// to produce values lazily. The suspension mechanism allows infinite generators
+  /// to work with take().
+  Iterable<Object?> _createLazyGenerator() sync* {
+    final previousVisitorEnv = visitor.environment;
+    final previousCurrentFunction = visitor.currentFunction;
+    final previousSyncGeneratorValues = visitor.syncGeneratorValues;
+    final previousLazySyncContext = visitor.isLazySyncGeneratorContext;
+
+    try {
+      visitor.environment = executionEnvironment;
+      visitor.currentFunction = function;
+      visitor.syncGeneratorValues = null; // Don't use eager collection
+      visitor.isLazySyncGeneratorContext = true; // Enable lazy yield suspension
+
+      if (function.isAbstract) {
+        throw RuntimeD4rtException(
+          "Cannot call abstract method '${function._name ?? '<abstract>'}'.",
+        );
+      }
+
+      final bodyToExecute = function._body;
+      if (!redirected && bodyToExecute is SBlockFunctionBody) {
+        // Execute the block - yields will throw SyncGeneratorYieldSuspension
+        // which we catch and convert to native yields
+        yield* _executeBlockWithYieldSuspension(
+          bodyToExecute.block!.statements,
+        );
+      } else if (bodyToExecute is SExpressionFunctionBody) {
+        try {
+          bodyToExecute.expression!.accept<Object?>(visitor);
+        } on SyncGeneratorYieldSuspension catch (e) {
+          if (e.isYieldStar) {
+            final iterable = e.value;
+            if (iterable is Iterable) {
+              yield* iterable;
+            }
+          } else {
+            yield e.value;
+          }
+        }
+      }
+    } on ReturnException catch (_) {
+      // Generator completed with return - just stop
+    } finally {
+      visitor.environment = previousVisitorEnv;
+      visitor.currentFunction = previousCurrentFunction;
+      visitor.syncGeneratorValues = previousSyncGeneratorValues;
+      visitor.isLazySyncGeneratorContext = previousLazySyncContext;
+    }
+  }
+
+  /// Execute a block, catching SyncGeneratorYieldSuspension to yield values lazily.
+  /// This is the key to making infinite generators work.
+  Iterable<Object?> _executeBlockWithYieldSuspension(
+    List<SAstNode> statements, {
+    Set<String>? labels,
+  }) sync* {
+    for (final statement in statements) {
+      yield* _executeStatementWithYieldSuspension(statement, labels: labels);
+    }
+  }
+
+  /// Execute a single statement, handling yield suspension.
+  /// For loops/control flow, we need special handling to allow resumption.
+  Iterable<Object?> _executeStatementWithYieldSuspension(
+    SAstNode statement, {
+    Set<String>? labels,
+  }) sync* {
+    // For while/for loops, we need to handle them specially
+    // because we need to resume execution after yielding
+    if (statement is SLabeledStatement) {
+      final labelSet = statement.labels.map((l) => l.name.name).toSet();
+      yield* _executeStatementWithYieldSuspension(
+        statement.statement!,
+        labels: labelSet,
+      );
+    } else if (statement is SWhileStatement) {
+      yield* _executeWhileWithYieldSuspension(statement, labels: labels);
+    } else if (statement is SForStatement) {
+      yield* _executeForWithYieldSuspension(statement, labels: labels);
+    } else if (statement is SBlock) {
+      yield* _executeBlockWithYieldSuspension(
+        statement.statements,
+        labels: labels,
+      );
+    } else {
+      // For other statements, just execute and catch any yield suspension
+      try {
+        statement.accept<Object?>(visitor);
+      } on SyncGeneratorYieldSuspension catch (e) {
+        if (e.isYieldStar) {
+          final iterable = e.value;
+          if (iterable is Iterable) {
+            yield* iterable;
+          }
+        } else {
+          yield e.value;
+        }
+      }
+    }
+  }
+
+  /// Execute a while loop lazily, yielding at each yield point
+  Iterable<Object?> _executeWhileWithYieldSuspension(
+    SWhileStatement node, {
+    Set<String>? labels,
+  }) sync* {
+    while (true) {
+      // Evaluate condition
+      final conditionValue = node.condition!.accept<Object?>(visitor);
+      bool conditionResult;
+      final bridgedInstance = visitor.toBridgedInstance(conditionValue);
+      if (conditionValue is bool) {
+        conditionResult = conditionValue;
+      } else if (bridgedInstance.$2 &&
+          bridgedInstance.$1?.nativeObject is bool) {
+        conditionResult = bridgedInstance.$1!.nativeObject as bool;
+      } else {
+        throw RuntimeD4rtException(
+          "The condition of a 'while' loop must be a boolean, but was ${conditionValue?.runtimeType}.",
+        );
+      }
+
+      if (!conditionResult) {
+        break;
+      }
+
+      // Execute body with yield suspension handling
+      try {
+        if (node.body is SBlock) {
+          yield* _executeBlockWithYieldSuspension(
+            (node.body as SBlock).statements,
+            labels: labels,
+          );
+        } else {
+          yield* _executeStatementWithYieldSuspension(
+            node.body!,
+            labels: labels,
+          );
+        }
+      } on BreakException catch (e) {
+        if (e.label == null || (labels != null && labels.contains(e.label))) {
+          break;
+        }
+        rethrow;
+      } on ContinueException catch (e) {
+        if (e.label == null || (labels != null && labels.contains(e.label))) {
+          continue;
+        }
+        rethrow;
+      }
+    }
+  }
+
+  /// Execute a for loop lazily, yielding at each yield point
+  Iterable<Object?> _executeForWithYieldSuspension(
+    SForStatement node, {
+    Set<String>? labels,
+  }) sync* {
+    final loopParts = node.forLoopParts;
+
+    if (loopParts is SForPartsWithDeclarations) {
+      yield* _executeClassicForWithYieldSuspension(
+        loopParts.variables,
+        loopParts.condition,
+        loopParts.updaters,
+        node.body!,
+        labels: labels,
+      );
+    } else if (loopParts is SForPartsWithExpression) {
+      yield* _executeClassicForWithYieldSuspension(
+        loopParts.initialization,
+        loopParts.condition,
+        loopParts.updaters,
+        node.body!,
+        labels: labels,
+      );
+    } else if (loopParts is SForEachPartsWithDeclaration) {
+      yield* _executeForInWithYieldSuspension(
+        loopParts.loopVariable!,
+        loopParts.iterable!,
+        node.body!,
+        labels: labels,
+      );
+    } else if (loopParts is SForEachPartsWithIdentifier) {
+      yield* _executeForInWithYieldSuspension(
+        loopParts.identifier!,
+        loopParts.iterable!,
+        node.body!,
+        labels: labels,
+      );
+    } else {
+      throw StateD4rtException(
+        'Unknown ForLoopParts type: ${loopParts.runtimeType}',
+      );
+    }
+  }
+
+  /// Execute a classic for loop lazily
+  Iterable<Object?> _executeClassicForWithYieldSuspension(
+    SAstNode? initialization,
+    SAstNode? condition,
+    List<SAstNode>? updaters,
+    SAstNode body, {
+    Set<String>? labels,
+  }) sync* {
+    // Execute initialization
+    if (initialization != null) {
+      initialization.accept<Object?>(visitor);
+    }
+
+    while (true) {
+      // Evaluate condition
+      if (condition != null) {
+        final conditionValue = condition.accept<Object?>(visitor);
+        bool conditionResult;
+        final bridgedInstance = visitor.toBridgedInstance(conditionValue);
+        if (conditionValue is bool) {
+          conditionResult = conditionValue;
+        } else if (bridgedInstance.$2 &&
+            bridgedInstance.$1?.nativeObject is bool) {
+          conditionResult = bridgedInstance.$1!.nativeObject as bool;
+        } else {
+          throw RuntimeD4rtException(
+            "The condition of a 'for' loop must be a boolean, but was ${conditionValue?.runtimeType}.",
+          );
+        }
+
+        if (!conditionResult) {
+          break;
+        }
+      }
+
+      // Execute body with yield suspension handling
+      try {
+        if (body is SBlock) {
+          yield* _executeBlockWithYieldSuspension(
+            body.statements,
+            labels: labels,
+          );
+        } else {
+          yield* _executeStatementWithYieldSuspension(body, labels: labels);
+        }
+      } on BreakException catch (e) {
+        if (e.label == null || (labels != null && labels.contains(e.label))) {
+          break;
+        }
+        rethrow;
+      } on ContinueException catch (e) {
+        if (e.label == null || (labels != null && labels.contains(e.label))) {
+          // Fall through to updaters
+        } else {
+          rethrow;
+        }
+      }
+
+      // Execute updaters
+      if (updaters != null) {
+        for (final updater in updaters) {
+          updater.accept<Object?>(visitor);
+        }
+      }
+    }
+  }
+
+  /// Execute a for-in loop lazily
+  Iterable<Object?> _executeForInWithYieldSuspension(
+    SAstNode loopVariable,
+    SAstNode iterableExpr,
+    SAstNode body, {
+    Set<String>? labels,
+  }) sync* {
+    final iterable = iterableExpr.accept<Object?>(visitor);
+    if (iterable is! Iterable) {
+      throw RuntimeD4rtException(
+        "for-in loop requires an Iterable, got ${iterable?.runtimeType}",
+      );
+    }
+
+    for (final element in iterable) {
+      // Define loop variable
+      if (loopVariable is SDeclaredIdentifier) {
+        visitor.environment.define(
+          InterpretedFunction._loopVarName(loopVariable),
+          InterpretedFunction.checkForEachBinding(
+            visitor.environment,
+            loopVariable,
+            element,
+          ),
+        );
+      } else if (loopVariable is SSimpleIdentifier) {
+        visitor.environment.assign(loopVariable.name, element);
+      }
+
+      try {
+        if (body is SBlock) {
+          yield* _executeBlockWithYieldSuspension(
+            body.statements,
+            labels: labels,
+          );
+        } else {
+          yield* _executeStatementWithYieldSuspension(body, labels: labels);
+        }
+      } on BreakException catch (e) {
+        if (e.label == null || (labels != null && labels.contains(e.label))) {
+          break;
+        }
+        rethrow;
+      } on ContinueException catch (e) {
+        if (e.label == null || (labels != null && labels.contains(e.label))) {
+          continue;
+        }
+        rethrow;
+      }
+    }
+  }
+}
+
+/// A binding check with everything that does not depend on the value already
+/// resolved — the product of [InterpretedFunction.resolveBinding].
+///
+/// Exists so a loop can resolve its annotation once and check many values
+/// against it; see [InterpretedFunction.resolveBinding] for the measurement
+/// that motivated the split.
+class ResolvedBinding {
+  const ResolvedBinding._(
+    this._declaredType,
+    this._declaredName,
+    this._isNullable,
+    this._suffix,
+    this._appliedDeclared,
+  );
+
+  final RuntimeType _declaredType;
+  final String _declaredName;
+  final bool _isNullable;
+
+  /// SCD92: the declared type with its written type arguments, when they are
+  /// checkable. Null means the annotation is raw, or carries only arguments the
+  /// check cannot act on — see [InterpretedFunction._appliedDeclaredType].
+  final AppliedRuntimeType? _appliedDeclared;
+
+  /// The `of 'name'` clause, or empty. The SDK spells a failed PARAMETER bind
+  /// `type 'X' is not a subtype of type 'Y' of 'p'` but a failed for-in bind
+  /// just `type 'X' is not a subtype of type 'Y'`, and matching the SDK per
+  /// construct is the point of [D4rtTypeError]: an `on TypeError` clause in a
+  /// script ported from Dart should see what Dart would have shown it.
+  final String _suffix;
+
+  String get _displayName => _isNullable ? '$_declaredName?' : _declaredName;
+
+  /// [value] as a binding declared [declaredName] holds it: an `int` bound to
+  /// a `double` widens, as in Dart; every other value is unchanged. The one
+  /// widening rule, shared by [bind] and the bindings that do not run a full
+  /// check - fields, field formals, static and top-level variables
+  /// (ghissues32).
+  static Object? widen(String declaredName, Object? value) =>
+      declaredName == 'double' && value is int ? value.toDouble() : value;
+
+  /// Whether [type] is written `double` or `double?` - a binding whose
+  /// values [widen] turns into doubles (ghissues32).
+  /// ghissues77: a field's initial value [value] for its declared [type]:
+  /// an `int` bound to a `double` widens (ghissues32), and an empty `{}`
+  /// bound to a `Set` is a set - [bind]'s SCE103 rule for locals and
+  /// parameters, which fields did not get (Slang's
+  /// `final Set<E> translationsLoading = {};` was a map).
+  static Object? fieldValue(STypeAnnotation? type, Object? value) {
+    if (declaresDouble(type)) return widen('double', value);
+    if (type is SNamedType &&
+        type.name?.name == 'Set' &&
+        value is Map &&
+        value.isEmpty) {
+      return <Object?>{};
+    }
+    return value;
+  }
+
+  static bool declaresDouble(STypeAnnotation? type) =>
+      type is SNamedType && type.name?.name == 'double';
+
+  /// The value to bind — [value] unchanged, or its `double` widening — or
+  /// throws [D4rtTypeError] when [value] cannot inhabit the declared type.
+  Object? bind(Environment env, Object? value) {
+    if (value == null) {
+      if (_isNullable) return null;
+      throw D4rtTypeError(
+        "type 'Null' is not a subtype of type '$_displayName'$_suffix",
+      );
+    }
+
+    // Above the hierarchy the subtype check can express: every non-null value
+    // inhabits `Object`, and `Function` is satisfied by callables whose runtime
+    // type the resolver models only coarsely.
+    // ghissues77: `dynamic` too - a type parameter bound to the interpreter's
+    // `dynamic` (an extension's `E` it could not infer) is declared as it, and
+    // every value inhabits it (Slang's `int score(E supported)`).
+    if (_declaredName == 'Object' ||
+        _declaredName == 'Function' ||
+        _declaredName == 'dynamic') {
+      return value;
+    }
+
+    // Dart widens an `int` bound to a `double`. Without this the binding
+    // receives an `int` where its own annotation promises a `double` — the same
+    // silent wrong value this check exists to stop, one step further in. It is
+    // also why a binding check cannot be the `is` predicate: `1 is double` is
+    // false, but `for (final double d in [1, 2.5])` is a program real Dart
+    // accepts, because the literal widens.
+    if (_declaredName == 'double' && value is int) return widen('double', value);
+
+    // SCE103: `{}` is a Map unless the CONTEXT type says Set — Dart's own rule,
+    // and the interpreter has no context type to consult, so the literal always
+    // evaluates to an empty Map and the disambiguation happens here, where the
+    // written type finally is.
+    //
+    // NOT a concession to the declaration check that surfaced it. Measured
+    // before that check existed: `Set<int> s = {}; s.add(1);` threw "Bridged
+    // class 'Map' has no instance method named 'add'", and `f(Set<int> s)`
+    // called with `{}` threw this very message through SCC29's parameter check.
+    // Only `isEmpty` worked, because a Map answers it too. So this makes a
+    // correct Dart program run where it previously threw at the second
+    // statement.
+    //
+    // EMPTY ONLY. A non-empty Map bound to a `Set` is a genuine error and still
+    // fails, which is what keeps this a disambiguation rather than a coercion
+    // that hides mistakes.
+    if (_declaredName == 'Set' && value is Map && value.isEmpty) {
+      return <Object?>{};
+    }
+
+    final RuntimeType? valueType;
+    try {
+      valueType = env.getRuntimeType(value);
+    } catch (_) {
+      return value;
+    }
+    if (valueType == null || valueType is TypeParameter) return value;
+
+    if (valueType.isSubtypeOf(_declaredType, value: value)) {
+      return _checkTypeArguments(env, value);
+    }
+
+    // SCD119: the value may be a NATIVE PROXY standing in for an interpreted
+    // instance. A script class that extends a bridged class is handed to
+    // Flutter as a registered [D4InterpretedProxy] — `_InterpretedThemeExtension`
+    // for `class BrandColors extends ThemeExtension<BrandColors>`, and the same
+    // for widgets, painters and states. Ask such a value for its runtime type
+    // and the answer is the BRIDGE's name (`ThemeExtension`), so binding it back
+    // to a parameter declared as the script's own class was rejected with
+    // `type 'ThemeExtension' is not a subtype of type 'BrandColors' of 'brand'`
+    // — while every member access on the same value worked, because the
+    // property and method paths already unwrap the proxy (the D2 sites in
+    // `interpreter_visitor.dart`). The check was the only place that did not.
+    //
+    // THIS RUNS ONLY AFTER THE BASE CHECK HAS FAILED, so it can remove a
+    // rejection but never add one: a program that binds today still binds.
+    // That is deliberate. The obvious alternative — teaching
+    // `Environment.getRuntimeType` to see through every proxy — is the more
+    // correct model and a far larger blast radius, since it would change what
+    // `is`, `as` and `runtimeType` answer for every proxied widget in a running
+    // tree. Cluster 25 was reverted in April for exactly that kind of reach on
+    // the dispatch path; this is the version that cannot regress a passing
+    // script.
+    //
+    // The PROXY is what gets bound, not the instance behind it. The value has
+    // to stay whatever native code downstream expects; only the verdict on it
+    // changes.
+    final Object? interpreted = _interpretedBehind(value);
+    if (interpreted != null) {
+      RuntimeType? interpretedType;
+      try {
+        interpretedType = env.getRuntimeType(interpreted);
+      } catch (_) {
+        interpretedType = null;
+      }
+      if (interpretedType != null &&
+          interpretedType.isSubtypeOf(_declaredType, value: interpreted)) {
+        // SCF31: a bare bridged SUPER OBJECT binds as its instance. A proxy
+        // is kept because it answers every member the instance does; the
+        // native base of a concrete bridged class does not — it has none of
+        // the script's fields — so binding it would pass the check and fail
+        // at the first `renderObject.onLayout` or `d.telemetry`. Native code
+        // loses nothing: handing the instance back out yields this same
+        // object again, through `bridgedSuperObject`.
+        return D4.ownerOfSuperObject(_nativeOf(value)) ?? value;
+      }
+    }
+
+    throw D4rtTypeError(
+      "type '${valueType.name}' is not a subtype of type '$_displayName'"
+      "$_suffix",
+    );
+  }
+
+  /// SCD119: the interpreted instance [value] is a native proxy for, or null
+  /// when it is not one.
+  ///
+  /// Both carriers are accepted because both reach a binding: the bare proxy
+  /// object, and a [BridgedInstance] wrapping it — which of the two arrives
+  /// depends on the path the value took out of native code, and the unwrap
+  /// sites in the visitor already handle the pair the same way.
+  static Object? _interpretedBehind(Object? value) =>
+      D4.interpretedBehind(value);
+
+  /// [value] itself, or the native object a [BridgedInstance] wraps.
+  static Object? _nativeOf(Object? value) =>
+      value is BridgedInstance ? value.nativeObject : value;
+
+  /// SCD92: [value], once its own type arguments are known to satisfy the
+  /// declared ones — or throws when they do not.
+  ///
+  /// Runs only after the base check has already passed, so it can add a
+  /// rejection but never remove one. Both sides must carry arguments the check
+  /// can read: a raw annotation, or a value whose arguments are not derivable
+  /// (an empty or heterogeneous collection, every bridged instance), passes
+  /// untouched. That permissiveness is the point — a binding check runs on
+  /// every argument of every call, and a false positive rejects a correct
+  /// program, which is worse than the silent pass it replaces.
+  Object? _checkTypeArguments(Environment env, Object? value) {
+    final declared = _appliedDeclared;
+    if (declared == null) return value;
+    final AppliedRuntimeType? actual;
+    try {
+      actual = env.appliedRuntimeTypeOf(value);
+    } catch (_) {
+      return value;
+    }
+    if (actual == null) return value;
+    final comparable = _bottomOutNullArguments(actual, declared);
+    if (comparable.isSubtypeOf(declared)) return value;
+    if (_widenNumericArguments(comparable, declared).isSubtypeOf(declared)) {
+      return value;
+    }
+    // SCE161: THE SAME IDENTITY LOSS, ONE LEVEL DOWN. SCD119 taught the base
+    // check in [bind] to look behind a single proxy. This check reads the
+    // value's APPLIED arguments, and a collection derives those from elements
+    // that each still answer with the bridge's name — so a list of proxies
+    // standing for `MyShape` presents as `List<Shape>` and a declared
+    // `List<MyShape>` was refused, with every element individually bindable.
+    //
+    // Down is where the corpus mostly is: a script that builds widgets builds
+    // LISTS of them, which is why this surfaced as `List<StatelessWidget>`
+    // against `List<_A11yNote>` and reached an ASSERTION rather than the
+    // framework warning the scalar shapes produced.
+    //
+    // Same discipline as SCD119's retry. It runs only after the argument check
+    // has already failed, so it can remove a rejection this method added and
+    // never add one. It asks the SAME subtype question with the interpreted
+    // instances substituted in rather than waving the collection through, so an
+    // element standing for an unrelated class is still refused. And it returns
+    // the ORIGINAL collection, because the proxies are what native code
+    // downstream expects to receive.
+    if (value is Iterable && value.isNotEmpty) {
+      final elements = value.toList();
+      final behind = <Object?>[
+        for (final element in elements) _interpretedBehind(element) ?? element,
+      ];
+      final substituted = Iterable<int>.generate(
+        elements.length,
+      ).any((i) => !identical(behind[i], elements[i]));
+
+      if (substituted) {
+        final Object substitute = value is Set ? behind.toSet() : behind;
+        AppliedRuntimeType? substituteType;
+        try {
+          substituteType = env.appliedRuntimeTypeOf(substitute);
+        } catch (_) {
+          substituteType = null;
+        }
+        if (substituteType != null &&
+            _bottomOutNullArguments(
+              substituteType,
+              declared,
+            ).isSubtypeOf(declared)) {
+          return value;
+        }
+      }
+    }
+
+    final declaredName = _isNullable ? '${declared.name}?' : declared.name;
+    throw D4rtTypeError(
+      "type '${actual.name}' is not a subtype of type '$declaredName'$_suffix",
+    );
+  }
+
+  /// SCE129: [actual] with each `Null` type argument replaced by its declared
+  /// counterpart — or [actual] unchanged when none is `Null`.
+  ///
+  /// An ALL-NULL collection tells this check nothing, for the same reason an
+  /// EMPTY one does not — and [Environment.appliedRuntimeTypeOf] already
+  /// reports the empty case as unknown, because its element type is derived
+  /// from CONTENTS. `null` inhabits every nullable type, so
+  /// `List<String?>.filled(3, null)` and `<Widget?>[null, null]` derive `Null`
+  /// and were refused against the very annotation that produced them. That is
+  /// a false positive on correct code, which is the one outcome
+  /// [_checkTypeArguments] is written to avoid.
+  ///
+  /// It is a WIDENING rather than a subtype rule, and the distinction is the
+  /// whole of it: `Null` is NOT a subtype of `String`, only of `String?`, and
+  /// [InterpretedFunction._appliedDeclaredType] resolves an argument node by
+  /// name — so a declared `List<String?>` arrives here as `List<String>` with
+  /// the nullability already gone, and no subtype rule could recover it. d4rt
+  /// cannot read a reified type argument off a native collection either, so it
+  /// cannot tell `<String?>[null]` from a `List<String>` holding nulls.
+  /// Refusing on that ambiguity costs a working program; accepting it costs a
+  /// mistyping this check never claimed to catch.
+  static AppliedRuntimeType _bottomOutNullArguments(
+    AppliedRuntimeType actual,
+    AppliedRuntimeType declared,
+  ) {
+    if (actual.typeArguments.length != declared.typeArguments.length) {
+      return actual;
+    }
+    var relaxed = false;
+    final args = <RuntimeType>[];
+    for (var i = 0; i < actual.typeArguments.length; i++) {
+      final ours = actual.typeArguments[i];
+      if (ours.name == 'Null') {
+        args.add(declared.typeArguments[i]);
+        relaxed = true;
+      } else {
+        args.add(ours);
+      }
+    }
+    return relaxed ? AppliedRuntimeType(actual.baseType, args) : actual;
+  }
+
+  /// SCD92: [actual] with each `int` type argument whose declared counterpart is
+  /// `double` replaced by it — or [actual] unchanged when none applies.
+  ///
+  /// Dart widens an int literal to a double from its surrounding context, so
+  /// `fromJson({'x': 3, 'y': 4})` against a `Map<String, double>` parameter
+  /// really does pass a map of doubles. d4rt's map holds the ints it was
+  /// written with, so the argument derived from its CONTENTS is `int` and a
+  /// literal comparison rejects a correct program — which is how this was
+  /// found, on two class tests that had passed since February.
+  ///
+  /// This is the allowance [bind] already makes for a `double` binding one
+  /// level out (F-SCC29-22), reaching the type arguments. It widens the type
+  /// used for the COMPARISON only: the collection is passed through untouched,
+  /// still holding its ints, exactly as before this check existed.
+  static AppliedRuntimeType _widenNumericArguments(
+    AppliedRuntimeType actual,
+    AppliedRuntimeType declared,
+  ) {
+    if (actual.typeArguments.length != declared.typeArguments.length) {
+      return actual;
+    }
+    var widened = false;
+    final args = <RuntimeType>[];
+    for (var i = 0; i < actual.typeArguments.length; i++) {
+      final ours = actual.typeArguments[i];
+      final theirs = declared.typeArguments[i];
+      if (ours.name == 'int' && theirs.name == 'double') {
+        args.add(theirs);
+        widened = true;
+      } else {
+        args.add(ours);
+      }
+    }
+    return widened ? AppliedRuntimeType(actual.baseType, args) : actual;
+  }
+}
+
+// Represents a function implemented natively in the interpreter host (Dart)
+typedef NativeFunctionImpl =
+    Object? Function(
+      InterpreterVisitor visitor,
+      List<Object?> arguments,
+      Map<String, Object?> namedArguments,
+      List<RuntimeType>? typeArguments,
+    );
+
+class NativeFunction implements Callable, RuntimeType {
+  final NativeFunctionImpl _function;
+  @override
+  final int arity;
+  final String _name;
+
+  NativeFunction(this._function, {required this.arity, String? name})
+    : _name = name ?? "<native>";
+
+  @override
+  Object? call(
+    InterpreterVisitor visitor,
+    List<Object?> positionalArguments, [
+    Map<String, Object?> namedArguments = const {},
+    List<RuntimeType>? typeArguments,
+  ]) {
+    return _function(
+      visitor,
+      positionalArguments,
+      namedArguments,
+      typeArguments,
+    );
+  }
+
+  @override
+  String toString() => '<native fn $_name>';
+
+  @override
+  bool isSubtypeOf(RuntimeType other, {Object? value}) {
+    final f1 = _function;
+    if (other is NativeFunction) {
+      final f2 = other._function;
+      if (name == 'num') {
+        final isSubtype = switch (other._name) {
+          'num' => true,
+          'int' => true,
+          'double' => true,
+          _ => false,
+        };
+        return isSubtype;
+      }
+      return f1 == f2;
+    }
+
+    return false;
+  }
+
+  @override
+  String get name => _name;
+}
+
+// Represents a bridged instance method that has been bound to a specific instance.
+class BridgedMethodCallable implements Callable {
+  final BridgedInstance _instance; // The native target instance
+  final BridgedMethodAdapter _adapter; // The adapter function
+  final String _methodName;
+
+  BridgedMethodCallable(this._instance, this._adapter, this._methodName);
+
+  @override
+  int get arity {
+    // The arity is complex to determine statically for native adapters.
+    // For now, return 0, but the adapter itself will do the validation.
+    // We could improve this if the adapters provide metadata.
+    return 0;
+  }
+
+  @override
+  Object? call(
+    InterpreterVisitor visitor,
+    List<Object?> positionalArguments, [
+    Map<String, Object?> namedArguments = const {},
+    List<RuntimeType>? typeArguments,
+  ]) {
+    try {
+      // C6b fix (mirror of tom_d4rt/callable.dart): wrap adapter dispatch
+      // in `D4.withActiveVisitor` so visitor-less D4 helpers invoked inside
+      // the adapter (e.g. `D4.coerceList<T>` walking interface proxies for
+      // higher-kinded generics like `ThemeExtension<ThemeExtension<dynamic>>`)
+      // can resolve InterpretedInstance values via registered interface
+      // proxies. Without this wrap, `_activeVisitor` is null and the proxy
+      // walk is skipped, causing argument-cast failures on raw bridged
+      // instance method calls.
+      return D4.withActiveVisitor(
+        visitor,
+        () => _adapter(
+          visitor,
+          _instance.nativeObject,
+          positionalArguments,
+          namedArguments,
+          typeArguments,
+        ),
+      );
+    } on RangeError {
+      // SCE74. `RangeError extends ArgumentError` and `IndexError implements
+      // RangeError`, so without this arm the clause below swallows every SDK
+      // RANGE failure a bridged method raises and reissues it as an
+      // uncatchable `RuntimeD4rtException`. A script written the idiomatic way
+      // — `try { q.elementAt(0); } on RangeError { ... }` — did not catch, and
+      // the recovery path its author wrote never ran.
+      //
+      // Narrowed rather than deleted, which is the SCE67 shape: the clause
+      // below still earns its keep for a plain `ArgumentError`, which an
+      // ADAPTER raises for arity and argument-shape problems that have no SDK
+      // counterpart. Nothing in `stdlib` throws a bare RangeError or
+      // IndexError (measured 2026-09-21: zero sites) — the interpreter's own
+      // range failures use `Ranged4rtException` — so letting this one through
+      // cannot leak an interpreter error into a script's `on RangeError`.
+      rethrow;
+    } on ArgumentError catch (e) {
+      // Convert native ArgumentError to RuntimeError
+      throw RuntimeD4rtException(
+        "Invalid arguments for bridged method '${_instance.bridgedClass.name}.$_methodName': ${e.message}",
+      );
+    } catch (e, s) {
+      // Handle other native errors
+      Logger.error(
+        "[BridgedMethodCallable] Native exception during call to '${_instance.bridgedClass.name}.$_methodName': $e\n$s",
+      );
+      throw RuntimeD4rtException(
+        "Native error in bridged method '${_instance.bridgedClass.name}.$_methodName': $e",
+        originalException: e,
+        originalStackTrace: s,
+      );
+    }
+  }
+
+  @override
+  String toString() =>
+      '<bridged method ${_instance.bridgedClass.name}.$_methodName>';
+}
+
+/// Represents a static method from a bridged class that can be passed as a value
+class BridgedStaticMethodCallable implements Callable {
+  final BridgedClass _bridgedClass;
+  final BridgedStaticMethodAdapter _adapter;
+  final String _methodName;
+
+  BridgedStaticMethodCallable(
+    this._bridgedClass,
+    this._adapter,
+    this._methodName,
+  );
+
+  @override
+  int get arity {
+    // The arity is complex to determine statically for native adapters.
+    // For now, return 0, but the adapter itself will do the validation.
+    return 0;
+  }
+
+  @override
+  Object? call(
+    InterpreterVisitor visitor,
+    List<Object?> positionalArguments, [
+    Map<String, Object?> namedArguments = const {},
+    List<RuntimeType>? typeArguments,
+  ]) {
+    try {
+      // Call the adapter with the visitor and arguments
+      return _adapter(
+        visitor,
+        positionalArguments,
+        namedArguments,
+        typeArguments,
+      );
+    } on RangeError {
+      // SCE74. `RangeError extends ArgumentError` and `IndexError implements
+      // RangeError`, so without this arm the clause below swallows every SDK
+      // RANGE failure a bridged method raises and reissues it as an
+      // uncatchable `RuntimeD4rtException`. A script written the idiomatic way
+      // — `try { q.elementAt(0); } on RangeError { ... }` — did not catch, and
+      // the recovery path its author wrote never ran.
+      //
+      // Narrowed rather than deleted, which is the SCE67 shape: the clause
+      // below still earns its keep for a plain `ArgumentError`, which an
+      // ADAPTER raises for arity and argument-shape problems that have no SDK
+      // counterpart. Nothing in `stdlib` throws a bare RangeError or
+      // IndexError (measured 2026-09-21: zero sites) — the interpreter's own
+      // range failures use `Ranged4rtException` — so letting this one through
+      // cannot leak an interpreter error into a script's `on RangeError`.
+      rethrow;
+    } on ArgumentError catch (e) {
+      // Convert native ArgumentError to RuntimeError
+      throw RuntimeD4rtException(
+        "Invalid arguments for bridged static method '${_bridgedClass.name}.$_methodName': ${e.message}",
+      );
+    } catch (e, s) {
+      // Handle other native errors
+      Logger.error(
+        "[BridgedStaticMethodCallable] Native exception during call to '${_bridgedClass.name}.$_methodName': $e\n$s",
+      );
+      throw RuntimeD4rtException(
+        "Native error in bridged static method '${_bridgedClass.name}.$_methodName': $e",
+        originalException: e,
+        originalStackTrace: s,
+      );
+    }
+  }
+
+  @override
+  String toString() =>
+      '<bridged static method ${_bridgedClass.name}.$_methodName>';
+}
+
+/// Abstract interface for extension member callables.
+///
+/// Both [InterpretedExtensionMethod] (from parsed source) and
+/// [NativeExtensionCallable] (from bridged extensions) implement this
+/// interface. Call sites in the interpreter can check
+/// `is ExtensionMemberCallable` instead of checking for each concrete type.
+abstract class ExtensionMemberCallable implements Callable {
+  bool get isGetter;
+  bool get isSetter;
+  bool get isOperator;
+}
+
+/// A bound wrapper for any [ExtensionMemberCallable].
+///
+/// When `call` is invoked, it prepends the bound target as the first
+/// positional argument and delegates to the underlying extension callable.
+/// This replaces both [BoundExtensionMethodCallable] and
+/// [BoundNativeExtensionCallable] with a single unified type.
+class BoundExtensionCallable implements Callable {
+  final Object? target;
+  final ExtensionMemberCallable extensionCallable;
+
+  BoundExtensionCallable(this.target, this.extensionCallable);
+
+  @override
+  int get arity => extensionCallable.arity;
+
+  @override
+  Object? call(
+    InterpreterVisitor visitor,
+    List<Object?> positionalArguments, [
+    Map<String, Object?> namedArguments = const {},
+    List<RuntimeType>? typeArguments = const [],
+  ]) {
+    final actualPositionalArgs = [target, ...positionalArguments];
+
+    if (Logger.isDebug) {
+      Logger.debug(
+        "[BoundExtensionCallable] Calling extension member bound to ${target?.runtimeType}",
+      );
+    }
+
+    return extensionCallable.call(
+      visitor,
+      actualPositionalArgs,
+      namedArguments,
+      typeArguments,
+    );
+  }
+}
+
+/// ghissues53 (GitHub #14): the value of an explicit extension override -
+/// `E(x)`, `E<T>(x)`, `prefix.E(x)`. Not a first-class value in Dart: it is
+/// only the target of the access that follows, which calls the member of
+/// [extension] with [receiver] as `this` - never the receiver's own member
+/// nor another extension's (the way to resolve a conflict between two
+/// extensions, or to name the extension of a prefixed import).
+class ExtensionOverrideValue {
+  ExtensionOverrideValue(
+    this.extension,
+    this.receiver,
+    this.receiverExpression,
+    this.typeArguments,
+  );
+
+  /// The extension named by the override.
+  final InterpretedExtension extension;
+
+  /// The value the override applies the extension to (`x` of `E(x)`).
+  final Object? receiver;
+
+  /// The expression [receiver] came from; its written type binds the
+  /// extension's type parameters when no [typeArguments] are given.
+  final SExpression receiverExpression;
+
+  /// The explicit type arguments of `E<T>(x)`, else null.
+  final List<RuntimeType>? typeArguments;
+
+  /// The extension's name, for messages.
+  String get extensionName => extension.name ?? '<unnamed>';
+
+  /// The member [name] the extension declares; an error naming the
+  /// extension when it declares none.
+  ExtensionMemberCallable member(String name) {
+    final member = extension.findMember(name);
+    if (member is ExtensionMemberCallable) return member;
+    // ghissues56: a setter is kept apart from the getters and methods.
+    if (extension.findSetter(name) != null) {
+      throw RuntimeD4rtException(
+        "The extension '$extensionName' declares no getter or method '$name' "
+        '(only a setter; explicit extension override $extensionName(...)).',
+      );
+    }
+    throw RuntimeD4rtException(
+      "The extension '$extensionName' does not declare a member '$name' "
+      '(explicit extension override $extensionName(...)).',
+    );
+  }
+}
+
+// Represents an extension method during interpretation.
+class InterpretedExtensionMethod implements ExtensionMemberCallable {
+  final SMethodDeclaration declaration; // The AST node for the method
+  final Environment closure; // Environment where the extension was declared
+  // Store the 'on' type to potentially check 'this' type during call?
+  // Set later by [InterpretedExtension.resolveOnType] when the extension is
+  // declared before its `on` type exists (GitHub #9).
+  late RuntimeType onType;
+
+  /// ghissues49: the extension's own type parameters (`K`, `V` of
+  /// `extension E<K, V> on Map<K, V>`), bound on every call.
+  final List<String> extensionTypeParameters;
+
+  /// The `on` type as written, which the receiver's type is matched against
+  /// to bind [extensionTypeParameters].
+  final STypeAnnotation? onTypeAnnotation;
+
+  InterpretedExtensionMethod(
+    this.declaration,
+    this.closure,
+    RuntimeType? onType, {
+    this.extensionTypeParameters = const [],
+    this.onTypeAnnotation,
+  }) {
+    if (onType != null) this.onType = onType;
+  }
+
+  // Add getters for method type
+  @override
+  bool get isGetter => declaration.isGetter;
+  @override
+  bool get isSetter => declaration.isSetter;
+  @override
+  bool get isOperator => declaration.isOperator;
+
+  @override
+  int get arity =>
+      // Arity is based on the *declared* parameters, not including implicit 'this'
+      declaration.parameters?.parameters.length ?? 0;
+
+  @override
+  Object? call(
+    InterpreterVisitor visitor,
+    List<Object?> positionalArguments, [
+    Map<String, Object?> namedArguments = const {},
+    List<RuntimeType>? typeArguments,
+  ]) {
+    // 1. Extract the target instance (first argument)
+    if (positionalArguments.isEmpty) {
+      throw RuntimeD4rtException(
+        "Internal error: Extension method '${declaration.name!.name}' called without target instance ('this').",
+      );
+    }
+    final targetInstance = positionalArguments.removeAt(
+      0,
+    ); // Consomme le premier argument
+
+    // 2. Create the execution environment
+    final executionEnvironment = Environment(enclosing: closure);
+    // Define 'this' in this environment
+    executionEnvironment.define('this', targetInstance);
+    // ghissues49 (GitHub #18): the extension's own type parameters, from the
+    // receiver's written type or its runtime type arguments (else dynamic).
+    if (extensionTypeParameters.isNotEmpty) {
+      visitor
+          .bindExtensionTypeParameters(
+            extensionTypeParameters,
+            onTypeAnnotation,
+            targetInstance,
+          )
+          .forEach(executionEnvironment.define);
+    }
+    if (Logger.isDebug) {
+      Logger.debug(
+        "[InterpretedExtensionMethod.call] Created execution env (${executionEnvironment.hashCode}) for '${declaration.name!.name}', defining 'this'=${targetInstance?.runtimeType}",
+      );
+    }
+
+    // 3. Bind the declared parameters (explicit arguments)
+    final params = declaration.parameters?.parameters;
+    int positionalArgIndex = 0;
+    final providedNamedArgs = namedArguments;
+    final processedParamNames = <String>{};
+
+    if (params != null) {
+      for (final param in params) {
+        String? paramName;
+        SExpression? defaultValueExpr;
+        bool isRequired = false;
+        bool isOptionalPositional = false;
+        bool isNamed = false;
+        bool isRequiredNamed = false;
+
+        // Determine the parameter info (copied from InterpretedFunction)
+        final SFormalParameter actualParam = param;
+        defaultValueExpr = param.defaultClause?.value;
+        paramName = actualParam.name?.name;
+        isRequired = actualParam.isRequiredPositional;
+        isOptionalPositional = actualParam.isOptionalPositional;
+        isNamed = actualParam.isNamed;
+        isRequiredNamed = actualParam.isRequiredNamed;
+        if (paramName == null) {
+          throw StateD4rtException("Extension parameter missing name");
+        }
+        processedParamNames.add(paramName);
+
+        // Find the corresponding argument and value
+        Object? valueToDefine;
+        bool argumentProvided = false;
+        if (isOptionalPositional || isRequired) {
+          if (positionalArgIndex < positionalArguments.length) {
+            valueToDefine = positionalArguments[positionalArgIndex++];
+            argumentProvided = true;
+          }
+        } else if (isNamed) {
+          if (providedNamedArgs.containsKey(paramName)) {
+            valueToDefine = providedNamedArgs[paramName];
+            argumentProvided = true;
+          }
+        }
+
+        // Handle default values and required checks
+        if (!argumentProvided) {
+          if (defaultValueExpr != null) {
+            final previousVisitorEnv = visitor.environment;
+            try {
+              visitor.environment =
+                  closure; // Defaults evaluated in declaration scope
+              valueToDefine = defaultValueExpr.accept<Object?>(visitor);
+            } finally {
+              visitor.environment = previousVisitorEnv;
+            }
+          } else if (isRequired || isRequiredNamed) {
+            throw RuntimeD4rtException(
+              "Missing required ${isNamed ? 'named' : ''} argument for '$paramName' in extension method '${declaration.name!.name}'.",
+            );
+          } else {
+            valueToDefine = null;
+          }
+        }
+        // Define the variable in the execution environment
+        executionEnvironment.define(paramName, valueToDefine);
+        if (Logger.isDebug) {
+          Logger.debug(
+            " [InterpretedExtensionMethod.call] Bound param '$paramName' = $valueToDefine",
+          );
+        }
+      }
+
+      // Final argument checks (copied from InterpretedFunction)
+      final int totalPositionalDeclared = params
+          .where((p) => p.isPositional)
+          .length;
+      if (positionalArgIndex < positionalArguments.length) {
+        throw RuntimeD4rtException(
+          "Too many positional arguments for extension method '${declaration.name!.name}'. Expected at most $totalPositionalDeclared, got ${positionalArguments.length}.",
+        );
+      }
+      for (final providedName in providedNamedArgs.keys) {
+        if (!processedParamNames.contains(providedName)) {
+          throw RuntimeD4rtException(
+            "Extension method '${declaration.name!.name}' does not have a parameter named '$providedName'.",
+          );
+        }
+      }
+    } else if (positionalArguments.isNotEmpty || providedNamedArgs.isNotEmpty) {
+      throw RuntimeD4rtException(
+        "Extension method '${declaration.name!.name}' takes no arguments (besides 'this'), but arguments were provided.",
+      );
+    }
+
+    // 4. Execute the body in the new environment
+    final previousEnvironment = visitor.environment;
+    final previousFunction = visitor.currentFunction;
+    // G-DOV2-7 FIX: install an InterpretedFunction.method wrapper so that
+    // `visitReturnStatement` reads *this* extension method's declared return
+    // type (and matching name) instead of falling back to the caller's
+    // function (typically `main` declared `void`). Without this, returning a
+    // value from an extension getter on an enum incorrectly tripped the
+    // String-vs-void check on `main`.
+    final method = InterpretedFunction.method(declaration, closure, onType);
+    visitor.currentFunction = method;
+    visitor.environment = executionEnvironment; // USE THE NEW ENVIRONMENT
+    if (Logger.isDebug) {
+      Logger.debug(
+        "[InterpretedExtensionMethod.call] Set visitor environment to executionEnvironment (${executionEnvironment.hashCode}) before executing body.",
+      );
+    }
+
+    try {
+      // ghissues77: an async body, or a sync* / async* one, runs as such.
+      final suspending = method.runAsBoundBody(visitor, executionEnvironment);
+      if (!identical(suspending, InterpretedFunction.notSuspending)) {
+        return suspending;
+      }
+      final body = declaration.body;
+      if (body is SBlockFunctionBody) {
+        // A `return` arrives as a ReturnException (caught below); running off
+        // the end returns null, not the last statement's value (PR #6).
+        final completion = visitor.executeBlock(
+          body.block!.statements,
+          executionEnvironment,
+        );
+        return completion is AsyncSuspensionRequest ? completion : null;
+      } else if (body is SExpressionFunctionBody) {
+        // For an expression body, evaluate and return the value
+        final result = body.expression!.accept<Object?>(visitor);
+        // No need to raise ReturnException here, we return directly
+        return result;
+      } else if (body is SEmptyFunctionBody) {
+        throw RuntimeD4rtException(
+          "Cannot execute empty body for extension method '${declaration.name!.name}'.",
+        );
+      } else {
+        throw UnimplementedD4rtException(
+          'Function body type not handled in extension method: ${body.runtimeType}',
+        );
+      }
+    } on ReturnException catch (e) {
+      // Catch in case executeBlock (or other) still raises ReturnException
+      if (Logger.isDebug) {
+        Logger.debug(
+          " [InterpretedExtensionMethod.call] Caught ReturnException, returning value: ${e.value}",
+        );
+      }
+      return e.value;
+    } finally {
+      if (Logger.isDebug) {
+        Logger.debug(
+          " [InterpretedExtensionMethod.call] Restoring visitor environment from (${visitor.environment.hashCode}) to (${previousEnvironment.hashCode}).",
+        );
+      }
+      visitor.environment = previousEnvironment;
+      visitor.currentFunction =
+          previousFunction; // Restaurer aussi currentFunction
+    }
+  }
+}
+
+/// Represents an extension method bound to a target instance.
+///
+/// Stores the instance (`target`) and the extension method (`extensionMethod`).
+/// When `call` is invoked, it calls the underlying extension method,
+/// automatically inserting the target instance as the first positional argument.
+class BoundExtensionMethodCallable implements Callable {
+  final Object? target; // The 'this' instance to which the method is bound.
+  final InterpretedExtensionMethod extensionMethod;
+
+  BoundExtensionMethodCallable(this.target, this.extensionMethod);
+
+  // The arity of the bound method is the arity of the original extension method.
+  @override
+  int get arity => extensionMethod.arity;
+
+  @override
+  Object? call(
+    InterpreterVisitor visitor,
+    List<Object?> positionalArguments, [
+    Map<String, Object?> namedArguments = const {},
+    List<RuntimeType>? typeArguments = const [],
+  ]) {
+    // Prepare the arguments for the actual call to the InterpretedExtensionMethod:
+    // The first argument is ALWAYS the target instance.
+    final actualPositionalArgs = [target, ...positionalArguments];
+
+    if (Logger.isDebug) {
+      Logger.debug(
+        "[BoundExtensionMethodCallable] Calling extension method '${extensionMethod.declaration.name!.name}' bound to ${target?.runtimeType}",
+      );
+    }
+
+    // Call the original extension method with the adjusted arguments.
+    // It will handle ReturnException, etc.
+    return extensionMethod.call(
+      visitor,
+      actualPositionalArgs,
+      namedArguments,
+      typeArguments,
+    );
+  }
+}
+
+/// A callable for a native (bridged) extension member.
+///
+/// Wraps a native function adapter and provides metadata about whether it's
+/// a getter, setter, or operator — matching the protocol of
+/// [InterpretedExtensionMethod] so that [findExtensionMember] call sites
+/// can handle both interpreted and native extension members uniformly.
+///
+/// The adapter function receives the target instance as the first positional
+/// argument (the `this` value), following the same convention as
+/// [InterpretedExtensionMethod].
+class NativeExtensionCallable implements ExtensionMemberCallable {
+  final String name;
+  final Function adapter;
+  @override
+  final bool isGetter;
+  @override
+  final bool isSetter;
+  @override
+  final bool isOperator;
+  final int _arity;
+
+  NativeExtensionCallable({
+    required this.name,
+    required this.adapter,
+    this.isGetter = false,
+    this.isSetter = false,
+    this.isOperator = false,
+    int arity = 1,
+  }) : _arity = arity;
+
+  @override
+  int get arity => _arity;
+
+  @override
+  Object? call(
+    InterpreterVisitor visitor,
+    List<Object?> positionalArguments, [
+    Map<String, Object?> namedArguments = const {},
+    List<RuntimeType>? typeArguments = const [],
+  ]) {
+    return Function.apply(adapter, [
+      visitor,
+      positionalArguments,
+      namedArguments,
+      typeArguments,
+    ]);
+  }
+}

@@ -17,10 +17,10 @@ DngoConfig get dngoConfig => DngoConfig(
       androidBackground: ColorValue('FF0000'),
       androidSafeZone: AdaptiveSafeZone.none,
     ),
-    // splash: SplashConfig(
-    //   image: 'assets/dn-logo.png',
-    //   backgroundColor: ColorValue('#E4ECE8'),
-    // ),
+    splash: SplashConfig(
+      image: 'assets/dn-logo.png',
+      backgroundColor: ColorValue('#E4ECFF'),
+    ),
   ),
   platforms: PlatformsConfig(
     ios: IosConfig(

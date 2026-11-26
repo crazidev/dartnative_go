@@ -1,0 +1,734 @@
+/// Public API for D4rt Bridge Generation
+///
+/// Provides a simple API for programmatic bridge generation.
+library;
+
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
+import 'package:tom_build_base/tom_build_base.dart' show PubCacheIntegrity;
+import 'package:tom_analyzer_shared/tom_analyzer_shared.dart'
+    show runSummaryCacheStage;
+
+import 'bridge_config.dart';
+import 'bridge_generator.dart';
+import 'build_config_loader.dart';
+import 'd4rtgen_logging.dart';
+import 'file_generators.dart';
+import 'imported_names.dart';
+import 'proxy_generator.dart';
+import 'relaxer_generator.dart';
+import 'generated_code_formatter.dart';
+import 'user_variant_sites.dart'
+    show proxyClassesWithDirectives, userVariantExtractionSites;
+import 'user_bridge_prescan.dart'
+    show preScanUserBridges, preScanUserVariantDirectives;
+
+/// Result of a bridge generation operation.
+class GenerationResult {
+  /// Total number of classes generated across all modules.
+  final int totalClasses;
+
+  /// Total number of modules processed.
+  final int totalModules;
+
+  /// List of output files generated.
+  final List<String> outputFiles;
+
+  /// Configuration used for generation.
+  final BridgeConfig config;
+
+  /// Any errors encountered.
+  final List<String> errors;
+
+  /// Non-fatal notes about the configuration this run used.
+  ///
+  /// Carried on the result as well as printed, so a test can assert on them
+  /// without capturing stdout.
+  final List<String> warnings;
+
+  /// What the class-name dedup did across modules on this run (SCE231).
+  ///
+  /// Not a warning: every multi-module run has one, and [warnings] is empty
+  /// for a clean configuration. `null` when generation stopped before any
+  /// module ran.
+  final DedupReport? dedup;
+
+  const GenerationResult({
+    required this.totalClasses,
+    required this.totalModules,
+    required this.outputFiles,
+    required this.config,
+    this.errors = const [],
+    this.warnings = const [],
+    this.dedup,
+  });
+
+  /// Whether generation was successful (no errors).
+  bool get isSuccess => errors.isEmpty;
+}
+
+/// The two halves of `generateBridges`' class-name dedup (SCE231).
+///
+/// Re-exports are skipped (GEN-076: same name AND same source file as a class
+/// an earlier module generated). A name an earlier module generated from a
+/// DIFFERENT source file is kept in both modules — Dart disambiguates such a
+/// pair by import (`dart:ui` `Image` and the widgets `Image`), so it is
+/// reported, not refused. Within one module GEN-045 keeps the first of two
+/// same-name classes and reports it as a `NAME COLLISION` warning instead.
+class DedupReport {
+  /// Classes skipped because an earlier module generated the same class.
+  final int crossModuleReExports;
+
+  /// name -> the distinct source files that generated a class under it, in
+  /// module order, for every name generated from more than one.
+  final Map<String, List<String>> crossModuleSameName;
+
+  const DedupReport({
+    required this.crossModuleReExports,
+    required this.crossModuleSameName,
+  });
+
+  /// One line, printed at the end of every run.
+  String get summary {
+    final names = crossModuleSameName.keys.toList()..sort();
+    final listed = names.isEmpty
+        ? ''
+        : ': ${names.map((n) => '$n <- ${crossModuleSameName[n]!.join(' | ')}').join('; ')}';
+    return 'Dedup: $crossModuleReExports class(es) skipped as cross-module '
+        're-exports; ${names.length} class name(s) generated from different '
+        'source files in different modules$listed';
+  }
+}
+
+/// Options a `d4rtgen:` block may set that ONLY the build_runner builder reads.
+///
+/// The builder (`lib/builder.dart`, via `PerPackageBridgeOrchestrator`) is a
+/// third generation pipeline beside the CLI and this API, and it takes its
+/// configuration from the same `d4rtgen:` block. An option it alone consults is
+/// therefore accepted and silently ignored everywhere else — which reads as
+/// "configured" to anyone looking at the file.
+///
+/// Maps the option name to what reads it, so the warning can say why.
+const builderOnlyOptions = <String, String>{
+  'libraryPath':
+      'the per-package output directory, read only by '
+      'PerPackageBridgeOrchestrator when build_runner drives generation',
+};
+
+/// Warnings for options [config] sets that this pipeline does not read.
+///
+/// Empty for every configuration in the workspace today: the check is here so
+/// that setting one of these and believing it took effect stops being silent.
+List<String> builderOnlyOptionWarnings(BridgeConfig config) {
+  final set = <String, Object?>{
+    if (config.libraryPath != null) 'libraryPath': config.libraryPath,
+  };
+  return [
+    for (final entry in set.entries)
+      "'${entry.key}' is set to '${entry.value}', but it has no effect here: "
+          '${builderOnlyOptions[entry.key]}. Remove it, or run generation '
+          'through build_runner.',
+  ];
+}
+
+/// Generate D4rt bridges for a project.
+///
+/// Generates bridges from a [BridgeConfig] or from a buildkit.yaml file path.
+///
+/// Either [config] or [configPath] must be provided. [configPath] names the
+/// YAML file whose `d4rtgen:` section is read - any name, not only
+/// `buildkit.yaml` - or a project directory, whose `buildkit.yaml` is read.
+///
+/// When using [config], specify [projectPath] to set the project root directory
+/// for resolving relative paths in the config. Defaults to [Directory.current].
+///
+/// Example using config object:
+/// ```dart
+/// final config = BridgeConfig.fromJson({...});
+/// final result = await generateBridges(
+///   config: config,
+///   projectPath: '/path/to/project',
+/// );
+/// ```
+///
+/// Example using config file:
+/// ```dart
+/// final result = await generateBridges(
+///   configPath: '/path/to/project/buildkit.yaml',
+/// );
+/// ```
+Future<GenerationResult> generateBridges({
+  BridgeConfig? config,
+  String? configPath,
+  String? projectPath,
+  bool verbose = false,
+  bool runPubGet = true,
+}) async {
+  if (config == null && configPath == null) {
+    throw ArgumentError('Either config or configPath must be provided');
+  }
+
+  if (config != null && configPath != null) {
+    throw ArgumentError('Only one of config or configPath should be provided');
+  }
+
+  // Resolve project directory: explicit projectPath > configPath's folder
+  // (configPath itself when it names a directory) > cwd
+  final projectDir =
+      projectPath ??
+      (configPath == null
+          ? Directory.current.path
+          : FileSystemEntity.isDirectorySync(configPath)
+          ? configPath
+          : p.dirname(configPath));
+  // configPath names the YAML file itself, so a file named other than
+  // buildkit.yaml is read as given (GitHub #16); a directory still means
+  // that directory's buildkit.yaml.
+  final bridgeConfig =
+      config ??
+      (FileSystemEntity.isDirectorySync(configPath!)
+          ? BuildConfigLoader.loadFromTomBuildYaml(configPath)
+          : BuildConfigLoader.loadFromYamlFile(configPath));
+  if (bridgeConfig == null) {
+    throw ArgumentError(
+      'No d4rtgen configuration found in ${configPath ?? projectDir}',
+    );
+  }
+
+  // Ensure package_config.json exists — required for resolving package: URIs
+  // in barrel files. Run `dart pub get` if missing, when the caller allows it.
+  //
+  // [runPubGet] is what lets the `d4rtgen` CLI share this pipeline: a dry run
+  // must not spawn a subprocess that writes to the package it is only
+  // inspecting, and `checkBridgeFreshness` refuses an unresolved package for
+  // the same reason rather than resolving it behind the caller's back.
+  final packageConfig = File(
+    p.join(projectDir, '.dart_tool', 'package_config.json'),
+  );
+  if (runPubGet && !packageConfig.existsSync()) {
+    final pubGetResult = await Process.run('dart', [
+      'pub',
+      'get',
+    ], workingDirectory: projectDir);
+    if (pubGetResult.exitCode != 0) {
+      return GenerationResult(
+        totalClasses: 0,
+        totalModules: 0,
+        outputFiles: [],
+        config: bridgeConfig,
+        errors: ['dart pub get failed in $projectDir: ${pubGetResult.stderr}'],
+        warnings: builderOnlyOptionWarnings(bridgeConfig),
+      );
+    }
+  }
+
+  // sce38: every path below opens an analysis context over this package's
+  // resolved dependencies. A locked package the cache cannot supply produces
+  // no resolution error — `dart pub get` reports success, because the lock is
+  // satisfiable — and the analyzer then reports `Undefined name` at each use
+  // site, which reads as an upstream rename. The generator swallows the
+  // resulting link failures and silently drops the affected classes, so the
+  // visible symptom is a bridge file missing types rather than anything
+  // naming the cache.
+  //
+  // Checked after the resolve above, so a package this call just resolved is
+  // measured in its resolved state.
+  final cacheReport = PubCacheIntegrity.preflight(projectPath: projectDir);
+  if (cacheReport != null) {
+    return GenerationResult(
+      totalClasses: 0,
+      totalModules: 0,
+      outputFiles: [],
+      config: bridgeConfig,
+      errors: [cacheReport],
+      warnings: builderOnlyOptionWarnings(bridgeConfig),
+    );
+  }
+
+  // Options only the build_runner builder reads. Always reported, not gated on
+  // `verbose`: the whole defect is that setting one looks like configuring
+  // something, and a warning nobody sees by default would not fix that.
+  final warnings = builderOnlyOptionWarnings(bridgeConfig);
+  for (final warning in warnings) {
+    print('  Warning: $warning');
+  }
+
+  if (verbose) {
+    print('  Project: ${bridgeConfig.name}');
+    print('  Modules: ${bridgeConfig.modules.length}');
+  }
+
+  // Log invocation at project level (once per generateBridges call)
+  logD4rtgenInvocation(
+    source: 'API',
+    details:
+        'project: ${bridgeConfig.name}, modules: ${bridgeConfig.modules.length}, projectDir: $projectDir',
+    includeStackTrace: true,
+  );
+
+  // Summary-cache stage (shared with tom_reflection_generator via
+  // <workspace>/.tom/analyzer-cache/). Generates or loads `.sum`
+  // bundles for hosted/SDK dependencies so BridgeGenerator and the
+  // proxy generator can skip re-scanning those packages from sources.
+  // Failures here are non-fatal — we simply fall back to the classic
+  // source-based analyzer context.
+  //
+  // Phase 2 (summary-refactoring-plan): bridge generation now routes
+  // every package through its `.sum` summary bundle via the element
+  // walker (ElementModeExtractor). No filter-exclusion pass — every
+  // dependency (including bridged packages) resolves from summaries.
+  // Phase 6: the legacy AST walker (`_ResolvedClassVisitor`) and the
+  // `useLegacyAstWalker` debug flag have been removed; element-mode
+  // extraction is now the only code path.
+  List<String>? summaryPaths;
+  String? sdkSummaryPath;
+  try {
+    final cacheResult = await runSummaryCacheStage(projectDir);
+    summaryPaths = cacheResult?.summaryPaths;
+    sdkSummaryPath = cacheResult?.sdkSummaryPath;
+  } catch (e) {
+    // Never fail bridge generation because of the cache. Report and move on.
+    print('  Warning: summary-cache stage failed: $e');
+  }
+
+  var totalClasses = 0;
+  final outputFiles = <String>[];
+  final errors = <String>[];
+  DedupReport? dedup;
+  final effectivePackageName =
+      BuildConfigLoader.getPackageName(projectDir) ?? bridgeConfig.name;
+
+  try {
+    // GEN-083b: Pre-scan user bridges from the build project's
+    // d4rt_user_bridges directory so method/getter/setter/operator
+    // overrides are registered before any module's BridgeGenerator
+    // starts emitting code. Mirrors what v2/d4rtgen_executor does —
+    // this path (generateBridges) previously only populated the
+    // scanner from Flutter source files, which meant user bridges
+    // living in the build project were invisible.
+    final sharedUserBridgeScanner = await preScanUserBridges(
+      projectDir,
+      summaryPaths: summaryPaths,
+      sdkSummaryPath: sdkSummaryPath,
+      // DFIN10: a missing annotation, or two user bridges for one target, is
+      // reported rather than dropped in silence.
+      onWarning: warnings.add,
+    );
+
+    // sce47: the annotation-driven directive scan, beside the user-bridge one.
+    // `UserProxyRelaxerScanner` was implemented and unit-tested but
+    // constructed nowhere under `lib/`, so `@D4rtUserProxy` /
+    // `@D4rtUserRelaxer` had no effect on any generated output. The decision
+    // on this todo was to wire it up rather than delete it, keeping the
+    // `user_relaxers/` file convention as the fallback it already is.
+    final userVariantScanner = await preScanUserVariantDirectives(
+      projectDir,
+      summaryPaths: summaryPaths,
+      sdkSummaryPath: sdkSummaryPath,
+      // Surfaced, not swallowed: a directive that extends the marker but
+      // carries no annotation, or declares variants of inconsistent arity, is
+      // a mistake the author wants told about — and this scanner's whole
+      // history is of producing nothing while looking like it worked.
+      onWarning: warnings.add,
+    );
+
+    // GEN-076: Track class names and source files across modules to prevent
+    // duplicate registrations. Only deduplicates when BOTH name AND source match,
+    // so different classes with the same name (e.g., dart:ui vs Flutter) are kept.
+    final globallyGeneratedClasses = <String, String>{};
+    // ghissues50: the classes bridged by a module whose barrel the relaxer
+    // file imports (`barrelImport`) - exactly what that barrel exports, so the
+    // relaxer file can name them whatever their source file looks like.
+    final barrelExportedClasses = <String>{};
+
+    // GEN-079: Collect class lookup across modules for relaxer generation.
+    final globalClassLookup = <String, ClassInfo>{};
+
+    // SCE231: what the name dedup did, both halves, so it is observable.
+    // Re-exports GEN-076 skipped (same name AND source as an earlier module),
+    // and names an earlier module generated from a DIFFERENT source file —
+    // kept in both modules. name -> distinct source files, arrival order.
+    var crossModuleReExports = 0;
+    final crossModuleSameName = <String, List<String>>{};
+
+    // GEN-079: Collect generic extraction sites and GEN-075 classes
+    // across all modules for relaxer generation.
+    final allExtractionSites = <GenericExtractionSite>[];
+    final allGen075Classes = <String>{};
+
+    // Phase 4 / summary-refactoring-plan: hold a reference to the last
+    // generator created so the proxy stage can reuse its already-loaded
+    // analysis context (summary bundles) instead of constructing a second
+    // [AnalysisContextCollectionImpl] over the same workspace.
+    BridgeGenerator? lastGenerator;
+
+    // Generate bridges for each module
+    for (final module in bridgeConfig.modules) {
+      if (verbose) {
+        print('  Generating module: ${module.name}');
+      }
+      // The imports D4rt scripts use for this module, as package: URIs, for
+      // getImportBlock() (not for the bridge code itself, which imports
+      // directly from source files).
+      final sourceImport = module.scriptImport(bridgeConfig.name);
+      final sourceImports = module.scriptImports(bridgeConfig.name);
+
+      final generator = BridgeGenerator(
+        workspacePath: projectDir,
+        packageName: bridgeConfig.name,
+        sourceImport: sourceImport,
+        sourceImports: sourceImports,
+        helpersImport:
+            bridgeConfig.helpersImport ?? 'package:tom_d4rt/tom_d4rt.dart',
+        d4rtImport: bridgeConfig.d4rtImport ?? 'package:tom_d4rt/d4rt.dart',
+        recursiveBoundTypes: bridgeConfig.recursiveBoundTypes.isNotEmpty
+            ? bridgeConfig.recursiveBoundTypes
+                  .map(RecursiveBoundType.fromString)
+                  .toList()
+            : null, // Use defaults if not configured
+        userBridgeScanner: sharedUserBridgeScanner,
+        verbose: verbose,
+        librarySummaryPaths: summaryPaths,
+        sdkSummaryPath: sdkSummaryPath,
+        // DGU3: forward the configurable type-mapping escape hatch and any
+        // paired custom imports so buildkit.yaml can resolve awkward types
+        // without patching the generator.
+        typeMappings: bridgeConfig.typeMappings,
+        additionalImports: bridgeConfig.additionalImports,
+      );
+      lastGenerator = generator;
+
+      // Resolve barrel files - if they're package: or dart: URIs, pass as-is; otherwise join with projectDir
+      final barrelFiles = module.barrelFiles.map((f) {
+        if (f.startsWith('package:') || f.startsWith('dart:')) {
+          return f; // Package or dart URI - generator will resolve it
+        }
+        return p.join(projectDir, f);
+      }).toList();
+
+      final normalizedOutputPath = ensureBDartExtension(module.outputPath);
+      final result = await generator.generateBridgesFromExports(
+        barrelFiles: barrelFiles,
+        outputPath: p.join(projectDir, normalizedOutputPath),
+        moduleName: module.name,
+        excludePatterns: module.excludePatterns,
+        excludeClasses: module.excludeClasses,
+        excludeEnums: module.excludeEnums,
+        excludeFunctions: module.excludeFunctions,
+        excludeConstructors: module.excludeConstructors,
+        excludeVariables: module.excludeVariables,
+        excludeSourcePatterns: module.excludeSourcePatterns,
+        // GEN-080: Forward re-export filtering params from config (matching executor)
+        followAllReExports: module.followAllReExports,
+        skipReExports: module.skipReExports.isNotEmpty
+            ? module.skipReExports
+            : null,
+        followReExports: module.followReExports.isNotEmpty
+            ? module.followReExports
+            : null,
+        importShowClause: module.importShowClause,
+        importHideClause: module.importHideClause,
+        // GEN-076: Pass already-generated class sources for cross-module dedup
+        skipClassSources: globallyGeneratedClasses.isNotEmpty
+            ? globallyGeneratedClasses
+            : null,
+      );
+
+      totalClasses += result.classesGenerated;
+      // sce52: what the generator REPORTS writing, not a second guess at it.
+      //
+      // This used to re-derive the destination from the config. The two agreed
+      // only by luck: directory mode writes one file per source file and
+      // reports them all, and a module with nothing bridgeable returns early
+      // having written nothing — in both cases the re-derived single path was
+      // wrong, and `--verify-output` (which analyses exactly this list) would
+      // have analysed a path that does not exist while reporting "clean".
+      outputFiles.addAll(result.outputFiles);
+      errors.addAll(result.errors);
+      // SCE231: carry GEN-045's within-module NAME COLLISION warnings out.
+      // The module result was dropped here, so on the path that regenerates
+      // the Flutter corpus a collision was silent. The other per-module
+      // warnings are skip reports — thousands per Flutter run — and are
+      // counted rather than forwarded.
+      for (final warning in result.warnings) {
+        if (warning.contains('NAME COLLISION')) {
+          warnings.add(warning);
+          print(warning);
+        } else if (warning.contains('(cross-module dedup)')) {
+          crossModuleReExports++;
+        }
+      }
+      for (final entry in result.generatedClassSources.entries) {
+        final prior = globallyGeneratedClasses[entry.key];
+        if (prior != null && prior != entry.value) {
+          final files = crossModuleSameName.putIfAbsent(
+            entry.key,
+            () => [prior],
+          );
+          if (!files.contains(entry.value)) files.add(entry.value);
+        }
+      }
+      // GEN-076: Accumulate generated class sources for next module
+      globallyGeneratedClasses.addAll(result.generatedClassSources);
+      if (module.barrelImport != null) {
+        barrelExportedClasses.addAll(result.generatedClassSources.keys);
+      }
+      // GEN-079: Accumulate class lookup for relaxer generation
+      globalClassLookup.addAll(generator.classLookup);
+      // GEN-079: Accumulate generic extraction sites and GEN-075 classes
+      allExtractionSites.addAll(generator.genericExtractionSites);
+      allGen075Classes.addAll(generator.gen075Classes);
+      // DEBUG: Temporary logging for GEN-076
+      print(
+        '  GEN-076: Module ${module.name} generated ${result.generatedClassSources.length} classes, '
+        'global total: ${globallyGeneratedClasses.length}',
+      );
+    }
+
+    // SCE231: one summary line per run. A build-time refusal of colliding
+    // names is deferred until the runtime guard (scd195 in both twins) is
+    // red; this is the generator-side evidence that decision wanted.
+    dedup = DedupReport(
+      crossModuleReExports: crossModuleReExports,
+      crossModuleSameName: crossModuleSameName,
+    );
+    print('  ${dedup.summary}');
+
+    // Generate barrel file if requested
+    if (bridgeConfig.generateBarrel && bridgeConfig.barrelPath != null) {
+      final barrelPath = p.join(
+        projectDir,
+        ensureBDartExtension(bridgeConfig.barrelPath!),
+      );
+      await _generateBarrelFile(barrelPath, bridgeConfig, verbose: verbose);
+      outputFiles.add(barrelPath);
+    }
+
+    // Generate dartscript file if requested
+    if (bridgeConfig.generateDartscript &&
+        bridgeConfig.dartscriptPath != null) {
+      final dartscriptPath = p.join(
+        projectDir,
+        ensureBDartExtension(bridgeConfig.dartscriptPath!),
+      );
+      await _generateDartscriptFile(
+        verbose: verbose,
+        dartscriptPath,
+        bridgeConfig,
+        packageName: effectivePackageName,
+      );
+      outputFiles.add(dartscriptPath);
+    }
+
+    // Generate test runner file if requested
+    if (bridgeConfig.generateTestRunner &&
+        bridgeConfig.testRunnerPath != null) {
+      final testRunnerPath = p.join(
+        projectDir,
+        ensureBDartExtension(bridgeConfig.testRunnerPath!),
+      );
+      await _generateTestRunnerFile(
+        verbose: verbose,
+        testRunnerPath,
+        bridgeConfig,
+        packageName: effectivePackageName,
+      );
+      outputFiles.add(testRunnerPath);
+    }
+
+    // Generate proxy classes if requested (GEN-083).
+    //
+    // SCF15: `@D4rtUserProxy` directives are folded in as concrete
+    // instantiations. A directive is itself the request, so a package that
+    // carries one gets its proxies even without `generateProxies: true`, and
+    // an unset output path falls back to `proxies.b.dart` beside the relaxer
+    // output — the same way the relaxer stage derives its own.
+    final proxyDirectives = userVariantScanner.proxyDirectives;
+    final proxyConfig = proxyDirectives.isEmpty
+        ? bridgeConfig
+        : bridgeConfig.copyWith(
+            generateProxies: true,
+            proxiesOutputPath:
+                bridgeConfig.proxiesOutputPath ??
+                p.join(
+                  p.dirname(bridgeConfig.relaxerOutputPath),
+                  'proxies.b.dart',
+                ),
+            proxyClasses: proxyClassesWithDirectives(
+              bridgeConfig.proxyClasses,
+              proxyDirectives,
+              globalClassLookup.keys.toList()..sort(),
+            ),
+          );
+    if (proxyConfig.generateProxies && proxyConfig.proxyClasses.isNotEmpty) {
+      // Phase 4 / summary-refactoring-plan: reuse the analysis context
+      // already built by the bridge-generation loop. When no modules were
+      // processed (e.g., a proxy-only run), `lastGenerator` is null and
+      // `generateProxies` will build its own summary-backed context from
+      // [summaryPaths] / [sdkSummaryPath] as before.
+      final proxyResult = await generateProxies(
+        config: proxyConfig,
+        projectPath: projectDir,
+        librarySummaryPaths: summaryPaths,
+        sdkSummaryPath: sdkSummaryPath,
+        analysisContext: lastGenerator?.getOrCreateAnalysisContext(),
+      );
+      if (proxyResult.outputFile != null) {
+        outputFiles.add(proxyResult.outputFile!);
+      }
+      errors.addAll(proxyResult.errors);
+      warnings.addAll(proxyResult.warnings);
+      if (proxyResult.proxies.isNotEmpty) {
+        print(
+          '  GEN-083: Generated ${proxyResult.proxies.length} proxy classes'
+          ' → ${proxyResult.outputFile}',
+        );
+      }
+    }
+
+    // sce47: turn each `@D4rtUserRelaxer` variant into a generic extraction
+    // site, which is the shape the relaxer pipeline already consumes — a
+    // directive says "treat `Base<Arg>` as a relaxer target" and an extraction
+    // site is exactly that, discovered from usage instead of declared. The
+    // candidate pool is every bridged class, so a wildcard pattern expands
+    // against what this package actually bridges.
+    //
+    // WHAT THIS DOES NOT REACH, so the silence does not simply move: the
+    // relaxer emitter generates wrappers for SINGLE-type-parameter classes
+    // only, and warns by name on anything else — so a multi-parameter variant
+    // is reported rather than dropped. `@D4rtUserProxy` directives went to
+    // the proxy stage above, as instantiations.
+    allExtractionSites.addAll(
+      userVariantExtractionSites(
+        userVariantScanner.relaxerDirectives,
+        globalClassLookup.keys.toList()..sort(),
+      ),
+    );
+
+    // Generate relaxer wrappers (GEN-079) — always runs, output path
+    // auto-derived from first module when not explicitly configured.
+    {
+      // ghissues55: what the relaxer file's imports let it name, resolved in
+      // the generator's analysis context. When an import does not resolve,
+      // the set would be missing that library's names, so the path-based
+      // scope rule decides instead.
+      ImportedNames? importedNames;
+      if (lastGenerator != null) {
+        final resolved = await lastGenerator.importedNamesOf(
+          relaxerImportUris(bridgeConfig),
+        );
+        if (resolved.unresolved.isEmpty) {
+          importedNames = resolved;
+        } else {
+          final message =
+              'GEN-079: relaxer imports did not resolve '
+              '(${resolved.unresolved.join(', ')}) - relaxer types fall back '
+              'to the source-path scope rule';
+          warnings.add(message);
+          print('  $message');
+        }
+      }
+      final relaxerResult = await generateRelaxers(
+        config: bridgeConfig,
+        projectPath: projectDir,
+        globalClassLookup: globalClassLookup,
+        genericExtractionSites: allExtractionSites,
+        gen075Classes: allGen075Classes,
+        bridgedClassNames: barrelExportedClasses,
+        importedNames: importedNames,
+      );
+      if (relaxerResult.outputFile != null) {
+        outputFiles.add(relaxerResult.outputFile!);
+      }
+      errors.addAll(relaxerResult.errors);
+      if (relaxerResult.wrapperClassesGenerated > 0) {
+        print(
+          '  GEN-079: Generated ${relaxerResult.wrapperClassesGenerated} relaxer wrappers'
+          ' (${relaxerResult.factoryFunctionsGenerated} factories)'
+          ' → ${relaxerResult.outputFile}',
+        );
+      }
+      for (final warning in relaxerResult.warnings) {
+        print('  GEN-079 WARNING: $warning');
+      }
+    }
+  } catch (e) {
+    errors.add(e.toString());
+  }
+
+  return GenerationResult(
+    totalClasses: totalClasses,
+    totalModules: bridgeConfig.modules.length,
+    outputFiles: outputFiles,
+    config: bridgeConfig,
+    errors: errors,
+    warnings: warnings,
+    dedup: dedup,
+  );
+}
+
+/// Generate barrel file that exports all bridge modules.
+Future<void> _generateBarrelFile(
+  String barrelPath,
+  BridgeConfig config, {
+  bool verbose = false,
+}) async {
+  if (verbose) print('  Generating barrel: $barrelPath');
+  await File(barrelPath).writeAsString(
+    formatGeneratedDart(
+      generateBarrelFileContent(config),
+      outputPath: barrelPath,
+    ),
+  );
+}
+
+/// Generate dartscript file with combined bridge registration.
+Future<void> _generateDartscriptFile(
+  String dartscriptPath,
+  BridgeConfig config, {
+  required String packageName,
+  bool verbose = false,
+}) async {
+  if (verbose) print('  Generating dartscript: $dartscriptPath');
+  final normalizedDartscriptPath = config.dartscriptPath != null
+      ? ensureBDartExtension(config.dartscriptPath!)
+      : null;
+  await File(dartscriptPath).writeAsString(
+    formatGeneratedDart(
+      generateDartscriptFileContent(
+        config,
+        dartscriptPath: normalizedDartscriptPath,
+        packageName: packageName,
+      ),
+      outputPath: dartscriptPath,
+    ),
+  );
+}
+
+/// Generate test runner file for testing bridges.
+Future<void> _generateTestRunnerFile(
+  String testRunnerPath,
+  BridgeConfig config, {
+  required String packageName,
+  bool verbose = false,
+}) async {
+  if (verbose) print('  Generating test runner: $testRunnerPath');
+  final dir = File(testRunnerPath).parent;
+  if (!dir.existsSync()) {
+    dir.createSync(recursive: true);
+  }
+  final normalizedTestRunnerPath = config.testRunnerPath != null
+      ? ensureBDartExtension(config.testRunnerPath!)
+      : null;
+  await File(testRunnerPath).writeAsString(
+    formatGeneratedDart(
+      generateTestRunnerContent(
+        config,
+        testRunnerPath: normalizedTestRunnerPath,
+        packageName: packageName,
+      ),
+      outputPath: testRunnerPath,
+    ),
+  );
+}

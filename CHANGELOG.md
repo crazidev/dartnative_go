@@ -164,6 +164,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `dartnative_sqlite_bridges.b.dart`.
 
 ### Changed
+- **The whole `tom_d4rt` family is now vendored under `third_party/`** and
+  path-overridden from the root `pubspec.yaml`:
+  - `tom_d4rt` 1.77.0 → **1.279.0**, `tom_d4rt_ast` 0.65.0 → **0.260.0**,
+    `tom_d4rt_generator` 1.26.2 → **1.67.0**, `tom_d4rt_exec` 1.25.0 → **1.62.0**.
+  - Toolchain moves with it: `analyzer` 10.2 → 14.5, `tom_ast_model` 0.2.2 →
+    0.3.3, `tom_ast_generator` 0.2.11, `tom_build_base` 2.26.
+  - `pkgs/tom_d4rt_ast` moved to `third_party/tom_d4rt_ast`; its patch list is
+    in that package's `pubspec.yaml` header.
+  - Our AST-engine patches were re-ported onto upstream 0.260.0 (new AST model):
+    hot-reload cells (`DeclarationRegistry`, `ClassCell`, `FunctionCell`,
+    `VariableCell`), cell-backed statics for classes and enums, enum
+    `moduleUri` identity + constant-shape retirement, module fingerprints and
+    patch bundles, async continuation slicing, guest call frames, the
+    collection/`Comparator` stubs, the isolate worker, and archive 3.x/4.x
+    compatibility.
+- **A block body that runs off its end returns `null`** (Dart semantics, since
+  `tom_d4rt` 1.235.0). Fixtures that relied on the last statement's value now
+  return explicitly; `AstInterpreterRunner.evaluateAstBundleAs` waits briefly
+  for a late `runApp` capture, which the playground's async entrypoint needs.
+- **Bridge regeneration caveat**: `tom_d4rt_generator` is vendored at 1.67.0
+  (analyzer 14 is forced by `tom_d4rt` 1.279.0). Regenerating the bridges
+  currently mis-emits `required` for optional named parameters that carry a
+  default inside an inline function type (`FastListController`'s
+  `{double alignment, Curve curve, int durationMs}` callbacks), so the
+  committed `*.b.dart` files remain authoritative until that upstream issue is
+  fixed. Nothing at build or run time regenerates them.
+- **A library's own class shadows an imported one of the same name**
+  (`tom_d4rt` 1.244.0), so two modules declaring the same private class no
+  longer collide at load.
 - **Renamed workspace packages to `dngo_*`**: Renamed `pkgs/dartnative_go_api` → `pkgs/dngo_api`, `pkgs/dartnative_go_config` → `pkgs/dngo_config`, and `pkgs/dartnative_go_ui` → `pkgs/dngo_ui` across the workspace, bridges, CLI, tests, and documentation.
 - **Optional `SplashConfig.backgroundColor` in `dngo_config`**: `SplashConfig.backgroundColor` is now nullable (`ColorValue?`) so configs can omit an explicit splash background color.
 - **Bridges regenerated for new plugins**: Updated `buildkit.yaml` and `buildkit_ast.yaml` to register `dartnative_live_activities`, `local_auth_kit`, and `quick_actions_kit`, and regenerated source and AST bridge files (`lib/src/interpreter/*.b.dart` and `ast/*.b.dart`). Updated host and example plugin registrants.
@@ -194,6 +223,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced `WidgetGenerationTracker` and `classFileMap` generation for AST module reload precision.
 
 ### Fixed
+- **Source-engine module loading**: the `FrozenNameMap is frozen and cannot be
+  mutated` failure on cross-module private-name collisions and the
+  `Undefined variable` failure on forward static/top-level initializers are
+  both fixed by the vendored 1.279.0. Pinned by
+  `test/unit/tom_d4rt_source_engine_regressions_test.dart`.
+- **AST bundle size metadata round-trip**: `toZip` records the module, class and
+  source sizes it computes into the caller's maps and writes the manifest after
+  the modules, so a decoded bundle reports them (and `applyPatch` carries them).
+- **Source-mode hot reload lost provider state**: top-level variables with
+  initializers are `LateVariable` holders since `tom_d4rt` 1.233.0, so the
+  snapshot/restore pass skipped them; it now unwraps the holder and assigns
+  through the new generation's binding.
+- **`example/pubspec.yaml` dropped the `ArialRoundedBold` font family** while
+  the asset and its server/e2e tests remained; the declaration is restored.
 - **Hot reload ~4.9 s stall & full-bundle re-declaration on delta patches**:
   - Scoped `IconFontDetector` to packages actually imported by guest sources or present in the cached AST bundle instead of scanning all 3,226 files in the workspace `package_config.json`, and cached per-package scans separately from guest `lib/*.dart` mtimes (`~4.9 s → 34 ms` on edit).
   - Unblocked code-only patch reloads in `_reloadApp` so `_syncIconFonts` runs in the background (`unawaited`) instead of stalling evaluation on an HTTP roundtrip, and timed asset/font sync in `[RELOAD]` logs.

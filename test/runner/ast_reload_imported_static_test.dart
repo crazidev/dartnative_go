@@ -153,6 +153,13 @@ Column _columnOf(Widget root) {
 
 void main() {
   group('AST imported-library static state across hot reload', () {
+    // Each test builds a real on-disk guest twice and hot-reloads it. That is
+    // a few seconds on an idle machine, but the suite is run alongside the
+    // whole regression slice, and the default 30 s per-test budget is not
+    // enough when the host is saturated — the failure mode is
+    // "did not complete", not an assertion.
+    timeout: const Timeout(Duration(minutes: 2));
+
     late Directory tmp;
     late Directory projectDir;
     late List<String> logs;

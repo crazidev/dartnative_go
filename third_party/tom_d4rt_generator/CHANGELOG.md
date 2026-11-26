@@ -1,0 +1,2650 @@
+## 1.67.0
+
+### Fixed — getters whose type nests a class type parameter read through `dynamic`
+
+The instance getter adapter of a generic class read its field through the
+statically typed target, `D4.validateTarget<Picker<dynamic>>(...)`. A field
+whose type nests the class's type parameter - `ValueChanged<T?>? onChanged`,
+`List<T> values`, `T Function() make` - is covariant in `T`; reading it from a
+`Picker<int>` through `Picker<dynamic>` made the VM's covariance check throw
+(`type '(int?) => void' is not a subtype of type '((dynamic) => void)?'`).
+Such getters now read through `dynamic`, as the dispatch of getters named by
+`Object` members already did; a getter typed by the bare type parameter (`T
+value`) or by no type parameter keeps the static read. In the Flutter twins
+this fixes `RadioMenuButton.onChanged` and 156 other getters (GEN-134).
+
+## 1.66.0
+
+### Fixed — a sub-package barrel offers only what that package declares
+
+A module whose bridged declarations include some from another package lists
+that package's barrel in `subPackageBarrels()`, and the generated registration
+then called `registerBridges(d4rt, barrel)` for it - registering the whole
+module under the other package's barrel. In the Flutter twins the cupertino,
+material and widgets modules each bridge `StringCharacters` from
+`package:characters`, so all their classes were registered under
+`package:characters/characters.dart`; `widgets.dart` re-exports that library,
+so a script importing only `material.dart` could use every cupertino class
+(Dart rejects that). The generated dartscript now calls
+`registerBridges(d4rt, barrel, onlyOwnPackage: true)`, and `registerBridges`
+with `onlyOwnPackage` registers only the declarations whose source is in that
+barrel's package: classes, enums, top-level functions, global variables and
+getters (`registerGlobalVariables(..., include:)`), extensions, and the aliases
+of its classes; function typedefs carry no source and are left out. A script
+importing the sub-package directly still gets its declarations (GEN-030).
+
+Name resolution: yes — a name a script did not import through any of its
+libraries no longer resolves through a sub-package barrel. Measured on the
+Flutter corpus with the analyzer: one script relied on it (fixed).
+
+### Changed — proxies enter the script through `D4.enterInterpreted` (GitHub #19)
+
+A generated proxy calls its script instance with
+`D4.enterInterpreted(visitor, callable, [args], {named},
+D4rtEntryKind.proxyMethod, 'Class.member')` instead of
+`callable.call(visitor, [args], {named})`, and a function a proxy member
+returns with kind `callback`, so with per-execution hooks every such call is an
+entry of the run: it passes `onEntry`, is refused after `revoke()` and runs in
+the run's Zone. Emitted only when the project resolves an interpreter that has
+it (tom_d4rt 1.264.0 / tom_d4rt_ast 0.244.0, `entryInterpreterFloors`;
+`ProxyGenerationInfo.usesEntries`); against an older one the proxy calls as
+before, so the generated file always compiles. `interpreterAtLeast` generalises
+the version check `interpreterSupportsReceivers` uses.
+
+## 1.65.0
+
+### Changed — relaxer types are what the relaxer file's imports export (ghissues55)
+
+Whether a bridged class is a relaxer wrapper target or a type argument of the
+relaxer dispatches was decided by how its source file is spelled: a `package:`
+prefix of a configured barrel, or a Flutter / sky_engine path fragment. A
+class from a pub-cache package whose barrel the relaxer file imports has a
+filesystem path and was never offered (vector_math's `Vector3` through the
+Flutter twins' vector_math layer), while on a setup with `package:` source
+files it would be. The generator now resolves the relaxer file's imports
+(`relaxerImportUris`) in its analysis context
+(`BridgeGenerator.importedNamesOf`, `ImportedNames`) and
+`generateRelaxers(importedNames:)` decides by that set: the union of the
+imports' export namespaces with `dart:core`, minus the names two imports
+export from different declarations (a `dart:` declaration yields to a
+package's, as in Dart). An ambiguous bridged name is skipped with a warning
+naming the libraries (`Colors`: material and vector_math). A class bridged but
+exported by no import stays out (`Immutable`). When an import does not resolve
+the source-path rule decides, with a warning.
+
+Regenerated with this rule, both Flutter twins' relaxer files gain the 17
+vector_math types and their nullable forms as type arguments and lose none.
+
+Name resolution: no
+
+## 1.64.2
+
+### Fixed — no generated import names a part file (GitHub #17)
+
+A bridge for an adapter that uses vector_math's `Matrix4` imported
+`package:vector_math/src/vector_math_64/matrix4.dart` - a part of
+`vector_math_64.dart` - and failed to analyze (`import_of_non_library`). An
+extension found through an imported library (GEN-049) took its on-type's URI
+from the declaring fragment, which for a type declared in a part is the part
+file, and on-type URIs of packages no bridged file covers were imported
+unresolved. The on-type (and its type arguments) now carry the library's URI,
+and every URI of the prefixed import list goes through the part-of resolution
+before it is written; a part's types are reached through its library's
+prefix. Bridges whose types come from no part file are unchanged.
+
+A repo-wide guard (`ghissues51_no_part_file_imports_test.dart`) resolves every
+`package:` import of every committed `*.b.dart` of the repository through its
+package config and fails on a part file.
+
+Name resolution: no
+
+## 1.64.1
+
+### Fixed — `generateBridges(configPath:)` reads the file it names (GitHub #16)
+
+`configPath` was used only for its folder: the configuration was then read
+from that folder's `buildkit.yaml`, so a YAML file of another name was
+ignored. The `d4rtgen:` section is now read from the named file
+(`BuildConfigLoader.loadFromYamlFile`); a `configPath` naming a directory
+reads that directory's `buildkit.yaml`, and the project directory is that
+directory rather than its parent. The "no d4rtgen configuration" error names
+the file.
+
+Name resolution: no
+
+## 1.64.0
+
+### Fixed — a src/ class a public barrel exports keeps its relaxer (GitHub #16)
+
+The relaxer reachability check refused every class whose source file reads
+`package:<pkg>/src/...`, by the path alone, although a public barrel exports
+many of them (`package:flutter/animation.dart` exports Tween from
+`src/animation/tween.dart`). Where a source file arrived as a `package:` URI
+(reported on Flutter 3.50 / Dart 3.14) the Flutter relaxer file came out
+empty and the runtime registrations' `$RelaxedTween` references no longer
+compiled. Such a class is now reachable when a module whose barrel the
+relaxer file imports (`barrelImport`) bridged it; a `src/` class no such
+module bridged stays out. `generateRelaxers` takes the set as
+`bridgedClassNames` (the orchestrator passes it; other callers keep the old
+rule). Where source files are filesystem paths, as on our setups, the output
+is unchanged.
+
+Name resolution: no
+
+## 1.63.3
+
+### Changed — doc comments name the binaries layer
+
+- `sdk_utils.dart`'s doc comments take the binaries layer
+  (`$TOM_BINARY_PATH/<platform>/`) as the example location of a compiled
+  `d4rtgen` instead of `~/.tom/bin/`, where nothing is installed any more
+  (build_tom build_cleanup1002). No behaviour changes.
+
+Name resolution: no
+
+## 1.63.2
+
+### Changed — examples no longer name the archived tom_build packages
+
+- The doc comment of every generated `registerBridges` names
+  `'package:my_package/my_package.dart'` as its example import path instead of
+  `'package:tom_build/tom.dart'`; tom_build and tom_build_cli are archived
+  (build_tom build_cleanup9). Bridges pick it up when they are regenerated.
+- The generator's own doc comments use `my_package` in their examples.
+
+### Added — a relaxer output too large for one file is split into part files
+
+- Above 25 MB before formatting (`defaultRelaxerMaxFileBytes`, a new
+  `maxFileBytes` parameter of `generateRelaxers`), the RC-2 generic
+  constructor factories move, in order, into `<name>_part<N>.b.dart` part
+  files beside the relaxer file, each under that size; the relaxer file names
+  them with `part` directives. The parts are the same library, so the code is
+  unchanged and nothing that imports the relaxer file changes. A regeneration
+  deletes the part files it no longer writes; `RelaxerGenerationResult.partFiles`
+  lists those it wrote. Below the budget the output is one file, as before.
+- Why: the Flutter twins' `flutter_relaxers.b.dart` was 93.4 MB (98.8% RC-2
+  leaf functions), and GitHub refuses a push with a file above 100 MB. Split, it
+  is a 4.2 MB relaxer file and three parts of 28-31 MB (d4rt quest relaxsize1).
+- The build_runner path writes only its declared output; there the output stays
+  one file and a warning names its size.
+- (This change was committed with 1.63.2's examples commit and published in
+  1.63.2; this section records it.)
+
+## 1.63.1
+
+### Changed — the workspace root is the nearest `buildkit_master.yaml`
+
+The fallback package search (used when `.dart_tool/package_config.json` does
+not name a package) found the workspace by `tom_workspace.yaml` or
+`tom.code-workspace`; it now takes tom_build_base's `findWorkspaceRootOrNull`
+(`buildkit_master.yaml`, tom_build_base ^2.23.0), and starts where it was asked
+to outside a workspace. d4rtgen names projects relative to the same root,
+through the non-deprecated finder. Tests BCL3-FSR-1/2.
+
+### Fixed — the corpus relaxer allowlist names three types again
+
+`doc/corpus_relaxer_allowlist.yaml` is regenerated: the corpus scripts changed
+on 2026-11-12 use `CupertinoMenuDivider`, `CupertinoMenuEntry` and
+`NativeHitTestTarget` as type arguments (G-RCN-3/4).
+
+## 1.63.0
+
+### Fixed — name-keyed generic dispatch matches `T?` and `T<U>` type arguments
+
+Since tom_d4rt 1.257.0 / tom_d4rt_ast 0.237.0 a script's type argument
+reaches a generic constructor or interceptor with its `?` and its own type
+arguments (`int?`, `List<int>`). The generated RC-2 constructor factories,
+which switch on the plain name, matched neither and took their default arm.
+They now match the name with its type arguments taken off and its `?` kept:
+`GlobalKey<PopupMenuButtonState<String>>` dispatches as
+`PopupMenuButtonState`, and the primitives have nullable arms, so
+`ValueNotifier<String?>(null)` is a `ValueNotifier<String?>`. A nullable class
+argument (`X<Widget?>`) has no arm - one per bridged class would double the
+Flutter relaxers - and takes the default (the bridge constructor infers T)
+instead of the non-null instantiation. The GEN-102 null guard lets a nullable
+argument through, and the `dynamic` arm, which also serves `Object?`, passes a
+null value on. The templated `genericConstructors` and `genericInterceptors`
+switches take the same name, match a configured variant such as
+`PopupMenuButtonState<String>` verbatim, and a `nullableValue` constructor
+gets a `T?` arm for each variant `T`.
+
+Name resolution: no.
+
+## 1.62.0
+
+### Fixed — a proxy hands native code a typed list for a script's list
+
+A script builds its list literals as `List<Object?>` whatever their element
+type. When native code called a proxied override declared to return `List<E>`,
+`Iterable<E>` or a `Future` of one - Flutter 3.47's text field calls a script's
+`SpellCheckService.fetchSpellCheckSuggestions` itself - the proxy passed the
+script list to `extractBridgedArg<List<E>>`, which refused it ("expected
+List<SuggestionSpan>?, got List<Object?>"). The proxy now rebuilds such a list
+with `D4.coerceList<E>`, which unwraps each element, directly and inside the
+future's `then`. Function-typed elements keep the earlier path.
+
+Name resolution: no.
+
+## 1.61.0
+
+### Added — generated proxies are receivers (`receiverProxies`, `receiverProxyExclude`)
+
+A script class extending an abstract bridged class has no native super-object,
+so a member it inherits from that class answered null (`Decoration.padding`,
+`FlowDelegate.getSize`, `CustomPainter.shouldRebuildSemantics`). Every proxy
+the generator emits is now marked with `D4.markProxyIsReceiver`: the
+interpreter keeps it as the script instance's native object and runs inherited
+members on it. Its overridable members forward to the script's overrides
+unless a forward of that member is already running, and the proxy implements
+`D4ReceiverProxy`, so a script override's `super.m()` runs the native member
+instead of the override again. Configure with `receiverProxies` (default
+`true`) and `receiverProxyExclude` (class names).
+
+Receivers are emitted only when the project resolves tom_d4rt >= 1.251.0 /
+tom_d4rt_ast >= 0.231.0 (read from its `.dart_tool/package_config.json`);
+otherwise the proxies are generated as before and the run warns.
+
+Name resolution: no.
+
+## 1.60.0
+
+### Changed — a bridge imports another package's `src` libraries through its public libraries (GitHub #5)
+
+A bridge refers to every type through a prefix for the library that declares
+it, and imported that library directly — mostly a package's `lib/src/` files.
+A bridge set was therefore pinned to the file layout it was generated against:
+Flutter 3.47 removed `package:flutter/src/widgets/visibility.dart`, and the
+published Flutter bridges stopped compiling. The import of a `src` library of
+another package now names the narrowest public library of that package
+(`lib/*.dart`) whose export namespace binds every name of the `src` library to
+the same declaration — `package:flutter/src/widgets/framework.dart` is imported
+as `package:flutter/widgets.dart`. The prefixes and every reference through
+them are unchanged. A `src` library no public library covers (a type reachable
+only through `src`, or a name a public library hides) keeps its own import, as
+do the generating package's own libraries. On the full Flutter bridge set 1 110
+of 1 113 `src` imports move; the one `src` library left is
+`widgets/_html_element_view_io.dart`, which no public library exports.
+
+Name resolution: no.
+
+## 1.59.0
+
+### Changed — relaxer and constructor dispatch in switches of at most 64 selectors (GitHub #11)
+
+A relaxer factory and an RC-2 generic constructor factory dispatch on a type
+name, one `switch` arm per bridged type. For the full Flutter bridge set that
+made 99 switches with 176 563 selectors between them (up to 3 233 in one), and a
+release AOT build of an app using the set did not finish (al-the-bear/tom_d4rt#11).
+A dispatch of more than 64 distinct selectors is now split into leaf functions
+of at most 64, reached through a binary search on the selector; each leaf keeps
+the typed arguments its arms read (the relaxed value, or `visitor` and the
+extracted constructor arguments) and the fallback for an unknown selector. A
+selector named twice keeps its first arm, as in the switch it replaces. A
+dispatch of up to 64 selectors is written exactly as before. The registrations,
+the factories and what every selector yields are unchanged.
+
+Measured on the tom_d4rt_flutter_ast bridge set (2 052 classes, Flutter
+3.47.9): every bridge file but the relaxers is byte-identical to 1.58.0's apart
+from the generation stamp, and the relaxer file dispatches identically (219
+factories, 176 925 selectors compared, each yielding the same expression). A
+release AOT build of an app calling `FlutterD4rt().warmup()` completes: the
+`--aot --tfa` frontend in 175 s, gen_snapshot in 159 s (macOS arm64).
+
+The bounded-leaf design was proposed by HelloWorldDotApp in #11, with a
+reference repair (HelloWorldDotApp/tom_d4rt 3e5c9dc...d2ee285); this
+implementation follows it.
+
+Name resolution: no.
+
+## 1.58.0
+
+### Changed — tom_analyzer_shared ^0.13.0
+
+The generator takes `tom_analyzer_shared` ^0.13.0 (was ^0.12.0). 0.13.0 names
+a cached summary by the dependency closure it is linked against, so the
+parallel runs of a `dart test -j 4` over different closures no longer delete a
+bundle another run is linking against: that cost a run its bundles
+(`PathNotFoundException`), and the bridges generated in it lost top-level names
+(`Undefined variable: red` in the dcli scripting tests). The suite with `-j 4`,
+twice from an empty summary cache, logs no such failure. `runSummaryCacheStage`,
+the one entry point the generator calls, is unchanged.
+
+## 1.57.0
+
+### Changed — tom_analyzer_shared ^0.12.0
+
+The generator takes `tom_analyzer_shared` ^0.12.0 (was ^0.11.0), so a consumer
+can resolve the current release. 0.12.0 makes the shared summary cache keep only
+complete bundles: two processes filling one empty partition used to leave
+bundles missing types and libraries, and the generator then dropped the affected
+classes from its output without a word. A package whose bundle would be
+incomplete is now analysed from source, and the summary-cache stage names it.
+`runSummaryCacheStage`, the one entry point the generator calls, is unchanged.
+
+## 1.56.0
+
+### Fixed — callbacks whose type has optional positional parameters (GitHub #1, secondary)
+
+For `typedef ParamsEncoder = String Function(Map<String, dynamic> params,
+[dynamic args]);` the generator wrapped a script closure as
+`(Map<String, dynamic> p0, dynamic p1) {...}`, cast to a type with both
+parameters required. That is not a `ParamsEncoder`, so the bridge did not
+compile. `FunctionTypeInfo` now records `optionalPositionalCount` (from the
+analyzer and from a parsed signature), and every callback wrapper renders its
+parameters through it: `(Map<String, dynamic> p0, [dynamic p1])`, cast to
+`String Function(Map<String, dynamic>, [dynamic])`. An optional parameter is
+declared nullable, and a trailing argument the native caller leaves out is left
+out of the script call (`[p0, if (p1 != null) p1]`), so a script closure with
+fewer parameters works where the native code calls with fewer arguments. The
+emitted code uses no new interpreter API.
+
+## 1.55.0
+
+### Fixed — a package-relative barrel is imported as a `package:` URI (GitHub #1, bug 3)
+
+A module configured with `barrelFiles: [lib/url_builder.dart]` and no
+`barrelImport` handed scripts `lib/url_builder.dart` as its import: the
+dartscript and the test runner registered the bridges under that path, the
+test runner's init source left the barrel out, and `getImportBlock()` read
+`package:<pkg>/lib/url_builder.dart`. No script can import any of them. A
+lib-relative `barrelImport` (`url_builder.dart`) had the same effect in the
+dartscript and the test runner.
+
+`ModuleConfig.scriptImport` / `scriptImports` now give a module's imports as
+`package:` URIs through one helper, `barrelImportUri`, and every place that
+needs a barrel's import uses them: `lib/x.dart` and `x.dart` both become
+`package:<pkg>/x.dart`, and a `dart:` barrel stays as written (the Flutter
+twins' `dart_ui` module returned `import 'package:<pkg>/dart:ui';` from
+`getImportBlock()`). The generator's examples drop their registrations under
+`lib/...` paths when regenerated.
+
+## 1.54.0
+
+### Changed — tom_analyzer_shared ^0.11.0 (qr3)
+
+The generator takes `tom_analyzer_shared` ^0.11.0 (was ^0.8.0). From 0.9.0
+on, a grouped bundle of Flutter packages links against the SDK with Flutter's
+embedder libraries, so the `dart:ui` types Flutter re-exports (`TextDirection`,
+`Color`, `Offset` ...) are defined to code read against it. 0.10.0 keys the
+summary cache by the analyzer's data version, so a bundle written by another
+analyzer minor on the same SDK is rebuilt rather than read. 0.11.0 changes
+only `SummaryStamp`, which the generator does not use; it calls
+`runSummaryCacheStage`, whose signature is unchanged. Regenerated with this
+release, the Flutter twins' bridges keep their surface: beyond the generation
+stamp, the AST twin's vector_math defaults read `1e-3` as the source writes
+them, where the committed files (generator 1.52.0, analyzer 10) read `0.001`.
+
+### Fixed — `compareFixtureResolution` compares only fixtures that compile the host
+
+The parity check (`package:tom_d4rt_generator/testing.dart`) compared every
+fixture against its host. When the host's pubspec names it, a fixture is now
+compared only if its lock resolves the host by `path:`: one that takes the host
+from pub.dev compiles the published host against its own lock, and one that
+does not use the host compiles none of its source. With this release unpublished,
+the generator's three examples that take it from pub.dev were red on
+`tom_analyzer_shared` 0.8.1, the version the published generator they compile
+requires.
+
+## 1.53.0
+
+### Changed — analyzer ^14.5.0, tom_analyzer_shared ^0.8.0 (vstdm3)
+
+The generator runs on analyzer 14 (`build` up to 5, `dart_style` ^3.1.11).
+analyzer 14 drops `Element.isSynthetic`; the extractor reads the `isOrigin*`
+flags instead: a field is synthetic when it comes from a getter/setter or is
+an enum's `values`, a getter or setter when it is induced by a variable, a
+method or constructor when it is not a declaration. The Flutter twins'
+regenerated bridges keep their full surface.
+
+### Fixed — proxies re-type the Future an interpreted async override returns
+
+An interpreted `async` method returns `Future<Object?>` whatever it declares,
+so when native code called such an override through a generated proxy,
+`extractBridgedArg<Future<T>>` threw ("expected Future<T>, got
+Future<Object?>"). Flutter 3.47 calls a script's
+`SpellCheckService.fetchSpellCheckSuggestions` from the text field it
+configures, which is how it surfaced. For a `Future<T>` return with a non-top
+`T`, the proxy now maps an untyped future through `then`, extracting each
+completion as `T`.
+
+## 1.52.0
+
+### Changed — upper bounds on tom_build_base and tom_analyzer_shared
+
+`tom_build_base` is `^2.16.0` (was `>=2.16.0`) and `tom_analyzer_shared`
+`^0.7.6` (was `>=0.7.6`). The second states a real limit rather than a style
+point: `tom_analyzer_shared` 0.8.0 requires analyzer ^14, and this release is
+built on analyzer ^10.
+
+### Added — two user bridges for one target are reported (dfin10)
+
+`UserBridgeScanner` keys user bridges by (library, class) and globals bridges
+by library, and silently overwrote an existing entry, so with two
+`@D4rtUserBridge` classes for the same target the one scanned last won and the
+other was dropped without a word. It now warns, naming both bridges, their
+files, and the one it keeps. Which one is kept is unchanged (the later), so no
+generated output moves. The same bridge registered twice, as the pre-scan and
+the generator's own library scan both do, is not reported.
+
+The warning reaches the caller: `preScanUserBridges` takes an `onWarning`
+callback, and `generateBridges` passes its project-level warning list, so the
+scanner's existing "no annotation" warning is surfaced there too instead of
+being dropped.
+
+Per-member overrides need no change: several user bridges for DIFFERENT
+targets, and per-method / getter / setter / operator / constructor overrides
+within one bridge, already work.
+
+## 1.51.0
+
+### Added — generated bridges carry each function typedef's positional arity (scg5, from sce163)
+
+`functionTypedefArity()` is emitted beside `functionTypedefs()`, and the
+registration loop passes `requiredPositional:` / `maxPositional:` to
+`registerFunctionTypedef`. The interpreter half (scd137, tom_d4rt 1.111.0 /
+tom_d4rt_ast 0.97.0) had been inert for lack of an emitter: a closure could be
+accepted for any function typedef whatever its shape. The count is the
+POSITIONAL parameters only, required and total. Named parameters are not
+counted, because Dart passes a named argument only when the callee declares
+it. The `tom_d4rt` floor is raised to the current published interpreter.
+
+### Changed — every generated Dart file is `dart format`-clean when written (scg5, from sce123)
+
+The emitter assembles bridges by string concatenation, and `dart format`
+rewrote most of what it wrote, so the repo's format guards had to exclude
+`*.b.dart`. Every writer (bridge modules, relaxers, proxies, barrel,
+dartscript and test runner) now runs its output through `DartFormatter`. It
+uses the language version of the package that RECEIVES the file, read from
+that package's `.dart_tool/package_config.json` (else the pubspec's SDK
+floor), because that version decides which style `dart format` applies there.
+Output the formatter cannot parse is written unchanged, so the consumer's
+analyzer reports it with a location.
+
+Regenerating a consumer with this release changes the layout of every
+committed `*.b.dart`, and nothing else.
+
+## 1.50.0
+
+### Fixed — the generator emitted 24 classes on Windows where macOS emits 2015 (scf32)
+
+Measured on legiondary01 with the AST flutter twin's `buildkit.yaml`. Three
+path defects, each Windows-only, each silent:
+
+- **Library resolution missed every SDK and pub-cache library.** The
+  element-mode walker resolves a library by its `package:` URI, and the URI
+  came from a search for `'/lib/'` in the native path. A Windows path holds
+  `\lib\`, the search missed, and the fallback — resolving by path — finds
+  nothing outside the project. The same raw lookup was written out six times
+  (bridge generator, element-mode extractor, per-package orchestrator); it now
+  lives once, in `SourcePackage`, which normalises separators first.
+- **A followed external re-export was keyed unnormalised.**
+  `'$root/lib/$path'` is `C:\...\vector_math-2.2.0/lib/...` on Windows. The
+  class lookup uses the analyzer's native path, missed the key, and the
+  export's `show` filter failed open: all of `vector_math` landed in the
+  painting module. The path is now joined and normalised.
+- **The relaxer saw no Flutter type as in scope.** Its path-to-package mapping
+  matched `/`-separated fragments only, so the relaxer came out as an empty
+  stub. The source path is normalised first.
+
+With these and tom_analyzer_shared 0.7.6 (package roots from
+`package_config.json`, and no summary linked against a dependency without
+one), the twin's bridge freshness gate on Windows reports all 18 generated
+files fresh — byte-identical to the macOS-committed bridges. Output on macOS
+is unchanged.
+
+## 1.49.0
+
+### Added — `@D4rtUserProxy` directives emit proxies (scf15)
+
+A proxy directive used to be discovered and then only warned about:
+`generateProxies` was keyed by class name and could not express a concrete
+instantiation. `ProxyClassConfig` gains `instantiations` (a list of
+type-argument tuples, also readable from `buildkit.yaml`) and `libraryPath`.
+For each tuple the proxy file carries
+`typedef D4rt<Base><Args> = D4rt<Base><Args...>;`, and the base's
+`registerInterfaceProxy` factory selects that alias by the type arguments the
+script wrote in its `extends` clause, falling back to the erased proxy as
+before. `generateBridges` folds every proxy directive into `proxyClasses`
+(`proxyClassesWithDirectives`). A directive is itself the request: the proxy
+stage runs without `generateProxies: true`, and `proxiesOutputPath` defaults to
+`proxies.b.dart` beside the relaxer output. The "discovered but not emitted"
+warning is gone.
+
+Generated output changes only for packages that carry a proxy directive or
+configure `instantiations`; no package in the workspace does today.
+
+## 1.48.0
+
+### Fixed — barrel `show` / `hide` clauses are honoured whatever form the project path takes (scf1)
+
+`generateBridges` produced different bridges for a relative and an absolute
+`projectPath`: 110 classes against 97 on `example/dart_overview`. The export
+map was keyed by the barrel path in the caller's form, while every lookup used
+the parse step's always-absolute `sourceFile`, so a relative path — what
+`d4rtgen -p .` passes — matched nothing and the export-clause filter failed
+OPEN. `parseExportFiles` now keys by the absolute normalised path. Both forms
+produce identical output, and a class the barrel does not export from its file
+is no longer bridged.
+
+**This changes generated output for any package generated with a relative
+path whose barrel uses `show` or `hide`: classes the barrel does not export
+disappear from its bridges.** Regenerate, and check that no script depended on
+a class the barrel never exported.
+
+## 1.47.0
+
+### Fixed — the fixture-parity report names a repair that works (sce250)
+
+`describeMismatches` (`package:tom_d4rt_generator/testing.dart`, behind every
+`*-PARITY-EX` guard) told the reader to run `dart pub get` in the fixture.
+`pub get` is lock-preserving: a stale lock that still satisfies its
+constraints stays exactly where it is, so the guard failed again with the
+identical message. It now names `pub upgrade <packages>` in the side that is
+BEHIND — the host as well as the fixture, since a fixture upgraded after a
+publish can lead its host — using `flutter pub` for a Flutter project, and
+says why `get` cannot work. `ResolutionMismatch` gains `hostPath` and
+`hostIsBehind`; `compareVersions` orders two pub versions.
+
+## 1.46.0
+
+### Fixed — `generateBridges` no longer drops name-collision warnings (sce231)
+
+`generateBridges` discarded each module's warnings, including GEN-045's
+`NAME COLLISION`, so on the path that regenerates the Flutter twins a
+same-name collision inside one module was reported nowhere. It now carries
+those warnings on `GenerationResult.warnings` and prints them. The per-module
+skip reports are counted, not forwarded, because a Flutter run produces
+thousands of them.
+
+### Added — the name dedup reports what it did
+
+Every `generateBridges` run now prints one `Dedup:` line and returns the same
+counts as `GenerationResult.dedup` (a `DedupReport`). They are not added to
+`warnings`, which stays empty for a clean configuration. The line gives the number of classes skipped as
+cross-module re-exports (same name and same source file, GEN-076) and names
+every class that was generated from different source files in different
+modules. `PerPackageBridgeOrchestrator.buildGlobalClassLookup` (the
+build_runner path) reports the same two numbers, and exposes them as
+`reExportedSourceFileCount` and `classNameCollisions`.
+
+Measured over `tom_d4rt_flutter_ast` on 2026-09-29: 1 455 re-exports, 0
+collisions inside a module, and 5 names shared across modules. The five are
+`Colors` (material and vector_math), plus `Gradient`, `Image`, `StrutStyle`
+and `TextStyle` (dart:ui and Flutter). Dart tells each pair apart by import,
+and the runtime collision guard sees no two native types competing for one
+name. So a build-time refusal of shared names would reject five legitimate
+pairs and catch nothing, and none is added. Generated output is unchanged.
+
+## 1.45.0
+
+### Added — a bridged member must have exactly one kind (sce225)
+
+`MemberInfo` now asserts that each member is exactly one of getter, setter,
+method or operator — the kind that decides which registration map it is
+emitted into. Measured before adding it: every one of the 60 000+ getters and
+methods registered in both Flutter twins sits in the map its analyzer element
+calls for, including those reached through `dynamic` and `Function.apply`,
+because the kind is taken from the element type. The assertion keeps that
+true; it runs in `dart test`, including every consumer's
+`bridges_fresh_test`. Output is unchanged.
+
+## 1.44.0
+
+### Fixed — suites sharing a fixture project no longer rewrite it under each other (sce190)
+
+`D4rtTester.prepareBridges` now holds a per-project lock
+(`<project>/.dart_tool/d4rt_prepare_bridges.lock`, via the new
+`withFixtureLock` in `src/testing/fixture_lock.dart`) for its whole pipeline:
+resolve, generate, post-process, compile. Several suites drive one fixture
+project — `d4rt_tester_test`, `d4rt_coverage_test` and
+`sce35_list_of_callbacks_test` all prepare `example/d4` — and `dart test` runs
+them concurrently. Distinct runner and binary names had stopped them
+overwriting each other's executable, but each still re-resolved the project and
+regenerated the shared bridge tree while another could be analyzing or
+compiling it. In `tom_d4rt_exec`'s copy of the pair that surfaced as an
+analyzer link error naming a pub-cache library that was never absent, and as a
+binary compiled from a half-rewritten bridge file.
+
+The lock is an exclusive file create, not `RandomAccessFile.lock`: `dart test`
+runs suites as isolates of one process, and a POSIX record lock belongs to the
+process, so two suites would both acquire it — measured, not assumed. A lock
+older than ten minutes is taken to belong to a holder that died.
+
+## 1.43.0
+
+### Fixed — a broken fixture now says which versions it resolved (sce144)
+
+`D4rtTester.prepareBridges` drives a fixture package with its own gitignored
+lock while path-resolving a sibling from the working tree, so the fixture can
+FREEZE — `example/d4` did, at `tom_d4rt_ast` 0.19.0, whose exports lacked four
+symbols HEAD referenced. The compile failed, `prepareBridges` returned false,
+and the suite reported
+
+    418 passing, 2 failing — d4rt_coverage_test.dart (setUpAll),
+                             d4rt_tester_test.dart (setUpAll)
+
+with those two failures standing in for 122 withheld tests and nothing naming
+the versions. Twenty minutes of bisection for one line of data the method had
+in reach the whole time.
+
+The fixture's resolved `tom_*` versions and the remedy now go into
+`lastGenerationErrors` — IN it rather than beside it, so every caller gets them
+without changing — and FIRST, because a reader scanning compiler output stops
+at the top. `resolvedFixtureVersions` is public and static so the two
+test-local transcriptions of this pipeline can delegate here once they resolve
+a release carrying it.
+
+### Fixed — a missing project directory produced no diagnosis at all
+
+Step zero runs `dart pub get` with the project path as its working directory,
+and `Process.run` does not return a non-zero exit for a missing cwd — it THROWS
+`ProcessException: No such file or directory` straight out of
+`prepareBridges`. The caller's `expect` was never reached, so neither the
+versions NOR the withheld-case count reached the reader: the one route out of
+here that said nothing whatsoever. Found by writing the test for the paragraph
+above. A renamed fixture, or a suite run from the wrong directory, lands
+exactly there.
+
+## 1.42.0
+
+### Changed — two illustrative URIs in `bridge_generator.dart` marked as prose (sce56)
+
+`package:tom_core_kernel/src/foo.dart` is a stand-in for any URI and
+`package:tom_build/src/tom/generation/placeholder_resolver.dart` is an example
+chosen to show the `$`-prefix derivation. Neither is a pointer; both now say so
+with `doc-ref: ok`, so `_bin/check_doc_references.py` can report the ones that
+are.
+
+## 1.41.0
+
+### Fixed — the verified write set is what the generator reports, not a second guess (sce52)
+
+`--verify-output` analyses exactly `GenerationResult.outputFiles`, so whatever
+is missing from that list is not verified — and the run still prints "analysed
+clean". SCE28 removed the CLI's parallel orchestration; this removes the last
+place the write set was computed twice.
+
+`generateBridges` re-derived each module's destination from the config
+(`p.join(projectDir, ensureBDartExtension(module.outputPath))`) instead of
+taking what `generateBridgesFromExports` reported having written. The two agree
+today only by luck, and they part in two knowable cases:
+
+* **Directory mode** writes one `*.b.dart` per source file and reports them
+  all; the re-derived path named a single file.
+* **A module with nothing bridgeable** returns early having written NOTHING,
+  and the re-derived path named a file that does not exist — which
+  `--verify-output` would then try to analyse.
+
+Now `outputFiles.addAll(result.outputFiles)`.
+
+### Added — a guard for the direction nothing checked
+
+`checkBridgeFreshness` already fails when a REPORTED file is missing from the
+scratch tree. Nothing walked the other way, and that is the direction
+`--verify-output` depends on: a file written but not reported is a file the
+gate never sees.
+
+`test/sce52_write_set_coverage_test.dart` runs each example through
+`previewGeneration` — which observes writes at the filesystem boundary rather
+than trusting the generator's own bookkeeping, the thing under test — and
+requires every intercepted write to appear in `outputFiles`. Ablation: dropping
+`outputFiles.add(barrelPath)` fails it, naming the barrel.
+
+A known limit is stated in the test rather than left implicit: the overlay
+redirects `*.b.dart`, which today is every destination because each passes
+through `ensureBDartExtension`. An emitter using another suffix escapes this
+check and is caught by `checkBridgeFreshness` instead.
+
+### Fixed — 1.38.0's default-on reached callers that never asked for it
+
+`verifyRequested` read `extraOptions['verify-output'] != false`, which
+re-expressed "absent means on" at the READ site. The default already lives in
+the flag's declaration, which tom_build_base 2.15.0 seeds into `extraOptions`
+whenever a command line is parsed — so the `!= false` was a second copy of the
+default, and it was wrong for the caller that has no command line at all.
+
+`executor.execute(context, const CliArgs())` carries an empty `extraOptions`.
+Two suites call exactly that against synthetic packages, and got verification
+they never asked for, of output whose imports cannot resolve there
+(`D4G-EXE-5`, `G-DGUB2-1`). Now `== true`: the value is read, the default is
+not restated. The CLI is unaffected — the parser seeds it.
+
+`D4G-DRY-2` is the case that IS a CLI run, so it still verifies, and its
+synthetic package still cannot resolve `package:tom_d4rt`. Its setup run passes
+`--no-verify-output`; measured rather than assumed — removing the flag fails
+the test. What it is about is what `--dry-run` writes, which is nothing either
+way.
+
+## 1.40.0
+
+### Changed — the sweep 1.39.0 made possible, and the cost it really has (sce51)
+
+1.39.0 fixed the verification so it analyses something. This records what it
+then measured, because 1.38.0's numbers were taken with the broken invocation
+and are void.
+
+**Re-run 2026-09-18 against a binary whose verification runs. Same verdict —
+13 of 13 consumers clean, nothing allowlisted — and now it means something:**
+
+| consumer | run | verified |
+| --- | --- | --- |
+| tom_dist_ledger | 10.1s | 5 (1 non-fatal) |
+| tom_process_monitor | 10.0s | 5 |
+| tom_d4rt_dcli | 20.6s | 9 |
+| tom_dcli_exec | 16.8s | 9 |
+| tom_spec_engine | 47.5s | 5 |
+| tom_build_cli | 35.7s | 5 (2 non-fatal) |
+| tom_vscode_bridge | 15.2s | 5 (2 non-fatal) |
+| tom_brain_procedure | 18.5s | 4 (2 non-fatal) |
+| d4rt_advanced_sample | 9.7s | 4 |
+| d4rt_dcli_sample | 8.6s | 4 |
+| d4rt_userbridges_sample | 8.4s | 4 |
+| tom_d4rt_flutter | 144.6s | 18 |
+| tom_d4rt_flutter_ast | 177.8s | 18 |
+
+The "(N non-fatal)" suffixes are the evidence the run is real: diagnostics came
+back and the allowlist classified them, which cannot happen when zero are
+parsed.
+
+**1.38.0's cost claim is void with it.** "52.2s against 52.4s" was measuring a
+no-op. Against the same pre-fix runs, verification adds a few seconds on a
+small consumer (tom_vscode_bridge 6.0s → 15.2s) and one to two minutes on the
+flutter twins (tom_d4rt_flutter 84.2s → 144.6s). The flag's description now
+says so, because a default-on cost the reader cannot see is the same trap as a
+default they cannot see.
+
+## 1.39.0
+
+### Fixed — `--verify-output` analysed nothing when run from the compiled binary (sce51)
+
+`analyzePaths` spawned `Platform.resolvedExecutable analyze --format=machine`.
+That property is the Dart runtime only under `dart run`; the compiled `d4rtgen`
+is its own `resolvedExecutable`, so the command it actually ran was
+
+    d4rtgen analyze --format=machine <paths>
+
+The child parsed `analyze` as a positional, generated bridges in the working
+directory, printed nothing this parser recognised as a diagnostic, and exited
+0. So the parent found zero diagnostics and printed **"N generated file(s)
+analysed clean"** — having analysed nothing. Every `--verify-output` run from
+the binary was a silent no-op, and the green line it printed is precisely why
+nobody looked. The flag worked only under `dart run`, which is how its own
+tests exercise it.
+
+It surfaced when 1.38.0 made the flag default-on: the child then verified too,
+and the no-op became a fork bomb — 69 processes, which made the point that
+three years of "analysed clean" had not.
+
+The executable now comes from `resolveDartExecutable()` (tom_build_base
+2.16.0), which never resolves to the running AOT tool.
+
+## 1.38.0
+
+### Changed — `--verify-output` is now the default (sce51)
+
+scd13_ahcm shipped verification opt-in and said so deliberately: the default
+was not to be chosen before the allowlist semantics had been exercised on real
+consumers. That sweep has now run.
+
+**Every d4rtgen consumer in the workspace, 13 of 13, verifies clean** —
+tom_dist_ledger (where GEN-119 was found), tom_process_monitor, tom_d4rt_dcli,
+tom_dcli_exec, tom_spec_engine, tom_build_cli, tom_vscode_bridge,
+tom_brain_procedure, the three d4rt samples, and both flutter twins. Nothing
+needed allowlisting.
+
+**The cost is not the "few seconds per project" the opt-in text promised.**
+Measured warm-to-warm on the largest consumer — tom_d4rt_flutter, 18 generated
+files — a verified run took 52.2s against 52.4s unverified. The reason is
+mechanical rather than lucky: generation parses with the analyzer already, so
+the summary cache the verify step needs is warm by the time it runs.
+
+So: on by default, `--no-verify-output` to opt out. A gate nobody enables is
+not a gate, and the population it was built for — a consumer regenerating
+bridges who has never heard of the flag — is exactly the population that would
+not have passed it. The objection that made default-on risky was removed by
+construction in scd13: every diagnostic is scoped to the files the run just
+wrote, so a consumer's own pre-existing problems cannot fail its regeneration.
+
+Requires `tom_build_base` 2.15.0, which is where `--no-<flag>` and declared
+flag defaults became expressible at all.
+
+`verifyRequested(CliArgs)` names the rule once, next to the executor that acts
+on it, so it can be tested without a generation run.
+
+## 1.37.0
+
+### Added — `@D4rtUserRelaxer` directives now reach the generator
+
+`UserProxyRelaxerScanner` was fully implemented and unit-tested but constructed
+NOWHERE under `lib/`, so `@D4rtUserProxy` / `@D4rtUserRelaxer` changed no
+generated byte. Meanwhile user relaxers were in practice discovered by an
+entirely different, undocumented mechanism — the
+`user_relaxers/*_user_relaxer.dart` file convention. Two discovery designs in
+one tree: one wired and undocumented, one documented and unwired.
+
+Wired up, keeping the file convention as the fallback it already was:
+
+- `preScanUserVariantDirectives` reads `lib/src/d4rt_user_{proxies,relaxers}/`
+  (and the `lib/`-level variants), mirroring `preScanUserBridges` — an author
+  who has learned one convention has learned all three.
+- `userVariantExtractionSites` turns each declared variant into a
+  `GenericExtractionSite`, which is the shape the relaxer pipeline already
+  consumes: a directive says "treat `Base<Arg>` as a relaxer target", and an
+  extraction site is exactly that fact, declared instead of observed. No second
+  emitter was needed.
+
+WHAT THIS DOES NOT REACH, stated so the silence does not merely move. The
+relaxer emitter builds wrappers for SINGLE-type-parameter classes only and
+already warns by name on anything else, so a multi-parameter variant is
+reported rather than dropped. `@D4rtUserProxy` has no path at all —
+`generateProxies` is driven by `proxyClasses`, which carries no type-argument
+variants — so those directives now produce a warning naming the base class
+instead of being silently ignored. The scanner's own warnings (a marker
+subclass with no annotation, inconsistent variant arity) are forwarded too.
+
+## 1.36.0
+
+### Fixed — a user relaxer alone now keeps `relaxers.b.dart` non-stub
+
+`generateRelaxers` returned an empty stub at two points BEFORE it ever scanned
+for user relaxers:
+
+    Step 1  genericExtractionSites.isEmpty  → "No generic extraction sites collected"
+    Step 2  targets.isEmpty                 → "No relaxer targets after filtering"
+
+`scanUserRelaxers` did not run until Step 3. So a package whose only relaxer
+content is hand-written — `<relaxer output dir>/user_relaxers/*_user_relaxer.dart`
+— got an empty `relaxers.b.dart` and its relaxers were dropped SILENTLY: no
+warning could name them, because nothing had looked for them yet.
+
+This was an inconsistency with the generator's own later intent rather than an
+open design question. The Step 4 exit (GEN-095) already includes
+`userRelaxers.isEmpty` in its condition, so user relaxers alone were always
+meant to keep the file non-stub; the two earlier exits predate that and were
+never revisited.
+
+The scan is hoisted above both exits — it is a filesystem walk of one directory
+and depends on nothing computed below — and `userRelaxers.isEmpty` is folded
+into each condition. Nothing else needed changing: Step 3 iterates `targets`,
+so an empty list contributes no wrappers, while user relaxers already feed
+`factoryNames`, which is what `registerRelaxers()` is written from, and
+`_withUserRelaxerImports` already splices the import block.
+
+The exits are NARROWED, not removed: a package with neither extraction sites
+nor user relaxers still gets its stub, which is what keeps the unconditional
+`dartscript.b.dart` import resolving.
+
+## 1.35.0
+
+### Fixed — directory mode honours `excludeSourcePatterns` for enums, functions and variables
+
+scd11 fixed this for extensions. The three lines beside the one it named had the
+same shape and the same defect: the single-file branch filters each kind by
+`excludeSourcePatterns` and then collapses GEN-045 name collisions, while
+directory mode — one `<source>_bridge.dart` per source file — grouped straight
+off `globals`, applying none of it.
+
+Measured on the gen120 part fixture: excluding
+`package:zom_partext/parent_lib.dart` correctly dropped the extension and still
+bridged `enum ZomLevel`, declared in that very same excluded file.
+
+One helper per kind, mirroring `_bridgeableExtensions` — `_bridgeableEnums`,
+`_bridgeableFunctions`, `_bridgeableVariables` — lifted out of the single-file
+branch and called from both. Classes were never affected: the directory branch
+already groups the filtered list.
+
+Each kind carries BOTH the exclusion and a GEN-045 dedupe, not just enums as
+first thought, so all three helpers are symmetric.
+
+NOT CONSOLIDATED into `_parseGlobals`, though scd11's note suggested it once all
+four kinds were lifted. The single-file branch interleaves other filters
+(`exportInfo`, `excludeFunctions` / `excludeVariables`) BEFORE the exclusion,
+and the GEN-045 dedupe is order-dependent — it keeps the first occurrence and
+warns about the rest. Filtering earlier would change which duplicate survives
+and could suppress a collision warning, so the consolidation is not the safe
+refactor the note assumed.
+
+## 1.34.0
+
+### Fixed — the `// Source:` header is canonical, so the documented regeneration command works
+
+The header recorded the path the run happened to be handed. The CLI walks a
+project with paths relative to its scan root and the library API is given an
+absolute one, so the same project generated the two ways produced two different
+files — and `checkBridgeFreshness` normalises away the `// Generated:` line and
+nothing else, so they could never compare equal:
+
+    CLI      // Source: example/d4/lib/test_extensions.dart
+    library  // Source: /Users/<user>/…/example/d4/lib/test_extensions.dart
+
+Following the regeneration command that every `example_bridges_fresh_test.dart`
+PRINTS therefore turned a fresh example stale, and told the reader to commit the
+result. Anyone who did would have recorded headers the gate then failed on
+forever.
+
+The second defect is the worse one: a generated file has no business recording
+where on one machine its input happened to live. Four tracked `*.b.dart` files
+carry a developer's home directory today, so the same project generates
+differently on another machine.
+
+The header now uses `_getPackageUri` — the same mapping the generator already
+applies to imports — so sky_engine becomes `dart:ui`, a pub-cache path becomes
+`package:<name>/…`, and every spelling of one file maps to one URI:
+
+    both     // Source: package:d4_example/test_extensions.dart
+
+`test/sce42_source_header_test.dart` pins the emitted header, not just the URI
+mapping: the mapping was already correct before this change, so a test that
+exercised only `packageUriForTesting` passed with the fix reverted. It also
+carries a repo-wide guard that no committed bridge records an absolute path,
+with the four known files registered as a ratchet — they can only be repaired by
+regenerating after a publish, which SCF1's sweep owns.
+
+## 1.33.0
+
+### Changed — the d4 test runner is compiled once per `dart test`, not once per suite
+
+`d4rt_tester_test.dart` and `d4rt_coverage_test.dart` prepare the SAME
+`example/d4` project, so the two heaviest CPU consumers in this package's suite
+were each generating the bridges and running `dart compile exe` over the same
+inputs — roughly a minute of the suite's two.
+
+They keep DISTINCT binary names on purpose (Cluster M #34): compiling to a
+shared name races against a peer suite executing it, and the symptom is
+ETXTBSY. That constraint is unchanged. What is now shared is the COMPILE, not
+the binary — the two generated runner sources differ only in comments, so one
+compilation serves both, and each suite copies the result to its own name.
+
+`dart test` gives each file its own process, so the cache is on disk:
+
+- keyed by the CONTENT of the runner source and every generated bridge file,
+  with the `// Generated:` line excluded (it carries a timestamp, and counting
+  it would rebuild every time and defeat the cache);
+- the stamp is written only after the binary exists, so an interrupted compile
+  is never mistaken for a finished one;
+- serialised by a lock file, with stale-lock recovery. Failing to take the lock
+  is not an error — the suite compiles its own binary, exactly as before this
+  existed. Writing to the shared path unlocked could clobber it while a peer
+  copies from it, so duplicated work is the safe failure.
+
+`prepareBridges` still deletes the suite's own binary first, so "it gets
+regenerated" is still proved. The new risk — a stale SHARED binary — is what
+`test/sce41_shared_runner_test.dart` pins: content changes, file-set changes
+and renames all change the key, while a `// Generated:` line change does not.
+
+## 1.32.0
+
+### Added — generation stops on a missing cached package instead of dropping classes
+
+`generateBridges` opens an analysis context over the package's resolved
+dependencies. A locked package the pub cache cannot supply produces no
+resolution error at all — the lock is satisfiable, so `dart pub get` reports
+success — and the analyzer then reports `Undefined name` at each use site. The
+generator swallows the resulting link failures and silently drops the affected
+classes, so the visible symptom is a generated bridge file missing types, with
+nothing anywhere naming the cache.
+
+It now calls `PubCacheIntegrity.preflight` (tom_build_base 2.14.0) after the
+resolve step and returns a `GenerationResult` whose `errors` name the package,
+where it should be, and the repair. One stat per dependency.
+
+Requires tom_build_base >= 2.14.0.
+
+## 1.31.0
+
+### Added — a `List<Callback>` parameter is converted element by element
+
+Such a parameter emitted a throw, with the message "Bridge cannot handle
+function types in collections". That had stopped being true of collections in
+general: a `Map<K, Callback>` was already converted value by value and single
+callbacks were wrapped. A script could not construct
+`VSCodeBridgeServer(additionalBridgeRegistrars: [...])`, or call any method
+taking a list of callbacks.
+
+`_generateInlineFunctionListConversion` is the list counterpart of the map
+conversion, wrapping each element with the same `_generateFunctionWrapper` the
+other two paths use. The throw survives for an element type whose signature
+cannot be determined.
+
+**FOUR emitters had to change, not the two the surface suggested.** The
+positional method path, the named method path, and — found only by running the
+bridge — the constructor's named path, which had no function-element check at
+all and went straight to `D4.coerceList`. That one throws at RUNTIME on an
+`InterpretedFunction`, so every compile-time check passed over it: the
+generated file analysed clean while the feature did not work. The fourth is the
+element type itself.
+
+The declared element type expands the typedef rather than erasing it to
+`dynamic`, because `List<dynamic>` is not assignable to `List<BridgeRegistrar>`
+— the same defect GEN-067 fixed for map values, reusing its expansion table
+rather than inventing a second one. The GEN-121 analyze gate caught this.
+
+Constructor parameters now carry `resolvedTypeKinds` too; 1.30.0 populated it
+only for methods and setters, which is why the constructor path could not see
+that an unlisted typedef was a function type.
+
+### Changed — three tests that pinned the old refusal now pin the conversion
+
+Stated rather than quietly adjusted: `G-ISS-10` asserted that
+`List<void Function(String)>` throws `UnimplementedError` — that is GEN-005,
+and this release fixes it, so the assertion is inverted. `GEN-TYPEDEF-1`
+asserted an unlisted typedef is *refused* exactly as a listed one is; it now
+asserts both are *converted*, which is the same property under the new
+contract. `G-GEN121-02` counts conversions rather than refusals.
+
+## 1.30.0
+
+### Fixed — a function typedef is recognised by the analyzer, not by a name list
+
+`_isFunctionTypeName` decided whether a type was a function typedef by looking
+its name up in a set of about fifty known Flutter, SDK, DCli and D4rt names.
+That gets both directions wrong, and both were measured against identically
+shaped controls:
+
+- **An unlisted typedef was missed.** `List<ZomHandler>`, a package-local
+  `typedef ZomHandler = void Function(int)`, took the ordinary
+  `D4.coerceList<ZomHandler>` path, while the identically shaped
+  `List<VoidCallback>` was correctly refused as unbridgeable. The same held for
+  a `Map` value. The scd7 fixture had to use a listed name to reach the path it
+  meant to exercise, and said so in a comment.
+- **A class sharing a listed name was misclassified.** A parameter typed by a
+  class called `ErrorHandler` resolved to `dynamic`, losing its type; the same
+  class under an unlisted name did not. That control is what proves the name
+  list caused it rather than it being how classes render.
+
+The analyzer already knew the answer — `extractFunctionTypeInfoFromDartType`
+unwraps a `TypeAliasElement` whose aliased type is a `FunctionType`. What was
+missing was carrying the verdict to the emitters. `ParameterInfo` gains
+`resolvedTypeKinds`, a map with three states: present with a value (a function
+type, and its signature), present with null (resolved, NOT a function type), or
+absent (unresolved). The name list is consulted only for the absent case.
+
+`_getTypeArgument`'s cache key includes the verdict, so one caller's answer is
+not served to a later one whose analyzer said the opposite.
+
+SINGLE-PARAMETER CALLBACKS WERE ALREADY CORRECT: that path preferred
+`functionTypeInfo` and only fell back to the list, so an unlisted typedef
+already produced a properly typed wrapper. GEN-TYPEDEF-4 asserts it anyway, so
+a later simplification cannot hand it back to the list. Ablation confirms the
+split — disabling the verdict fails GEN-TYPEDEF-1/2/3 and leaves 4 green.
+
+The GEN-121 analyze gate's fixture carries the new shapes too, so what is
+emitted for them is known to compile.
+
+## 1.29.0
+
+### Added — a config option only the build_runner builder reads is warned about
+
+Three things generate bridges from the same `d4rtgen:` block: the CLI, the
+`generateBridges` API it calls, and the build_runner builder. An option only
+the builder reads was accepted and silently ignored by the other two, which
+reads as "configured" to anyone looking at the file. `libraryPath` is the case
+— it is part of `BridgeConfig` and consulted only by
+`PerPackageBridgeOrchestrator`. tom_brain_procedure set it for months under a
+comment asserting "the generator always runs the per-package orchestrator",
+false for the CLI that package had moved to, with nothing to say so.
+
+`generateBridges` now names any such option it finds, on stdout and on
+`GenerationResult.warnings`. The warning is not gated on `--verbose`: the whole
+defect is that setting the option looks like configuring something.
+
+One check covers both paths because the CLI delegates to `generateBridges`
+(1.27.0). `D4G-OPT-3` pins that it still does — if the executor ever
+orchestrates its own generation again, the warning stops reaching the CLI and
+that test fails.
+
+No configuration in this workspace sets `libraryPath`, so the warning fires
+nowhere today. It is here so the next package to set one is told, rather than
+finding out from output that never changed.
+
+### Changed — the docs say the builder produces different files
+
+The configuration reference marked `libraryPath` as enabling per-package dedup,
+with no hint it is builder-only, and the CLI guide compared the CLI and
+build_runner on speed and features as though they emitted the same thing. They
+do not: the builder writes a per-package file per dependency, a delegating
+barrel and a `bridges_trigger.b.dart`, where the CLI writes one self-contained
+module file. Both documents now say so, and note that the builder's
+`auto_apply: dependents` applies it to any dependent package running
+build_runner whether or not it meant to use it.
+
+## 1.28.0
+
+### Added — a committed generated file no run writes is reported as orphaned
+
+`checkBridgeFreshness` and `d4rtgen --dry-run` compared only the files a run
+WRITES, so a generated file the toolchain had stopped producing was invisible
+to both. It could only rot, or be hand-edited in the belief a regeneration
+would keep the edit. `tom_brain_procedure` carried two from the retired
+build_runner builder and passed every check it had; the dcli packages carried
+eight each, ~740 KB, frozen since 2026-02-26 and imported by nothing.
+
+`BridgeFreshness` gains `orphaned`, and `isFresh` now requires it to be empty.
+`d4rtgen --dry-run` prints an `orphaned` row. **Never deleted** — whether an
+orphan is dead output or a file another tool owns is the reader's call.
+
+Both paths call one `findOrphanedBridges`, so the gate and the tool cannot
+disagree about what an orphan is.
+
+**What counts as one**, because each condition rules out a false positive:
+
+- Tracked by git. A `*.b.dart` can legitimately be a gitignored build artifact
+  — this package's own `example/d4` writes two extra test runners per suite —
+  and flagging those would make the report noise. When git cannot answer,
+  `orphanScanSkipped` says so rather than reporting an empty list, which would
+  be indistinguishable from a clean package.
+- Ends in `.b.dart`, which every destination reaches through
+  `ensureBDartExtension`. This is what keeps the versioner's files out: it
+  writes `// GENERATED FILE - DO NOT EDIT` too, at the top of `version.g.dart`
+  and `*.versioner.dart`.
+- Carries a generated-file header this toolchain writes.
+- Is not among the destinations the run reported.
+
+## 1.27.0
+
+### Changed — the `d4rtgen` CLI and `generateBridges` are one pipeline
+
+The CLI executor used to orchestrate generation itself: its own
+`BridgeGenerator` per module, its own barrel / dartscript / test-runner
+writers. That is a second pipeline alongside the library API, and it is the
+API that every consumer's freshness gate (`checkBridgeFreshness`) certifies
+committed bridges against — so the two disagreeing means a gate can fail on
+bridges `d4rtgen` just produced, or pass on bridges it would never produce.
+
+They had already drifted once (DGUB2: buildkit `recursiveBoundTypes:` reached
+the API but not the executor). A second divergence survived until now: the two
+computed `sourceImport` / `sourceImports` differently, so a module whose
+`barrelImport` names a different URI than its barrel got a different
+`getImportBlock()` from each — the API emitting both URIs, the CLI only the
+override. Reproduced in `D4G-PIPE-3`.
+
+No committed bridge in the workspace changes. Every module that reaches the
+diverging input sets `barrelImport` to its own barrel, which the downstream
+`si != importBlockUri` filter collapses to one import either way, and there are
+no multi-barrel modules at all — the executor's multi-barrel branch, the one
+that could pass a null `sourceImport`, was never exercised.
+
+The executor now contributes only CLI concerns (project discovery, `--list`,
+`--dump-config`, `--dry-run`, `--verify-output`, output) and delegates to
+`generateBridges`, which gains two parameters for it:
+
+- `verbose`, so the CLI keeps its per-module progress output.
+- `runPubGet` (default true, preserving the library's behaviour). The CLI
+  passes false: resolving a package is a write, and `--dry-run` runs this same
+  path inside the scratch overlay. `checkBridgeFreshness` already refused an
+  unresolved package for the same reason.
+
+`D4G-PIPE-1` and `D4G-PIPE-2` fail if a second pipeline is reintroduced.
+
+## 1.26.2
+
+### Fixed — the callback-wrapper docstring showed the shape the generator no longer emits (scd185)
+
+`_generateFunctionWrapper`'s examples read
+`(callback as InterpretedFunction).call(visitor, [p0])`. The generator has
+emitted `D4.callInterpreterCallback` for months — SCD35 established why: a
+script may pass a tear-off of a bridged method (`seen.add`), which is a
+`BridgedMethodCallable`, and the cast throws on it while telling the script its
+valid Dart is not a function.
+
+A docstring is where the next reader learns the shape, so one showing the old
+cast is an invitation to reintroduce the defect. Corrected, with the reason
+named rather than left as a convention.
+
+No behaviour change — the emitted code was already correct.
+
+## 1.26.1
+
+### Changed — formatted the tree once (scd82)
+
+Every package in this repo already declares an SDK floor above the 3.7
+tall-style boundary, so the formatter can no longer produce two layouts here.
+What was not true is that the trees were formatted: until this commit, running
+`dart format` on any single file rewrote it wholesale and buried whatever real
+edit came with it.
+
+**Proven layout-only rather than assumed.** `git diff -w` cannot establish it,
+because the tall style *splits* lines and a whitespace-insensitive diff still
+counts a moved boundary as a change. What was checked is the token stream, per
+file, twice: whitespace stripped, then whitespace and commas stripped. 112 of the 113 changed files are identical to HEAD under that normalisation. The exception is `test/perf/d4rt_cpu_profile.dart`, which gained one brace pair: re-wrapping a long braceless `if` splits it across lines, which is what makes `curly_braces_in_flow_control_structures` fire. It was added by `dart fix --code=curly_braces_in_flow_control_structures`, not by hand, and every inserted chunk in that file was checked to be exactly `{` or `}`.
+
+**The emitter's output is unaffected, and that was measured twice.** No file's quote count changed, so no adjacent string literal was re-split; and the suite includes the `example/` freshness ratchets, which regenerate bridges into a scratch tree and compare them against the committed files. A formatting change that altered emitted text would fail them.
+
+`dart analyze` is clean, the suite passes (1046 tests), and the formatter is now
+idempotent here.
+
+## 1.26.0
+
+### Added — `d4rtgen --verify-output` (scd13_ahcm)
+
+GEN-121 put the generator's output under `dart analyze` inside the generator's
+own test suite. That protects the generator, not its consumers: a consumer's
+`analysis_options.yaml` excludes the generated bridge directory, so `dart
+analyze` reports the project clean while a generated file imports a URI that
+resolves nowhere. GEN-119 and GEN-120 both shipped through that gap and were
+found by hand afterwards.
+
+`d4rtgen --verify-output` runs `dart analyze --format=machine` over the files
+the run just wrote and fails the run on any error, or on any warning not
+explicitly allowlisted. Opt-in for now.
+
+**Only diagnostics inside generated files can fail a run.** A consumer may be
+mid-refactor or carry an unrelated warning of its own; none of that is the
+generator's emission. This scoping is what makes the flag safe to point at any
+package, and it is the precondition for ever defaulting it on.
+
+### Changed — one severity policy, shared by the tool and the gate
+
+The severity policy, the machine-format parser and the allowlist move from
+`test/gen121_generated_output_analyze_gate_test.dart` into
+`lib/src/verification/generated_output_analysis.dart`; the gate now consumes
+them. Two copies would drift, and the whole point of a gate is that the tool
+and the test agree on what a bad emission is.
+
+Note for anyone adding to `allowedWarningCodes`: entries are spelled as the
+machine format spells them (`UPPER_SNAKE_CASE`), and are matched
+case-insensitively.
+
+## 1.25.0
+
+### Fixed — the orchestrated relaxer path emitted a file that did not compile (scd12_ahcm)
+
+Extending the GEN-121 `dart analyze` gate to a second, *orchestrated* package —
+generated through `bridge_api.generateBridges`, the path that also emits the
+relaxers, barrel and dartscript files — put `lib/src/relaxers.b.dart` under the
+analyzer for the first time. Three defects surfaced at once, each of which made
+the emitted package fail to compile:
+
+- **User-relaxer imports were collected and then dropped.** The scan built an
+  import block into a local buffer that nothing ever read, so every call to a
+  user relaxer landed in the output as `Undefined name 'relaxZomBox'`.
+- **`registerGenericConstructors()` was not emitted when no RC-2 class was
+  eligible.** `dartscript.b.dart` calls it unconditionally, so a package with
+  relaxers but no generic constructor factory produced an undefined-function
+  reference. The function is now always defined, empty when nothing is
+  reachable.
+- **`scanUserRelaxers` built the package URI without the package name**, so it
+  emitted `package:src/user_relaxers/x.dart` (URI_DOES_NOT_EXIST) — the GEN-119
+  failure mode, in a path GEN-119's guard does not cover. The owning package is
+  now taken from `config.name`, falling back to the pubspec's `name:`.
+
+Also adds `unused_element` to the emitted `// ignore_for_file:` list, for the
+`_coerceToV` helper that is emitted unconditionally.
+
+Gate coverage: `G-GEN121-05` analyses the orchestrated package, `G-GEN121-06`
+pins that its relaxer file really does carry a user relaxer and its import, so
+the analyze assertion cannot go vacuous.
+
+## 1.24.0
+
+### Fixed — directory mode bypassed both the extension dedupe and the source exclusion (scd11_ahcm)
+
+GEN-120 deduplicated extensions in SINGLE-FILE mode. Directory mode — one
+`<source>_bridge.dart` per source file — grouped them straight off
+`globals.extensions`: before the `excludeSourcePatterns` filter, before the
+GEN-064/GEN-120 dedupe, and keyed on the unnormalised `sourceFile`. A
+part-declared extension was therefore emitted into TWO output files, one named
+after the part and one after the parent library, each carrying a complete
+`BridgedExtensionDefinition`, and both were registered; and
+`excludeSourcePatterns` never reached extensions in that mode at all.
+
+Both pipelines now call one helper, `_bridgeableExtensions`. Directory mode maps
+the canonicalised parent URI back to the input path before grouping, so the
+extension joins that file's own group instead of opening a second one whose
+output file would collide by basename and silently overwrite it.
+
+### Fixed — an exclusion naming a parent library now excludes its parts' extensions
+
+Found while fixing the above, and **not** directory-mode-specific: measured in
+single-file mode too. A part-declared extension arrives twice — tagged with the
+parent library, and with the part itself — and the exclusion was matched only
+against each copy's raw URI. Excluding the parent left the part's copy standing,
+which the dedupe then renamed to the parent, so the exclusion had no effect.
+Either spelling now excludes it.
+
+Note for callers: `excludeSourcePatterns` globs the WHOLE source URI. A bare
+`thing.dart` matches nothing; write `package:pkg/src/thing.dart` or `**/thing.dart`.
+This is unchanged behaviour, now documented — the first version of the test for
+this fix used a bare file name and failed for that reason rather than the one it
+was written for.
+
+## 1.23.0
+
+### Added — `compareFixtureResolution`: an example that resolves is not yet an example that resolves CORRECTLY (scd9_aicx)
+
+An example project reaches the package it exercises by `path: ../..`, and a
+path dependency supplies the SOURCE but not the RESOLUTION: the example
+compiles that package's current `lib/` against the EXAMPLE's lock. A stale
+example lock therefore type-checks current first-party source against an old
+third-party dependency, and the error lands inside `../../lib/` — a directory
+the example does not own and whose contents are correct. Measured instance:
+every `tom_d4rt_exec/example/*/pubspec.lock` pinned `tom_d4rt_ast` 0.19.0 while
+exec's lib needed 0.20.x, surfacing as `The getter 'Logger' isn't defined for
+the type 'ModuleLoader'` plus `Bad state: Generating AOT kernel dill failed!`.
+Lock files are gitignored, so the drift never appears in `git status`.
+
+`compareFixtureResolution(hostProjectPath:, fixtureProjectPath:)` reports each
+package the fixture resolves differently, and `describeMismatches` renders them
+with the reason the fixture's lock governs someone else's compile, plus the
+repair. Exported from `package:tom_d4rt_generator/testing.dart`, alongside
+`resolveIfUnresolved`, which answers the neighbouring question.
+
+Only the host's RUNTIME dependencies are compared — the ones its `lib/` is
+compiled against (`direct main` and `transitive` in the lock). Comparing every
+shared hosted package instead reports benign differences: measured across the
+three packages with examples, all seven were `lints`, a dev-only ruleset no
+library imports.
+
+## 1.22.0
+
+### Fixed — `extensionSourceUris()` identifies an extension instead of just naming it (scd8_ahcm)
+
+The emitted map was keyed by the extension NAME alone, and `registerBridges()`
+looked the source URI back up by that same name. Two genuinely distinct
+extensions sharing a name — different on-types, different libraries — therefore
+collapsed to one entry: Dart keeps the last, so one extension was registered
+against the other's source URI, and the map literal itself carried an
+`equal_keys_in_map` warning. This is independent of GEN-120, which removed a
+duplicate of a *single* extension; this was two extensions sharing one key, and
+the only surviving route to that warning in a generated bridge.
+
+The key is now `<name>@<onType>` (`<unnamed>@<onType>` as before for unnamed
+extensions), spelled identically in the map and in the `registerBridges()`
+lookup — the two halves of that wire format move together. `BridgeGenerator.extensionSourceUriKey`
+is the single place it is built.
+
+**This changes generated output**, so every committed `*.b.dart` whose
+`extensionSourceUris()` has entries is stale until regenerated — 17 files in
+this workspace, including both Flutter twins. Regenerate with the fleet sweep;
+an un-regenerated file keeps working, because both halves of its own key live
+in it.
+
+### Added — a generation-time warning for extensions that still cannot be told apart
+
+Two extensions sharing a name AND an on-type are indistinguishable at the
+lookup site, which reads a `BridgedExtensionDefinition` and has nothing else to
+key on. The generator now emits one entry (a duplicate key would fail the
+GEN-121 analyze gate and decide the winner by source order anyway) and reports
+the loser as a warning naming both libraries, so the collision surfaces where
+it can still be acted on.
+
+## 1.21.1
+
+### Fixed — bridges with a `List<FunctionTypedef>` parameter compile (scd7_ahcm)
+
+A parameter typed as a list of function typedefs — `List<BridgeRegistrar>`,
+`List<VoidCallback>` and the rest of the known-typedef list — is not bridged:
+the adapter throws `UnimplementedError`. After the throw the generator emitted
+a placeholder local so the call below it would still compile, typed
+`<dynamic>[]`. It did not compile: `List<dynamic>` is not assignable to
+`List<BridgeRegistrar>?`, and the `// ignore: dead_code` above it silences the
+dead-code diagnostic on the declaration, not the type error on the call.
+Consumers never saw it because their `analysis_options.yaml` excludes the
+generated folder; `tom_vscode_bridge` carried the error in
+`VSCodeBridgeServer`'s constructor adapter.
+
+The placeholder is now `final dynamic <name> = null;`. `dynamic` is assignable
+to any parameter type, and the generator has nothing narrower it can safely
+spell there: every source library is imported under a `$pkg_N` prefix, and a
+typedef the generator declined to bridge may not be imported at all. The
+runtime behaviour is unchanged — the throw comes first. The named-parameter and
+positional-parameter paths, which each emitted their own copy, now share one
+emitter.
+
+The GEN-121 analyze gate's fixture now declares such a parameter on both paths,
+so `dart analyze` over the generated output covers the placeholder.
+
+## 1.21.0
+
+### Fixed — `d4rtgen --dry-run` / `-n` writes nothing (scd5_ahcm)
+
+The flag was accepted — tom_build_base parses `-n` for every tool — and then
+ignored: `d4rtgen -n` regenerated every `*.b.dart` in place, exactly like a
+normal run. A flag whose whole contract is "change nothing" silently changed
+everything, and the operator reaching for it to inspect a package whose
+bridges must not move was the one it hurt.
+
+A dry run now runs the full generation with its writes redirected into a
+scratch directory under the project's `.dart_tool/` (the overlay behind
+`checkBridgeFreshness`), then prints every file a real run would write and how
+it relates to the project's copy — `would create`, `would change`, or
+`unchanged` apart from the `// Generated:` line — and deletes the scratch
+tree. Because the redirection happens at the `dart:io` level, all six writers
+(module bridges, relaxers, proxies, barrel, dartscript, test runner) are
+covered without any of them checking a flag. The tool now advertises
+`--dry-run` in its help.
+
+### Added — `previewGeneration`
+
+The shared mechanism, exported from `package:tom_d4rt_generator/tom_d4rt_generator.dart`
+(`lib/src/generation_preview.dart`): run a generation callback against a
+package inside the scratch overlay and get back its result plus every file it
+wrote, as `PreviewedWrite(path, PreviewedChange)`. `checkBridgeFreshness` is
+now built on it, so the gate and the dry run classify a change identically.
+`normaliseGeneratedContent` moved to the same file and is still exported.
+
+## 1.20.0
+
+### Added — every generated file names the generator that wrote it
+
+The `// Generated:` line in each file's header now carries the generator
+version as well as the time:
+
+```dart
+// Generated: 2026-09-11T14:30:00.000 by tom_d4rt_generator 1.20.0
+```
+
+"Which generator produced these committed bridges?" could be answered only by
+reading each consumer's `.dart_tool/package_config.json`, and that says which
+generator a regeneration *would* use today, not which one wrote the files. A
+sweep once produced a baseline from three different generators without
+anything showing it. The version in the file makes the committed tree answer
+the question on its own.
+
+Relaxer, proxy and barrel files had no `// Generated:` line at all; they now
+carry one, as do module bridges, the dartscript file and the test runner.
+
+The version goes on the existing line on purpose. Every comparison of generated
+output — `checkBridgeFreshness`, the example ratchet, the flutter corpus —
+ignores lines starting with `// Generated:`, so a release that produces the
+same code does not make every consumer's bridges read as stale. Regenerating
+with this release changes only that line in files that were otherwise current,
+and adds it to relaxer, proxy and barrel files.
+
+New public API (`package:tom_d4rt_generator/tom_d4rt_generator.dart`):
+`generatedStampLine()`, `parseGeneratedStamp(content)` returning a
+`GeneratedStamp` (`generatedAt`, `generatorVersion` — null for files written
+before this release), and `generatedStampPrefix`.
+
+## 1.19.0
+
+### Changed — `resolveIfUnresolved` asks pub whether a project resolves
+
+A project that stops resolving keeps its last `.dart_tool/package_config.json`,
+and whatever reads it next fails on a downstream symptom. The recorded case is
+an example project whose config still named analyzer 8.4.1, long gone from the
+pub cache: `DiagnosticSeverity is not defined`, an apparent analyzer API break.
+When this release was prepared, 7 of the 25 example projects across
+`tom_d4rt_generator`, `tom_d4rt_exec` and `tom_ast_generator` named a `lints`
+version the cache no longer held.
+
+`resolveIfUnresolved` used to act only when the package config was missing, so
+it passed exactly those projects. It now runs `dart pub get --offline` — about a
+second, no network, and no writes when the resolution is current — and falls
+back to `dart pub get` only if that fails, so a config that merely went stale is
+repaired and a project that cannot resolve fails with pub's own message. It
+then reads the config once more, because a cached directory that exists without
+its `pubspec.yaml` passes a resolve.
+
+The obvious cheaper test — `pubspec.yaml` newer than the config — was measured
+and rejected: `dart pub get` rewrites neither the config nor `pubspec.lock` when
+the resolution is unchanged, so that comparison reports "stale" forever after
+any edit that does not change the resolution.
+
+`D4rtTester.prepareBridges` runs the same step instead of checking only that a
+config exists, so its generation errors now name the resolution failure.
+
+### Added
+
+- `resolutionProblems(projectPath)` — what is wrong with a project's package
+  config, read from disk without running pub: missing, unreadable, a package
+  root that no longer exists, or one without a `pubspec.yaml`.
+- `findDartProjects(root)` — every directory under `root` with a
+  `pubspec.yaml`, for tests that cover projects without a `d4rtgen:` section.
+
+This package's `test/example_resolution_test.dart` resolves every `example/`
+project with it.
+
+## 1.18.0
+
+### Added — building blocks for an `example/` bridge ratchet (`testing.dart`)
+
+Example projects carry `buildkit_skip.yaml`, so no workspace scan reaches them
+and nothing notices when their committed bridges fall behind the generator.
+Measured with `checkBridgeFreshness`, 17 of the 21 example projects across
+`tom_d4rt_generator`, `tom_d4rt_exec` and `tom_ast_generator` were stale. The
+package that owns them is the only place a test can notice, and three packages
+need the same test, so its logic ships here:
+
+- `findD4rtgenProjects(root)` — the directories under `root` whose
+  `buildkit.yaml` has a `d4rtgen:` section, skipping `.dart_tool` and `build`.
+- `resolveIfUnresolved(projectPath)` — `dart pub get` for a project that has
+  never been resolved. `checkBridgeFreshness` refuses to resolve, because that
+  writes to the package; an owning package's test may do it as setup.
+- `freshnessRatchetViolation(project, freshness, knownStale: …)` — the verdict
+  under a ratchet: a project on the caller's known-stale list must still be
+  stale, any other project must be fresh, and a report with errors is always a
+  violation. So the list can only shrink, and no new staleness lands while the
+  backlog is paid down.
+
+This package's own suite applies it to its seven examples
+(`test/example_bridges_fresh_test.dart`).
+
+## 1.17.0
+
+### Added — `checkBridgeFreshness`, a test-time gate for stale bridges
+
+Regeneration is not a side effect of any non-Flutter test suite; it happens
+when somebody runs `d4rtgen` by hand. So a generator change can land, every
+suite go green, and every committed `*.b.dart` stay stale — the suites then
+exercise the old generated code. GEN-123 went unnoticed that way: a relative
+scan root dropped all four user bridges in `d4rt_userbridges_sample`, and no
+suite regenerated.
+
+`checkBridgeFreshness(projectPath)` regenerates a package's bridges from its
+own `buildkit.yaml` and compares the result with what the package has
+committed, ignoring the `// Generated:` timestamp line. It reports each
+disagreeing file as `differs` or `notCommitted`, and generation errors
+separately — a report with errors has measured nothing, and `isFresh` is false.
+A consumer asserts it in one test:
+
+```dart
+test('committed bridges match the generator', () async {
+  final freshness = await checkBridgeFreshness(Directory.current.path);
+  expect(freshness.errors, isEmpty);
+  expect(freshness.stale, isEmpty);
+});
+```
+
+It does not write to the package. Generation runs unmodified, inside a
+`dart:io` overlay that sends writes to `*.b.dart` files into a scratch tree
+under the package's `.dart_tool/`, while reads see the scratch copy only where
+this run wrote one. Two cheaper designs were measured and rejected: rewriting
+the configured output paths changes the generated content (the test runner
+picks its import form and usage comments from its own path), so every package
+reads as stale; and redirecting reads as well breaks any package that imports
+its own generated files, which the analyzer then meets under two URIs.
+
+An unresolved package — no `.dart_tool/package_config.json` — is refused with an
+error instead of being resolved: `generateBridges` would run `dart pub get`, a
+subprocess no overlay can redirect, and rewrite `pubspec.lock` in place.
+
+Measured against eight non-Flutter consumers before release, the gate agreed
+with an in-place regeneration on every file, and a content-and-directory
+snapshot of each package was identical before and after.
+
+## 1.16.0
+
+### Changed — the `tom_d4rt` floor moves from `>=1.11.0` to `>=1.30.1`
+
+Two reasons, and the second is why this is a minor rather than a patch.
+
+**1.27.0 through 1.30.0 cannot run a generated bridge set.** 1.27.0 (tcca19)
+made two same-named bridged classes reject the bare name instead of silently
+picking whichever registered last, and applied that rule to `dart:*`
+declarations as well. Dart does not treat them as peers — it applies
+*platform-library precedence*, under which a `dart:*` name is shadowed by a
+non-platform one with no ambiguity. So under 1.27.0 any script naming a type
+that a `dart:*` library also declares failed:
+
+    Ambiguous Name Error: The name 'TextStyle' is declared by more than one
+    library in scope, so it cannot be used unqualified.
+
+`dart:ui` declares `TextStyle`, which is most Flutter scripts. 1.30.1 restores
+precedence. All three affected versions are published, so a floor below 1.30.1
+admits them.
+
+**The floor is load-bearing for someone else's test suite.** `tom_d4rt_exec`
+declares no `tom_d4rt` of its own; the interpreter reaches it *only*
+transitively, through this package as a dev dependency. So this line is the
+only constraint in that graph with any say over the version, and exec's
+`test/generator_tests/` suite — which exists to compare the analyzer-free tree
+against the analyzer tree — was comparing against whatever this floor admitted.
+At `>=1.11.0` that meant a reference nineteen minors old, weak in exactly the
+direction the suite is meant to be strong: every conformance case the analyzer
+tree changed in between was being checked against the old answer.
+
+The example fixtures under `example/` move to the same floor, so the
+generator's own end-to-end tests measure the interpreter the generator is
+developed against rather than an arbitrary older one.
+
+No generator behaviour changes. Suite: 936 passed / 3 failed at `tom_d4rt`
+1.22.0 before the raise, 939 passed / 0 failed at 1.30.1 after it. Same 939
+tests both times; the three that failed before were 30-second
+`TimeoutException`s under full-suite load, not assertions. So the interpreter
+changes across 1.23.0..1.30.1 are all invisible to this package.
+
+## 1.15.3
+
+### Fixed — a relative scan root emitted unrooted source URIs (GEN-125)
+
+GEN-123 let `d4rtgen -s .` reach the analyzer; this fixes what it then wrote.
+`_getPackageUri` maps a source file to the URI embedded in the generated
+bridge, and every probe it uses looks for a **leading-separator** segment:
+
+    normalizedPath.indexOf('/lib/')
+    normalizedPath.indexOf('/test/')
+    normalizedPath.contains('/sky_engine/lib/')
+
+A relative path can never contain one, so `lib/tom_d4rt_cli_api.dart` matched
+nothing and fell through to the raw-path fallback. The visible damage was in
+`bridgeReExports()`, whose `source` is the key `registerLibraryReExport` looks
+up when a script imports the barrel:
+
+    - (source: 'package:tom_d4rt_dcli/tom_d4rt_cli_api.dart', …)
+    + (source: 'lib/tom_d4rt_cli_api.dart', …)
+
+No importer can ever match `lib/…`, so every re-export declared by a barrel
+regenerated from a relative scan root was silently dead.
+
+This is GEN-123's rule at a second call site — *normalizing is not rooting* —
+so the fix is the same shape: root a relative path against
+`Directory.current` before the probes run. Only genuine filesystem paths are
+rooted; callers that pass an already-resolved `package:`/`dart:` URI are left
+alone, and the scheme test requires two or more characters before the colon so
+a Windows drive prefix (`C:/Code/x`) still reads as a path.
+
+Covered by `G-PURI-03` (relative path → package URI) and `G-PURI-04`
+(resolved URIs pass through untouched).
+
+## 1.15.1
+
+### Fixed — per-source-file state is keyed on the normalised path (GEN-122)
+
+Regenerating a bridge package silently deleted every re-export edge belonging
+to a `path:` dependency — around 330 lines across `tom_core_d4rt` — while
+leaving hosted dependencies untouched. Nothing failed: `bridgeReExports()` was
+still emitted, just empty, so the output analysed clean and the suites stayed
+green while d4rt scripts lost the ability to resolve symbols through those
+barrels.
+
+The cause was a key mismatch rather than a resolution failure. `parseFile`
+normalises to an absolute path before resolving, so the collector stored under
+the normalised key while the emitter looked the entry up under the path as
+written. `buildkit.yaml` spells `barrelFiles` relative for `path:` dependencies
+and absolute for pub-cache ones, which is exactly why the loss split along that
+line. Both maps now store and read through one `_sourceFileKey()` helper.
+
+*(Section written 2026-09-12 by scd60. The bump landed in `b0f94fb42` with no
+CHANGELOG entry at all — not renamed away, simply omitted — which is the case
+`F-SCC17-5` exists to find.)*
+
+## 1.15.2
+
+### Fixed — a relative scan root silently dropped every user bridge (GEN-123)
+
+`d4rtgen -s .` aborted on the one corpus project that carries user bridges:
+
+    Error processing ./d4rt_userbridges_sample: Invalid argument(s):
+      Only absolute normalized paths are supported: d4rt_userbridges_sample
+
+The same command with `-s "$(pwd)"` succeeded, so the defect was never in the
+project — it was that a relative project directory reached the analyzer.
+
+The analyzer requires every path it is given to be **absolute and normalized**.
+That is one rule with two independent halves, and it was written out by hand at
+five call sites. Three of them satisfied only the second half:
+
+    final normalizedProjectDir = p.normalize(projectDir);   // WRONG
+
+`p.normalize` collapses `.` and `..`; it does not make a path absolute. The two
+correct sites additionally joined against `Directory.current.path`. Only a
+project carrying `lib/src/d4rt_user_bridges/` could trip it, because everywhere
+else the context is built from an already-absolutised path.
+
+Fixed by extracting `analysisIncludedPath()` (`lib/src/analysis_paths.dart`),
+which states the whole contract once, and using it at every site. Applying it
+turned up a **sixth** site the audit had missed — the per-package context in
+`bridge_generator.dart`, which derives its root by walking up from a file path
+and so inherits that path's shape.
+
+**The first fix was incomplete, in the more dangerous direction.** Absolutising
+`includedPaths` stopped the crash but merely moved the failure downstream:
+`contextFor` and `getResolvedLibrary` were still handed relative paths, threw
+the same `ArgumentError`, and the throw was swallowed by a `verbose`-gated
+`catch`. A relative-root run then found **0** user bridges where an absolute
+run found 4, and emitted bridges missing every override — no error, no warning,
+wrong output. Three changes close that:
+
+- The scan directories are derived from the *absolutised* root, so every
+  collected file path is absolute by construction rather than by remembering to
+  convert it at three later call sites.
+- Resolution failures are no longer `verbose`-gated. A user-bridge file that
+  exists on disk but does not resolve is a wrong-output condition, not a debug
+  detail.
+- Finding files but registering nothing now warns. Under the previous
+  `> 0`-only reporting that state was indistinguishable from a project with no
+  user bridges at all, which is precisely why the regression was silent.
+
+### Changed — the two user-bridge pre-scans are one function
+
+`bridge_api.dart` and `v2/d4rtgen_executor.dart` each carried their own ~60-line
+copy of the pre-scan, differing only in log wording and in which warnings were
+`verbose`-gated — which is how one copy came to swallow errors the other
+reported. Both now call `preScanUserBridges()`
+(`lib/src/user_bridge_prescan.dart`).
+
+### Tests
+
+`test/gen123_analysis_included_path_test.dart` (6 tests). G-GEN123-01..03 cover
+the helper, including a behavioural check that the analyzer still *rejects*
+`p.normalize(relative)` — so the suite cannot pass for the wrong reason if the
+helper is ever reduced back. G-GEN123-06 pins the property the silent-zero
+violated: a relative and an absolute project dir must find the *same number* of
+user bridges. Asserting "does not throw" would have passed throughout the
+broken window. G-GEN123-04/05 are structural gates: a seventh hand-derived
+`includedPaths` argument, or a bare `p.normalize` on a project path, fails the
+suite.
+
+## 1.15.0
+
+### Added — the generated bridge is now really analysed, not proxied (GEN-121)
+
+`test/gen121_generated_output_analyze_gate_test.dart` generates a bridge into a
+throwaway package and runs `dart analyze` on it, with no
+`analysis_options.yaml` in a position to exclude the output.
+
+This replaces a standing compromise. The GEN-119 smoke gate asserts a *property*
+of the emitted file — every import URI must be absolute — because analysing an
+emitted file standalone appeared unviable: without a package config, every
+`package:` import fails too and the report is all noise (measured: 38 issues,
+every one of them downstream of a missing import). The proxy caught the defect
+that shipped, but GEN-120 then walked straight past it, so the gap was not
+hypothetical.
+
+Two things turn that noise into signal, and only the first is obvious:
+
+- A synthesised `.dart_tool/package_config.json` beside the output. It is built
+  by copying the generator's own resolved config — whose entries carry absolute
+  `file://` roots and so stay valid anywhere — and appending the fixture package.
+- A fixture that is a *real package*. The corpus under `test/fixtures/` is not:
+  those files live outside any package `lib/`, so the generator cannot emit an
+  import for the very types it bridges and no package config can rescue the
+  output.
+
+The fixture is created in `Directory.systemTemp`, and that is load-bearing
+rather than tidiness: an ancestor `pubspec.yaml` in the workspace tree hijacks
+resolution for anything nested under it. The identical fixture reports four
+`URI_DOES_NOT_EXIST` errors under `<ws-root>/ztmp/` and zero in the system temp
+directory, so a gate placed inside the tree would have been permanently and
+invisibly red.
+
+**Warnings fail the gate unless explicitly allowlisted.** `equal_keys_in_map` —
+the GEN-120 defect — is a warning, not an error, so a gate that failed only on
+errors would have been blind to the defect class that motivated it. The
+allowlist is currently empty; the fixture analyses completely clean.
+
+Two of the four tests assert that the gate *detects*, by feeding it known-bad
+output: a bare-path import must be reported (`URI_DOES_NOT_EXIST`, the GEN-119
+shape) and a duplicate map key must be reported (`EQUAL_KEYS_IN_MAP`, the
+GEN-120 shape). Without them a silently-neutered gate would keep reporting green.
+Verified against a real regression, not just injected strings: reverting the
+GEN-120 fix in `bridge_generator.dart` turns the gate red, while the GEN-119
+property suite stays green at 9/9 — the gap, demonstrated.
+
+The GEN-119 property assertions are **kept**. They are cheap enough to run over
+the whole fixture corpus; the analyze gate is heavier and runs on one fixture.
+
+### Fixed — an extension declared in a `part of` file was registered twice (GEN-120)
+
+`tom_dist_ledger`'s generated bridge carried
+
+```dart
+static Map<String, String> extensionSourceUris() {
+  return {
+    'DLLogLevelExtension': 'package:tom_dist_ledger/src/ledger_api/call_callback.dart',
+    'DLLogLevelExtension': 'package:tom_dist_ledger/src/ledger_api/ledger_api.dart',
+    ...
+```
+
+`DLLogLevelExtension` is declared in `call_callback.dart`, which is
+`part of 'ledger_api.dart'`. The analyzer flags the duplicate map key
+(`equal_keys_in_map`), but that is only the visible half: `bridgedExtensions()`
+emitted the same extension twice as two complete
+`BridgedExtensionDefinition` entries, and a duplicate element in a list literal
+is perfectly legal Dart — nothing complained at all. Deduplicating the map alone
+would have silenced the warning and left the double registration in place, so
+the fix is at collection time.
+
+The extension arrives by two routes that tag it with different URIs. The local
+extractor sees it while extracting the parent library and tags it with the
+parent's path; GEN-049 import discovery sees it again while extracting a file
+that *imports* the parent, and tags it with
+`extElement.firstFragment.libraryFragment.source.uri` — which for a
+part-declared extension is the **part's** URI, not the library's. GEN-064's
+dedupe key was `name|sourceUri`, so the two spellings read as two distinct
+extensions and both survived.
+
+The dedupe now canonicalises the URI through the `part of` → parent-library
+resolver before keying on it, and pins that canonical URI onto the survivor.
+The parent library is the only correct answer: a part file is not
+independently importable, so its URI is useless to any consumer acting on it.
+
+Deduplication also now prefers the copy carrying full `MemberInfo`. Import
+discovery populates only `methodNames`, never `methods`, so keeping whichever
+copy happened to arrive first could silently degrade callback wrapping
+(GEN-052) depending on source-file ordering.
+
+`test/gen120_part_declared_extension_test.dart` pins all of it, including an
+anti-vacuity guard — "exactly one" passes just as happily when the extension
+was dropped entirely as when it was correctly deduplicated.
+
+## 1.14.0
+
+### Fixed — auxiliary imports could be emitted as bare file paths (GEN-119)
+
+`tom_dist_ledger`'s generated bridge carried
+
+```dart
+import 'lib/src/ledger_api/ledger_api.dart' as $aux_aux;
+```
+
+a project-relative path where a `package:` URI belongs. It resolves against the
+*generated file's* directory, so it pointed at a file that does not exist —
+while the very same library was correctly emitted as
+`package:tom_dist_ledger/src/ledger_api/ledger_api.dart` a few lines above.
+The `$aux_aux` prefix is the fingerprint: both prefix factories derive their
+base name from a `package:` URI and fall back to the literal `aux` otherwise,
+so a doubled token proves a non-package URI reached the factory.
+
+The chain: `d4rtgen` is invoked as `d4rtgen -s .`, so `workspacePath` is
+relative. The own package's `rootUri` in `.dart_tool/package_config.json` is
+`../`, which normalised against a relative workspace path collapses to `.`.
+`_getFilePathForPackageUri` therefore returned a relative path, and when the
+requested type lived in a `part of` file (`DLLogLevel` in `call_callback.dart`)
+the part-of resolver derived the parent path relatively too. `_getPackageUri`
+maps a path back to a package by scanning for a `/lib/` segment — which a path
+that *starts* with `lib/` does not have — and returns its input unchanged when
+it cannot, so a bare path entered the auxiliary-import map and was written
+verbatim.
+
+Fixed in three layers:
+
+- **Root cause** — `_packageRootSync` now returns an absolute path regardless of
+  how `workspacePath` was spelled.
+- **Guard** — the `part of` → parent-library resolver keeps the part file's own
+  (importable) `package:` URI when the parent cannot be expressed as one,
+  instead of propagating a bare path.
+- **Last resort** — the auxiliary-import writer drops any import whose URI is
+  neither `package:` nor `dart:`, with a warning. Dropping degrades loudly (an
+  undefined prefix is a compile error at the use site) rather than silently
+  shipping an import that resolves nowhere.
+
+### Added — regen smoke gate for emitted import URIs
+
+`test/gen119_auxiliary_import_uri_test.dart` regenerates five fixtures into a
+temp directory and asserts that **every** emitted import URI is absolute
+(`package:` or `dart:`). Analysing an emitted file standalone is not viable —
+without a `package_config.json` every `package:` import would fail too — so the
+gate asserts the property that actually separates good output from bad. The
+defect shipped precisely because the consumer's `analysis_options.yaml` excludes
+`lib/src/d4rt_bridges/**`, so `dart analyze` reported the project clean.
+
+`G-GEN119-05` pins that `user_proxy_relaxer_source.dart` still drives the
+auxiliary-import writer, so the gate cannot quietly become vacuous.
+
+## 1.13.0
+
+### Added — configurable `typeMappings` escape hatch + `additionalImports` (DGU3)
+
+- New top-level `d4rtgen:` config keys mirroring upstream `GeneratorConfig`:
+  - `typeMappings: Map<String,String>` — substitute an awkward source type with
+    another type at emission time. Keyed by source type name (`SomeType`) or its
+    exact nullable spelling (`SomeType?`); the value is emitted verbatim wherever
+    that type would appear (parameters, fields, return types, and each type
+    argument inside generics). Applied at the single type-resolution chokepoint
+    (`_resolveTypeArgument`), so it covers bare types and generic arguments. The
+    mapped type's own bridge registration is left intact.
+  - `additionalImports: List<String>` — full `import` URIs added to every
+    generated bridge file, pairing with `typeMappings` when a substitute type
+    lives in a package the generator would not otherwise import.
+- This is the config seam behind the "fix the generator, not the generated code"
+  rule: a downstream package can resolve a hard-to-bridge type through
+  `buildkit.yaml` instead of patching the generator. Both keys default to empty,
+  so generated `*.b.dart` output stays byte-identical until a config opts in.
+- Wired through `BridgeConfig` (field + constructor + `fromJson`/`toJson`/
+  `copyWith`), the `BridgeGenerator` constructor, and both executor paths
+  (`bridge_api.dart`, `v2/d4rtgen_executor.dart`).
+
+### Fixed — the v2 executor forwards `recursiveBoundTypes` (DGUB2)
+
+*Recorded 2026-09-12 (scd11_aicx). The fix shipped in this release —
+`799c16893`, a week before it — but no entry was written for it, so a consumer
+reading the log could not tell the bug had been fixed.*
+
+- `D4rtgenExecutor` constructed its `BridgeGenerator` without passing
+  `recursiveBoundTypes`, so a project generating through the v2 path silently
+  ignored its `buildkit.yaml` `recursiveBoundTypes:` entries and fell back to
+  the built-in defaults (`num`, `String`, `DateTime`, `Duration`, `BigInt`).
+  Since `D4rtgenExecutor` is the default v2 executor, this was a correctness
+  bug rather than hygiene: the escape hatch existed in the config and did
+  nothing.
+
+### Added — generated-code-quality regression guards (DGU4)
+
+- Cross-checked upstream 0.2.1's four generated-code-quality fixes against our
+  output. Our analyzer-driven emitter produces **none** of the four
+  anti-patterns (they targeted a heuristic generator): generic collection
+  extraction is already well-formed, abstract classes already strip their
+  generative constructors (GEN-051) and carry `isAbstract: true`, no redundant
+  `?? null` is emitted, and a param named `key` keeps its *declared* type rather
+  than being force-inferred. No production change was needed.
+- Locked those properties in with `test/generated_code_quality_test.dart`
+  (`G-DGU4-1..4`) + fixture so a future emitter change cannot silently
+  reintroduce one.
+
+## 1.12.5
+
+### Changed — make the `tom_analyzer_shared >=0.7.2` floor authoritative on pub.dev
+
+- RCJ3/RCJ6 bumped the `tom_analyzer_shared` constraint to `>=0.7.2` (SDK-version
+  partitioned summary cache + transitive-dependency bundle invalidation), but the
+  version published on pub.dev (1.12.4) still carried the old `>=0.6.0` floor, so
+  a fresh consumer resolving this generator from pub.dev was only *allowed* — not
+  *required* — to pick a fixed `tom_analyzer_shared`. This patch republish makes
+  the `>=0.7.2` floor the authoritative constraint every downstream consumer
+  inherits. No code change; hardening only. (RCL2)
+
+## 1.12.4
+
+### Fixed — silence GEN-079 warnings for `dart:async` SDK generics
+
+- The relaxer generator only builds type-relaxing wrappers for *application-
+  package* generics scanned from module barrels. `dart:core` collections
+  (`List`/`Set`/`Map`/…) were already skipped silently, but the `dart:async`
+  SDK generics that appear in bridged signatures — `FutureOr`,
+  `StreamSubscription`, `StreamConsumer`, `StreamTransformer`, `EventSink`,
+  `StreamSink` — were not, so each produced a noisy
+  `No ClassInfo for generic base type "…"` / `… — skipping wrapper` warning
+  even though the outcome (no wrapper) was correct and expected. These types are
+  provided by D4rt's stdlib bridges (`tom_d4rt/lib/src/stdlib/async/`), not by
+  relaxer wrappers; `FutureOr` is a union type, not a class, and can never be
+  wrapped at all. The relaxer skip-set (renamed `_dartCoreGenericTypes` →
+  `_sdkGenericTypesWithoutRelaxers`) now covers both families, so these SDK
+  generics are skipped silently. No change to generated output. New regression
+  coverage: `relaxer_sdk_generic_skip_test.dart`.
+
+## 1.12.3
+
+### Fixed — escape `$`-prefixed member names in *all* generated bridge maps
+
+- Completes 1.12.2: the `$`-escaping was applied to the getter/setter function
+  maps but not to the **signature maps** (`getterSignatures`, `setterSignatures`,
+  `methodSignatures`, `constructor`/`static*` variants) nor the instance/static
+  **method** and **static getter/setter** function-map keys. Those still emitted
+  a raw `'$sectionId'` key (the signature *value* was already escaped), so a
+  bridge for a class exposing a `$`-prefixed member still failed to compile with
+  "Undefined name 'sectionId'". Every member-name map **key** now routes through
+  `_escapeString`. Regression coverage added: G-CLS-7d (getter/setter signature
+  keys) and G-CLS-7e (method map + signature keys) over a new `$compute()` method
+  on the fixture.
+
+## 1.12.2
+
+### Fixed — escape `$`-prefixed member names in generated bridges
+
+- Members whose name begins with `$` (e.g. a structural accessor deliberately
+  named `$sectionId` to avoid colliding with a model field literally called
+  `sectionId`) were emitted verbatim into the single-quoted, *interpolating*
+  Dart string literals the bridge uses for its getter/setter/signature map keys
+  and for the arg-name passed to `D4.extractBridgedArg*`. The unescaped `'$sectionId'`
+  was read by the analyzer as an interpolation and failed to compile with
+  "Undefined name 'sectionId'". `_escapeString` now escapes `$` (and the
+  getter/setter map-key and setter-cast arg-name sites route their names through
+  it), so the key is emitted as `'\$sectionId'` while the member *access* stays
+  the raw identifier `.$sectionId`. Regression coverage: `class_bridge_generation_test`
+  G-CLS-7a/7b/7c.
+
+## 1.12.1
+
+- Track our latest published components: `tom_analyzer_shared` floor raised to
+  `>=0.6.0` (ToolCacheLocator shared tool-cache root), and all in-workspace
+  dependencies now use lower-bound-only constraints (no upper cap) so
+  `pub upgrade` resolves to our latest versions during active development.
+
+## 1.12.0
+
+### Added — emit static enum methods into `BridgedEnumDefinition` (GitHub issue #2)
+
+- The enum extractor now collects an enum's **public static** methods (these
+  were previously dropped) and emits them into a `staticMethods:` block on the
+  generated `BridgedEnumDefinition`, dispatched on the enum **type** (not an
+  instance receiver). This makes static factory/helper methods like
+  `PageFormat.fromString(name)` reachable from interpreted code.
+- Collection-typed static parameters reuse the existing coercion path via a
+  parameterized receiver, so `D4.coerceList`/map coercion applies the same way
+  it does for instance methods.
+- Requires `tom_d4rt` `^1.11.0` (which accepts the new `staticMethods`
+  parameter); the floor was raised accordingly.
+
+## 1.11.0
+
+### Lazy bridge factories (import-optimization)
+
+- Generated per-package bridges now emit **factory thunks** instead of a
+  pre-built `List<BridgedClass>`:
+  - `static Map<String, BridgedClass Function()> bridgeClassThunks()` — class
+    name → deferred factory that builds one class's member maps + adapter
+    closures on demand.
+  - `static Map<String, Type> bridgeClassTypes()` — class name → native `Type`,
+    so the same thunk registers into both the name-keyed and type-keyed
+    registries with the correct `sourceUri`.
+  - `registerBridges` now loops the thunks through the interpreter's
+    `registerBridgedClassLazy(name, type, thunk, importPath, sourceUri:)`
+    instead of constructing every `BridgedClass` eagerly. A script that uses
+    N of M generated classes materializes ≈N objects, not M.
+  - `bridgeClasses()` is retained (eager, diagnostic) for callers that still
+    want the full materialized list.
+- The aggregator barrel (`per_package_orchestrator`) now spreads
+  `bridgeClassThunks()` / `bridgeClassTypes()` from each per-package bridge.
+- Bumped `tom_d4rt` constraint to `^1.9.0`: the generated `registerBridges`
+  targets the import-optimization API (`registerBridgedClassLazy`) introduced
+  in `tom_d4rt` 1.9.0 / `tom_d4rt_ast` 0.1.9.
+
+## 1.10.0
+
+### Analyzer 10 migration
+
+- Upgraded `analyzer` to `^10.0.0` (from `^8.4.1`). Applied the analyzer-10 API
+  renames the generator relied on:
+  - `AnalysisContextCollectionImpl(..., packagesFile: …)` →
+    `packageConfigFile: …` (constructor parameter rename) in
+    `bridge_generator.dart`.
+  - `NamedType.name2` → `NamedType.name` in `corpus_type_scanner.dart`.
+  - Tidied a now-flagged null-aware spread (`...?externalClassLookup`) in
+    `bridge_generator.dart`.
+  `Element.isSynthetic` remains deprecated-but-functional under analyzer 10; it
+  is left in place because this package already sets
+  `deprecated_member_use: ignore` project-wide, so no per-call migration was
+  needed.
+- Bumped `tom_d4rt` to `^1.8.25` (first analyzer-10 build on pub.dev; earlier
+  `1.8.x` carry `analyzer ^8` and would conflict) and `tom_analyzer_shared` to
+  `^0.4.0`.
+- Stale analyzer-8 `.sum` summary bundles under `example/d4/.tom/analyzer-cache/`
+  are undecodable by analyzer 10's `bundle_reader` (`RangeError` in
+  `_decodeVariance`) and were poisoning the test suites. Added a `.gitignore`
+  for `**/.tom/analyzer-cache/` and untracked the 92 regenerable bundles; they
+  rebuild on demand under the active analyzer.
+
+> **Incorporates 1.9.9** (published out-of-band, skipping local's 1.9.8): the
+> `tom_analyzer_shared ^0.3.0` shared-tool-cache change (analyzer summaries
+> resolved via `ToolCacheLocator` into the shared Tom tool-cache directory) is
+> superseded here by the `^0.4.0` constraint, so its behaviour is retained. This
+> release also carries the 1.9.8 const-arg suppression that 1.9.9 omitted.
+
+## 1.9.8
+
+### Generation quality (suppress unavoidable const-arg warning)
+
+- Bridge `.b.dart` files emit constructor calls that forward script-supplied
+  runtime values into `const` constructors (e.g. `IconData(codePoint, …)`).
+  Because those arguments are only known at run time they can never be const,
+  so the analyzer reports `non_const_argument_for_const_parameter` — an
+  unavoidable, cosmetic warning for bridged code. Added
+  `non_const_argument_for_const_parameter` to the generated
+  `// ignore_for_file:` directive so regenerated bridge surfaces analyze
+  cleanly (previously surfaced as 3 warnings against `IconData` in
+  `widgets_bridges.b.dart` for both `tom_d4rt_flutter` and
+  `tom_d4rt_flutter_ast`).
+
+## 1.9.7
+
+### Bug fixes (AllBridge import surface dropped under single-package inline)
+
+- **GEN-077** — the generated dartscript helper calls
+  `AllBridge.getImportBlock()` and `AllBridge.subPackageBarrels()`
+  unconditionally, but the AllBridge emitter gated both methods behind
+  `if (importBlockUri != null)` while `sourceLibraries()` was always emitted.
+  In the single-package inline strategy (`sourceImport` unset, so
+  `importBlockUri` resolves to `null`), AllBridge declared `sourceLibraries()`
+  but neither `getImportBlock()` nor `subPackageBarrels()` — and the
+  `dartscript.b.dart` half that calls them still compiled, breaking downstream
+  consumers (`tom_brain_procedure`, `tom_brain_run`, Observatory) with
+  "method isn't defined" errors after regeneration. The emitter now writes
+  both methods unconditionally: when there is no resolved barrel URI it derives
+  the import block straight from the canonical `sourceLibraries()` URIs and
+  returns an empty `subPackageBarrels()`. Adds the GEN-077 regression tests
+  (G-ISS-37/38/39) that force `importBlockUri == null`.
+
+## 1.9.6
+
+### Bug fixes (empty-Set default coercion)
+
+- **GEN-SET** — a `Set` parameter whose default was a bare `const {}` (e.g.
+  `TomCommandParser({Set<String> additionalCommands = const {}})`,
+  `ParsedCommand({Set<String> flags = const {}})`) emitted the default
+  unchanged. Dart parses bare `const {}` as an empty **Map** (static type
+  `Object`), so the generated constructor call failed with
+  `argument_type_not_assignable` ("The argument type 'Object' can't be
+  assigned to the parameter type 'Set<String>'") — visible at
+  `dart compile exe` and `dart analyze`, and the cause of broken
+  `tom_build_cli` bridge calls after regeneration. `_getTypedDefaultValue`
+  now has a `Set` branch (checked before `Map`) that renders both bare and
+  already-typed empty-set defaults as `const <T>{}`, covering the named and
+  positional coercion paths. Adds the GEN-SET-1/GEN-SET-2 regression tests.
+
+## 1.9.5
+
+### Bug fixes (AOT-only bridge compile defects)
+
+Two defects surfaced by `tom_core_d4rt`'s bridge corpus, visible only at
+`dart compile exe` (masked from `dart analyze` by the generated
+`ignore_for_file` header):
+
+- **B3b** — generic methods whose callback parameter returns the method's
+  own type parameter (e.g. `FutureOr<T> Function(MySQLConnection)` in
+  `MySQLConnectionPool.withConnection<T>` / `transactional<T>`) failed with
+  `FutureOr<Object?> Function(X) can't be assigned to
+  FutureOr<Object> Function(X)`: the callback wrapper resolves `T` to
+  `Object?` but generic inference picked a non-nullable `Object`. The
+  generated method call now pins explicit type arguments (each parameter's
+  bound, or `Object?` when unbounded) via `_methodCallTypeArgs` when a
+  function-typed parameter references the method type parameter, bypassing
+  inference.
+- **B4** — package-URI resolution used a hardcoded sub-workspace
+  `searchDirs` list that omitted `distributed/`, so `part of` files in
+  packages outside that list were imported directly ("has a 'part of'
+  declaration"). Resolution now goes through
+  `.dart_tool/package_config.json` (`_packageRootSync`) first, covering
+  every package in the resolution graph, with the directory scan kept as a
+  fallback.
+
+Also removes leftover GEN-060 debug prints. Adds the G-CB-13 regression
+test.
+
+## 1.9.4
+
+- Housekeeping: test artifacts now live in a gitignored `testlog/` folder; `doc/` no longer ships machine-generated baselines or last_testrun.json. No code changes.
+
+## 1.9.3
+
+### Generated-code hygiene
+- Emit expanded `// ignore_for_file:` headers in generated `*.b.dart` bridges
+  so generated bridge corpora (including `tom_d4rt_flutter`) are analyzer-clean
+  without per-file hand edits.
+
+### Documentation
+- Consolidated proxy/relaxer manual-intervention guidance into
+  `doc/user_proxy_relaxer_annotations.md` and the baseline docs; README
+  aligned with the source-primary documentation reframe.
+
+## 1.9.2
+
+### Generator features
+- Annotation-driven proxy/relaxer directive core + scanner (`@D4rtUserProxy` /
+  `@D4rtUserRelaxer`) with a variant-pattern engine.
+- Template families: B3 generic-constructor reifiers, A4 RenderBox-proxy,
+  super-constructor-arg capture factories, generic-type-arg proxy variants,
+  State-proxy mixin variants, generic interceptor re-dispatch.
+- `genericInterceptors` config wired into `BridgeConfig`; VM↔web
+  signature-skew coercion table.
+- `yieldVoidCallbacks` switch for cooperative input/frame yield (OPEN B.14):
+  void callback wrappers emitted as async closures awaiting a 1ms delay.
+- Per-symbol `@Deprecated` allowlist; opt-in `vector_math_64` bridge.
+
+### Dependency
+- Require `tom_d4rt ^1.8.21`.
+
+## 1.9.1
+
+### Fix — build_runner path emits a compiling `dartscript.b.dart`
+The build_runner / orchestrator code path previously produced a
+`dartscript.b.dart` that could not compile, because:
+
+- the delegating barrel (`<Module>Bridge`) was missing the
+  `subPackageBarrels()` method the shared dartscript template calls
+  unconditionally, and
+- `relaxers.b.dart` (imported by the dartscript template whenever the
+  config has modules) was never generated on the build_runner path.
+
+Both halves are fixed: the orchestrator's delegating barrel now emits
+`subPackageBarrels()` (primary package excluded, sub-package barrel URIs
+listed), and the build_runner path now generates `relaxers.b.dart` —
+falling back to a resolvable no-op stub (`registerRelaxers()` /
+`registerGenericConstructors()`) when there are no extraction sites. The
+standalone/CLI and build_runner paths now emit interchangeable
+registration code. Covered by a new regression test
+(`test/build_runner_dartscript_compile_test.dart`) that assembles the
+build_runner artifacts and asserts `dart analyze` reports no errors.
+
+## 1.9.0
+
+### Refactoring — summary-backed extraction migration (Phases 1–6)
+Completes the multi-phase migration from dual-path (AST + element) bridge
+extraction to a single element-mode code path backed by analyzer `.sum`
+summaries. See `doc/summary_refactoring_plan.md` for the full plan and
+`doc/baseline_summary_refactor.md` for the regression oracle.
+
+- **Phase 1**: `ElementModeExtractor` reaches output parity with the legacy
+  AST `_ResolvedClassVisitor` (type aliases, inheritance resolution,
+  default values, metadata, inherited members, substitution).
+- **Phase 2**: `BridgeGenerator` routes every package through the element
+  walker by default; summary-cache stage runs before scanning so external
+  deps resolve from `.sum` bundles.
+- **Phase 3**: Default-value rendering and annotation-arg serialization
+  unit tests lock the extractor API.
+- **Phase 4**: `ProxyGenerator` migrated to the shared element-mode path.
+- **Phase 5**: `UserBridgeScanner` migrated to `LibraryElement` walker;
+  legacy `RecursiveAstVisitor<void>` path removed.
+- **Phase 6**: Deleted the AST extraction path entirely —
+  `_ResolvedClassVisitor` (~2,200 lines), `_ClassVisitor`, `_ParsedClass`,
+  the `useLegacyAstWalker` debug flag, and `summary_exclusion.dart`.
+  `lib/src/bridge_generator.dart` dropped from 16,678 → 13,602 lines
+  (−3,076 lines vs the plan's ≥1,800-line target). `TOM_D4RT_BRIDGE_USE_SUMMARIES`
+  env-var scaffolding removed.
+
+### Maintenance
+- Update dependency on tom_d4rt 1.8.19 (type matching, enum handling,
+  isSubtypeOf, stdlib fixes) — carried over from 1.8.24.
+
+### Compatibility
+- Public generator API is unchanged. Generated bridge output for
+  `tom_d4rt_flutterm` is byte-identical to the pre-migration baseline
+  modulo the `Generated: <timestamp>` header (per Phase 6 exit check).
+- All five consumers documented in `baseline_summary_refactor.md`
+  (flutterm, dcli, exec, dcli_exec, tom_d4rt) match their Phase 0
+  test baselines — no new regressions.
+
+## 1.8.24
+
+### Maintenance
+- Update dependency on tom_d4rt 1.8.19 (type matching, enum handling, isSubtypeOf, stdlib fixes)
+
+## 1.8.23
+
+### Bug Fixes
+- **RC-2**: Fix inline function types with type params (e.g., `Object? Function(T)`) — cast to `dynamic` to bypass static type checking since analyzer expands typedef aliases to inline form which can't be cast back to the typedef
+- **RC-2**: This fixes the remaining 3,208 compile errors in flutter_relaxers.b.dart (total error reduction: 441,443 → 0)
+
+## 1.8.22
+
+### Bug Fixes
+- **RC-2**: Comprehensive fix for generic constructor param type handling — reduced compile errors from 441K to 3K (99.3%)
+- **RC-2**: Extended `_rc2SkipTypes` with `FutureOr`, type param names (T/E/K/V/R/S), and vector_math types
+- **RC-2**: Improved `isTypeParamTyped` to detect types containing type params (e.g., `MessageCodec<T>`)
+- **RC-2**: Fixed bounded type params — `Object` bound now correctly excludes `dynamic` fallback
+- **RC-2**: Add `!` assertion for non-nullable params since extraction produces nullable values
+- **RC-2**: Proper type substitution and casting for params containing type params
+
+## 1.8.21
+
+### Bug Fixes
+- **RC-2**: Fix nullable param passing in `_writeRC2Case()` — add `!` assertion for required non-nullable params
+- **RC-2**: Add missing types to `_rc2SkipTypes` (meta annotations, vector_math types not imported in relaxer output)
+
+## 1.8.20
+
+### Features
+- **UserBridge**: CLI executor now scans `lib/src/d4rt_user_bridges/` and `lib/d4rt_user_bridges/` directories for user bridge classes
+
+### Bug Fixes
+- **Off-by-one**: Fix `_getPackageUri()` sky_engine parsing producing `dart:i` instead of `dart:ui`
+
+## 1.8.19
+
+### Bug Fixes
+- **RC-2**: Wire `registerGenericConstructors()` and `registerRelaxers()` into dartscript registration
+- **RC-5**: Fix 11 misleading comments in annotation filtering (actual: @internal/@visibleForOverriding/@mustBeOverridden only)
+
+## 1.8.18
+
+### Bug Fixes
+- Minor internal refactoring
+
+## 1.8.17
+
+### Features
+- **GEN-100d**: Auto-generate function typedef registrations from source
+- **GEN-083**: Proxy/adapter class generator for abstract delegates (CustomPainter, CustomClipper, etc.)
+- **GEN-082**: Setter `sourceFilePath` fix + resolved 14 skipped and 3 failed tests
+- **GEN-081**: Generator now emits `isAssignable` callback in `BridgedClass` constructors
+
+### Bug Fixes
+- **GEN-100**: Follow-up fix for secondary_classes_test failures
+- Auto `dart pub get` for barrel resolution
+- Pass `d4rtImport` from config in `generateBridges()`
+- Dart format cleanup
+
+## 1.8.16
+
+### Bug Fixes
+- **RC-4**: Generator map key unwrap via `D4.extractBridgedArg` instead of raw cast
+
+## 1.8.15
+
+### Bug Fixes
+- **GEN-075**: Fixed required nullable argument handling — generates null-safe parameter extraction
+- **GEN-076**: Raised non-wrappable default threshold from 4 to 8 to reduce combinatorial explosion
+
+## 1.8.14
+
+### Bug Fixes
+
+- **GEN-077**: Skip same-package re-exports to prevent duplicate bridge generation (e.g., Tween only in animation module)
+- **GEN-078**: Collect deprecated non-function type aliases (e.g., `MaterialStateProperty`)
+
+## 1.8.13
+
+### Added
+
+- **GEN-074** (`bridge_generator.dart`) — Added support for type aliases (non-function typedefs) bridging:
+  - New `visitGenericTypeAlias` in `_ResolvedClassVisitor` collects type aliases like `typedef MaterialStateProperty<T> = WidgetStateProperty<T>`
+  - Generated `classAliases()` method returns a map of alias name to target class name
+  - `registerBridges()` now automatically registers class aliases with the interpreter
+  - Enables D4rt scripts to use type aliases like `MaterialStateProperty` that resolve to their target classes
+
+### Tests
+
+- **`gen074_type_alias_test.dart`** — Unit tests for type alias detection and code generation (8 tests)
+
+## 1.8.12
+
+### Fixed
+
+- **GEN-073** (`bridge_generator.dart`) — Added `Iterator` to the list of built-in types that don't need import prefixes. This fixes compile errors in generated code where `Iterator<E>` was incorrectly prefixed with Flutter imports (e.g., `$flutter_3.Iterator`).
+
+## 1.8.11
+
+### Fixed
+
+- **GEN-072** (`bridge_generator.dart`) — Fixed export detection bug where a direct export (no show/hide clause) didn't override a restrictive re-export from the same package when processed in wrong order. This caused classes like Flutter's `Curves` to be incorrectly marked as "not exported from barrel file" even though they were directly exported. The fix adds `isCurrentMorePermissive && !isExistingMorePermissive` check to `shouldOverride` logic.
+
+### Added
+
+- **`gen072_permissive_override_test.dart`** — Unit tests for GEN-072 fix, verifying permissive exports override restrictive same-package re-exports.
+
+## 1.8.10
+
+### Fixed
+
+- **GEN-071** (`bridge_generator.dart`) — Fixed required nullable parameters incorrectly rejecting null values. Parameters marked as `required` + nullable now correctly accept explicit null.
+
+## 1.8.9
+
+### Fixed
+
+- **`bridge_generator.dart`** — Minor fixes and improvements to bridge generation.
+
+## 1.8.8
+
+This section also covers the work prepared as **1.8.7**, whose heading was
+renamed rather than added to when the version was bumped (`06eca521e`,
+whose own message says why: "1.8.7 already on pub.dev"). The 1.8.7 on
+pub.dev is a different build; this repository's 1.8.7 content shipped as
+1.8.8.
+
+### Added
+
+- **`bridge_generator.dart`** — Dynamic member dispatch for ~24 Flutter access-restricted members (e.g. `initState`, `dispose`, `build`, `activate`) using `(t as dynamic).member` fallback to avoid compile errors in generated bridge code.
+- **`bridge_generator.dart`** — Protected override filtering: skips unannotated overrides of protected/visibleForTesting base methods.
+- **`bridge_generator.dart`** — Extended `ignore_for_file` directive with `implementation_imports`, `sort_child_properties_last`, `non_constant_identifier_names`, `avoid_function_literals_in_foreach_calls`.
+- **`file_generators.dart`** — Added `ignore_for_file: avoid_print` to generated test runner files.
+
+### Fixed
+
+- Callback wrapper return cast: only skips redundant `as Object?` cast when original return type is `dynamic`/`Object`/`Object?`, preventing type errors on typed callbacks.
+
+## 1.8.6
+
+### Changed
+
+- Updated `tom_build_base` dependency from `^1.7.1` to `^2.5.2`.
+
+## 1.8.5
+
+### Added
+
+- **`bridge_config.dart`** — New `d4rtImport` field on `BridgeConfig` to configure the D4rt runtime import path. Defaults to `package:tom_d4rt/d4rt.dart`. Enables generating bridges for alternative runtimes (e.g. `package:tom_d4rt_exec/d4rt.dart`).
+- **`d4rtgen_tool.dart`** — Added `worksWithNatures: {DartProjectFolder}` to tool definition.
+
+### Changed
+
+- **`bridge_generator.dart`** — Uses configurable `d4rtImport` instead of hardcoded `package:tom_d4rt/d4rt.dart` import.
+- **`file_generators.dart`** — Dartscript file generator uses `config.d4rtImport` for the runtime import.
+- **`per_package_orchestrator.dart`** — Minor formatting cleanup.
+- **`d4rtgen_executor.dart`** — Minor formatting cleanup.
+- Renamed `version.g.dart` → `version.versioner.dart`.
+
+## 1.8.4
+
+### Bug Fixes
+- **GEN-070**: Fixed barrel export bug for multi-chain re-exports — when a symbol is exported through multiple barrel chains (e.g., `Find` class via direct dcli_core export AND indirect find.dart re-export), the show clauses are now unioned instead of the second chain being blocked by the visited set
+
+### Tests
+- Added `gen070_reexport_show_test.dart` with 3 tests for multi-chain re-export scenarios
+- All 464 tests pass
+
+## 1.8.3
+
+### Architecture
+- **v2 ToolRunner migration**: Refactored d4rtgen CLI to use v2 ToolRunner framework (`D4rtgenTool`, `D4rtgenExecutor`) for better code organization and testability
+
+### Bug Fixes
+- **GEN-064**: Fixed duplicate extension keys in generated bridge files — extensions are now deduplicated by fully qualified key before generation
+- **GEN-065**: Fixed type resolution for cross-file references — types defined in one file but used in another now correctly resolve prefixes
+- **GEN-066**: Fixed extension target resolution when the target type is parameterized with types from other files
+- **GEN-067**: Fixed resolution of types in generic bounds that reference cross-file definitions
+- **GEN-068**: Fixed method return type resolution when the return type is from a different source file than the method declaration
+- **GEN-069**: Fixed parameter type resolution for callbacks and function types that reference cross-file types
+
+### Tests
+- Added `cross_file_type_resolution_test.dart` with 132 lines of new test coverage
+- Added `d4rtgen_traversal_test.dart` with 236 lines validating v2 traversal logic
+- All 461 tests pass
+
+## 1.8.2
+
+### Republish
+- Republish with all 1.8.1 fixes (previous publish failed to complete)
+
+## 1.8.1
+
+### Bug Fixes
+- **GEN-058**: Fixed nullable generic type resolution — types like `List<RuntimeType>?` now correctly retain the `?` suffix when resolved through `_resolveGenericTypeWithPrefixes`
+- **GEN-059**: Fixed extension filtering — extensions whose target type (`onTypeName`) isn't among bridged classes/enums or built-in types are now filtered out before generation, preventing runtime errors for unresolvable extension targets
+- **Multi-barrel registration**: Added `subPackageBarrels()` static method to bridge classes and registration loop in dartscript.b.dart. This enables imports like `import 'package:dcli_core/dcli_core.dart'` to work when the primary package is `dcli` — the module loader now finds content under sub-package URIs
+- **Content-based barrel filtering**: `getImportBlock()` and `subPackageBarrels()` now use content-based filtering (derived from actual bridged class/enum/function/extension source URIs) instead of type-reference-based filtering. This prevents including packages that are only type-referenced but not bridged (e.g., crypto with skipReExports)
+
+## 1.8.0
+
+### Architecture
+- **Direct source file imports**: Generator now imports source files directly (`import 'package:<pkg>/<path>.dart' as $<pkgname>_<N>`) instead of relying solely on barrel exports. This resolves issues with types not being accessible through barrel files and eliminates prefix collisions across packages.
+
+### Bug Fixes
+- **GEN-055/056**: Fixed type dependency resolution and extension on-type URI resolution for cross-package types
+- **GEN-057**: Fixed return type bridging and prefix stripping in API surface dependencies — return types now correctly use the source file's own import alias
+- **Part-of files**: Fixed prefix resolution for `part of` files and extensions whose on-type comes from a different package
+- **G-DCLI-05/07/08/11/12/13/14**: All DCli bridge issues resolved — show/hide clause propagation, callback bridging, and DCli-specific type handling
+
+### Tests
+- Updated 46 test expectations to match new direct source import generation patterns (`$<pkgname>_<N>` prefixes and `D4.callInterpreterCallback`)
+- All 444 tests pass
+
+## 1.7.0
+
+### Bug Fixes
+- **G-DCLI-07/11: Show/hide clause propagation**: Fixed export parsing to properly propagate show/hide clauses when following re-exports. When a barrel file re-exports from another package with a `show` clause (e.g., `export 'package:dcli_core/dcli_core.dart' show FindItem`), nested exports now correctly filter symbols. This fixes cases where dcli's `find()` was incorrectly bridged from dcli_core (callback-based) instead of dcli's own version (returns `FindProgress`).
+  - Added `mergeWithParent()` method to `ExportInfo` for clause merging
+  - Added `parentShowClause`/`parentHideClause` parameters to `parseExportFiles()`
+  - Show clauses merge via intersection; hide clauses merge via union
+
+## 1.6.1
+
+### Bug Fixes
+- **SDK path detection**: Compiled d4rtgen binaries now correctly locate the Dart SDK. The analyzer's default SDK detection fails for compiled binaries because `Platform.resolvedExecutable` returns the binary path instead of the Dart executable. Added `_getSdkPath()` method that checks `DART_SDK` environment variable first, then derives SDK from `dart` in PATH (handles Flutter's embedded SDK structure).
+
+## 1.6.0
+
+### Features
+- **Record type support (G-TYPE-1, G-TYPE-2)**: Full support for Dart records as function parameters and return types. The generator emits inline conversion code:
+  - Parameters: `InterpretedRecord` → native Dart record at call sites
+  - Returns: Native Dart record → `InterpretedRecord` for interpreter access
+  - New helpers: `_isRecordType()`, `_parseRecordType()`, `_generateRecordParamExtraction()`, `_generateRecordReturnWrapper()`
+
+### Bug Fixes
+- **G-TE-1**: Added `sourceFilePath` parameter to global function type resolution. Type bounds in generic parameters now resolve correctly for global functions.
+- **G-TE-2**: Fixed type erasure test expectations — import prefixes for non-barrel-exported types now correctly use auxiliary prefixes.
+- **G-OP-8**: Fixed barrel export collision — `Point` class now exports from `run_static_object_methods.dart` (which has `operator ==`, `hashCode`, `toString`) instead of `run_constructors.dart`.
+- **GEN-045**: Barrel name collision for constrained mixins resolved as side effect of G-OP-8 fix.
+
+### Tests
+- All 431 tests now pass (was 430 pass, 1 fail)
+- Full dart_overview coverage suite validated
+
+## 1.5.2
+
+### Bug Fixes
+- **GEN-049**: Extension methods on bridged classes from imported libraries are now discovered. The generator walks the import tree of each source file to collect extensions from imported packages. This enables D4rt scripts to call extension methods from packages like `package:collection` when they are in scope.
+- **GEN-048**: Pure `mixin` declarations are now bridged. Previously only `mixin class` declarations were handled. Mixins are bridged as abstract classes without constructors, including their methods, getters, setters, and fields.
+- **GEN-020**: Global exclusions no longer merge across modules. Each module's exclusions now apply only to packages belonging to that module, preventing accidental cross-filtering.
+- **GEN-046**: GlobalsUserBridge overrides now work correctly. Fixed example project annotations and method signatures. The generator already correctly wired up overrides—the issue was missing `@D4rtGlobalsUserBridge` annotations in user code.
+- **GEN-007**: Expanded `_knownFunctionTypeAliases` from 7 to ~50 common function type aliases. Now covers D4rt, Dart core, Flutter, and async package types for better function type detection in syntactic fallback.
+- **GEN-009**: Improved `_isGenericTypeParameter()` heuristic to recognize multi-character type parameter patterns like `T1`, `T2`, `K2`, `V2` and `TValue`, `TOutput`, `TState`, etc. Eliminates false "Missing export" warnings.
+- **GEN-021**: Verified this issue is already resolved — no builder-skip logic exists in the current codebase.
+- **GEN-011**: Global function/variable generation counts now report actual values instead of hardcoded 0.
+- **GEN-013**: Verified already resolved — approximate class count (files × 10) pattern no longer exists.
+- **GEN-019**: Barrel preference now prioritizes primary barrel (`barrelImport`) over same-package barrels for consistent `$pkg` prefix usage.
+- **GEN-008**: Expanded `mapPrivateSdkLibrary()` from 6 to 20+ entries covering common SDK private libraries. Added optional warning callback for unknown libraries.
+- **GEN-025**: Enhanced record type resolution to handle named field groups `({int x, String y})` and mixed positional/named fields.
+- **GEN-027**: Added explicit `InvalidType` handling in `_collectInfoFromDartType()` to gracefully skip analyzer resolution failures.
+
+### New Features
+- `_collectExtensionsFromImports()`: New function that walks library imports and collects visible extensions
+- `visitMixinDeclaration()`: Added to both visitors to handle pure mixin declarations
+- `_getExclusionsForPackage()`: New helper that returns exclusions scoped to a package's owning modules
+- Verbose mode shows `GEN-049: Discovered extension {name} on {type} from import {uri}` messages
+
+### Example Fixes
+- `userbridge_override`: Added missing `@D4rtGlobalsUserBridge` and `@D4rtUserBridge` annotations
+- `userbridge_override`: Fixed `MyListUserBridge` operator override signatures
+
+### Tests
+- Added `test/import_extension_discovery_test.dart` — 5 tests for import-based extension discovery
+- Added `test/fixtures/external_extensions.dart` and `test/fixtures/imports_external_extensions.dart` test fixtures
+- Added `test/mixin_bridge_generation_test.dart` — 12 tests for mixin bridging
+- Added `test/fixtures/mixin_test_source.dart` test fixture with pure mixin declarations
+
+## 1.5.1
+
+### Documentation
+- **Config filename standardization**: Updated all documentation references from `tom_build.yaml` to `buildkit.yaml`. All CLI help text, README, user guides, and code comments now use the current filename.
+
+### Internal
+- `d4rt_gen.dart`: CLI help text and print statements reference `buildkit.yaml`
+- `_printBuildYamlSection()`: Uses `TomBuildConfig.projectFilename` constant
+- `BuildConfigLoader`: Updated doc comments
+
+### Dependencies
+- Updated `tom_build_base` to `^1.3.2` (buildkit.yaml references)
+
+## 1.5.0
+
+### Features
+- **Test infrastructure**: New `testing.dart` library with `D4rtTester` — run D4rt test scripts that verify bridge correctness by executing DartScript code against real bridges.
+- **D4rtTestResult**: Structured pass/fail/skip/error results with detailed assertion messages for programmatic test evaluation.
+- **IssueTestHelper**: Specialized test helper for writing regression tests against known generator issues (GEN-xxx).
+- **94 D4rt test scripts**: Comprehensive test coverage across 6 example projects — constructors, fields, methods, operators, generics, inheritance, parameters, async, enums, and UserBridge overrides.
+- **Test coverage documentation**: `doc/test_coverage.md` with feature inventory across 10 categories.
+
+### Refactoring
+- **CLI scanning replaced with ProjectDiscovery**: Eliminated ~200 lines of manual directory traversal in `d4rt_gen.dart`, replaced with `ProjectDiscovery.resolveProjectPatterns()` and `scanForProjects()` from `tom_build_base`.
+- **Removed dead CLI code**: Deleted unused `d4rt_generator_cli.dart` (274 lines) and `cli.dart` barrel export.
+- **Shared YAML utilities**: Replaced private `_yamlToJson`/`_yamlListToJson` in `BuildConfigLoader` with shared `yamlToMap()` from `tom_build_base`.
+
+### Documentation
+- Expanded `doc/issues.md` to 46 documented issues (GEN-001 through GEN-046).
+- Added `doc/test_coverage.md` — full bridge generator feature inventory with pass/fail status.
+- Added project-level `_copilot_guidelines/testing.md`.
+
+### Dependencies
+- Updated `tom_build_base` to `^1.2.0` (adds `yamlToMap`/`yamlListToList` utilities).
+
+## 1.4.0
+
+### Features
+- **CLI: buildkit.yaml support**: The `d4rtgen` CLI now reads configuration from `buildkit.yaml` files (in addition to `build.yaml` and `d4rt_bridging.json`), using the shared `tom_build_base` infrastructure.
+- **CLI: Multi-project and glob support**: `--project` option now accepts comma-separated lists and glob patterns (e.g., `--project=tom_*_builder,xternal/tom_module_*/*`).
+- **CLI: `--list` flag**: List discovered projects without generating bridges.
+- **CLI: ProjectDiscovery integration**: Proper scan vs recursive semantics — scans directories until a project boundary, recursive mode also looks inside projects for nested subprojects.
+- **Known issues documentation**: Comprehensive `doc/issues.md` documenting 30 known issues and limitations with concrete cause→effect examples from real generated bridge code.
+
+### Bug Fixes
+- **Multi-barrel registration (GEN-030)**: Modules with multiple barrel files (e.g., `dcli.dart` + `dcli_core.dart`) now register bridges under ALL barrel import paths. Previously only the primary `barrelImport` was registered, causing `SourceCodeException: Module source not preloaded for URI` when scripts imported secondary barrels.
+- **CLI export filtering params (GEN-028)**: CLI code path now passes `followAllReExports`, `skipReExports`, `followReExports`, and `excludeSourcePatterns` from module config to the generator. Previously these were silently ignored, causing the CLI to follow all re-exports regardless of configuration.
+- **CLI global export filtering (GEN-029)**: CLI code path now filters global functions, variables, and enums by barrel export show/hide clauses, matching the build_runner path behavior. Previously the CLI would generate bridges for non-exported globals, causing compile errors.
+- **Import block for multi-barrel modules**: `getImportBlock()` now returns import statements for all barrel files, not just the primary barrel.
+
+### Dependencies
+- Added `tom_build_base: ^1.0.0` as a pub.dev dependency (replaces path dependency).
+
+### Documentation
+- Added `doc/issues.md` with 30 documented issues (GEN-001 through GEN-030) including concrete source→bridge→problem examples.
+- Updated `doc/d4rt_generator_cli_user_guide.md` with `buildkit.yaml` configuration and multi-project/glob support.
+
+## 1.3.0
+
+### Features
+- **Per-package bridge generation**: Generate separate bridge files per package to improve code organization and enable deduplication
+- **Cross-package support**: Package URI support for generating bridges that reference types from other packages
+- **Bridge deduplication**: Automatic deduplication for enums, variables, and global functions with `sourceUri` tracking
+- **Element-aware exclusions**: Exclude specific elements by source file pattern
+- **Show/hide filtering**: Filter enums, functions, and variables with show/hide lists
+- **Callback wrapping**: Automatic wrapping of function-type parameters for proper bridge integration
+- **Improved dartscript generation**: Generated file headers and stdlib imports in dartscript output
+
+### Bug Fixes
+- Fixed type erasure for complex generic types
+- Fixed dartscript.dart generation for cross-package scenarios
+- Fixed unwrappable defaults using combinatorial dispatch
+- Fixed typedef callback wrapping
+- Fixed auxiliary import resolution for complex dependency graphs
+- Fixed Windows filename compatibility (renamed files with invalid characters)
+
+### Breaking Changes
+- Per-package generation is now the default behavior
+- Generator output structure may differ from 1.2.x for multi-package projects
+
+### Internal
+- Consolidated duplicated file generation code into file_generators.dart
+- Improved error aggregation for bridge registration failures
+- Refactored type resolution for better accuracy
+
+## 1.2.0
+
+### Features
+- **GlobalsUserBridge**: New override system for top-level global variables, getters, and functions
+  - `overrideGlobalVariableXxx` - override global variable values
+  - `overrideGlobalGetterXxx` - override global getters with lazy evaluation functions
+  - `overrideGlobalFunctionXxx` - override global function implementations
+- **Getter vs Variable distinction**: Generator now correctly uses `registerGlobalGetter` for top-level getters (lazy evaluation) and `registerGlobalVariable` for constants/variables
+- **Operator overrides enabled**: Removed outdated skip for operator UserBridge overrides - operators are now fully supported
+
+### Documentation
+- Updated bridgegenerator_user_guide.md with GlobalsUserBridge documentation
+- Updated bridgegenerator_user_reference.md with global override reference
+- Added global overrides section to userbridge_override_design.md
+
+## 1.1.2
+
+### Changes
+- **Repository reorganization**: Moved to tom_module_d4rt repository as part of modular workspace structure
+- Updated repository URL to https://github.com/al-the-bear/tom_module_d4rt
+- Package now published to pub.dev (removed `publish_to: none`)
+- **followReExports feature**: Bridge generator can now follow re-exports from external packages
+
+## 1.1.1
+
+### Fixes
+- **Operator argument typing**: Operator bridges now use `D4.getRequiredArg<T>()` for properly typed argument extraction
+- This ensures type-safe operator implementations (e.g., `operator+` extracts `other` as the correct type)
+- Affected operators: `[]`, `[]=`, and all binary operators (`+`, `-`, `*`, `/`, `%`, `&`, `|`, `^`, `<<`, `>>`, `>>>`, `<`, `>`, `<=`, `>=`, `==`)
+
+## 1.1.0
+
+### Features
+- **Operator bridging**: Full support for all Dart operators (+, -, *, /, [], []=, ==, <, >, etc.)
+- **UserBridge override system**: Selective method overrides via `*UserBridge` companion classes extending `D4UserBridge`
+- Override individual constructors, getters, setters, methods, and operators while generating the rest
+
+### Documentation
+- Added comprehensive operator override reference
+- Added UserBridge override design documentation
+
+## 1.0.1
+
+- Fix: BuildRunnerFileWriter now writes directly to filesystem for `build_to: source` compatibility
+- This fixes `UnexpectedOutputException` when using build_runner integration
+
+## 1.0.0
+
+- Initial version.

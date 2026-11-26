@@ -429,7 +429,16 @@ class InterpreterRunner implements GuestRunner {
       Map<String, Map<String, Object?>> staticMap,
     ) {
       for (final entry in env.values.entries) {
-        final val = entry.value;
+        var val = entry.value;
+        // tom_d4rt >= 1.233 stores every top-level variable (and every field)
+        // with an initializer in a lazy `LateVariable` holder (GitHub #10), so
+        // the binding is the holder rather than the value. Unwrap it — only
+        // when already initialized, so a reload never runs an initializer the
+        // program had not run — and snapshot what it holds.
+        if (val is LateVariable) {
+          if (!val.isInitialized) continue;
+          val = val.value;
+        }
         if (val is InterpretedClass) {
           if (val.staticFields.isNotEmpty) {
             staticMap[entry.key] = Map.of(val.staticFields);
@@ -500,6 +509,16 @@ class InterpreterRunner implements GuestRunner {
       for (final entry in topLevelMap.entries) {
         if (env.values.containsKey(entry.key)) {
           final existing = env.values[entry.key];
+          // The new generation binds the declaration to a fresh, uninitialized
+          // `LateVariable`; assign into it so the lazy binding answers with the
+          // preserved object instead of running its initializer again.
+          if (existing is LateVariable) {
+            if (existing.isInitialized) continue;
+            try {
+              existing.assign(entry.value);
+            } catch (_) {}
+            continue;
+          }
           if (existing is! InterpretedClass &&
               existing is! InterpretedFunction &&
               existing is! Callable) {

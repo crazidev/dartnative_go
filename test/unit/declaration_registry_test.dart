@@ -29,11 +29,10 @@ SMethodDeclaration _method(
   );
 }
 
-SFormalParameter _requiredPositional(String name) => SSimpleFormalParameter(
+SFormalParameter _requiredPositional(String name) => SRegularFormalParameter(
   offset: 0,
   length: 0,
   name: SSimpleIdentifier(offset: 0, length: 0, name: name),
-  isPositional: true,
   isNamed: false,
   isRequired: true,
 );

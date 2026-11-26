@@ -95,5 +95,14 @@ dependency_overrides:
   # stable. See third_party/riverpod/pubspec.yaml for the full patch note.
   riverpod:
     path: third_party/riverpod
+  # DartNative: the whole tom_d4rt family is vendored so our patches live with
+  # the app instead of in a fork's pub-cache copy. See
+  # third_party/tom_d4rt_ast/pubspec.yaml for the patch list.
+  tom_d4rt:
+    path: third_party/tom_d4rt
   tom_d4rt_ast:
-    path: pkgs/tom_d4rt_ast
+    path: third_party/tom_d4rt_ast
+  tom_d4rt_generator:
+    path: third_party/tom_d4rt_generator
+  tom_d4rt_exec:
+    path: third_party/tom_d4rt_exec

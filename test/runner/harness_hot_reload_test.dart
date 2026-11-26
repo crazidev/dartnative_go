@@ -27,8 +27,9 @@ import 'package:dartnative/dartnative.dart';
 
 int counter = 0;
 
-void increment() {
+int increment() {
   counter += 1;
+  return counter;
 }
 
 void main() {
@@ -53,8 +54,9 @@ import 'package:dartnative/dartnative.dart';
 
 int counter = 0;
 
-void increment() {
+int increment() {
   counter += 10;
+  return counter;
 }
 
 void main() {
@@ -114,6 +116,8 @@ void main() {
       // `test/runner/riverpod_hot_reload_test.dart`. Here we prove the reload path
       // serves edited code: V2's `increment` adds 10, V1's adds 1.
       await harness.evaluate({'main.dart': _v1});
+      // `increment` returns its value explicitly: a block body that runs off
+      // its end yields null since tom_d4rt 1.235.0 (Dart semantics).
       expect(await harness.callFunction('increment'), isNotNull);
       await harness.hotReload({'main.dart': _v2});
       final counter = await harness.callFunction('increment');

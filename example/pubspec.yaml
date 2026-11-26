@@ -42,6 +42,9 @@ dartnative:
     - assets/dn-logo.png
     - assets/dn-logo-1.png
   fonts:
+    - family: ArialRoundedBold
+      fonts:
+        - asset: assets/fonts/ArialRoundedBold.ttf
     - family: AndaleMono
       fonts:
         - asset: assets/fonts/AndaleMono.ttf

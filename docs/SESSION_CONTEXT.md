@@ -109,12 +109,12 @@ reach devices (interpreter, retry, and lineage client all ship in the binary).
 
 | # | Fix | Files |
 |---|-----|-------|
-| 1 | Cold-start bridge registration: same-type re-registration swaps the lazy thunk instead of eagerly building two `BridgedClass` member maps (`registerBridgedDefinitions` ~8 s → warm-parent build is lazy) | `pkgs/tom_d4rt_ast/.../environment.dart` |
+| 1 | Cold-start bridge registration: same-type re-registration swaps the lazy thunk instead of eagerly building two `BridgedClass` member maps (`registerBridgedDefinitions` ~8 s → warm-parent build is lazy) | `third_party/tom_d4rt_ast/.../environment.dart` |
 | 2 | Reload re-merge equivalence: same native class/enum rebuilt in a new generation compares by type/value-set, not object identity (killed the `UnmodifiableListView` export-conflict on reload) | same file |
 | 3 | AST bundle explorer: structured `AstProfileSnapshot` (always-on cheap timings, sized on demand) + DevTool **AST BUNDLE** panel + identical verbose `[PROFILE]` logs; the panel is gated on the server-side `--profile` flag (`profile` manifest field → `profileEnabled` bundle field) | `lib/src/runner/ast_profile.dart` (new), `ast_interpreter_runner.dart`, `lib/src/devtool/ast_profile_panel.dart` (new), `devtool_sheet.dart`, `devtool_overlay.dart`, `lib/main.dart` |
 | 4 | Patch lineage (`?base=` + `X-Ast-Bundle` + `astPending`): deltas apply only to their recorded base; mismatches fall back to full fetch instead of franken-bundles; devices wait out the background initial build instead of falling back to source | `ast_builder.dart`, `lib/src/cli/server/server.dart`, `bundle_loader.dart`, `interpreter_runner.dart` |
 | 5 | Pushed-route rebind lookup via the loader's live `moduleCache` (entry merges + bundle ASTs/sources never see transitive screens — the `[HotReload] could not find X` stale-screen bug); incremental rebuilds preserve + refresh bundle `sources` | `native_bottomsheet_manager.dart`, `ast_builder.dart` |
-| 6 | `==` / `!=` never invoke zero-arg callbacks (a `callback == null` guard executed the callback — the share-demo loop) | `pkgs/tom_d4rt_ast/.../interpreter_visitor.dart` |
+| 6 | `==` / `!=` never invoke zero-arg callbacks (a `callback == null` guard executed the callback — the share-demo loop) | `third_party/tom_d4rt_ast/.../interpreter_visitor.dart` |
 
 New tests: `environment_lazy_rereg_test`, `environment_import_equivalence_test`
 (pkgs), `ast_callback_identity_test`, `ast_module_cache_lookup_test`,

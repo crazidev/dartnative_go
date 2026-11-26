@@ -904,7 +904,7 @@ class IncrementalAstBundler {
     final classBytes = <String, int>{};
     for (final declaration in unit.declarations) {
       if (declaration is! SClassDeclaration) continue;
-      final className = declaration.name?.name ?? '(unnamed)';
+      final className = declaration.namePart.typeName.name;
       classBytes[className] = utf8
           .encode(jsonEncode(declaration.toJson()))
           .length;
