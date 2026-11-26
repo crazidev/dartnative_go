@@ -497,7 +497,10 @@ class InterpreterVisitor extends GeneralizingAstVisitor<Object?> {
                     final savedEnv = environment;
                     try {
                       environment = declarationEnv;
-                      return initializer.accept<Object?>(this);
+                      return ResolvedBinding.fieldValue(
+                        node.variables.type,
+                        initializer.accept<Object?>(this),
+                      );
                     } finally {
                       environment = savedEnv;
                     }
@@ -17424,6 +17427,22 @@ class InterpreterVisitor extends GeneralizingAstVisitor<Object?> {
         Logger.debug(
           '[_matchAndBind] Matching pattern ${pattern.runtimeType} against value ${value.runtimeType}',
         );
+      }
+      // Coerce native Dart positional records (e.g. `(int, T)` yielded by
+      // `Iterable.indexed`) into an InterpretedRecord so record patterns match.
+      if (value is! InterpretedRecord) {
+        if (value is (Object?, Object?)) {
+          value = InterpretedRecord([value.$1, value.$2], const {});
+        } else if (value is (Object?, Object?, Object?)) {
+          value = InterpretedRecord([value.$1, value.$2, value.$3], const {});
+        } else if (value is (Object?, Object?, Object?, Object?)) {
+          value = InterpretedRecord(
+            [value.$1, value.$2, value.$3, value.$4],
+            const {},
+          );
+        } else if (value is (Object?,)) {
+          value = InterpretedRecord([value.$1], const {});
+        }
       }
       if (value is! InterpretedRecord) {
         if (Logger.isDebug) {

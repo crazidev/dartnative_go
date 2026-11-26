@@ -243,6 +243,49 @@ void _applyAstBridgePostFixes({Set<String>? only}) {
         return '${m[1]} curve = $prefix.Curves.linear, int durationMs = 0';
       },
     );
+    // ValueNotifier<T> is mutable (has `set value(T)`): narrowing
+    // `ValueNotifier(0)` to `ValueNotifier<int>(0)` via GEN-075 breaks
+    // `ValueNotifier<double> x = ValueNotifier(0); x.value = 1.5;` and
+    // nullable `ValueNotifier<T?>` assigned `null`.
+    content = content.replaceAllMapped(
+      RegExp(
+        r"(BridgedClass _createValueNotifierBridge\(\) \{[\s\S]*?'value',\n\s*'ValueNotifier',\n\s*\);\n\s*)"
+        r'// GEN-075: Preserve generic type parameter from runtime value\n'
+        r'\s*switch \(value\) \{[\s\S]*?default:\n'
+        r'\s*return (\$dartnative_\d+\.ValueNotifier)\(value\);\n'
+        r'\s*\}',
+      ),
+      (m) => '${m[1]}return ${m[2]}<dynamic>(value);',
+    );
+    // ListenableWatch.watch on interpreted ChangeNotifier subclasses:
+    // `target` is an InterpretedInstance whose `bridgedSuperObject` is the
+    // native ChangeNotifier (a Listenable). Unwrap via D4.validateTarget and
+    // return `target` so `final hist = _history.watch<_ClickHistory>(context)`
+    // preserves the guest instance.
+    content = content.replaceAllMapped(
+      RegExp(
+        r"final t = target as (\$dartnative_\d+)\.Listenable;\n"
+        r"\s*return Function\.apply\(\n"
+        r"\s*t\.watch,\n"
+        r"\s*positional,\n"
+        r"\s*named\.map\(\(k, v\) => MapEntry\(Symbol\(k\), v\)\),\n"
+        r"\s*\);",
+      ),
+      (m) {
+        final p = m[1];
+        return 'final raw = target is InterpretedInstance\n'
+            '                ? (target.bridgedSuperObject ?? target.nativeProxy ?? target)\n'
+            '                : target;\n'
+            '            final t = D4.validateTarget<$p.Listenable>(raw, \'Listenable\');\n'
+            '            final ctx = positional.isNotEmpty ? positional[0] : null;\n'
+            '            if (ctx is $p.BuildContext) {\n'
+            '              try {\n'
+            '                t.watch(ctx);\n'
+            '              } catch (_) {}\n'
+            '            }\n'
+            '            return target;';
+      },
+    );
     dnBridgesFile.writeAsStringSync(content);
   }
 

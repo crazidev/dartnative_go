@@ -75,6 +75,16 @@ class BridgedClass implements RuntimeType {
   ///
   /// The result is unmodifiable: it is shared with every other caller through
   /// [_transitiveCache], so mutating it would corrupt the next query.
+  static final Map<String, Set<String>> _transitiveSetCache = {};
+
+  static Set<String> transitiveSupertypeNameSet(String className) {
+    final cached = _transitiveSetCache[className];
+    if (cached != null) return cached;
+    final set = Set<String>.unmodifiable(transitiveSupertypeNames(className));
+    _transitiveSetCache[className] = set;
+    return set;
+  }
+
   static List<String> transitiveSupertypeNames(String className) {
     final cached = _transitiveCache[className];
     if (cached != null) return cached;
@@ -316,6 +326,16 @@ class BridgedClass implements RuntimeType {
 
       if (nativeType == other.nativeType) return true;
 
+      // GEN-075 fast path: check native type hierarchy via O(1) isAssignable
+      // before coercion-map hashing or supertype walks (e.g. Container <: Widget,
+      // StatelessElement <: BuildContext).
+      if (value != null && other.isAssignable != null) {
+        final nativeValue = value is BridgedInstance
+            ? value.nativeObject
+            : value;
+        if (other.isAssignable!(nativeValue)) return true;
+      }
+
       // ghissues28: a registered coercion from this native type to the
       // other's declares this type a stand-in for it - the twins' dart:ui
       // `StrutStyle(...)` builds a painting StrutStyle and coerces it at
@@ -333,16 +353,6 @@ class BridgedClass implements RuntimeType {
       // int, double are subtypes of num
       if (other.name == 'num' && (name == 'int' || name == 'double')) {
         return true;
-      }
-
-      // GEN-075: Check native type hierarchy via isAssignable
-      // When the value's native object satisfies the target class's isAssignable,
-      // the native type IS a subtype (e.g., Row is a subtype of Widget).
-      if (value != null && other.isAssignable != null) {
-        final nativeValue = value is BridgedInstance
-            ? value.nativeObject
-            : value;
-        if (other.isAssignable!(nativeValue)) return true;
       }
 
       // RC-7b: Check static supertype registry for native class hierarchy.
@@ -364,7 +374,7 @@ class BridgedClass implements RuntimeType {
       final supertypes = _supertypeRegistry[name];
       if (supertypes == null) return false;
       if (supertypes.contains(other.name)) return true;
-      return transitiveSupertypeNames(name).contains(other.name);
+      return transitiveSupertypeNameSet(name).contains(other.name);
     }
 
     return false;

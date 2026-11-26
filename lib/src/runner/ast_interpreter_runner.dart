@@ -13,6 +13,7 @@ import '../interpreter/ast/ast_asset_bridge.dart';
 import '../interpreter/ast/ast_dartnative_sub_barrels.dart';
 import '../interpreter/ast/host_api_bridge.dart';
 import '../interpreter/ast/ast_widget_proxies.dart';
+import '../interpreter/ast/ast_perf_trace.dart';
 import '../interpreter/ast/dartscript.b.dart' as ast_bridges;
 import '../interpreter/ast/isolate_compute_bridge.dart';
 import '../interpreter/ast/server_component_bridge.dart';
@@ -204,6 +205,12 @@ class AstInterpreterRunner {
       onBlankBuild: onGuestBlankBuild,
       onRecovered: onGuestRecovered,
     );
+    // Opt-in per-frame interpreter perf summary (`--dart-define=DNGO_PERF_TRACE=true`).
+    const perfTrace = bool.fromEnvironment('DNGO_PERF_TRACE');
+    if (perfTrace) {
+      AstPerfTrace.enabled = true;
+      AstPerfTrace.sink = onLog;
+    }
     // Asset-aware Image/AssetImage overrides (last registration wins),
     // mirroring the source engine's registerAssetAwareBridges.
     registerAstAssetAwareBridges(

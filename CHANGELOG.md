@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Performance & Runtime Optimizations
+- **AST interpreter hot-path acceleration (`third_party/tom_d4rt_ast`)** — reduced interpreter share of frame CPU from ~89% to ~23% in both AOT and JIT:
+  - **O(1) parameter & return type checking**: `ResolvedBinding.bind` (`callable.dart`), `visitReturnStatement` (`interpreter_visitor.dart`), and `BridgedClass.isSubtypeOf` (`bridged_types.dart`) now fast-path non-generic bridged types via `BridgedClass.isAssignable` before falling back to `Environment.getRuntimeType` or supertype walks.
+  - **Persistent module-scoped bridge caches**: `Environment` (`environment.dart`) now hosts versioned `_resolvedTypeCache`, `_unbridgedTypeCache`, `_toBridgedClassCache`, `_runtimeTypeCache`, and `_assignableBridgesCache` on the nearest bridge-owning enclosing environment (`_cacheHostEnv()`) instead of ephemeral per-call function frames, and runs exact-`Type` chain lookup before any linear scan — eliminating repeated O(N) `LazyBridgeRegistry` scans and `RuntimeD4rtException` + stack-trace formatting on every `build(BuildContext)`.
+  - **Fast primitive binary operators & extension lookup**: `visitBinaryExpression` fast-paths `num`/`String`/`bool`/`null` `==`, `!=`, and `String +` without scanning extensions; `Environment.findExtensionMember` tracks `_namedExtensionsRaw` separately from `_values`, removes `sync*` allocation, and checks `lookup(ext) != null` before running `_matchesExtensionType`.
+  - **O(1) supertype sets, empty coercion short-circuit, & sync parent-map skip**: `BridgedClass.transitiveSupertypeNameSet` caches a `Set<String>` for O(1) subtype lookups; `D4.hasTypeCoercion` short-circuits when `_typeCoercionsByType.isEmpty`; `InterpretedFunction._callImpl` skips `_buildParentMap` for synchronous calls.
+  - **Canonical `const` widget/list caching**: `tom_d4rt_ast` canonicalizes `const` interpreted widgets, bridged widgets, and `const` lists so unchanged subtrees preserve identity across rebuilds (`test/runner/ast_const_widget_caching_test.dart`).
+- **Widget proxy identity & lifecycle optimizations (`lib/src/interpreter/ast/ast_widget_proxies.dart`)**:
+  - Reuses `instance.nativeProxy` (when `identical(existing.visitor, visitor)`) across `StatelessWidget`, `StatefulWidget`, `ConsumerWidget`, `ConsumerStatefulWidget`, and `InheritedWidget` interface proxies so `identical(oldWidget, newWidget)` holds in `DartNativeReconciler` for cached and `const` interpreted widgets.
+  - Guards hot-reload `createState()` + `_transferStateFields` + extra `setState` in `didUpdateWidget` behind `!identical(newOwner.visitor, visitor)` so ordinary parent rebuilds keep existing `State` instances intact.
+  - Reuses the active log-capture `Zone` in `_runWithLogCapture` to avoid nested `Zone` allocations per widget build, and logs guest/callback errors with `[BridgeErr]` prefix.
+- **Pause background LAN scanner while a guest app runs (`lib/src/client/network_scanner.dart`, `lib/src/app_shell.dart`)**:
+  - Added `DartGoNetworkScanner.pause()` / `resume()`, paused periodic SharedPreferences FFI + HTTP manifest polling during active guest sessions, and suppressed root `_DartNativeGoState.setState()` while the preview route is open.
+- **Opt-in frame profiler (`lib/src/interpreter/ast/ast_perf_trace.dart`)**:
+  - Added `AstPerfTrace` (gated behind `--dart-define=DNGO_PERF_TRACE=true`, zero cost when off) to log per-window interpreted build, `CustomPainter.paint`, `setState`, `InheritedWidget`, and frame-gap telemetry.
+
+### Fixed
+- **Guest asset bridges for `loadAssetBytes`, `Lottie`, `AudioPlayer`, and `dartnative_path_provider` (`lib/src/interpreter/ast/ast_asset_bridge.dart`, `lib/src/app_shell.dart`)**:
+  - Added top-level `loadAssetBytes(String assetKey)` override reading disk-cached guest assets (`AppCache`) before host bundle fallback, plus automatic pre-caching of guest data/media assets (`.lrc`, `.txt`, `.frag`, `.mp3`, `.wav`, `.mp4`, etc.) on launch so Spotify lyrics, canvas video loops, and audio tracks work out of the box.
+  - Added asset-aware `Lottie(asset: ...)` and `LottiePreWarm.warmAssets(...)` bridges that fetch and cache guest Lottie JSONs over HTTP into memory and `AppCache`, fixing blank stickers in Stickers Keyboard and Lottie asset grids.
+  - Added asset-aware `AudioPlayer.setAsset(...)` override routing guest audio assets through `AppCache` + `setPath(...)` (preserving queued `play()` calls during cold fetches).
+  - Added `dart:io` sandbox directory fallback for `dartnative_path_provider` (`getTemporaryDirectory`, `getApplicationDocumentsDirectory`, `getApplicationSupportDirectory`, `getApplicationCacheDirectory`) when `dlsym` throws `ArgumentError` on Intel `x86_64` iOS Simulators (where the xcframework ships an arm64-only simulator slice).
+
 ### Added
 - **Assets & fonts server rewrite, on-demand native font registration, and client caching**:
   - Added ETag + `304 Not Modified` support across `/assets/...`, `/asset?path=...`, and `/fonts/<family>.ttf`, plus `/assets.json` and `/icon-fonts.json` endpoints.

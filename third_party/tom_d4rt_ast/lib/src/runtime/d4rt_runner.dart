@@ -1914,6 +1914,7 @@ class D4rtRunner {
         moduleContext: moduleLoader,
         declarationRegistry: declarationRegistry,
       );
+      _visitor!.clearConstCaches();
       declarationRegistry?.commitGeneration();
       Logger.debug(
         '[D4rtRunner.executeComponentBundle] Loaded component entry: '

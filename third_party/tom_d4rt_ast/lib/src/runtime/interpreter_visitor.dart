@@ -239,7 +239,8 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
 
     final lines = <String>[];
     for (var i = 0; i < guestFrames.length; i++) {
-      final frame = guestFrames[guestFrames.length - 1 - i]; // Top of stack first
+      final frame =
+          guestFrames[guestFrames.length - 1 - i]; // Top of stack first
       final frameNode = (i == 0 && errorNode != null)
           ? errorNode
           : (frame.currentNode ?? currentNode);
@@ -310,6 +311,198 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
   /// views are unmodifiable, so sharing one instance across hits is safe.
   final Map<SSetOrMapLiteral, Object> _constCollectionCache =
       <SSetOrMapLiteral, Object>{};
+
+  /// Canonicalization caches for `const` constructor calls, `const` list
+  /// literals, and local `const` variable initializers.
+  ///
+  /// Scoped to this [InterpreterVisitor] instance (a fresh visitor is created
+  /// on every hot reload, and [clearConstCaches] clears them on component
+  /// reloads), so canonical `const` widgets (`const SizedBox(...)`,
+  /// `const _SectionHeader(...)`, etc.) return `identical()` instances across
+  /// rebuilds within a generation — letting `DartNativeReconciler` skip
+  /// rebuilding their subtrees — while still rebuilding cleanly after hot reload.
+  static final Object _kNotCacheable = Object();
+  static final List<Object?> _kNotCacheableList = List<Object?>.unmodifiable(
+    const <Object?>[],
+  );
+  final Map<SInstanceCreationExpression, Object?> _constInstanceCache =
+      <SInstanceCreationExpression, Object?>{};
+  final Map<SListLiteral, List<Object?>> _constListCache =
+      <SListLiteral, List<Object?>>{};
+  final Map<SVariableDeclaration, Object?> _constLocalCache =
+      <SVariableDeclaration, Object?>{};
+
+  /// Clears all per-visitor `const` canonicalization caches.
+  void clearConstCaches() {
+    _constCollectionCache.clear();
+    _constInstanceCache.clear();
+    _constListCache.clear();
+    _constLocalCache.clear();
+  }
+
+  /// True when [typeArgsNode] references no in-scope [TypeParameter].
+  bool _hasTypeParameterInTypeArgs(STypeArgumentList? typeArgsNode) {
+    if (typeArgsNode == null) return false;
+    for (final arg in typeArgsNode.arguments) {
+      if (arg is SNamedType) {
+        final name = arg.name?.name;
+        if (name != null) {
+          final resolved = environment.lookup(name);
+          if (resolved is TypeParameter) return true;
+        }
+        if (_hasTypeParameterInTypeArgs(arg.typeArguments)) return true;
+      } else {
+        // Conservatively bail on complex function/record type args.
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Returns true if all arguments in [argumentList] are syntactically pure
+  /// compile-time constant expressions (no local variables, parameters, `this`,
+  /// instance fields, or non-const calls). Evaluated once per AST node.
+  bool _areArgsPureConst(SArgumentList? argumentList) {
+    if (argumentList == null) return true;
+    for (final arg in argumentList.arguments) {
+      final expr = arg is SNamedArgument ? arg.argumentExpression : arg;
+      if (!_isPureConstExpression(expr, inConstContext: true)) return false;
+    }
+    return true;
+  }
+
+  bool _isPureConstExpression(SAstNode? node, {bool inConstContext = false}) {
+    if (node == null) return true;
+    if (node is SIntegerLiteral ||
+        node is SDoubleLiteral ||
+        node is SBooleanLiteral ||
+        node is SSimpleStringLiteral ||
+        node is SNullLiteral ||
+        node is SSymbolLiteral) {
+      return true;
+    }
+    if (node is SAdjacentStrings) {
+      for (final s in node.strings) {
+        if (!_isPureConstExpression(s, inConstContext: inConstContext)) {
+          return false;
+        }
+      }
+      return true;
+    }
+    if (node is SStringInterpolation) {
+      for (final elem in node.elements) {
+        if (elem is SInterpolationString) continue;
+        if (elem is SInterpolationExpression) {
+          if (!_isPureConstExpression(
+            elem.expression,
+            inConstContext: inConstContext,
+          )) {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      }
+      return true;
+    }
+    if (node is SParenthesizedExpression) {
+      return _isPureConstExpression(
+        node.expression,
+        inConstContext: inConstContext,
+      );
+    }
+    if (node is SPrefixExpression) {
+      return _isPureConstExpression(
+        node.operand,
+        inConstContext: inConstContext,
+      );
+    }
+    if (node is SBinaryExpression) {
+      return _isPureConstExpression(
+            node.leftOperand,
+            inConstContext: inConstContext,
+          ) &&
+          _isPureConstExpression(
+            node.rightOperand,
+            inConstContext: inConstContext,
+          );
+    }
+    if (node is SConditionalExpression) {
+      return _isPureConstExpression(
+            node.condition,
+            inConstContext: inConstContext,
+          ) &&
+          _isPureConstExpression(
+            node.thenExpression,
+            inConstContext: inConstContext,
+          ) &&
+          _isPureConstExpression(
+            node.elseExpression,
+            inConstContext: inConstContext,
+          );
+    }
+    if (node is SInstanceCreationExpression) {
+      if (!node.isConst && !inConstContext) return false;
+      if (_hasTypeParameterInTypeArgs(
+        node.constructorName?.type?.typeArguments,
+      )) {
+        return false;
+      }
+      return _areArgsPureConst(node.argumentList);
+    }
+    if (node is SMethodInvocation) {
+      // Inside a `const` context, unresolved ASTs represent nested implicit-const
+      // constructors (e.g. `EdgeInsets.all(6)` inside `const Padding(...)`) as
+      // SMethodInvocation. Allow only if target (if any) is pure and args are pure.
+      if (!inConstContext) return false;
+      if (_hasTypeParameterInTypeArgs(node.typeArguments)) return false;
+      if (node.target != null &&
+          !_isPureConstExpression(node.target, inConstContext: true)) {
+        return false;
+      }
+      return _areArgsPureConst(node.argumentList);
+    }
+    if (node is SListLiteral) {
+      if (!node.isConst && !inConstContext) return false;
+      if (_hasTypeParameterInTypeArgs(node.typeArguments)) return false;
+      for (final elem in node.elements) {
+        if (!_isPureConstExpression(elem, inConstContext: true)) return false;
+      }
+      return true;
+    }
+    if (node is SSetOrMapLiteral) {
+      if (!node.isConst && !inConstContext) return false;
+      if (_hasTypeParameterInTypeArgs(node.typeArguments)) return false;
+      for (final elem in node.elements) {
+        if (elem is SMapLiteralEntry) {
+          if (!_isPureConstExpression(elem.key, inConstContext: true) ||
+              !_isPureConstExpression(elem.value, inConstContext: true)) {
+            return false;
+          }
+        } else if (!_isPureConstExpression(elem, inConstContext: true)) {
+          return false;
+        }
+      }
+      return true;
+    }
+    if (node is SSimpleIdentifier) {
+      if (node.resolvedSlot != null) return false;
+      return !environment.isPotentiallyMutableOrLocalBinding(node.name);
+    }
+    if (node is SPrefixedIdentifier) {
+      final prefix = node.prefix;
+      if (prefix == null) return false;
+      if (prefix.resolvedSlot != null) return false;
+      return !environment.isPotentiallyMutableOrLocalBinding(prefix.name);
+    }
+    if (node is SPropertyAccess) {
+      return _isPureConstExpression(
+        node.target,
+        inConstContext: inConstContext,
+      );
+    }
+    return false;
+  }
 
   /// Run the static lexical resolver over [declarations] (perf plan_3 §9). The
   /// resolver writes slot coordinates directly onto the mirror
@@ -515,7 +708,10 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
       }
 
       final initializerNode = variable.initializer;
-      Object? runInitializer() => initializerNode?.accept<Object?>(this);
+      Object? runInitializer() => ResolvedBinding.fieldValue(
+        list.type,
+        initializerNode?.accept<Object?>(this),
+      );
 
       if (registry == null) {
         environment.define(varName, runInitializer());
@@ -2147,9 +2343,30 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           return left % right;
         case '~/':
           return left ~/ right;
+        case '==':
+          return left == right;
+        case '!=':
+          return left != right;
         default:
           break;
       }
+    }
+
+    // Fast path for String / bool equality and String concatenation.
+    // Dart forbids extensions from declaring `operator ==` or `!=`, and
+    // `String + String` is built-in — skipping `findExtensionMember` here
+    // avoids scanning every extension in scope on every string/bool compare.
+    if (left is String && right is String) {
+      if (operator == '==') return left == right;
+      if (operator == '!=') return left != right;
+      if (operator == '+') return left + right;
+    } else if (left is bool && right is bool) {
+      if (operator == '==') return left == right;
+      if (operator == '!=') return left != right;
+    } else if ((operator == '==' || operator == '!=') &&
+        (leftOperandValue == null || rightOperandValue == null)) {
+      final eq = leftOperandValue == null && rightOperandValue == null;
+      return operator == '==' ? eq : !eq;
     }
 
     // Moved this block BEFORE standard ==, !=, <, <=, >, >= checks
@@ -2303,19 +2520,11 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
     }
 
     // Only try extension immediately for operators where standard checks might bypass it
-    // (e.g., ==, !=, <, >, <=, >= which have generic fallbacks)
-    bool checkExtensionEarly = [
-      '==',
-      '!=',
-      '<',
-      '<=',
-      '>',
-      '>=',
-      '|', // Also check early for missing operators like |
-      '&', // and &
-      '^', // and ^ if BigInt support was incomplete
-      // Add other operators here if needed
-    ].contains(operatorName);
+    // (e.g., ==, !=, <, >, <=, >= which have generic fallbacks).
+    final bool checkExtensionEarly = switch (operatorName) {
+      '==' || '!=' || '<' || '<=' || '>' || '>=' || '|' || '&' || '^' => true,
+      _ => false,
+    };
 
     if (checkExtensionEarly) {
       Callable? extensionOperator;
@@ -2325,25 +2534,25 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           operatorName,
         );
       } on RuntimeD4rtException catch (findError) {
-        // findExtensionMember throws if no member is found at all.
-        Logger.debug(
-          "[SBinaryExpression] No extension member '$operatorName' found (early check) for type ${leftOperandValue?.runtimeType}. Error: ${findError.message}",
-        );
-        // Continue to standard checks even if lookup failed early
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[SBinaryExpression] No extension member '$operatorName' found (early check) for type ${leftOperandValue?.runtimeType}. Error: ${findError.message}",
+          );
+        }
       }
       if (extensionOperator is ExtensionMemberCallable &&
           extensionOperator.isOperator) {
-        Logger.debug(
-          "[SBinaryExpression] Found extension operator '$operatorName' (early check) for type ${leftOperandValue?.runtimeType}. Calling...",
-        );
+        if (Logger.isDebug) {
+          Logger.debug(
+            "[SBinaryExpression] Found extension operator '$operatorName' (early check) for type ${leftOperandValue?.runtimeType}. Calling...",
+          );
+        }
         final extensionPositionalArgs = [leftOperandValue, rightOperandValue];
         try {
           return extensionOperator.call(this, extensionPositionalArgs, {});
         } on ReturnException catch (e) {
           return e.value;
         } on RuntimeD4rtException {
-          // Already a runtime exception with context — let it propagate as-is
-          // so the user sees the underlying cause rather than swallowing it.
           rethrow;
         } catch (e) {
           throw RuntimeD4rtException(
@@ -2351,11 +2560,11 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           );
         }
       }
-      // If no suitable extension operator found early, continue to standard
-      // checks (built-in numeric handling, etc.).
-      Logger.debug(
-        "[SBinaryExpression] No suitable extension operator '$operatorName' found (early check) for type ${leftOperandValue?.runtimeType}. Continuing...",
-      );
+      if (Logger.isDebug) {
+        Logger.debug(
+          "[SBinaryExpression] No suitable extension operator '$operatorName' found (early check) for type ${leftOperandValue?.runtimeType}. Continuing...",
+        );
+      }
     }
 
     switch (operator) {
@@ -2760,11 +2969,7 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           Object? valueToSet = rhsValue;
           if (operatorType != '=') {
             final current = binding.getter?.call(this, const [], const {});
-            valueToSet = computeCompoundValue(
-              current,
-              rhsValue,
-              operatorType,
-            );
+            valueToSet = computeCompoundValue(current, rhsValue, operatorType);
           }
           setter.call(this, [valueToSet], const {});
           return valueToSet;
@@ -4501,16 +4706,21 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
             rethrow; // Rethrow other errors from get()
           }
         }
-      } else if (toBridgedInstance(targetValue).$2) {
-        final bridgedInstance = toBridgedInstance(targetValue).$1!;
+      } else if (toBridgedInstance(targetValue) case (final bridgedInstance?, true)) {
         final bridgedClass = bridgedInstance.bridgedClass;
         switch (methodName) {
           case 'toString':
             return targetValue.toString();
           default:
         }
-        // Use directly methods because we need the BridgedMethodCallable
-        final adapter = bridgedClass.methods[methodName];
+        // Check target-level method interceptors (e.g. Listenable listener
+        // identity tracking) before the bridged class method table.
+        final adapter =
+            D4.findTargetMethodInterceptor(
+              methodName,
+              bridgedInstance.nativeObject,
+            ) ??
+            bridgedClass.methods[methodName];
 
         if (adapter != null) {
           final evaluationResult = _evaluateArgumentsAsync(node.argumentList);
@@ -4531,23 +4741,14 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
                 .toList();
           }
 
+          final prevVisitor = D4.pushActiveVisitor(this);
           try {
-            // C6b fix (mirror of tom_d4rt/interpreter_visitor.dart): wrap
-            // with `D4.withActiveVisitor` so visitor-less helpers invoked
-            // inside the adapter (e.g. `D4.coerceList<T>` resolving
-            // InterpretedInstance values via registered interface proxies
-            // for higher-kinded generics like
-            // `ThemeExtension<ThemeExtension<dynamic>>`) can read
-            // `_activeVisitor`.
-            return D4.withActiveVisitor(
+            return adapter(
               this,
-              () => adapter(
-                this,
-                bridgedInstance.nativeObject,
-                positionalArgs,
-                namedArgs,
-                evaluatedTypeArguments,
-              ),
+              bridgedInstance.nativeObject,
+              positionalArgs,
+              namedArgs,
+              evaluatedTypeArguments,
             );
           } on ReturnException catch (e) {
             // Native calls shouldn't throw ReturnException directly, but handle defensively
@@ -4579,6 +4780,8 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
               originalException: e,
               originalStackTrace: s,
             );
+          } finally {
+            D4.popActiveVisitor(prevVisitor);
           }
         } else {
           // C13 follow-up: before falling back to extensions, try a getter
@@ -4590,10 +4793,13 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
             methodName,
           );
           if (getterAdapter != null) {
-            final getterValue = D4.withActiveVisitor<Object?>(
-              this,
-              () => getterAdapter(this, bridgedInstance.nativeObject),
-            );
+            final prevVisitor = D4.pushActiveVisitor(this);
+            final Object? getterValue;
+            try {
+              getterValue = getterAdapter(this, bridgedInstance.nativeObject);
+            } finally {
+              D4.popActiveVisitor(prevVisitor);
+            }
             if (getterValue is Callable || getterValue is Function) {
               final evaluationResult = _evaluateArgumentsAsync(
                 node.argumentList,
@@ -5006,12 +5212,12 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           final (positionalArgs, namedArgs) =
               evaluationResult as (List<Object?>, Map<String, Object?>);
 
+          final prevVisitor = D4.pushActiveVisitor(this);
           try {
-            // Wrap with withActiveVisitor so that D4 helper methods can
-            // access the visitor for interface proxy creation (RC-1).
-            final nativeObject = D4.withActiveVisitor(
+            final nativeObject = constructorAdapter(
               this,
-              () => constructorAdapter(this, positionalArgs, namedArgs),
+              positionalArgs,
+              namedArgs,
             );
 
             if (nativeObject == null) {
@@ -5056,6 +5262,8 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
               originalException: e,
               originalStackTrace: s,
             );
+          } finally {
+            D4.popActiveVisitor(prevVisitor);
           }
         } else {
           final staticMethodAdapter = bridgedClass.findStaticMethodAdapter(
@@ -5082,26 +5290,14 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
                   .toList();
             }
 
+            final prevVisitor = D4.pushActiveVisitor(this);
             try {
-              // C4/D5 fix: wrap with withActiveVisitor so D4 helpers
-              // (e.g. getRequiredNamedArg → extractBridgedArg) can
-              // resolve the visitor and walk registered interface
-              // proxies for InterpretedInstance arguments. Without this,
-              // single-arg Widget parameters on static bridged methods
-              // like `DefaultTextStyle.merge(child: …)` reject
-              // script-defined StatelessWidget subclasses because the
-              // proxy lookup is skipped (visitor is null).
-              final result = D4.withActiveVisitor(
+              return staticMethodAdapter(
                 this,
-                () => staticMethodAdapter(
-                  this,
-                  positionalArgs,
-                  namedArgs,
-                  evaluatedTypeArguments,
-                ),
+                positionalArgs,
+                namedArgs,
+                evaluatedTypeArguments,
               );
-
-              return result;
             } on RuntimeD4rtException catch (e) {
               throw RuntimeD4rtException(
                 "Error during static bridged method call '$methodName' on ${bridgedClass.name}: ${e.message}",
@@ -5123,6 +5319,8 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
                 originalException: e,
                 originalStackTrace: s,
               );
+            } finally {
+              D4.popActiveVisitor(prevVisitor);
             }
           } else {
             // Cluster C32: class-as-value (Type literal) semantics. A script
@@ -5475,12 +5673,12 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
         final (positionalArgs, namedArgs) =
             evaluationResult as (List<Object?>, Map<String, Object?>);
 
+        final prevVisitor = D4.pushActiveVisitor(this);
         try {
-          // Wrap with withActiveVisitor so that D4 helper methods can
-          // access the visitor for interface proxy creation (RC-1).
-          final nativeObject = D4.withActiveVisitor(
+          final nativeObject = constructorAdapter(
             this,
-            () => constructorAdapter(this, positionalArgs, namedArgs),
+            positionalArgs,
+            namedArgs,
           );
           if (nativeObject == null) {
             throw RuntimeD4rtException(
@@ -5522,6 +5720,8 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
             originalException: e,
             originalStackTrace: s,
           );
+        } finally {
+          D4.popActiveVisitor(prevVisitor);
         }
       } else {
         // If we have a BridgedClass but no default constructor ''
@@ -7074,9 +7274,8 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           if (declaresVariable) {
             // Each declared for-in variable has a fresh binding so closures
             // created in this iteration retain this element.
-            final iterationEnvironment = Environment(
-              enclosing: loopEnvironment,
-            )..define(variableName, element);
+            final iterationEnvironment = Environment(enclosing: loopEnvironment)
+              ..define(variableName, element);
             environment = iterationEnvironment;
           } else {
             // An identifier loop updates the binding that already exists.
@@ -7373,7 +7572,10 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
             // Late variable with lazy initializer
             final lateVar = LateVariable(variableName, () {
               // Create a closure that will evaluate the initializer when accessed
-              return variable.initializer!.accept<Object?>(this);
+              return ResolvedBinding.fieldValue(
+                node.type,
+                variable.initializer!.accept<Object?>(this),
+              );
             }, isFinal: isFinal);
             def(lateVar);
             Logger.debug(
@@ -7393,6 +7595,13 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           Object? result; // Value returned by accept() (could be suspension)
 
           if (variable.initializer != null) {
+            if (node.isConst) {
+              final cached = _constLocalCache[variable];
+              if (cached != null && !identical(cached, _kNotCacheable)) {
+                def(cached);
+                continue;
+              }
+            }
             result = variable.initializer!.accept<Object?>(this);
             if (result is AsyncSuspensionRequest) {
               // Async initializer: Define as null for now, result holds suspension
@@ -7403,8 +7612,20 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
               // Propagate the suspension request.
               // If there are multiple async inits, the LAST suspension request wins.
             } else {
-              // Sync initializer: Use the computed value
-              initValue = result;
+              // Sync initializer: Use the computed value (applying declared-type
+              // coercions like `double` widening and empty `{}` -> Set).
+              initValue = ResolvedBinding.fieldValue(node.type, result);
+              if (node.isConst && !_constLocalCache.containsKey(variable)) {
+                if (initValue != null &&
+                    _isPureConstExpression(
+                      variable.initializer,
+                      inConstContext: true,
+                    )) {
+                  _constLocalCache[variable] = initValue;
+                } else {
+                  _constLocalCache[variable] = _kNotCacheable;
+                }
+              }
               if (Logger.isDebug) {
                 Logger.debug(
                   "[VariableDeclList] Sync init for '$variableName'. Defined as $initValue.",
@@ -7540,6 +7761,29 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
 
   @override
   Object? visitListLiteral(SListLiteral node) {
+    if (node.isConst) {
+      final cached = _constListCache[node];
+      if (cached != null) {
+        if (!identical(cached, _kNotCacheableList)) return cached;
+      } else {
+        final cacheable =
+            !_hasTypeParameterInTypeArgs(node.typeArguments) &&
+            node.elements.every(
+              (e) => _isPureConstExpression(e, inConstContext: true),
+            );
+        if (cacheable) {
+          final List<Object?> list = [];
+          for (final element in node.elements) {
+            _processCollectionElement(element, list, isMap: false);
+          }
+          final canonical = List<Object?>.unmodifiable(list);
+          _constListCache[node] = canonical;
+          return canonical;
+        }
+        _constListCache[node] = _kNotCacheableList;
+      }
+    }
+
     final List<Object?> list = [];
     for (final element in node.elements) {
       _processCollectionElement(element, list, isMap: false);
@@ -8404,9 +8648,8 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
               if (declaresVariable) {
                 // A collection-for declaration has a distinct binding per
                 // iteration so closures keep the item used to build it.
-                environment = Environment(
-                  enclosing: loopEnvironment,
-                )..define(variableName, item);
+                environment = Environment(enclosing: loopEnvironment)
+                  ..define(variableName, item);
               } else {
                 loopEnvironment.assign(variableName, item);
                 environment = loopEnvironment;
@@ -8762,138 +9005,169 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
     // walk up the AST to find the enclosing function declaration.
     final currentCallable = currentFunction;
     if (currentCallable != null) {
-      bool isNullable = currentCallable.isNullable;
-      // Extract function name from the callable's toString, or use a default.
-      // InterpretedFunction.toString returns '<fn name>'.
-      final fnStr = currentCallable.toString();
-      String functionName = fnStr;
-      if (fnStr.startsWith('<fn ') && fnStr.endsWith('>')) {
-        functionName = fnStr.substring(4, fnStr.length - 1);
-      }
-      RuntimeType? declaredType = currentCallable.declaredReturnType;
-      RuntimeType? valueRuntimeType;
+      final bool isNullable = currentCallable.isNullable;
+      final RuntimeType? declaredType = currentCallable.declaredReturnType;
+      final bool hasAppliedReturn =
+          currentCallable.declaredReturnTypeApplied != null;
+      final bool skipAppliedGenericReturn =
+          !hasAppliedReturn ||
+          currentCallable.isAsync ||
+          currentCallable.isGenerator ||
+          currentCallable.isAsyncGenerator;
 
-      try {
-        // Special handling for async* generators: return without value should be allowed
+      // Fast path when debug logging is off and no generic return check applies:
+      // avoid calling toString() + substring() + environment.getRuntimeType()
+      // on every single return statement (e.g. every widget build()).
+      bool fastPathMatched = false;
+      if (!Logger.isDebug && skipAppliedGenericReturn) {
         if (currentCallable.isAsyncGenerator && returnValue == null) {
-          throw ReturnException(returnValue); // Exit generator cleanly
+          throw ReturnException(returnValue);
         }
-
-        valueRuntimeType = environment.getRuntimeType(returnValue);
-
-        // Guard: skip building these interpolated diagnostics on every return
-        // when debug logging is off.
-        if (Logger.isDebug) {
-          Logger.debug("[visitReturnStatement] Function: '$functionName'");
-          Logger.debug(
-            "[visitReturnStatement]   Declared Type: ${declaredType?.name ?? 'N/A'}",
-          );
-          Logger.debug(
-            "[visitReturnStatement]   Value Runtime Type: ${valueRuntimeType?.name ?? 'N/A'}",
-          );
-          Logger.debug(
-            "[visitReturnStatement]   Return Value: $returnValue (Type: ${returnValue?.runtimeType})",
-          );
-          Logger.debug(
-            "[visitReturnStatement]   Is Declared Type Nullable: $isNullable",
-          );
-        }
-
-        // Check null return value against non-nullable declared type
-        if (returnValue == null &&
-            declaredType != null &&
-            !isNullable &&
-            declaredType.name != 'void' &&
-            declaredType.name != 'dynamic') {
-          final declaredTypeName = declaredType.name;
-          throw RuntimeD4rtException(
-            "A value of type 'Null' can't be returned from the function '$functionName' because it has a return type of '$declaredTypeName'.",
-          );
-        }
-
-        if (valueRuntimeType != null) {
-          if (declaredType != null) {
-            // `FutureOr<T>` accepts a `T` value or any future; the lattice
-            // does not model the union, so consult it here.
-            if (declaredType is FutureOrRuntimeType) {
-              if (!futureOrAcceptsValue(
-                returnValue,
-                valueRuntimeType,
-                declaredType.inner,
-              )) {
-                throw RuntimeD4rtException(
-                  "A value of type '${valueRuntimeType.name}' can't be returned from the function '$functionName' because it has a return type of '${declaredType.name}'.",
-                );
-              }
-            } else if (declaredType.name != "dynamic" &&
-                !valueRuntimeType.isSubtypeOf(
-                  declaredType,
-                  value: returnValue,
-                )) {
-              bool showError = true;
-              if (isNullable && returnValue == null) {
-                showError = false;
-              }
-              if (declaredType.name == "void" && returnValue == null) {
-                showError = false;
-              }
-              if (declaredType.name == "Object" && returnValue != null) {
-                showError = false;
-              }
-              // Bug-73 FIX: In async functions, returning a Future<T> when declared type is T is allowed
-              if (currentCallable.isAsync && returnValue is Future) {
-                showError = false;
-              }
-
-              // Bug-93 FIX: Dart implicitly promotes int to double
-              if (declaredType.name == 'double' && returnValue is int) {
-                showError = false;
-                returnValue = returnValue.toDouble();
-              }
-
-              if (showError) {
-                final declaredTypeName = isNullable
-                    ? '${declaredType.name}?'
-                    : declaredType.name;
-                throw RuntimeD4rtException(
-                  "A value of type '${valueRuntimeType.name}' can't be returned from the function '$functionName' because it has a return type of '$declaredTypeName'.",
-                );
-              }
+        if (declaredType == null ||
+            declaredType.name == 'dynamic' ||
+            (declaredType.name == 'void' && returnValue == null) ||
+            (declaredType.name == 'Object' && returnValue != null) ||
+            (isNullable && returnValue == null)) {
+          fastPathMatched = true;
+        } else if (returnValue != null &&
+            declaredType is BridgedClass &&
+            returnValue is! InterpretedInstance &&
+            returnValue is! InterpretedEnumValue &&
+            returnValue is! BridgedEnumValue) {
+          final check = declaredType.isAssignable;
+          if (check != null) {
+            final native = returnValue is BridgedInstance
+                ? returnValue.nativeObject
+                : returnValue;
+            if (check(native)) {
+              fastPathMatched = true;
             }
           }
         }
+      }
 
-        // DFUB6: applied generic return validation. The base subtype check
-        // above treats `Box<String>` / `List<String>` as their raw base type,
-        // so a generic/collection value with mismatched type arguments slips
-        // through. Enforce the arguments element-wise here.
-        //
-        // Skip async/generator functions: their declared return type is a
-        // `Future<T>` / `Stream<T>` / `Iterable<T>` wrapper, but the value in a
-        // `return` statement is the *inner* value (Dart wraps it
-        // automatically). Comparing the inner value against the wrapper's
-        // arguments would spuriously reject e.g. `Future<List<String>> f()
-        // async => [1,2,3]`.
-        final skipAppliedGenericReturn =
-            currentCallable.isAsync ||
-            currentCallable.isGenerator ||
-            currentCallable.isAsyncGenerator;
-        if (!skipAppliedGenericReturn) {
-          _checkAppliedGenericReturn(
-            returnValue,
-            currentCallable,
-            functionName,
-            isNullable,
+      if (!fastPathMatched) {
+        String computeFunctionName() {
+          final fnStr = currentCallable.toString();
+          if (fnStr.startsWith('<fn ') && fnStr.endsWith('>')) {
+            return fnStr.substring(4, fnStr.length - 1);
+          }
+          return fnStr;
+        }
+
+        String? cachedFunctionName;
+        String getFunctionName() =>
+            cachedFunctionName ??= computeFunctionName();
+        RuntimeType? valueRuntimeType;
+
+        try {
+          // Special handling for async* generators: return without value should be allowed
+          if (currentCallable.isAsyncGenerator && returnValue == null) {
+            throw ReturnException(returnValue); // Exit generator cleanly
+          }
+
+          valueRuntimeType = environment.getRuntimeType(returnValue);
+
+          // Guard: skip building these interpolated diagnostics on every return
+          // when debug logging is off.
+          if (Logger.isDebug) {
+            final fnName = getFunctionName();
+            Logger.debug("[visitReturnStatement] Function: '$fnName'");
+            Logger.debug(
+              "[visitReturnStatement]   Declared Type: ${declaredType?.name ?? 'N/A'}",
+            );
+            Logger.debug(
+              "[visitReturnStatement]   Value Runtime Type: ${valueRuntimeType?.name ?? 'N/A'}",
+            );
+            Logger.debug(
+              "[visitReturnStatement]   Return Value: $returnValue (Type: ${returnValue?.runtimeType})",
+            );
+            Logger.debug(
+              "[visitReturnStatement]   Is Declared Type Nullable: $isNullable",
+            );
+          }
+
+          // Check null return value against non-nullable declared type
+          if (returnValue == null &&
+              declaredType != null &&
+              !isNullable &&
+              declaredType.name != 'void' &&
+              declaredType.name != 'dynamic') {
+            final declaredTypeName = declaredType.name;
+            throw RuntimeD4rtException(
+              "A value of type 'Null' can't be returned from the function '${getFunctionName()}' because it has a return type of '$declaredTypeName'.",
+            );
+          }
+
+          if (valueRuntimeType != null) {
+            if (declaredType != null) {
+              // `FutureOr<T>` accepts a `T` value or any future; the lattice
+              // does not model the union, so consult it here.
+              if (declaredType is FutureOrRuntimeType) {
+                if (!futureOrAcceptsValue(
+                  returnValue,
+                  valueRuntimeType,
+                  declaredType.inner,
+                )) {
+                  throw RuntimeD4rtException(
+                    "A value of type '${valueRuntimeType.name}' can't be returned from the function '${getFunctionName()}' because it has a return type of '${declaredType.name}'.",
+                  );
+                }
+              } else if (declaredType.name != "dynamic" &&
+                  !valueRuntimeType.isSubtypeOf(
+                    declaredType,
+                    value: returnValue,
+                  )) {
+                bool showError = true;
+                if (isNullable && returnValue == null) {
+                  showError = false;
+                }
+                if (declaredType.name == "void" && returnValue == null) {
+                  showError = false;
+                }
+                if (declaredType.name == "Object" && returnValue != null) {
+                  showError = false;
+                }
+                // Bug-73 FIX: In async functions, returning a Future<T> when declared type is T is allowed
+                if (currentCallable.isAsync && returnValue is Future) {
+                  showError = false;
+                }
+
+                // Bug-93 FIX: Dart implicitly promotes int to double
+                if (declaredType.name == 'double' && returnValue is int) {
+                  showError = false;
+                  returnValue = returnValue.toDouble();
+                }
+
+                if (showError) {
+                  final declaredTypeName = isNullable
+                      ? '${declaredType.name}?'
+                      : declaredType.name;
+                  throw RuntimeD4rtException(
+                    "A value of type '${valueRuntimeType.name}' can't be returned from the function '${getFunctionName()}' because it has a return type of '$declaredTypeName'.",
+                  );
+                }
+              }
+            }
+          }
+
+          if (!skipAppliedGenericReturn) {
+            _checkAppliedGenericReturn(
+              returnValue,
+              currentCallable,
+              getFunctionName(),
+              isNullable,
+            );
+          }
+        } catch (e) {
+          Logger.error(
+            "[visitReturnStatement] Error during type check for function '${getFunctionName()}': $e",
           );
+          if (e is Error) {
+            Logger.error("Stack trace: ${e.stackTrace}");
+          }
+          rethrow;
         }
-      } catch (e) {
-        Logger.error(
-          "[visitReturnStatement] Error during type check for function '$functionName': $e",
-        );
-        if (e is Error) {
-          Logger.error("Stack trace: ${e.stackTrace}");
-        }
-        rethrow;
       }
     }
 
@@ -10465,11 +10739,7 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
       SMethodDeclaration member,
       String kind,
     ) {
-      final function = InterpretedFunction.method(
-        member,
-        staticInitEnv,
-        klass,
-      );
+      final function = InterpretedFunction.method(member, staticInitEnv, klass);
       final registry = declarationRegistry;
       if (registry == null) return function;
       return registry.stabilizeFunction(
@@ -12390,9 +12660,7 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
     List<String> names,
     STypeAnnotation? onType,
     Object? target,
-  ) => {
-    for (final name in names) name: const NamedRuntimeType('dynamic'),
-  };
+  ) => {for (final name in names) name: const NamedRuntimeType('dynamic')};
 
   /// Whether [value] has the resolved type [type], answered as the `is`
   /// operator answers `value is T` for the type `T` that resolved to [type].
@@ -13185,6 +13453,32 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
 
   @override
   Object? visitInstanceCreationExpression(SInstanceCreationExpression node) {
+    if (node.isConst) {
+      final cached = _constInstanceCache[node];
+      if (cached != null) {
+        if (!identical(cached, _kNotCacheable)) return cached;
+      } else {
+        final cacheable =
+            !_hasTypeParameterInTypeArgs(
+              node.constructorName?.type?.typeArguments,
+            ) &&
+            _areArgsPureConst(node.argumentList);
+        if (cacheable) {
+          final created = _evaluateInstanceCreationExpression(node);
+          if (created != null && created is! AsyncSuspensionRequest) {
+            _constInstanceCache[node] = created;
+          }
+          return created;
+        }
+        _constInstanceCache[node] = _kNotCacheable;
+      }
+    }
+    return _evaluateInstanceCreationExpression(node);
+  }
+
+  Object? _evaluateInstanceCreationExpression(
+    SInstanceCreationExpression node,
+  ) {
     final constructorNameNode = node.constructorName!.type;
 
     // Resolve class name and named constructor, handling unresolved AST
@@ -13205,14 +13499,11 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
         resolvedImportPrefix = constructorNameNode.importPrefix!.name;
       }
     } else if (constructorNameNode!.importPrefix != null) {
-      // Unresolved ambiguity: check if importPrefix is actually a class name
+      // Unresolved ambiguity: check if importPrefix is actually a class name.
+      // Use non-throwing lookup to avoid allocating a D4rtException + guest
+      // stack trace on every import-prefixed constructor call.
       final possibleClassName = constructorNameNode.importPrefix!.name;
-      Object? possibleType;
-      try {
-        possibleType = environment.get(possibleClassName);
-      } on RuntimeD4rtException {
-        possibleType = null;
-      }
+      final possibleType = environment.lookup(possibleClassName);
       if (possibleType is InterpretedClass || possibleType is BridgedClass) {
         // importPrefix was actually the class name, name is the named ctor
         constructorName = possibleClassName;
@@ -13511,16 +13802,12 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
       }
 
       // Call the constructor adapter
+      final prevVisitor = D4.pushActiveVisitor(this);
       try {
-        // The adapter is responsible for:
-        // 1. Converting the interpreted positionalArgs/namedArgs to native types.
-        // 2. Calling the actual native constructor.
-        // 3. Returning the created native object.
-        // Wrap with withActiveVisitor so that D4 helper methods (getRequiredNamedArg
-        // etc.) can access the visitor for interface proxy creation (RC-1).
-        final nativeObject = D4.withActiveVisitor(
+        final nativeObject = constructorAdapter(
           this,
-          () => constructorAdapter(this, positionalArgs, namedArgs),
+          positionalArgs,
+          namedArgs,
         );
 
         // Check if the adapter returned a value (it should)
@@ -13568,6 +13855,8 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
           "Native error during bridged constructor '$constructorLookupName' for class '$constructorName': $e",
           originalException: e,
         );
+      } finally {
+        D4.popActiveVisitor(prevVisitor);
       }
     } else {
       // CASE 3: The resolved type is neither InterpretedClass nor BridgedClass
@@ -14300,9 +14589,12 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
         awaitNode: node,
       );
     } else {
-      // The argument to 'await' MUST be a Future.
-      throw RuntimeD4rtException(
-        "The argument to 'await' must be a Future, but received type: ${expressionValue?.runtimeType}",
+      // SCE223: Dart allows `await` on any value — `await 5` is 5 and
+      // `await null` is null — and still yields to the event loop.
+      return AsyncSuspensionRequest(
+        Future<Object?>.value(futureValue),
+        currentAsyncState!,
+        awaitNode: node,
       );
     }
   }
@@ -14572,6 +14864,24 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
         Logger.debug(
           '[_matchAndBind] Matching pattern ${pattern.runtimeType} against value ${value.runtimeType}',
         );
+      }
+      // Coerce native Dart positional records (e.g. `(int, T)` yielded by
+      // `Iterable.indexed`) into an InterpretedRecord so record patterns match.
+      if (value is! InterpretedRecord) {
+        if (value is (Object?, Object?)) {
+          value = InterpretedRecord([value.$1, value.$2], const {});
+        } else if (value is (Object?, Object?, Object?)) {
+          value = InterpretedRecord([value.$1, value.$2, value.$3], const {});
+        } else if (value is (Object?, Object?, Object?, Object?)) {
+          value = InterpretedRecord([
+            value.$1,
+            value.$2,
+            value.$3,
+            value.$4,
+          ], const {});
+        } else if (value is (Object?,)) {
+          value = InterpretedRecord([value.$1], const {});
+        }
       }
       if (value is! InterpretedRecord) {
         if (Logger.isDebug) {

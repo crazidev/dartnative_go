@@ -8,6 +8,7 @@ import 'package:tom_d4rt_ast/d4rt.dart';
 
 import '../debug_controller.dart';
 import '../widget_generation_tracker.dart';
+import 'ast_perf_trace.dart';
 import '../../runner/native_bottomsheet_manager.dart';
 
 /// Analyzer-free port of `../widget_proxies.dart` for `tom_d4rt_ast`.
@@ -55,18 +56,53 @@ onAstGuestBlankBuild;
 /// is being removed.
 void Function()? onAstGuestRecovered;
 
-R _runWithLogCapture<R>(R Function() action, {bool reportError = true}) {
+const Object _logCaptureZoneKey = Object();
+Zone? _cachedLogZoneParent;
+void Function(String message)? _cachedLogZoneHandler;
+Zone? _cachedLogZone;
+
+Zone _logZoneFor(void Function(String message) handler) {
+  final parent = Zone.current;
+  if (identical(_cachedLogZoneHandler, handler) &&
+      identical(_cachedLogZoneParent, parent) &&
+      _cachedLogZone != null) {
+    return _cachedLogZone!;
+  }
+  _cachedLogZoneHandler = handler;
+  _cachedLogZoneParent = parent;
+  AstPerfTrace.zone();
+  final forked = parent.fork(
+    zoneValues: {_logCaptureZoneKey: handler},
+    specification: ZoneSpecification(
+      print: (self, parent, zone, line) {
+        handler(line);
+      },
+    ),
+  );
+  _cachedLogZone = forked;
+  return forked;
+}
+
+R _runWithLogCapture<R>(
+  R Function() action, {
+  bool reportError = true,
+  String? traceName,
+}) {
+  if (traceName != null && AstPerfTrace.enabled) {
+    final sw = Stopwatch()..start();
+    try {
+      return _runWithLogCapture(action, reportError: reportError);
+    } finally {
+      AstPerfTrace.recordBuild(traceName, sw.elapsedMicroseconds);
+    }
+  }
   try {
     final handler = onAstGuestLog;
-    if (handler == null) return action();
-    return runZoned(
-      action,
-      zoneSpecification: ZoneSpecification(
-        print: (self, parent, zone, line) {
-          handler(line);
-        },
-      ),
-    );
+    if (handler == null ||
+        identical(Zone.current[_logCaptureZoneKey], handler)) {
+      return action();
+    }
+    return _logZoneFor(handler).run(action);
   } catch (error, stack) {
     if (reportError) _reportGuestError(error, stack);
     rethrow;
@@ -80,6 +116,7 @@ R _runWithLogCapture<R>(R Function() action, {bool reportError = true}) {
 /// no rendered child can report the blank surface first (see
 /// [onAstGuestBlankBuild]) and then publish the message once.
 void _reportGuestError(Object error, StackTrace stack) {
+  onAstGuestLog?.call('[BridgeErr] $error');
   final report = onAstGuestError;
   if (report == null) return;
   try {
@@ -165,27 +202,31 @@ class InterpretedStatelessWidget extends StatelessWidget
   @override
   Widget build(BuildContext context) {
     try {
-      final built = _runWithLogCapture(() {
-        final method = instance.get('build', visitor: visitor);
-        if (method is Callable) {
-          final rawResult = method.call(visitor, [context], {});
-          // `wrapAstInterpretedWidget` first: a build result may be an
-          // interpreted subclass of an abstract widget (InheritedWidget,
-          // CustomPainter host widgets, …) that `extractBridgedArg` cannot
-          // coerce because there is no native instance to unwrap.
-          final widget =
-              wrapAstInterpretedWidget(rawResult, visitor: visitor) ??
-              D4.extractBridgedArg<Widget>(
-                rawResult,
-                'buildResult',
-                visitor,
-              );
-          return widget;
-        }
-        throw StateError(
-          'Interpreted StatelessWidget has no callable build(context) method',
-        );
-      }, reportError: false);
+      final built = _runWithLogCapture(
+        () {
+          final method = instance.get('build', visitor: visitor);
+          if (method is Callable) {
+            final rawResult = method.call(visitor, [context], {});
+            // `wrapAstInterpretedWidget` first: a build result may be an
+            // interpreted subclass of an abstract widget (InheritedWidget,
+            // CustomPainter host widgets, …) that `extractBridgedArg` cannot
+            // coerce because there is no native instance to unwrap.
+            final widget =
+                wrapAstInterpretedWidget(rawResult, visitor: visitor) ??
+                D4.extractBridgedArg<Widget>(
+                  rawResult,
+                  'buildResult',
+                  visitor,
+                );
+            return widget;
+          }
+          throw StateError(
+            'Interpreted StatelessWidget has no callable build(context) method',
+          );
+        },
+        reportError: false,
+        traceName: instance.klass.name,
+      );
       _lastGoodChild = built;
       if (_blankFailed) {
         _blankFailed = false;
@@ -271,27 +312,31 @@ class InterpretedConsumerWidget extends ConsumerWidget
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     try {
-      final built = _runWithLogCapture(() {
-        final method = instance.get('build', visitor: visitor);
-        if (method is Callable) {
-          final rawResult = method.call(visitor, [context, ref], {});
-          // `wrapAstInterpretedWidget` first: a build result may be an
-          // interpreted subclass of an abstract widget (InheritedWidget,
-          // CustomPainter host widgets, …) that `extractBridgedArg` cannot
-          // coerce because there is no native instance to unwrap.
-          final widget =
-              wrapAstInterpretedWidget(rawResult, visitor: visitor) ??
-              D4.extractBridgedArg<Widget>(
-                rawResult,
-                'buildResult',
-                visitor,
-              );
-          return widget;
-        }
-        throw StateError(
-          'Interpreted ConsumerWidget has no callable build(context, ref) method',
-        );
-      }, reportError: false);
+      final built = _runWithLogCapture(
+        () {
+          final method = instance.get('build', visitor: visitor);
+          if (method is Callable) {
+            final rawResult = method.call(visitor, [context, ref], {});
+            // `wrapAstInterpretedWidget` first: a build result may be an
+            // interpreted subclass of an abstract widget (InheritedWidget,
+            // CustomPainter host widgets, …) that `extractBridgedArg` cannot
+            // coerce because there is no native instance to unwrap.
+            final widget =
+                wrapAstInterpretedWidget(rawResult, visitor: visitor) ??
+                D4.extractBridgedArg<Widget>(
+                  rawResult,
+                  'buildResult',
+                  visitor,
+                );
+            return widget;
+          }
+          throw StateError(
+            'Interpreted ConsumerWidget has no callable build(context, ref) method',
+          );
+        },
+        reportError: false,
+        traceName: instance.klass.name,
+      );
       _lastGoodChild = built;
       if (_blankFailed) {
         _blankFailed = false;
@@ -592,6 +637,7 @@ class InterpretedStateProxy extends State<StatefulWidget>
   @override
   void setState(VoidCallback fn) {
     if (!mounted) return;
+    AstPerfTrace.recordSetState(stateInstance.klass.name);
     if (DebugController().isPaused) {
       DebugController().waitIfPaused().then((_) {
         if (mounted) {
@@ -619,33 +665,50 @@ class InterpretedStateProxy extends State<StatefulWidget>
     _isDispatchingDidUpdateWidget = true;
     try {
       _runWithLogCapture(() {
+        var isHotReload = false;
         if (widget is InterpretedStatefulWidget) {
           final newOwner = widget as InterpretedStatefulWidget;
           final newVisitor = newOwner.visitor;
+          isHotReload = !identical(newVisitor, visitor);
           visitor = newVisitor;
           ownerWidget = newOwner;
 
-          // Re-create state instance from updated class definition in the new interpreter,
-          // while preserving all existing state fields (like counter values).
-          try {
-            final createStateMethod = newOwner.instance.get(
-              'createState',
-              visitor: newVisitor,
-            );
-            if (createStateMethod is Callable) {
-              final newStateResult = createStateMethod.call(newVisitor, [], {});
-              if (newStateResult is InterpretedInstance) {
-                final oldState = stateInstance;
-                final newState = newStateResult;
+          if (isHotReload) {
+            // Re-create state instance from updated class definition in the
+            // new interpreter, while preserving all existing state fields.
+            final recreateSw = Stopwatch()..start();
+            try {
+              final createStateMethod = newOwner.instance.get(
+                'createState',
+                visitor: newVisitor,
+              );
+              if (createStateMethod is Callable) {
+                final newStateResult = createStateMethod.call(
+                  newVisitor,
+                  [],
+                  {},
+                );
+                if (newStateResult is InterpretedInstance) {
+                  final oldState = stateInstance;
+                  final newState = newStateResult;
 
-                _transferStateFields(oldState, newState, newVisitor);
-                _wireStateInstance(newState, newOwner.instance);
+                  _transferStateFields(oldState, newState, newVisitor);
+                  _wireStateInstance(newState, newOwner.instance);
 
-                stateInstance = newState;
+                  stateInstance = newState;
+                }
               }
+            } catch (e) {
+              // Fallback: wire updated widget reference to existing state
+              stateInstance.interpretedStatefulWidget = newOwner.instance;
             }
-          } catch (e) {
-            // Fallback: wire updated widget reference to existing state
+            AstPerfTrace.recordRecreate(
+              stateInstance.klass.name,
+              recreateSw.elapsedMicroseconds,
+            );
+          } else {
+            // Normal parent rebuild: keep the existing interpreted State
+            // instance intact and simply point `this.widget` to the new widget.
             stateInstance.interpretedStatefulWidget = newOwner.instance;
           }
         }
@@ -654,10 +717,15 @@ class InterpretedStateProxy extends State<StatefulWidget>
         );
         if (method != null) {
           final callable = stateInstance.bindMethodCached(method);
-          callable.call(visitor, [oldWidget], {});
+          final oldArg = oldWidget is InterpretedStatefulWidget
+              ? oldWidget.instance
+              : oldWidget;
+          callable.call(visitor, [oldArg], {});
         }
-        // Ensure stateful widget triggers rebuild with new properties and closures
-        setState(() {});
+        if (isHotReload) {
+          // Ensure stateful widget triggers rebuild with new properties and closures
+          setState(() {});
+        }
       });
     } finally {
       _isDispatchingDidUpdateWidget = false;
@@ -713,27 +781,31 @@ class InterpretedStateProxy extends State<StatefulWidget>
   @override
   Widget build(BuildContext context) {
     try {
-      final built = _runWithLogCapture(() {
-        final method = stateInstance.get('build', visitor: visitor);
-        if (method is Callable) {
-          final rawResult = method.call(visitor, [context], {});
-          // `wrapAstInterpretedWidget` first: a build result may be an
-          // interpreted subclass of an abstract widget (InheritedWidget,
-          // CustomPainter host widgets, …) that `extractBridgedArg` cannot
-          // coerce because there is no native instance to unwrap.
-          final widget =
-              wrapAstInterpretedWidget(rawResult, visitor: visitor) ??
-              D4.extractBridgedArg<Widget>(
-                rawResult,
-                'buildResult',
-                visitor,
-              );
-          return widget;
-        }
-        throw StateError(
-          'Interpreted State has no callable build(context) method',
-        );
-      }, reportError: false);
+      final built = _runWithLogCapture(
+        () {
+          final method = stateInstance.get('build', visitor: visitor);
+          if (method is Callable) {
+            final rawResult = method.call(visitor, [context], {});
+            // `wrapAstInterpretedWidget` first: a build result may be an
+            // interpreted subclass of an abstract widget (InheritedWidget,
+            // CustomPainter host widgets, …) that `extractBridgedArg` cannot
+            // coerce because there is no native instance to unwrap.
+            final widget =
+                wrapAstInterpretedWidget(rawResult, visitor: visitor) ??
+                D4.extractBridgedArg<Widget>(
+                  rawResult,
+                  'buildResult',
+                  visitor,
+                );
+            return widget;
+          }
+          throw StateError(
+            'Interpreted State has no callable build(context) method',
+          );
+        },
+        reportError: false,
+        traceName: stateInstance.klass.name,
+      );
       _lastGoodChild = built;
       if (_blankFailed) {
         _blankFailed = false;
@@ -1049,6 +1121,7 @@ class InterpretedConsumerStateProxy
   @override
   void setState(VoidCallback fn) {
     if (!mounted) return;
+    AstPerfTrace.recordSetState(stateInstance.klass.name);
     if (DebugController().isPaused) {
       DebugController().waitIfPaused().then((_) {
         if (mounted) setState(fn);
@@ -1071,19 +1144,31 @@ class InterpretedConsumerStateProxy
     _isDispatchingDidUpdateWidget = true;
     try {
       _runWithLogCapture(() {
+        var isHotReload = false;
         if (widget is InterpretedConsumerStatefulWidget) {
           final newOwner = widget as InterpretedConsumerStatefulWidget;
-          try {
-            rebindAstConsumerStateForReload(this, newOwner);
-            onAstGuestLog?.call(
-              '[HotReload] ${newOwner.instance.klass.name} rebound to new '
-              'code, state fields preserved',
+          isHotReload = !identical(newOwner.visitor, visitor);
+          if (isHotReload) {
+            final recreateSw = Stopwatch()..start();
+            try {
+              rebindAstConsumerStateForReload(this, newOwner);
+              onAstGuestLog?.call(
+                '[HotReload] ${newOwner.instance.klass.name} rebound to new '
+                'code, state fields preserved',
+              );
+            } catch (e) {
+              onAstGuestLog?.call(
+                '[HotReload] rebind failed for '
+                '${newOwner.instance.klass.name}: $e — keeping previous state',
+              );
+              stateInstance.interpretedStatefulWidget = newOwner.instance;
+            }
+            AstPerfTrace.recordRecreate(
+              'C:${stateInstance.klass.name}',
+              recreateSw.elapsedMicroseconds,
             );
-          } catch (e) {
-            onAstGuestLog?.call(
-              '[HotReload] rebind failed for '
-              '${newOwner.instance.klass.name}: $e — keeping previous state',
-            );
+          } else {
+            ownerWidget = newOwner;
             stateInstance.interpretedStatefulWidget = newOwner.instance;
           }
         }
@@ -1091,9 +1176,14 @@ class InterpretedConsumerStateProxy
           'didUpdateWidget',
         );
         if (method != null) {
-          stateInstance.bindMethodCached(method).call(visitor, [oldWidget], {});
+          final oldArg = oldWidget is InterpretedConsumerStatefulWidget
+              ? oldWidget.instance
+              : oldWidget;
+          stateInstance.bindMethodCached(method).call(visitor, [oldArg], {});
         }
-        setState(() {});
+        if (isHotReload) {
+          setState(() {});
+        }
       });
     } finally {
       _isDispatchingDidUpdateWidget = false;
@@ -1170,21 +1260,25 @@ class InterpretedConsumerStateProxy
   @override
   Widget build(BuildContext context) {
     try {
-      final built = _runWithLogCapture(() {
-        final method = stateInstance.get('build', visitor: visitor);
-        if (method is Callable) {
-          final rawResult = method.call(visitor, [context], {});
-          return wrapAstInterpretedWidget(rawResult, visitor: visitor) ??
-              D4.extractBridgedArg<Widget>(
-                rawResult,
-                'buildResult',
-                visitor,
-              );
-        }
-        throw StateError(
-          'Interpreted ConsumerState has no callable build(context) method',
-        );
-      }, reportError: false);
+      final built = _runWithLogCapture(
+        () {
+          final method = stateInstance.get('build', visitor: visitor);
+          if (method is Callable) {
+            final rawResult = method.call(visitor, [context], {});
+            return wrapAstInterpretedWidget(rawResult, visitor: visitor) ??
+                D4.extractBridgedArg<Widget>(
+                  rawResult,
+                  'buildResult',
+                  visitor,
+                );
+          }
+          throw StateError(
+            'Interpreted ConsumerState has no callable build(context) method',
+          );
+        },
+        reportError: false,
+        traceName: stateInstance.klass.name,
+      );
       _lastGoodChild = built;
       if (_blankFailed) {
         _blankFailed = false;
@@ -1407,7 +1501,9 @@ class InterpretedInheritedWidget extends InheritedWidget
             ? oldWidget.instance
             : oldWidget;
         final result = method.call(visitor, [previous], {});
-        return result == true;
+        final notified = result == true;
+        AstPerfTrace.recordInherited(notified);
+        return notified;
       }
     } catch (_) {}
     // Unknown: rebuild dependants rather than silently keep stale state.
@@ -1446,9 +1542,9 @@ class InterpretedTickerProvider implements TickerProvider, D4InterpretedProxy {
     // findInstanceMethod only returns a method the guest actually declared.
     final method = instance.klass.findInstanceMethod('createTicker');
     if (method != null) {
-      final result = instance
-          .bindMethodCached(method)
-          .call(visitor, [onTick], {});
+      final result = instance.bindMethodCached(method).call(visitor, [
+        onTick,
+      ], {});
       if (result is Ticker) return result;
     }
     return Ticker(onTick);
@@ -1552,12 +1648,19 @@ class InterpretedCustomPainter extends CustomPainter
   void paint(Canvas canvas, Size size) {
     final method = instance.klass.findInstanceMethod('paint');
     if (method == null) return;
-    _runWithLogCapture(
-      () => instance.bindMethodCached(method).call(visitor, [
-        canvas,
-        size,
-      ], {}),
-    );
+    final sw = AstPerfTrace.enabled ? (Stopwatch()..start()) : null;
+    try {
+      _runWithLogCapture(
+        () => instance.bindMethodCached(method).call(visitor, [
+          canvas,
+          size,
+        ], {}),
+      );
+    } finally {
+      if (sw != null) {
+        AstPerfTrace.recordPaint(instance.klass.name, sw.elapsedMicroseconds);
+      }
+    }
   }
 
   @override
@@ -1609,7 +1712,10 @@ void registerAstWidgetInterfaceProxies(
   }
   if (onError != null) {
     onAstGuestError = onError;
-    D4.onCallbackError = onError;
+    D4.onCallbackError = (error, stack) {
+      onAstGuestLog?.call('[BridgeErr] (callback) $error');
+      onError(error, stack);
+    };
   }
   if (onBlankBuild != null) {
     onAstGuestBlankBuild = onBlankBuild;
@@ -1642,8 +1748,17 @@ void registerAstWidgetInterfaceProxies(
   );
 
   D4.registerInterfaceProxy('InheritedWidget', (visitor, instance) {
+    final existing = instance.nativeProxy;
+    if (existing is InterpretedInheritedWidget &&
+        identical(existing.visitor, visitor)) {
+      return existing;
+    }
     return InterpretedInheritedWidget(visitor, instance);
   });
+
+  _registerAstInheritedWidgetInterceptors();
+  _registerAstGlobalKeyGenericConstructor();
+  _registerAstListenableListenerInterceptors();
 
   // `AnimationController(vsync: this)` from a State using
   // `SingleTickerProviderStateMixin` / `TickerProviderStateMixin`. Both mixin
@@ -1665,7 +1780,10 @@ void registerAstWidgetInterfaceProxies(
   // (the framework compares painters between builds).
   D4.registerInterfaceProxy('CustomPainter', (visitor, instance) {
     final existing = instance.nativeProxy;
-    if (existing is CustomPainter) return existing;
+    if (existing is InterpretedCustomPainter &&
+        identical(existing.visitor, visitor)) {
+      return existing;
+    }
     return InterpretedCustomPainter(visitor, instance);
   });
   // `super(repaint: …)` is skipped for the abstract base (no constructor
@@ -1673,20 +1791,38 @@ void registerAstWidgetInterfaceProxies(
   D4.markProxyCapturesSuperArgs('CustomPainter');
 
   D4.registerInterfaceProxy('StatelessWidget', (visitor, instance) {
+    final existing = instance.nativeProxy;
+    if (existing is InterpretedStatelessWidget &&
+        identical(existing.visitor, visitor)) {
+      return existing;
+    }
     return InterpretedStatelessWidget(visitor, instance);
   });
 
   D4.registerInterfaceProxy('StatefulWidget', (visitor, instance) {
+    final existing = instance.nativeProxy;
+    if (existing is InterpretedStatefulWidget &&
+        identical(existing.visitor, visitor)) {
+      return existing;
+    }
     return InterpretedStatefulWidget(visitor, instance);
   });
 
   D4.registerInterfaceProxy('ConsumerWidget', (visitor, instance) {
+    final existing = instance.nativeProxy;
+    if (existing is InterpretedConsumerWidget &&
+        identical(existing.visitor, visitor)) {
+      return existing;
+    }
     return InterpretedConsumerWidget(visitor, instance);
   });
 
   D4.registerInterfaceProxy('ConsumerStatefulWidget', (visitor, instance) {
     final existing = instance.nativeProxy;
-    if (existing is ConsumerStatefulWidget) return existing;
+    if (existing is InterpretedConsumerStatefulWidget &&
+        identical(existing.visitor, visitor)) {
+      return existing;
+    }
     return InterpretedConsumerStatefulWidget(visitor, instance);
   });
 
@@ -1774,4 +1910,207 @@ void _registerAstConsumerStateSupplements() {
       return null;
     },
   );
+}
+
+/// Intercepts `BuildContext.dependOnInheritedWidgetOfExactType<T>()` and
+/// `getInheritedWidgetOfExactType<T>()` so generic type arguments are honoured
+/// instead of falling through to the type-erased `InheritedWidget` lookup
+/// (which would return the nearest unrelated `InheritedWidget`, e.g.
+/// `MediaQuery`, when guest code asks for an interpreted subclass like
+/// `PlaygroundTheme`).
+void _registerAstInheritedWidgetInterceptors() {
+  Object? lookup(
+    Object? target,
+    List<RuntimeType>? typeArgs, {
+    required bool depend,
+  }) {
+    final ctx = D4.validateTarget<BuildContext>(target, 'BuildContext');
+    if (typeArgs == null || typeArgs.isEmpty) {
+      return depend
+          ? ctx.dependOnInheritedWidgetOfExactType()
+          : ctx.getInheritedWidgetOfExactType();
+    }
+    final typeArg = typeArgs.first;
+    if (typeArg is InterpretedClass) {
+      final nearest = depend
+          ? ctx.dependOnInheritedWidgetOfExactType<InterpretedInheritedWidget>()
+          : ctx.getInheritedWidgetOfExactType<InterpretedInheritedWidget>();
+      if (nearest == null) return null;
+      if (nearest.instance.klass == typeArg ||
+          nearest.instance.klass.name == typeArg.name) {
+        return nearest.instance;
+      }
+      InterpretedInstance? found;
+      try {
+        ctx.visitAncestorElements((ancestor) {
+          final w = ancestor.widget;
+          if (w is InterpretedInheritedWidget &&
+              (w.instance.klass == typeArg ||
+                  w.instance.klass.name == typeArg.name)) {
+            found = w.instance;
+            return false;
+          }
+          return true;
+        });
+      } catch (_) {}
+      return found;
+    }
+    if (typeArg is BridgedClass) {
+      final nativeType = typeArg.nativeType;
+      if (nativeType == MediaQuery) {
+        return depend
+            ? ctx.dependOnInheritedWidgetOfExactType<MediaQuery>()
+            : ctx.getInheritedWidgetOfExactType<MediaQuery>();
+      }
+      if (nativeType == Directionality) {
+        return depend
+            ? ctx.dependOnInheritedWidgetOfExactType<Directionality>()
+            : ctx.getInheritedWidgetOfExactType<Directionality>();
+      }
+      if (nativeType == DefaultTextStyle) {
+        return depend
+            ? ctx.dependOnInheritedWidgetOfExactType<DefaultTextStyle>()
+            : ctx.getInheritedWidgetOfExactType<DefaultTextStyle>();
+      }
+      if (nativeType == SliderTheme) {
+        return depend
+            ? ctx.dependOnInheritedWidgetOfExactType<SliderTheme>()
+            : ctx.getInheritedWidgetOfExactType<SliderTheme>();
+      }
+      Widget? found;
+      try {
+        ctx.visitAncestorElements((ancestor) {
+          final w = ancestor.widget;
+          if (w.runtimeType == nativeType) {
+            found = w;
+            return false;
+          }
+          return true;
+        });
+      } catch (_) {}
+      return found;
+    }
+    return depend
+        ? ctx.dependOnInheritedWidgetOfExactType()
+        : ctx.getInheritedWidgetOfExactType();
+  }
+
+  D4.registerBridgedMethodInterceptor(
+    'Element',
+    'dependOnInheritedWidgetOfExactType',
+    (visitor, target, positional, named, typeArgs) =>
+        lookup(target, typeArgs, depend: true),
+  );
+  D4.registerBridgedMethodInterceptor(
+    'Element',
+    'getInheritedWidgetOfExactType',
+    (visitor, target, positional, named, typeArgs) =>
+        lookup(target, typeArgs, depend: false),
+  );
+}
+
+/// Generic constructor factory for `GlobalKey<T>()` so native widgets with
+/// typed `GlobalKey<SomeState>` parameters (e.g. `SliderMenuContainer(sliderKey:)`
+/// expecting `GlobalKey<SliderMenuContainerState>`) receive the reified type
+/// instead of `GlobalKey<State<StatefulWidget>>`.
+void _registerAstGlobalKeyGenericConstructor() {
+  D4.registerGenericConstructor('GlobalKey', '', (
+    visitor,
+    positional,
+    named,
+    typeArgs,
+  ) {
+    if (typeArgs != null && typeArgs.isNotEmpty) {
+      final arg = typeArgs.first;
+      if (arg is BridgedClass) {
+        final t = arg.nativeType;
+        if (t == SliderMenuContainerState) {
+          return GlobalKey<SliderMenuContainerState>();
+        }
+        if (t == RefreshIndicatorState) {
+          return GlobalKey<RefreshIndicatorState>();
+        }
+        if (t == NestedScrollViewState) {
+          return GlobalKey<NestedScrollViewState>();
+        }
+        if (t == OverlayState) {
+          return GlobalKey<OverlayState>();
+        }
+      }
+    }
+    return GlobalKey();
+  });
+}
+
+/// Per-Listenable mapping from guest callback object -> wrapped native
+/// `VoidCallback` stack, keyed via [Expando] so disposed listenables are GC'd.
+final Expando<Map<Object, List<VoidCallback>>> _astListenerWrappers =
+    Expando<Map<Object, List<VoidCallback>>>('d4rt.astListenerWrappers');
+
+/// Intercepts `addListener` / `removeListener` on any native [Listenable]
+/// (`ChangeNotifier`, `ValueNotifier`, `AnimationController`, `ScrollController`,
+/// `PageController`, `Computed`, etc.) so `removeListener` removes the exact
+/// `VoidCallback` wrapper that `addListener` registered instead of leaking a
+/// fresh anonymous closure on every call.
+void _registerAstListenableListenerInterceptors() {
+  Object? addListenerAdapter(
+    InterpreterVisitor? visitor,
+    Object? target,
+    List<Object?> positional,
+    Map<String, Object?> named,
+    List<RuntimeType>? typeArgs,
+  ) {
+    final t = D4.validateTarget<Listenable>(target, 'Listenable');
+    D4.requireMinArgs(positional, 1, 'addListener');
+    final listenerRaw = positional[0];
+    if (listenerRaw == null) {
+      throw ArgumentError('addListener: listener must not be null');
+    }
+    if (listenerRaw is VoidCallback) {
+      t.addListener(listenerRaw);
+      return null;
+    }
+    final activeVisitor = visitor ?? D4.activeVisitor!;
+    void wrapper() {
+      D4.callInterpreterCallback(activeVisitor, listenerRaw, []);
+    }
+
+    final map =
+        _astListenerWrappers[t] ??= <Object, List<VoidCallback>>{};
+    map.putIfAbsent(listenerRaw, () => <VoidCallback>[]).add(wrapper);
+    t.addListener(wrapper);
+    return null;
+  }
+
+  Object? removeListenerAdapter(
+    InterpreterVisitor? visitor,
+    Object? target,
+    List<Object?> positional,
+    Map<String, Object?> named,
+    List<RuntimeType>? typeArgs,
+  ) {
+    final t = D4.validateTarget<Listenable>(target, 'Listenable');
+    D4.requireMinArgs(positional, 1, 'removeListener');
+    final listenerRaw = positional[0];
+    if (listenerRaw == null) return null;
+    if (listenerRaw is VoidCallback) {
+      t.removeListener(listenerRaw);
+      return null;
+    }
+    final map = _astListenerWrappers[t];
+    final wrappers = map?[listenerRaw];
+    if (wrappers != null && wrappers.isNotEmpty) {
+      final wrapper = wrappers.removeLast();
+      if (wrappers.isEmpty) map!.remove(listenerRaw);
+      t.removeListener(wrapper);
+    }
+    return null;
+  }
+
+  D4.registerTargetMethodInterceptor('addListener', (target) {
+    return target is Listenable ? addListenerAdapter : null;
+  });
+  D4.registerTargetMethodInterceptor('removeListener', (target) {
+    return target is Listenable ? removeListenerAdapter : null;
+  });
 }

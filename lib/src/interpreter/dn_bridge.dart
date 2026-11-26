@@ -2,6 +2,7 @@ import 'package:dartnative/dartnative.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
 import 'd4rt_dartnative_application.dart';
 import 'dartnative_bridges.b.dart' as dartnative_ui_bridges;
+import 'dartnative_skia_bridges.b.dart' as dartnative_skia_bridges;
 import 'dartnative_sub_barrels.dart';
 import 'dartscript.b.dart';
 import 'media_gallery_ffi_bridge.dart';
@@ -46,5 +47,11 @@ void registerDartNativeBridges(
 void registerDartNativeSubBarrels(D4rt interpreter) {
   for (final uri in kDartNativeSubBarrelUris) {
     dartnative_ui_bridges.DartnativeUiBridge.registerBridges(interpreter, uri);
+    if (uri == 'package:dartnative/canvas.dart') {
+      dartnative_skia_bridges.DartnativeSkiaBridge.registerBridges(
+        interpreter,
+        uri,
+      );
+    }
   }
 }

@@ -482,6 +482,7 @@ class D4 {
   /// ([registerTypeCoercion]): a value of [sourceType] stands in for a
   /// [targetType], so a type check of the target accepts it (ghissues28).
   static bool hasTypeCoercion(Type sourceType, Type targetType) =>
+      _typeCoercionsByType.isNotEmpty &&
       _typeCoercionsByType.containsKey(_TypePair(sourceType, targetType));
 
   /// Per-base-type identity tracking for [registerGenericTypeWrapper] —
@@ -870,6 +871,30 @@ class D4 {
     String methodName,
   ) {
     return _methodInterceptors[className]?[methodName];
+  }
+
+  /// Target-predicate method interceptors keyed by [methodName].
+  ///
+  /// Used for cross-hierarchy overrides (e.g. `Listenable.addListener` /
+  /// `removeListener` across `ChangeNotifier`, `ValueNotifier`,
+  /// `AnimationController`, `ScrollController`, `Computed`, etc.).
+  static final Map<String, BridgedMethodAdapter? Function(Object target)>
+  _targetMethodInterceptors = {};
+
+  static void registerTargetMethodInterceptor(
+    String methodName,
+    BridgedMethodAdapter? Function(Object target) resolver,
+  ) {
+    _targetMethodInterceptors[methodName] = resolver;
+  }
+
+  static BridgedMethodAdapter? findTargetMethodInterceptor(
+    String methodName,
+    Object target,
+  ) {
+    if (_targetMethodInterceptors.isEmpty) return null;
+    final resolver = _targetMethodInterceptors[methodName];
+    return resolver?.call(target);
   }
 
   // ==========================================================================
@@ -1942,19 +1967,15 @@ class D4 {
 
     if (unwrapped is T) {
       // GEN-C3: Deep-unwrap container contents for unbounded T.
-      // When the bridge adapter requests `dynamic`, `Object`, or `Object?`
-      // (typically because the underlying parameter is declared as such —
-      // e.g. `MessageCodec.encodeMessage(dynamic message)`), nested
-      // BridgedInstance/BridgedEnumValue values inside Map/List/Set
-      // containers must be unwrapped before reaching native code. Native
-      // receivers (StandardMessageCodec, JSON codecs, …) cannot interpret
-      // BridgedInstance wrappers and reject them with `Invalid argument`.
-      // Typed parameters (e.g. `Map<String, Widget>`) take a different
-      // path via `coerceMap` and are unaffected by this branch.
-      final tName = typeName(T);
-      if (tName == 'dynamic' || tName == 'Object' || tName == 'Object?') {
-        final deep = _deepUnwrap(unwrapped);
-        if (deep is T) return deep;
+      // Only containers (`List`, `Map`, `Set`) can hold nested BridgedInstance /
+      // BridgedEnumValue entries, so skip the `typeName(T)` map lookup and
+      // string compares on primitives, widgets, styles, etc.
+      if (unwrapped is List || unwrapped is Map || unwrapped is Set) {
+        final tName = typeName(T);
+        if (tName == 'dynamic' || tName == 'Object' || tName == 'Object?') {
+          final deep = _deepUnwrap(unwrapped);
+          if (deep is T) return deep;
+        }
       }
       return unwrapped;
     }
@@ -2606,13 +2627,15 @@ class D4 {
     String paramName,
     String methodName,
   ) {
-    if (!named.containsKey(paramName)) {
-      throw ArgumentD4rtException(
-        '$methodName: Missing required named argument "$paramName"',
-      );
-    }
     final value = named[paramName];
-    if (value == null) return null as T;
+    if (value == null) {
+      if (!named.containsKey(paramName)) {
+        throw ArgumentD4rtException(
+          '$methodName: Missing required named argument "$paramName"',
+        );
+      }
+      return null as T;
+    }
     return extractBridgedArg<T>(value, paramName);
   }
 
@@ -2623,10 +2646,10 @@ class D4 {
     Map<String, Object?> named,
     String paramName,
   ) {
-    if (!named.containsKey(paramName) || named[paramName] == null) {
-      return null;
-    }
-    return extractBridgedArg<T>(named[paramName], paramName);
+    if (named.isEmpty) return null;
+    final value = named[paramName];
+    if (value == null) return null;
+    return extractBridgedArg<T>(value, paramName);
   }
 
   /// Get an optional named argument with default value.
@@ -2651,11 +2674,12 @@ class D4 {
     String paramName,
     T defaultValue,
   ) {
-    if (!named.containsKey(paramName)) {
-      return defaultValue;
-    }
+    if (named.isEmpty) return defaultValue;
     final value = named[paramName];
     if (value == null) {
+      if (!named.containsKey(paramName)) {
+        return defaultValue;
+      }
       // Distinguish nullable T from non-nullable T at runtime:
       // `null is T` is true iff T accepts null.
       if (null is T) {
@@ -3113,33 +3137,16 @@ class D4 {
   ///
   /// This is the full version that can actually create proxies.
   /// Called from contexts where the visitor is available.
-  static T? tryCreateInterfaceProxyWithVisitor<T>(
-    InterpretedInstance instance,
-    InterpreterVisitor visitor,
-  ) {
-    // Walk hierarchy starting from `instance.klass` and recursively traverse
-    // the interpreted superclass chain plus all interpreted mixins and
-    // interpreted interfaces. At every level collect:
-    //   - the bridgedSuperclass name (direct)
-    //   - bridgedInterfaces / bridgedMixins names
-    //   - transitively registered supertypes of each (Bug-102b)
-    // Then try each candidate against the interface-proxy registry.
-    //
-    // Prior to Bug-102c, only the outermost klass's bridgedSuperclass
-    // was considered — so a script like
-    //   abstract class _BaseDelegate extends MultiChildLayoutDelegate { ... }
-    //   class _DashboardDelegate extends _BaseDelegate { ... }
-    // failed to resolve because _DashboardDelegate.bridgedSuperclass is
-    // null (its bridged super is one interpreted hop away).
-    //
-    // Cluster-18 (bucket #8) extends this further: scripts may use an
-    // interpreted mixin to satisfy a bridged interface, e.g.
-    //   mixin _TickerProviderShim<T extends StatefulWidget> on State<T>
-    //       implements TickerProvider { ... }
-    //   class _DemoState extends State<...> with _TickerProviderShim
-    // Without recursing into `walk.mixins` and `walk.interfaces`, the
-    // bridged contributions of the interpreted mixin (here TickerProvider)
-    // are invisible to proxy resolution.
+  /// Per-class memoized candidate bridged-type names for
+  /// [tryCreateInterfaceProxyWithVisitor]. Keyed by [InterpretedClass] identity
+  /// via [Expando] so hot-reload generations automatically drop old classes.
+  static final Expando<List<String>> _proxyCandidatesByClass =
+      Expando<List<String>>('d4rt.proxyCandidates');
+
+  static List<String> _proxyCandidatesFor(InterpretedClass klass) {
+    final cached = _proxyCandidatesByClass[klass];
+    if (cached != null) return cached;
+
     final seen = <String>{};
     final candidates = <String>[];
     void add(String n) {
@@ -3153,9 +3160,6 @@ class D4 {
       }
     }
 
-    // Keyed by declaration identity (module + name) rather than class object:
-    // a hot reload builds a new class object per generation, and object
-    // identity would defeat the cycle guard for the current graph.
     final visitedClasses = <String>{};
     void collectFromInterpreted(InterpretedClass? c) {
       if (c == null) return;
@@ -3169,8 +3173,6 @@ class D4 {
       for (final mixin in c.bridgedMixins) {
         addBridged(mixin);
       }
-      // Recurse into interpreted ancestors so an interpreted mixin's or
-      // interface's bridged contributions are also discovered.
       collectFromInterpreted(c.superclass);
       for (final m in c.mixins) {
         collectFromInterpreted(m);
@@ -3180,7 +3182,17 @@ class D4 {
       }
     }
 
-    collectFromInterpreted(instance.klass);
+    collectFromInterpreted(klass);
+    final unmodifiable = List<String>.unmodifiable(candidates);
+    _proxyCandidatesByClass[klass] = unmodifiable;
+    return unmodifiable;
+  }
+
+  static T? tryCreateInterfaceProxyWithVisitor<T>(
+    InterpretedInstance instance,
+    InterpreterVisitor visitor,
+  ) {
+    final candidates = _proxyCandidatesFor(instance.klass);
 
     for (final name in candidates) {
       final factory = _interfaceProxies[name];

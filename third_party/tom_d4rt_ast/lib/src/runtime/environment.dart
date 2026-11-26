@@ -261,6 +261,16 @@ class Environment {
   // an object of that type, most specific first ([assignableBridgedClasses]).
   // Cleared with [_resolvedTypeCache].
   Map<Type, List<BridgedClass>>? _assignableBridgesCacheRaw;
+  // Persistent caches for [toBridgedClass] and [getRuntimeType], hosted on the
+  // nearest bridge-owning enclosing environment ([_cacheHostEnv]) so ephemeral
+  // per-call function/block frames share the module's warm cache instead of
+  // re-scanning all bridged classes on every widget build.
+  Map<Type, BridgedClass?>? _toBridgedClassCacheRaw;
+  Map<Type, BridgedClass?>? _runtimeTypeCacheRaw;
+  // Monotonic version bumped whenever ANY environment mutates its bridge
+  // registry; guarantees cross-scope cache coherence in O(1).
+  static int _bridgeRegistryVersion = 0;
+  int _cacheVersion = -1;
   Map<String, BridgedEnum>? _bridgedEnumsRaw; // Store bridged enums
   // SCD194: the enum counterpart of [_shadowedBridgesRaw]. `defineBridgedEnum`
   // used to warn and overwrite, so a displaced enum left no trace but a log
@@ -273,6 +283,9 @@ class Environment {
   /// Enum aliases defined here, alias -> target name (ghissues21).
   Map<String, String>? _enumAliasTargetsRaw;
   List<InterpretedExtension>? _unnamedExtensionsRaw; // Store unnamed extensions
+  // Named extensions mirrored from `_values` so `findExtensionMember` never
+  // iterates every variable/function/class in `_values.values`.
+  List<InterpretedExtension>? _namedExtensionsRaw;
   Map<String, Environment>? _prefixedImportsRaw; // For prefixed imports
 
   // Read views — empty const when the backing field is null (no allocation).
@@ -280,9 +293,6 @@ class Environment {
       _bridgedClassesRaw ?? const <String, BridgedClass>{};
   Map<Type, BridgedClass> get _bridgedClassesLookupByType =>
       _bridgedClassesLookupByTypeRaw ?? const <Type, BridgedClass>{};
-  Map<Type, BridgedClass> get _resolvedTypeCache =>
-      _resolvedTypeCacheRaw ?? const <Type, BridgedClass>{};
-  Set<Type> get _unbridgedTypeCache => _unbridgedTypeCacheRaw ?? const <Type>{};
   Map<String, BridgedEnum> get _bridgedEnums =>
       _bridgedEnumsRaw ?? const <String, BridgedEnum>{};
   List<InterpretedExtension> get _unnamedExtensions =>
@@ -507,6 +517,10 @@ class Environment {
     }
     if (sourceUri != null) _bridgeSourceUrisOrNew[name] = sourceUri;
     _values[name] = value;
+    if (value is InterpretedExtension) {
+      final list = _namedExtensionsRaw ??= [];
+      if (!list.any((e) => identical(e, value))) list.add(value);
+    }
   }
 
   /// Writes [value] into this frame's slot array at [slot] and records the
@@ -933,9 +947,43 @@ class Environment {
   /// [_bridgedClassesLookupByType], because a newly-registered bridge can
   /// change the most-specific resolution for previously-cached runtimeTypes.
   void _invalidateResolutionCache() {
+    _bridgeRegistryVersion++;
     _resolvedTypeCacheRaw?.clear();
     _unbridgedTypeCacheRaw?.clear();
     _assignableBridgesCacheRaw?.clear();
+    _toBridgedClassCacheRaw?.clear();
+    _runtimeTypeCacheRaw?.clear();
+    _cacheVersion = _bridgeRegistryVersion;
+  }
+
+  /// Nearest environment on the scope chain that actually defines bridges
+  /// (so resolution caches live on the persistent module/global scope rather
+  /// than ephemeral per-call function/block frames).
+  Environment _cacheHostEnv() {
+    Environment? env = this;
+    while (env != null) {
+      if (env._bridgedClassesLookupByTypeRaw != null) {
+        if (env._cacheVersion != _bridgeRegistryVersion) {
+          env._resolvedTypeCacheRaw?.clear();
+          env._unbridgedTypeCacheRaw?.clear();
+          env._assignableBridgesCacheRaw?.clear();
+          env._toBridgedClassCacheRaw?.clear();
+          env._runtimeTypeCacheRaw?.clear();
+          env._cacheVersion = _bridgeRegistryVersion;
+        }
+        return env;
+      }
+      env = env._enclosing;
+    }
+    if (_cacheVersion != _bridgeRegistryVersion) {
+      _resolvedTypeCacheRaw?.clear();
+      _unbridgedTypeCacheRaw?.clear();
+      _assignableBridgesCacheRaw?.clear();
+      _toBridgedClassCacheRaw?.clear();
+      _runtimeTypeCacheRaw?.clear();
+      _cacheVersion = _bridgeRegistryVersion;
+    }
+    return this;
   }
 
   /// Looks up a bridged class by name, walking the enclosing scope chain.
@@ -1167,7 +1215,61 @@ class Environment {
   ///   3. [toBridgedClass] name-based fallbacks (private impl types,
   ///      generic suffix matching, `*Impl` prefix matching). Used only when
   ///      neither direct type lookup nor isAssignable found a bridge.
-  BridgedInstance? toBridgedInstance(Object? nativeObject) {
+  /// Returns true if [name] resolves to a local/block variable, an instance
+  /// member on `this`, or a non-const [DeclarationCell] — i.e., a binding whose
+  /// value may vary across calls and must not be folded into a per-AST-node
+  /// `const` cache.
+  bool isPotentiallyMutableOrLocalBinding(String name) {
+    Environment? current = this;
+    while (current != null) {
+      final isModuleOrRoot =
+          current._enclosing == null ||
+          current._bridgedClassesRaw != null ||
+          current._bridgedEnumsRaw != null ||
+          current._prefixedImportsRaw != null;
+
+      final cell = current._cells[name];
+      if (cell != null) {
+        return !isModuleOrRoot || !cell.isConst;
+      }
+
+      if (current._values.containsKey(name)) {
+        if (!isModuleOrRoot) {
+          final val = current._values[name];
+          // A type/class/enum binding is constant; a local value binding is not.
+          if (val is! InterpretedClass &&
+              val is! BridgedClass &&
+              val is! BridgedEnum &&
+              val is! InterpretedEnum) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      // Check implicit `this.<name>` instance members in method/build scopes.
+      final thisVal = current._values['this'];
+      if (thisVal is InterpretedInstance && thisVal.hasInstanceMember(name)) {
+        return true;
+      }
+
+      if (current._bridgedClasses.containsKey(name) ||
+          current._bridgedEnums.containsKey(name) ||
+          current._prefixedImports.containsKey(name)) {
+        return false;
+      }
+
+      current = current._enclosing;
+    }
+    return false;
+  }
+
+  /// Non-throwing counterpart to [toBridgedInstance].
+  ///
+  /// Returns `null` instead of constructing/throwing a [RuntimeD4rtException]
+  /// (which captures and formats the full guest stack trace) when [nativeObject]
+  /// has no registered bridge.
+  BridgedInstance? tryToBridgedInstance(Object? nativeObject) {
     if (nativeObject == null) {
       return null;
     }
@@ -1183,39 +1285,19 @@ class Environment {
       current = current._enclosing;
     }
 
-    // 1b) Resolution cache. GEN-115 Phase 2: a previous call already paid
-    //     the full step-2 / step-3 cost for this runtimeType; reuse it.
-    //     Walks the env chain so a hit in any enclosing scope short-circuits.
-    current = this;
-    while (current != null) {
-      final cached = current._resolvedTypeCache[runtimeType];
-      if (cached != null) {
-        return BridgedInstance(cached, nativeObject);
-      }
-      // T4 (perf, F3): negative-cache hit — a previous call already proved this
-      // runtimeType has no bridge. Re-throw the same miss without re-walking the
-      // chain, iterating every bridge, or running the name-fallback toString.
-      if (current._unbridgedTypeCache.contains(runtimeType)) {
-        throw RuntimeD4rtException(
-          'Cannot bridge native object: No registered bridged class found '
-          'for native type $runtimeType.',
-        );
-      }
-      current = current._enclosing;
+    // 1b) Resolution cache (GEN-115 Phase 2), hosted on the nearest
+    //     bridge-owning environment so ephemeral per-call function frames share
+    //     the module's warm cache instead of re-scanning every call.
+    final cacheHost = _cacheHostEnv();
+    final cached = cacheHost._resolvedTypeCacheRaw?[runtimeType];
+    if (cached != null) {
+      return BridgedInstance(cached, nativeObject);
+    }
+    if (cacheHost._unbridgedTypeCacheRaw?.contains(runtimeType) ?? false) {
+      return null;
     }
 
-    // 2) isAssignable iteration. Bridges may register in any order, so we
-    //    collect ALL matches and then drop those that are supertypes of
-    //    another match using [BridgedClass.transitiveSupertypeNames]. The
-    //    remaining set is "leaf" matches; we pick the last one (preserves
-    //    legacy LAST-wins behaviour when the registry doesn't disambiguate).
-    //
-    //    D2 fix: A native object whose runtimeType is a private impl of
-    //    BoxConstraints (e.g. `_BodyBoxConstraints`) was wrapped as
-    //    `Constraints` because the LAST-match-wins iteration picked the
-    //    abstract base. With `BoxConstraints: [Constraints, ...]` registered
-    //    in the supertype registry, the filter drops `Constraints` and
-    //    keeps `BoxConstraints`, so `.maxWidth` resolves correctly.
+    // 2) isAssignable iteration.
     final allMatches = <BridgedClass>[];
     current = this;
     while (current != null) {
@@ -1230,28 +1312,32 @@ class Environment {
     if (allMatches.isNotEmpty) {
       final filtered = _filterToMostSpecific(allMatches);
       final picked = filtered.isNotEmpty ? filtered.last : allMatches.last;
-      _resolvedTypeCacheOrNew[runtimeType] = picked;
+      cacheHost._resolvedTypeCacheOrNew[runtimeType] = picked;
       return BridgedInstance(picked, nativeObject);
     }
 
-    // 3) Name-based fallbacks (private impl, generic suffix, *Impl prefix).
-    //    [toBridgedClass] will throw if no bridge matches — try the structural
-    //    fallback (step 4) before giving up, and negative-cache the miss so
-    //    repeats short-circuit (T4, F3).
-    // 3) + 4) Name-shaped resolution, through the one entry that states the
-    //    interpreter/native boundary ([_toBridgedClassForValue], SCE179). A
-    //    miss is negative-cached so repeats short-circuit (T4, F3), and
-    //    rethrown: callers use the throw to fall through to the bridged-ENUM
-    //    registry.
+    // 3) + 4) Name-shaped resolution.
     final BridgedClass bridgedClass;
     try {
       bridgedClass = _toBridgedClassForValue(nativeObject, structural: true);
     } on RuntimeD4rtException {
-      _unbridgedTypeCacheOrNew.add(runtimeType);
-      rethrow;
+      cacheHost._unbridgedTypeCacheOrNew.add(runtimeType);
+      return null;
     }
-    _resolvedTypeCacheOrNew[runtimeType] = bridgedClass;
+    cacheHost._resolvedTypeCacheOrNew[runtimeType] = bridgedClass;
     return BridgedInstance(bridgedClass, nativeObject);
+  }
+
+  BridgedInstance? toBridgedInstance(Object? nativeObject) {
+    if (nativeObject == null) {
+      return null;
+    }
+    final resolved = tryToBridgedInstance(nativeObject);
+    if (resolved != null) return resolved;
+    throw RuntimeD4rtException(
+      'Cannot bridge native object: No registered bridged class found '
+      'for native type ${nativeObject.runtimeType}.',
+    );
   }
 
   /// GEN-135: every bridged class, in this scope chain, whose `isAssignable`
@@ -1266,7 +1352,8 @@ class Environment {
   /// runtime type.
   List<BridgedClass> assignableBridgedClasses(Object nativeObject) {
     final runtimeType = nativeObject.runtimeType;
-    final cached = _assignableBridgesCacheRaw?[runtimeType];
+    final cacheHost = _cacheHostEnv();
+    final cached = cacheHost._assignableBridgesCacheRaw?[runtimeType];
     if (cached != null) return cached;
     final matches = <BridgedClass>[];
     for (Environment? env = this; env != null; env = env._enclosing) {
@@ -1286,7 +1373,7 @@ class Environment {
     final ordered = List<BridgedClass>.unmodifiable([
       for (final (_, bridge) in indexed) bridge,
     ]);
-    (_assignableBridgesCacheRaw ??= {})[runtimeType] = ordered;
+    (cacheHost._assignableBridgesCacheRaw ??= {})[runtimeType] = ordered;
     return ordered;
   }
 
@@ -1516,53 +1603,61 @@ class Environment {
   }
 
   BridgedClass toBridgedClass(Type nativeType) {
-    // Resolution is split into TWO chain walks so that a PRECISE match in a
-    // far (enclosing) frame always beats a FUZZY name-prefix match in a near
-    // frame. Before this split the loop tried every strategy — including the
-    // loose G-DCLI-05 `startsWith` prefix fallback — within a single frame and
-    // returned on the first hit, so a nearer frame's fuzzy match short-circuited
-    // a more-correct precise match still waiting in an enclosing frame.
-    //
-    // Concrete failure (lazy-bridge substrate, step #17/#19): a
-    // `MappedListIterable<…>` returned by `List.map(...).toList()` has its
-    // precise `nativeNames` entry on the stdlib `Iterable` bridge, which (under
-    // the warm-parent / per-module split) lives in an *enclosing* frame. A
-    // nearer module frame carries the `Map` bridge but not `Iterable`, and
-    // `"MappedListIterable".startsWith("Map")` made the fuzzy fallback wrap it
-    // as `Map` — so `.toList()` failed. Walking all frames for precise matches
-    // first, then all frames for the fuzzy fallback, resolves it to `Iterable`.
-    // Mirror of tom_d4rt/lib/src/environment.dart.
-    final String nativeTypeNameFull = nativeType.toString();
+    final resolved = _lookupBridgedClassForType(nativeType);
+    if (resolved != null) return resolved;
+    throw RuntimeD4rtException(
+      'Cannot bridge native object: No registered bridged class found for native type $nativeType.',
+    );
+  }
 
-    // PASS A — precise matching across the whole scope chain: exact Type
-    // lookup, `_FooImpl → Foo` canonicalization, generic-base `name`/
-    // `nativeNames` match, suffix match, name-exact, and longest-nativeName
-    // prefix. Every strategy here is anchored on a declared bridge identity.
+  /// Cached, non-throwing implementation of [toBridgedClass].
+  ///
+  /// Stores both hits and misses (`null`) on [_cacheHostEnv] so repeat lookups
+  /// for unbridged or private runtime types (e.g. `StatelessElement`,
+  /// `_GrowableList<Widget>`, `_OneByteString`) return in O(1) without
+  /// re-scanning every [LazyBridgeRegistry] or constructing a
+  /// [RuntimeD4rtException] + guest stack trace.
+  BridgedClass? _lookupBridgedClassForType(Type nativeType) {
+    final cacheHost = _cacheHostEnv();
+    final cache = cacheHost._toBridgedClassCacheRaw;
+    if (cache != null && cache.containsKey(nativeType)) {
+      return cache[nativeType];
+    }
+
+    // PASS 0 — exact Type lookup across the ENTIRE scope chain before any
+    // linear `.entries` scan. Exact identity always beats name-based matching
+    // and avoids materializing/iterating module bridges for stdlib types.
     Environment? current = this;
     while (current != null) {
-      BridgedClass? bridgedClass =
-          current._bridgedClassesLookupByType[nativeType];
+      final exact = current._bridgedClassesLookupByType[nativeType];
+      if (exact != null) {
+        (cacheHost._toBridgedClassCacheRaw ??= {})[nativeType] = exact;
+        return exact;
+      }
+      current = current._enclosing;
+    }
+
+    final String nativeTypeNameFull = nativeType.toString();
+
+    // PASS A — precise matching across the whole scope chain: `_FooImpl → Foo`
+    // canonicalization, generic-base `name`/`nativeNames` match, name-exact,
+    // and longest-nativeName prefix.
+    current = this;
+    while (current != null) {
+      BridgedClass? bridgedClass;
 
       String nativeTypeName = nativeTypeNameFull;
 
-      if (bridgedClass == null && (nativeTypeName.substring(0, 1) == '_')) {
+      if (nativeTypeName.substring(0, 1) == '_') {
         if (nativeTypeName.endsWith('Impl')) {
           nativeTypeName = nativeTypeName.substringBeforeLast('Impl');
         }
-        // Cluster HASHSET FIX: when matching nativeNames by prefix, choose the
-        // LONGEST matching nativeName so a more-specific bridge (e.g. Iterator
-        // with `_HashSetIterator` in nativeNames) wins over a less-specific
-        // bridge whose nativeName is a shorter prefix (e.g. Set's `_HashSet`).
-        // Mirror of tom_d4rt/lib/src/environment.dart.
         final cleanedName = nativeTypeName.substring(1).substringBefore('<');
         bridgedClass = current._bridgedClassesLookupByType.entries
             .firstWhereOrNull((e) => e.value.name == cleanedName)
             ?.value;
         bridgedClass ??= _longestNativeNamePrefixMatch(current, nativeTypeName);
-      } else if (bridgedClass == null && nativeTypeName.contains('<')) {
-        // Extract the base type name before '<' for accurate matching.
-        // Using contains() was too broad — e.g., 'ListMapView<int>'.contains('View<')
-        // would falsely match the Flutter View widget bridge.
+      } else if (nativeTypeName.contains('<')) {
         final baseTypeName = nativeTypeName.substring(
           0,
           nativeTypeName.indexOf('<'),
@@ -1578,42 +1673,17 @@ class Environment {
       bridgedClass ??= current._bridgedClassesLookupByType.entries
           .firstWhereOrNull((e) => e.value.name == nativeTypeName)
           ?.value;
-      // Cluster HASHSET FIX: pick the LONGEST nativeName prefix so a
-      // specific bridge wins over a less-specific bridge whose nativeName
-      // is a shorter prefix.
       bridgedClass ??= _longestNativeNamePrefixMatch(current, nativeTypeName);
 
       if (bridgedClass != null) {
+        (cacheHost._toBridgedClassCacheRaw ??= {})[nativeType] = bridgedClass;
         return bridgedClass;
       }
 
       current = current._enclosing;
     }
 
-    // PASS A2 — the SUFFIX fallback, across the whole chain, AFTER every
-    // precise strategy has been tried in every frame.
-    //
-    // SCE162/SCF26: this used to run inside the loop above, so a FUZZY suffix
-    // match in a NEARER frame beat a PRECISE `nativeNames` match in an
-    // enclosing one. Under the lazy-bridge substrate the Flutter bridges sit in
-    // the child frame and the stdlib bridges in the warm parent, so
-    // `UnmodifiableSetView<String>` — named outright by the stdlib `Set`
-    // bridge's `nativeNames` — resolved to Flutter's `View` WIDGET, because
-    // `View` is the longest bridge name that is a suffix of
-    // `UnmodifiableSetView` and it was reached one frame sooner. A script
-    // passing `const <String>{'shiftLeft'}` to a `Set<String>` parameter was
-    // then refused with `type 'View<String>' is not a subtype of type
-    // 'Set<String>'`.
-    //
-    // THIS IS THE SAME LESSON AS THE PREFIX CASE, arriving at the strategy it
-    // missed. `MappedListIterable → Map` was fixed by splitting resolution into
-    // a precise chain walk and a fuzzy one; the suffix match is equally fuzzy —
-    // it is anchored on the BRIDGE's name appearing inside the native type's,
-    // not on any declared relationship — and it stayed frame-local, so
-    // proximity kept beating precision for it alone.
-    //
-    // It can only move a resolution from a fuzzy answer to a precise one: every
-    // candidate this walk can find was already reachable, just later.
+    // PASS A2 — SUFFIX fallback across the whole chain.
     if (nativeTypeNameFull.contains('<')) {
       final suffixBase = nativeTypeNameFull.substring(
         0,
@@ -1622,81 +1692,20 @@ class Environment {
       current = this;
       while (current != null) {
         final match = _longestNameSuffixMatch(current, suffixBase);
-        if (match != null) return match;
+        if (match != null) {
+          (cacheHost._toBridgedClassCacheRaw ??= {})[nativeType] = match;
+          return match;
+        }
         current = current._enclosing;
       }
     }
 
-    // PASS B — prefix fallback across the whole scope chain, CORROBORATED.
-    //
-    // SCD132. This used to match any registered bridge whose name was a
-    // >=3-character prefix of the native type name, with nothing else asked.
-    // Two of the three false positives this method's header documents are that
-    // rule firing: `MappedListIterable` claimed by `Map`, and `TextDirection`
-    // claimed by `Text` — and each was repaired by routing ONE caller around
-    // PASS B rather than by narrowing it, so the next name-shaped coincidence
-    // was always going to be claimed just as silently.
-    //
-    // A NAME PREFIX IS A COINCIDENCE, NOT A RELATIONSHIP. The prefix is still
-    // how a candidate is FOUND — it is cheap and it is what the G-DCLI-05 case
-    // (`ProgressBothImpl` → `Progress`) looks like — but the bridge must also
-    // DECLARE the connection, one of two ways:
-    //
-    //   * `nativeNames` names this type, so the bridge says it speaks for it;
-    //   * the supertype registry relates the two names, so a hierarchy
-    //     somebody registered says they are related.
-    //
-    // `isAssignable` is the obvious third corroboration and is NOT reachable
-    // here: it takes a VALUE and this method is given only a `Type`. Callers
-    // that hold the value already consult it (GEN-075 in
-    // `BridgedClass.isSubtypeOf`); this is the path that cannot.
-    //
-    // MEASURED BEFORE NARROWING. A probe on every PASS B match across both
-    // trees' full suites fired 12 times: 11 for one test's deliberately
-    // prefix-named proxy, and once for `TextDirection` → `Text`, the known
-    // false positive. G-DCLI-05's own case never reached PASS B at all — PASS A
-    // resolves it today. So the rule this narrows had no measured legitimate
-    // user, and the test that did rely on it now declares `nativeNames`, which
-    // is the realignment rather than a workaround.
-    //
-    // AND MEASURED AGAINST THE FLUTTER CORPUS (SCE149), which is where this
-    // rule's heaviest use lives and which the unit suites cannot speak for:
-    // the twins resolve the interpreter from pub.dev (DGUC6), so no corpus run
-    // had ever exercised the narrowing. Both twins' base corpus, run serially
-    // 2026-09-22 through SCD66's pre-publish path resolution at tom_d4rt
-    // 1.175.0 / tom_d4rt_ast 0.157.0: **926 / 1 / 1 each**, against the
-    // 927/1/0 hosted baseline, and the single failure is the same script in
-    // both — scf26's `const <String>{}` resolving to Flutter's `View` widget,
-    // which is the SUFFIX pass (`_longestNameSuffixMatch`) and not this one.
-    //
-    // THE EXPECTED FINDING DID NOT MATERIALISE, and that is the result. The
-    // todo predicted Flutter bridges would need `nativeNames` entries once the
-    // prefix coincidence stopped covering for them. NONE did: no corpus
-    // resolution was reaching PASS B uncorroborated. The two false positives
-    // this rule is infamous for (`MappedListIterable` → `Map`,
-    // `TextDirection` → `Text`) were both found BY the corpus, so the corpus
-    // was the right place to ask — it simply answered no.
-    //
-    // When nothing corroborates, falling through to the throw below is more
-    // honest than returning a wrong bridge: every caller already handles it,
-    // and a wrong bridge is a silently wrong dispatch.
-    //
-    // HOW MUCH MORE HONEST, MEASURED (SCE153). F-SCD133-4 in both Flutter
-    // twins ablates the enum branch of `getRuntimeType` and asks what THIS
-    // path alone would return for every bridged enum in the live Flutter
-    // registry. Under the published interpreter 104 of 213 came back as a
-    // DIFFERENT bridge on the AST line, and 82 of 151 on the source line.
-    // Under the narrowed rule, measured 2026-09-22 via SCD66's pre-publish
-    // path resolution: zero on both lines — all 213 and all 151 throw. The
-    // wrong-answer outcome is not reduced by the narrowing, it is gone. That
-    // is the sentence above, priced over a registry rather than argued.
+    // PASS B — corroborated prefix fallback across the whole scope chain.
     current = this;
     while (current != null) {
       final bridgedClass = current._bridgedClassesLookupByType.entries
           .firstWhereOrNull((e) {
             final bridgeName = e.value.name;
-            // The bridge name must be a substantial prefix of the native type
-            // name — and that is only the candidate test, not the verdict.
             if (bridgeName.length < 3 ||
                 !nativeTypeNameFull.startsWith(bridgeName) ||
                 nativeTypeNameFull.length <= bridgeName.length) {
@@ -1711,14 +1720,14 @@ class Environment {
             "[Environment] Matched native type '$nativeTypeNameFull' to bridge '${bridgedClass.name}' via corroborated prefix matching",
           );
         }
+        (cacheHost._toBridgedClassCacheRaw ??= {})[nativeType] = bridgedClass;
         return bridgedClass;
       }
       current = current._enclosing;
     }
 
-    throw RuntimeD4rtException(
-      'Cannot bridge native object: No registered bridged class found for native type $nativeType.',
-    );
+    (cacheHost._toBridgedClassCacheRaw ??= {})[nativeType] = null;
+    return null;
   }
 
   /// Whether [bridge] declares a relationship to [nativeTypeNameFull], beyond
@@ -2486,78 +2495,95 @@ class Environment {
     // picks the extension by the receiver's static type.
     final preferred = _preferredExtensionMember(target, lookup);
     if (preferred != null) return preferred;
-    final targetType = getRuntimeType(target); // Helper to get RuntimeType
-    if (targetType == null) return null;
-    // Search current environment and enclosing ones
-    // ghissues47: the extensions of a prefixed import apply too.
-    for (final current in _extensionScopes()) {
-      // Check unnamed extensions. One whose `on` type is not resolved yet
-      // (declared in a library still loading, GitHub #9) applies to nothing.
-      for (final ext in current._unnamedExtensions) {
-        if (!ext.hasOnType) continue;
-        if (_matchesExtensionType(targetType, ext.onType, value: target)) {
+
+    // Defer `getRuntimeType(target)` until an extension actually declares a
+    // member with [name]. Checking `lookup(ext) != null` BEFORE
+    // `_matchesExtensionType` turns misses (99%+ of calls, e.g. operators and
+    // ordinary members) from O(extensions × subtype-walk) into a handful of
+    // O(1) map probes with zero allocations.
+    RuntimeType? targetType;
+    bool targetTypeComputed = false;
+    RuntimeType? resolveTargetType() {
+      if (!targetTypeComputed) {
+        targetTypeComputed = true;
+        targetType = getRuntimeType(target);
+      }
+      return targetType;
+    }
+
+    Callable? searchEnv(Environment current) {
+      final unnamed = current._unnamedExtensionsRaw;
+      if (unnamed != null) {
+        for (var i = 0; i < unnamed.length; i++) {
+          final ext = unnamed[i];
+          if (!ext.hasOnType) continue;
           final member = lookup(ext);
-          if (member != null) {
+          if (member == null) continue;
+          final tt = resolveTargetType();
+          if (tt == null) return null;
+          if (_matchesExtensionType(tt, ext.onType, value: target)) {
             if (Logger.isDebug) {
               Logger.debug(
                 " [Environment] Found extension member '$name' in unnamed ext on ${ext.onType.name}",
               );
             }
-            // Need to bind 'target' to the call somehow.
-            // This will likely require returning a bound callable or modifying the call site.
-            return member; // Return the raw callable for now
+            return member;
           }
         }
       }
-      // Check named extensions (stored as values)
-      for (final value in current._values.values) {
-        if (value is InterpretedExtension && value.hasOnType) {
-          if (_matchesExtensionType(targetType, value.onType, value: target)) {
-            final member = lookup(value);
-            if (member != null) {
+      final named = current._namedExtensionsRaw;
+      if (named != null) {
+        for (var i = 0; i < named.length; i++) {
+          final value = named[i];
+          if (!value.hasOnType) continue;
+          final member = lookup(value);
+          if (member == null) continue;
+          final tt = resolveTargetType();
+          if (tt == null) return null;
+          if (_matchesExtensionType(tt, value.onType, value: target)) {
+            if (Logger.isDebug) {
+              Logger.debug(
+                "[Environment] Found extension member '$name' in named ext '${value.name}' on ${value.onType.name}",
+              );
+            }
+            return member;
+          } else if (tt is NativeFunction &&
+              visitor != null &&
+              value.onType is NativeFunction) {
+            final valueType = value.onType as NativeFunction;
+            if (valueType.name == tt.name) {
               if (Logger.isDebug) {
                 Logger.debug(
                   "[Environment] Found extension member '$name' in named ext '${value.name}' on ${value.onType.name}",
                 );
               }
-              return member; // Return the raw callable
-            }
-          } else if (targetType is NativeFunction &&
-              visitor != null &&
-              value.onType is NativeFunction) {
-            final valueType = value.onType as NativeFunction;
-            if (valueType.name == targetType.name) {
-              final member = lookup(value);
-              if (member != null) {
-                if (Logger.isDebug) {
-                  Logger.debug(
-                    "[Environment] Found extension member '$name' in named ext '${value.name}' on ${value.onType.name}",
-                  );
-                }
-                return member; // Return the raw callable
-              }
+              return member;
             }
           }
+        }
+      }
+      return null;
+    }
+
+    for (Environment? env = this; env != null; env = env._enclosing) {
+      final found = searchEnv(env);
+      if (found != null) return found;
+      final prefixed = env._prefixedImportsRaw;
+      if (prefixed != null) {
+        for (final prefixedEnv in prefixed.values) {
+          final pf = searchEnv(prefixedEnv);
+          if (pf != null) return pf;
         }
       }
     }
     return null; // Not found
   }
 
-  /// The scopes whose extensions apply here, nearest first: this environment
-  /// and each enclosing one, each followed by the environments it binds to an
-  /// import prefix.
-  ///
-  /// ghissues47 (GitHub #14): a prefixed import brings the library's
-  /// extensions into scope for implicit application as an unprefixed one does
-  /// - only naming the extension needs the prefix. The prefix environment is a
-  /// filtered copy without an enclosing scope (`prefixSurface`), so its own
-  /// extensions are exactly what the import makes visible, `show` / `hide`
-  /// applied.
   Iterable<Environment> _extensionScopes() sync* {
     for (Environment? env = this; env != null; env = env._enclosing) {
       yield env;
-      yield* env._prefixedImports.values;
+      final prefixed = env._prefixedImportsRaw;
+      if (prefixed != null) yield* prefixed.values;
     }
   }
 
@@ -2566,36 +2592,53 @@ class Environment {
   Callable? _findNullableExtensionMember(String name, {bool setter = false}) {
     Callable? lookup(InterpretedExtension extension) =>
         setter ? extension.findSetter(name) : extension.findMember(name);
-    // ghissues47: the extensions of a prefixed import apply too.
-    for (final current in _extensionScopes()) {
-      // Check unnamed extensions with nullable on-type
-      for (final ext in current._unnamedExtensions) {
-        if (ext.isOnNullableType && ext.hasOnType) {
-          final member = lookup(ext);
-          if (member != null) {
-            if (Logger.isDebug) {
-              Logger.debug(
-                "[Environment] Found nullable extension member '$name' in unnamed ext on ${ext.onType.name}?",
-              );
+
+    Callable? searchEnv(Environment current) {
+      final unnamed = current._unnamedExtensionsRaw;
+      if (unnamed != null) {
+        for (var i = 0; i < unnamed.length; i++) {
+          final ext = unnamed[i];
+          if (ext.isOnNullableType && ext.hasOnType) {
+            final member = lookup(ext);
+            if (member != null) {
+              if (Logger.isDebug) {
+                Logger.debug(
+                  "[Environment] Found nullable extension member '$name' in unnamed ext on ${ext.onType.name}?",
+                );
+              }
+              return member;
             }
-            return member;
           }
         }
       }
-      // Check named extensions with nullable on-type
-      for (final value in current._values.values) {
-        if (value is InterpretedExtension &&
-            value.isOnNullableType &&
-            value.hasOnType) {
-          final member = lookup(value);
-          if (member != null) {
-            if (Logger.isDebug) {
-              Logger.debug(
-                "[Environment] Found nullable extension member '$name' in named ext '${value.name}' on ${value.onType.name}?",
-              );
+      final named = current._namedExtensionsRaw;
+      if (named != null) {
+        for (var i = 0; i < named.length; i++) {
+          final value = named[i];
+          if (value.isOnNullableType && value.hasOnType) {
+            final member = lookup(value);
+            if (member != null) {
+              if (Logger.isDebug) {
+                Logger.debug(
+                  "[Environment] Found nullable extension member '$name' in named ext '${value.name}' on ${value.onType.name}?",
+                );
+              }
+              return member;
             }
-            return member;
           }
+        }
+      }
+      return null;
+    }
+
+    for (Environment? env = this; env != null; env = env._enclosing) {
+      final found = searchEnv(env);
+      if (found != null) return found;
+      final prefixed = env._prefixedImportsRaw;
+      if (prefixed != null) {
+        for (final prefixedEnv in prefixed.values) {
+          final pf = searchEnv(prefixedEnv);
+          if (pf != null) return pf;
         }
       }
     }
@@ -2737,13 +2780,11 @@ class Environment {
       // If `toBridgedClass` resolves to a more specific bridge, return it;
       // otherwise fall through to the generic lookup below.
       if (value != null && (typeName == 'List' || typeName == 'Map')) {
-        try {
-          final specific = _toBridgedClassForValue(value);
-          if (specific.name != typeName) {
+        if (!_isInterpreterOwned(value)) {
+          final specific = _lookupBridgedClassForType(value.runtimeType);
+          if (specific != null && specific.name != typeName) {
             return specific;
           }
-        } on RuntimeD4rtException {
-          // No specific bridge — fall through to generic typeName lookup.
         }
       }
       try {
@@ -2762,26 +2803,39 @@ class Environment {
       }
     }
 
-    // For other native objects (e.g., DateTime, Duration, etc.), try to find their BridgedClass
+    // For other native objects (e.g., DateTime, Duration, StatelessElement,
+    // Container, ...), consult the persistent cache on [_cacheHostEnv] first so
+    // private/subclass types like StatelessElement never re-scan all bridges or
+    // construct RuntimeD4rtException + guest stack traces on every build().
     if (value != null) {
-      try {
-        final bridgedClass = _toBridgedClassForValue(value);
-        return bridgedClass;
-      } on RuntimeD4rtException {
-        // No bridged class found for this type
-        if (Logger.isDebug) {
-          Logger.debug(
-            "[getRuntimeType] No BridgedClass found for native type ${value.runtimeType}",
-          );
-        }
+      final rt = value.runtimeType;
+      final cacheHost = _cacheHostEnv();
+      final rtCache = cacheHost._runtimeTypeCacheRaw;
+      if (rtCache != null && rtCache.containsKey(rt)) {
+        return rtCache[rt];
       }
+
+      BridgedClass? resolved;
+      if (_isInterpreterOwned(value)) {
+        for (Environment? env = this; env != null; env = env._enclosing) {
+          final exact = env._bridgedClassesLookupByType[rt];
+          if (exact != null) {
+            resolved = exact;
+            break;
+          }
+        }
+      } else {
+        resolved = _lookupBridgedClassForType(rt);
+      }
+      if (resolved != null) {
+        (cacheHost._runtimeTypeCacheRaw ??= {})[rt] = resolved;
+        return resolved;
+      }
+
       // C20a fix: When the runtime type isn't a registered bridge (e.g.
-      // private impl types returned by extension operators like
-      // `WidgetState.a | WidgetState.b` returning a `_WidgetStateOr`),
-      // fall back to `isAssignable` iteration so we can recover the
-      // bridged interface (e.g. `WidgetStatesConstraint`) it implements.
-      // This lets subsequent operator dispatch (e.g. `& ~WidgetState.x`
-      // applied to the OR result) reach the right extension.
+      // StatelessElement, StatefulElement, _WidgetStateOr), fall back to
+      // `isAssignable` iteration ONCE per distinct runtimeType and cache the
+      // answer on [_cacheHostEnv].
       Environment? current = this;
       BridgedClass? bestMatch;
       while (current != null) {
@@ -2793,10 +2847,11 @@ class Environment {
         }
         current = current._enclosing;
       }
+      (cacheHost._runtimeTypeCacheRaw ??= {})[rt] = bestMatch;
       if (bestMatch != null) {
         if (Logger.isDebug) {
           Logger.debug(
-            "[getRuntimeType] Resolved native ${value.runtimeType} via "
+            "[getRuntimeType] Resolved native $rt via "
             "isAssignable to BridgedClass(${bestMatch.name})",
           );
         }
@@ -2955,6 +3010,9 @@ class Environment {
       }
       if (include) {
         newEnv._values[name] = value;
+        if (value is InterpretedExtension) {
+          (newEnv._namedExtensionsRaw ??= []).add(value);
+        }
       }
     });
 
@@ -3148,6 +3206,10 @@ class Environment {
             );
           }
           _values[name] = value;
+          if (value is InterpretedExtension) {
+            final list = _namedExtensionsRaw ??= [];
+            if (!list.any((e) => identical(e, value))) list.add(value);
+          }
         }
         // Same value, skip the duplicate
         return;
@@ -3170,6 +3232,10 @@ class Environment {
         }
       }
       _values[name] = value;
+      if (value is InterpretedExtension) {
+        final list = _namedExtensionsRaw ??= [];
+        if (!list.any((e) => identical(e, value))) list.add(value);
+      }
     });
 
     // Share cell-backed bindings by reference: an imported top-level variable

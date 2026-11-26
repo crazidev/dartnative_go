@@ -1009,6 +1009,10 @@ Widget? wrapInterpretedWidget(Object? arg, {InterpreterVisitor? visitor}) {
             cur.bridgedSuperclass?.name == 'StatelessWidget') {
           return InterpretedStatelessWidget(effectiveVisitor, arg);
         }
+        if (cur.name == 'InheritedWidget' ||
+            cur.bridgedSuperclass?.name == 'InheritedWidget') {
+          return InterpretedInheritedWidget(effectiveVisitor, arg);
+        }
         if (cur.superclass == null) break;
         cur = cur.superclass!;
       }
@@ -1021,6 +1025,179 @@ Widget? wrapInterpretedWidget(Object? arg, {InterpreterVisitor? visitor}) {
     }
   }
   return null;
+}
+
+/// Native proxy for source-engine classes that extend [InheritedWidget].
+///
+/// Mirror of `InterpretedInheritedWidget` in `ast/ast_widget_proxies.dart`.
+class InterpretedInheritedWidget extends InheritedWidget
+    implements D4InterpretedProxy {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedInheritedWidget(this.visitor, this.instance, {Key? key})
+    : super(
+        key: key ?? _keyFor(instance),
+        child: _childFor(visitor, instance),
+      ) {
+    instance.nativeProxy = this;
+  }
+
+  static Key _keyFor(InterpretedInstance instance) =>
+      ValueKey('Inherited_${instance.klass.name}');
+
+  static Widget _childFor(
+    InterpreterVisitor visitor,
+    InterpretedInstance instance,
+  ) {
+    Object? raw;
+    try {
+      raw = instance.get('child', visitor: visitor);
+    } catch (_) {}
+    return wrapInterpretedWidget(raw, visitor: visitor) ??
+        const SizedBox.shrink();
+  }
+
+  @override
+  Object get d4rtInstance => instance;
+
+  @override
+  bool updateShouldNotify(InheritedWidget oldWidget) {
+    try {
+      final method = instance.get('updateShouldNotify', visitor: visitor);
+      if (method is Callable) {
+        final previous = oldWidget is InterpretedInheritedWidget
+            ? oldWidget.instance
+            : oldWidget;
+        final result = method.call(visitor, [previous], {});
+        return result == true;
+      }
+    } catch (_) {}
+    return true;
+  }
+}
+
+/// Intercepts `BuildContext.dependOnInheritedWidgetOfExactType<T>()` and
+/// `getInheritedWidgetOfExactType<T>()` so generic type arguments are honoured
+/// instead of falling through to the type-erased `InheritedWidget` lookup.
+void _registerInheritedWidgetInterceptors() {
+  Object? lookup(
+    Object? target,
+    List<RuntimeType>? typeArgs, {
+    required bool depend,
+  }) {
+    final ctx = D4.validateTarget<BuildContext>(target, 'BuildContext');
+    if (typeArgs == null || typeArgs.isEmpty) {
+      return depend
+          ? ctx.dependOnInheritedWidgetOfExactType()
+          : ctx.getInheritedWidgetOfExactType();
+    }
+    final typeArg = typeArgs.first;
+    if (typeArg is InterpretedClass) {
+      final nearest = depend
+          ? ctx.dependOnInheritedWidgetOfExactType<InterpretedInheritedWidget>()
+          : ctx.getInheritedWidgetOfExactType<InterpretedInheritedWidget>();
+      if (nearest == null) return null;
+      if (nearest.instance.klass == typeArg ||
+          nearest.instance.klass.name == typeArg.name) {
+        return nearest.instance;
+      }
+      InterpretedInstance? found;
+      try {
+        ctx.visitAncestorElements((ancestor) {
+          final w = ancestor.widget;
+          if (w is InterpretedInheritedWidget &&
+              (w.instance.klass == typeArg ||
+                  w.instance.klass.name == typeArg.name)) {
+            found = w.instance;
+            return false;
+          }
+          return true;
+        });
+      } catch (_) {}
+      return found;
+    }
+    if (typeArg is BridgedClass) {
+      final nativeType = typeArg.nativeType;
+      if (nativeType == MediaQuery) {
+        return depend
+            ? ctx.dependOnInheritedWidgetOfExactType<MediaQuery>()
+            : ctx.getInheritedWidgetOfExactType<MediaQuery>();
+      }
+      if (nativeType == Directionality) {
+        return depend
+            ? ctx.dependOnInheritedWidgetOfExactType<Directionality>()
+            : ctx.getInheritedWidgetOfExactType<Directionality>();
+      }
+      if (nativeType == DefaultTextStyle) {
+        return depend
+            ? ctx.dependOnInheritedWidgetOfExactType<DefaultTextStyle>()
+            : ctx.getInheritedWidgetOfExactType<DefaultTextStyle>();
+      }
+      if (nativeType == SliderTheme) {
+        return depend
+            ? ctx.dependOnInheritedWidgetOfExactType<SliderTheme>()
+            : ctx.getInheritedWidgetOfExactType<SliderTheme>();
+      }
+      Widget? found;
+      try {
+        ctx.visitAncestorElements((ancestor) {
+          final w = ancestor.widget;
+          if (w.runtimeType == nativeType) {
+            found = w;
+            return false;
+          }
+          return true;
+        });
+      } catch (_) {}
+      return found;
+    }
+    return depend
+        ? ctx.dependOnInheritedWidgetOfExactType()
+        : ctx.getInheritedWidgetOfExactType();
+  }
+
+  D4.registerBridgedMethodInterceptor(
+    'Element',
+    'dependOnInheritedWidgetOfExactType',
+    (visitor, target, positional, named, typeArgs) =>
+        lookup(target, typeArgs, depend: true),
+  );
+  D4.registerBridgedMethodInterceptor(
+    'Element',
+    'getInheritedWidgetOfExactType',
+    (visitor, target, positional, named, typeArgs) =>
+        lookup(target, typeArgs, depend: false),
+  );
+}
+
+void _registerGlobalKeyGenericConstructor() {
+  D4.registerGenericConstructor('GlobalKey', '', (
+    visitor,
+    positional,
+    named,
+    typeArgs,
+  ) {
+    if (typeArgs != null && typeArgs.isNotEmpty) {
+      final arg = typeArgs.first;
+      if (arg is BridgedClass) {
+        final t = arg.nativeType;
+        if (t == SliderMenuContainerState) {
+          return GlobalKey<SliderMenuContainerState>();
+        }
+        if (t == RefreshIndicatorState) {
+          return GlobalKey<RefreshIndicatorState>();
+        }
+        if (t == NestedScrollViewState) {
+          return GlobalKey<NestedScrollViewState>();
+        }
+        if (t == OverlayState) {
+          return GlobalKey<OverlayState>();
+        }
+      }
+    }
+    return GlobalKey();
+  });
 }
 
 /// Native proxy for source-engine classes that are [TickerProvider]s.
@@ -1209,10 +1386,32 @@ void registerWidgetInterfaceProxies(
   );
 
   D4.registerInterfaceProxy('StatelessWidget', (visitor, instance) {
+    final existing = instance.nativeProxy;
+    if (existing is InterpretedStatelessWidget &&
+        identical(existing.visitor, visitor)) {
+      return existing;
+    }
     return InterpretedStatelessWidget(visitor, instance);
   });
 
+  D4.registerInterfaceProxy('InheritedWidget', (visitor, instance) {
+    final existing = instance.nativeProxy;
+    if (existing is InterpretedInheritedWidget &&
+        identical(existing.visitor, visitor)) {
+      return existing;
+    }
+    return InterpretedInheritedWidget(visitor, instance);
+  });
+
+  _registerInheritedWidgetInterceptors();
+  _registerGlobalKeyGenericConstructor();
+
   D4.registerInterfaceProxy('StatefulWidget', (visitor, instance) {
+    final existing = instance.nativeProxy;
+    if (existing is InterpretedStatefulWidget &&
+        identical(existing.visitor, visitor)) {
+      return existing;
+    }
     return InterpretedStatefulWidget(visitor, instance);
   });
 
