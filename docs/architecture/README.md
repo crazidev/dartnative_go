@@ -26,6 +26,10 @@ Cross-cutting depth (reload internals, bridge details) stays in the root
 - `*.b.dart` files are generated (`tool/d4rtgen*.dart`); never edit by hand.
 - Logging goes through `DartGoLogger`; status prefixes are ASCII
   (`[OK]`, `[ERROR]`, `[RELOAD]`, ...), no emoji.
-- The vendored `pkgs/tom_d4rt_ast` is a fork of upstream 0.65.0. Keep local
-  changes minimal and listed in its `pubspec.yaml` header so upstream syncs
-  stay mechanical.
+- The whole `tom_d4rt` family is vendored under `third_party/`
+  (`tom_d4rt`, `tom_d4rt_ast`, `tom_d4rt_generator`, `tom_d4rt_exec`) and
+  path-overridden from the root `pubspec.yaml`, so our patches ship with the
+  app instead of living in a pub-cache copy. `third_party/tom_d4rt_ast` is
+  upstream **0.260.0** plus the DartNative patch list in its `pubspec.yaml`
+  header; keep local changes minimal and listed there so upstream syncs stay
+  mechanical.

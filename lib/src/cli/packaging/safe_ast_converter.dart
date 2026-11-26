@@ -15,8 +15,14 @@ class SafeAstConverter extends AstConverter {
   @override
   SAstNode? convert(analyzer.AstNode? node) {
     if (node == null) return null;
-    if (node is analyzer.LibraryIdentifier) {
-      final name = node.components.map((c) => c.name).join('.');
+    // The analyzer still models a `library foo.bar;` name as a
+    // LibraryIdentifier; the serializable model spells it SDottedName.
+    if (node is analyzer.DottedName) {
+      // A dotted name's tokens alternate identifier, '.', identifier, …
+      final name = node.tokens
+          .where((t) => t.lexeme != '.')
+          .map((t) => t.lexeme)
+          .join('.');
       return SSimpleIdentifier(
         offset: node.offset,
         length: node.length,

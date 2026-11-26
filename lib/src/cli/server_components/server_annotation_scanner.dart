@@ -57,11 +57,14 @@ class ServerAnnotationScanner {
       for (final decl in unit.declarations) {
         if (decl is! SClassDeclaration) continue;
         for (final annotation in decl.metadata) {
-          final annotationName = annotation.name?.name;
+          final nameIdentifier = annotation.name;
+          final annotationName = nameIdentifier is SSimpleIdentifier
+              ? nameIdentifier.name
+              : null;
           if (annotationName == null) continue;
           if (!_kAnnotationNames.contains(annotationName)) continue;
 
-          final className = decl.name?.name ?? '';
+          final className = decl.namePart.typeName.name;
           if (className.isEmpty) continue;
 
           // Extract the `id` argument from annotation constructor arguments.
@@ -94,10 +97,10 @@ class ServerAnnotationScanner {
     // Walk the argument list looking for a named argument `id:` or a
     // positional first argument.
     for (final arg in args.arguments) {
-      if (arg is SNamedExpression) {
-        final labelName = arg.name?.label?.name;
+      if (arg is SNamedArgument) {
+        final labelName = arg.name.name;
         if (labelName == 'id') {
-          final expr = arg.expression;
+          final expr = arg.argumentExpression;
           if (expr is SSimpleStringLiteral) {
             return expr.value;
           }
@@ -122,10 +125,10 @@ class ServerAnnotationScanner {
     if (args == null) return 1;
 
     for (final arg in args.arguments) {
-      if (arg is SNamedExpression) {
-        final labelName = arg.name?.label?.name;
+      if (arg is SNamedArgument) {
+        final labelName = arg.name.name;
         if (labelName == 'version') {
-          final expr = arg.expression;
+          final expr = arg.argumentExpression;
           if (expr is SIntegerLiteral) {
             return expr.value;
           }

@@ -535,6 +535,20 @@ class AstInterpreterRunner {
     );
 
     if (T == Widget || T == dynamic) {
+      // A guest `main()` may start asynchronous work and call `runApp` from a
+      // continuation (`runZonedGuarded(() { Logger.run(() async { … runApp(…) }) })`
+      // — the upstream playground does exactly this). Since tom_d4rt 1.235.0 a
+      // block body that runs off its end yields null rather than its last
+      // statement's value (Dart semantics), so the entry's return value no
+      // longer happens to be the future that continuation was awaiting and the
+      // capture can land just after the entry returns. Give it a bounded window
+      // to arrive before reporting a missing root.
+      if (_capturedApp == null) {
+        final deadline = DateTime.now().add(const Duration(seconds: 5));
+        while (_capturedApp == null && DateTime.now().isBefore(deadline)) {
+          await Future<void>.delayed(const Duration(milliseconds: 2));
+        }
+      }
       final captured = _capturedApp;
       if (captured != null) return captured as T;
       try {
@@ -699,7 +713,7 @@ class AstInterpreterRunner {
     bundle.modules.forEach((uri, unit) {
       for (final declaration in unit.declarations) {
         if (declaration is SClassDeclaration) {
-          final name = declaration.name?.name;
+          final name = declaration.namePart.typeName.name;
           if (name != null && name.isNotEmpty) map[name] = uri;
         }
       }

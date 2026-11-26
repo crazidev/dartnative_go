@@ -1,0 +1,77 @@
+name: tom_d4rt_ast
+description: Analyzer-free Dart interpreter runtime that executes pre-compiled SAstNode bundles with full bridging, sandboxing, and standard library support.
+version: 0.260.0
+# Vendored fork (path override from the dartnative_go app): the pub.dev 0.260.0
+# release plus the DartNative patches below. `third_party/tom_d4rt_ast` is the
+# single source of truth for the AST engine — see docs/architecture/playground-headless.md.
+#
+# DartNative patches on top of 0.260.0:
+# - Hot-reload generations: `DeclarationRegistry` / `ClassCell` / `FunctionCell`
+#   / `VariableCell` (declaration_registry.dart, module reuse, generation
+#   journalling in d4rt_runner.dart) so a live instance follows the reloaded
+#   class and a failed generation rolls back atomically. `InterpretedFunction`
+#   is a stable shell over a `FunctionCell`; a bound copy shares the cell, so a
+#   published body is visible through tear-offs and cached bound methods.
+# - `moduleFingerprints` per-module change detection, `fallbackLoader`
+#   (server-component delta bundles), and `AstBundle.applyPatch` /
+#   `toZip(precompressedModules:)` with recorded module/class/source sizes.
+# - Cell-backed statics for classes AND enums: a method body reads and writes
+#   the authoritative cell, and an enum's own statics resolve unqualified.
+# - Enum identity: `moduleUri` participates in `isSameEnumAs`, and the constant
+#   list is part of the class-shape key, so removing a constant retires the
+#   preserved values.
+# - `library_property.dart`: a library-scope getter and setter of the same name
+#   are kept apart and invoked on read/write.
+# - `FutureOrRuntimeType` + `futureOrAcceptsValue` for `FutureOr<T>` checks.
+# - SDK mixin helpers (`stdlib/sdk_mixin_helpers.dart`) plus the
+#   `stdlib/collection` stubs (IterableBase, ListBase/ListMixin, SetBase/
+#   SetMixin, MapBase/MapMixin, UnmodifiableMapBase) that package:collection's
+#   mixin-based classes need. `Comparator` is bridged as a Function alias so
+#   `ComparatorExtension on Comparator<T>` resolves.
+# - `D4rtIsolateWorker` (stdlib/isolate): runs a top-level entry in a real
+#   isolate from the active bundle bytes.
+# - `part` units resolved into the owning library environment (shared private
+#   names) with part-aware module fingerprints for hot reload.
+# - `dart:developer` stdlib bridge surface (adapted from upstream D4rt).
+# - Async continuation slicing (`asyncSliceBudgetMicros`, 4 ms default): a spent
+#   budget hands the next continuation to a timer turn so an embedder's frame
+#   pipeline runs.
+# - Guest stack frames (`guestFrames`) pushed per interpreted call so
+#   `formatGuestStackTrace` renders member/module/line, alongside the 0.260
+#   `D4rtCallStack` error snapshots. `ModuleContext.getLineAndColumn` resolves
+#   offsets against the bundle's source text.
+# - Library-qualified enum identity across hot reload generations; for-in over
+#   interpreted iterables; callable objects dispatched through `call`.
+# - archive: relaxed from `^4.0.9` to `>=3.6.1 <4.5.1` and the codecs patched to
+#   compile against BOTH archive 4.x (host/pub-cache) and the archive 3.x API
+#   embedded in DartNative's patched AOT platform dill (non-const GZip codecs,
+#   nullable `ZipEncoder.encode`).
+# - `SSetOrMapLiteral.isSet`/`isMap` honored (an empty `{}` in a Set context is
+#   a Set, not a Map).
+# - Profiler: compile-time-gated initialization profiling (`D4RT_PROFILE_INIT`).
+publish_to: none
+repository: https://github.com/al-the-bear/tom_d4rt
+homepage: https://github.com/al-the-bear/tom_d4rt/tree/main/tom_d4rt_ast
+topics:
+  - ast
+  - interpreter
+  - d4rt
+  - dart
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  # Relaxed from ^4.0.9: `dn pub get` pins archive to the SDK's built-with
+  # version (3.6.1, the API embedded in the AOT platform), and image 4.3.0
+  # (pinned by dartnative_splash 1.0.1) needs archive ^3.6.1. The patched
+  # runtime files above compile against both the 3.x and 4.x APIs.
+  archive: ">=3.6.1 <4.5.1"
+  # Upper-bounded deliberately: this package interprets `SAstNode` trees, so a
+  # breaking change to the model is a breaking change here. An open constraint
+  # would let pub pair an interpreter with a model it cannot read.
+  tom_ast_model: ^0.3.3
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6
