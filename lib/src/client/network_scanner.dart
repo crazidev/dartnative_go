@@ -137,6 +137,7 @@ class DartGoNetworkScanner {
   }
 
   void _handleUdpDatagram(Datagram datagram) {
+    if (_paused || _disposed) return;
     try {
       final text = utf8.decode(datagram.data);
       final json = jsonDecode(text) as Map<String, dynamic>;
@@ -289,8 +290,10 @@ class DartGoNetworkScanner {
         existing.appVersion != updated.appVersion ||
         existing.iconUrl != updated.iconUrl;
     _projectsMap[project.url] = updated;
-    // Refresh stored metadata in place — never reshuffle [_recentOrder].
-    if (_recentOrder.contains(updated.url)) {
+    // Refresh stored metadata in place only when metadata actually changed —
+    // never rewrite SharedPreferences on every heartbeat beacon or reshuffle
+    // [_recentOrder].
+    if (metadataChanged && _recentOrder.contains(updated.url)) {
       unawaited(_storage.upsertProject(updated));
     }
     if (!_batchingEmits && metadataChanged) {
