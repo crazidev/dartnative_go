@@ -148,4 +148,37 @@ String main() {
       expect(result, equals('5,7,7,5,5|0,2,2|10,12,12'));
     },
   );
+
+  test(
+    'native Dart Function values support ?.call() and Function.apply',
+    () async {
+      final result = await runSnippet('''
+import 'package:dartnative/dartnative.dart';
+
+int main() {
+  final counter = signal<int>(0);
+  var hits = 0;
+  VoidCallback? stop;
+  stop?.call();
+  stop = effect(() {
+    counter.value;
+    hits++;
+  });
+  counter.value++;
+  stop?.call();
+  counter.value++;
+  final stop2 = effect(() {
+    counter.value;
+    hits++;
+  });
+  Function.apply(stop2, const []);
+  counter.value++;
+  return hits;
+}
+''');
+      // 1st effect: initial run (1) + 1st increment (2) -> stopped before 2nd.
+      // 2nd effect: initial run (3) -> stopped via Function.apply before 3rd.
+      expect(result, equals(3));
+    },
+  );
 }
