@@ -539,11 +539,11 @@ class AstInterpreterRunner {
       }
     }
 
-    // Profile the launch itself. This is timed (and reported in the bench line)
-    // because it used to be invisible: it runs after `exec` and could cost more
-    // than decode + execute together when it serialized the bundle.
+    // Profile the launch / hot restart itself (never hot reload: module/class
+    // sizing tables are only valuable on full restart and skipping them keeps
+    // incremental reloads fast).
     var profileMs = 0;
-    if (profileExecution) {
+    if (profileExecution && !isHotReload) {
       final profileSw = Stopwatch()..start();
       // Launch-path logging must never serialize the bundle: sizes come from
       // the manifest when present, and are simply reported as unavailable for

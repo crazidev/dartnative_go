@@ -36,6 +36,9 @@ class DartGoServerOptions {
   final bool rebuildAst;
   final bool verbose;
 
+  /// Enables internal runtime/protocol telemetry (`--dev-logs` or `DNGO_DEV=1`).
+  final bool devLogs;
+
   /// `--profile`: advertised in the manifest as `profile: true` so AST-mode
   /// apps show the AST BUNDLE explorer in their DevTools sheet. Off by
   /// default — the explorer costs an on-demand AST sizing walk per open.
@@ -53,6 +56,7 @@ class DartGoServerOptions {
     this.customHost,
     this.rebuildAst = true,
     this.verbose = false,
+    this.devLogs = false,
     this.profile = false,
     this.versions = DngoVersionInfo.current,
   });
@@ -69,7 +73,11 @@ class DartGoServer {
   StreamSubscription? _fileWatchSub;
   StreamSubscription? _assetsWatchSub;
   StdinCommands? _stdinCommands;
-  late final DevSocketHub _socketHub = DevSocketHub(options.projectDir);
+  final DevServerConsole _console = DevServerConsole();
+  late final DevSocketHub _socketHub = DevSocketHub(
+    options.projectDir,
+    console: _console,
+  );
   List<Map<String, dynamic>> get _activeBreakpoints => _socketHub.breakpoints;
   bool _astRebuildInFlight = false;
   bool _astRebuildQueued = false;
@@ -78,6 +86,7 @@ class DartGoServer {
 
   DartGoServer(this.options) {
     DartGoLogger.verbose = options.verbose;
+    DartGoLogger.devLogs = options.devLogs;
   }
 
   Future<void> start() async {
@@ -154,29 +163,29 @@ class DartGoServer {
       await _broadcaster!.start();
     }
 
-    // 5. Print startup diagnostics and terminal controls.
-    // Versions are the in-process snapshot (same as `dngo --version`) —
-    // no subprocess or disk I/O on this path.
+    // 5. Print startup screen (project details, QR/URL, shortcuts, and
+    // verbose-only diagnostics).
     final versions = options.versions;
-    printBanner(versions);
-    print(validation.formatReport());
-    print(assets.formatReport());
-    print(iconFonts.formatReport());
-
     final serverUrl = 'http://$hostStr:$port';
-
-    // 6. Display scannable QR code and connection details.
-    if (options.enableQrCode) printQr(serverUrl);
-    printConnectionInfo(serverUrl);
-    printDeepLink(
-      DartGoDeepLink.build(serverUrl, appName: validation.appName),
+    final deepLink = DartGoDeepLink.build(
+      serverUrl,
+      appName: validation.appName,
     );
-    print(
-      options.rebuildAst
-          ? '[AST] AST auto-build: \x1B[36mon\x1B[0m (guest.ast rebuilt on save; --no-rebuild-ast to disable)\n'
-          : '[AST] AST auto-build: \x1B[90moff (--no-rebuild-ast)\x1B[0m\n',
+    final startupInfo = StartupScreenInfo(
+      projectPath: p.normalize(projectDir.absolute.path),
+      serverUrl: serverUrl,
+      deepLink: deepLink,
+      validation: validation,
+      assets: assets,
+      iconFonts: iconFonts,
+      versions: versions,
+      rebuildAst: options.rebuildAst,
+      enableQrCode: options.enableQrCode,
+      verbose: options.verbose,
+      devLogs: options.devLogs,
     );
-    printHelpHint();
+    _socketHub.startupInfo = startupInfo;
+    _console.printStartup(startupInfo);
 
     // 6b. Initial AST bundle build (background) so `/guest.ast` exists
     // before the first client connects — later saves reuse the watcher.
@@ -185,7 +194,7 @@ class DartGoServer {
     }
 
     // 7. Setup Stdin debugger commands
-    _setupStdinListener(serverUrl);
+    _setupStdinListener(serverUrl, startupInfo);
 
     // 8. Setup File Watchers for Dart code and Assets
     Timer? assetsDebounceTimer;
@@ -204,16 +213,18 @@ class DartGoServer {
         // broadcast that triggered the rebuild — ignore to avoid double reloads.
         // Bundles now live under `.dart_tool/`, but keep ignoring legacy
         // `assets/bundles/` writes so old projects don't double-reload.
-        final p = event.path.replaceAll(r'\', '/');
-        if (p.contains('/assets/bundles') ||
-            p.contains('/.dart_tool/') ||
-            p.endsWith('guest.ast')) {
+        final norm = event.path.replaceAll(r'\', '/');
+        if (norm.contains('/assets/bundles') ||
+            norm.contains('/.dart_tool/') ||
+            norm.endsWith('guest.ast')) {
           return;
         }
         assetsDebounceTimer?.cancel();
         assetsDebounceTimer = Timer(const Duration(milliseconds: 150), () {
-          print(
-            '[DevServer] [RELOAD] Asset change detected: ${event.path}. Broadcasting reload...',
+          final rel = _relativeToProject(event.path, projectDir);
+          _console.beginAssetReload(
+            assetPath: rel,
+            connectedClients: _socketHub.clientCount,
           );
           _broadcastReload(event.path, projectDir.path, true);
         });
@@ -239,21 +250,34 @@ class DartGoServer {
   /// before the first client connects. Failures only log; source mode is
   /// unaffected.
   Future<void> _initialAstBuild(Directory projectDir) async {
+    final sw = Stopwatch()..start();
+    _console.beginBundling();
     try {
       final result = await AstBuildWorker.instance.build(projectDir);
+      sw.stop();
       if (result.success) {
-        print(
-          '[DevServer] [AST] guest.ast ready '
-          '(${result.moduleCount} modules, ${formatByteSize(result.byteSize)})',
+        final astFile = _resolveAstBundleFile(projectDir);
+        final etag = astFile != null
+            ? '"${astBundleFingerprintForProject(projectDir, astFile)}"'
+            : null;
+        _console.endBundlingSuccess(
+          elapsedMs: sw.elapsedMilliseconds,
+          moduleCount: result.moduleCount,
+          byteSize: result.byteSize,
+          etag: etag,
         );
       } else {
-        print(
-          '[DevServer] ! Initial bundle build skipped (${result.error}). '
-          'Source hot reload unaffected.',
+        _console.endBundlingWarning(
+          'Initial bundle skipped (${sw.elapsedMilliseconds}ms)',
+          '${result.error ?? 'unknown error'} · source hot reload unaffected',
         );
       }
     } catch (e) {
-      print('[DevServer] ! Initial bundle build error: $e');
+      sw.stop();
+      _console.endBundlingWarning(
+        'Initial bundle error (${sw.elapsedMilliseconds}ms)',
+        '$e',
+      );
     }
   }
 
@@ -285,22 +309,20 @@ class DartGoServer {
   ) async {
     if (changedPaths.isEmpty) return;
     final sw = Stopwatch()..start();
-    final fileNames = changedPaths.map(p.basename).join(', ');
-    DartGoLogger.info(
-      '[DevServer] [RELOAD] File changes (${changedPaths.length}): $fileNames',
-    );
-    DartGoLogger.debug(
-      'Full paths: ${changedPaths.join(', ')}',
-      tag: 'DevServer',
-    );
+    final relFiles =
+        changedPaths
+            .map((path) => _relativeToProject(path, projectDir))
+            .toList()
+          ..sort();
 
     if (!options.rebuildAst) {
-      _broadcastReload(changedPaths, codeDir.path);
-      DartGoLogger.bench(
-        'DevServer',
-        'Reload broadcast sent',
-        sw.elapsedMilliseconds,
+      _console.beginCodeReload(
+        changedFiles: relFiles,
+        rebuildMs: sw.elapsedMilliseconds,
+        cached: true,
+        connectedClients: _socketHub.clientCount,
       );
+      _broadcastReload(changedPaths, codeDir.path);
       return;
     }
     if (_astRebuildInFlight) {
@@ -310,6 +332,10 @@ class DartGoServer {
     }
     _astRebuildInFlight = true;
     var buildOk = false;
+    var rebuildMs = 0;
+    var cached = false;
+    int? totalModules;
+    int? bundleBytes;
     try {
       final astSw = Stopwatch()..start();
       final result = await AstBuildWorker.instance.build(
@@ -317,36 +343,14 @@ class DartGoServer {
         changedFiles: changedPaths,
       );
       astSw.stop();
+      rebuildMs = astSw.elapsedMilliseconds;
       buildOk = result.success;
       if (result.success) {
-        const artifacts = 'guest.ast';
-        if (result.cached) {
-          DartGoLogger.bench(
-            'DevServer',
-            '$artifacts up to date',
-            astSw.elapsedMilliseconds,
-            {'bytes': result.byteSize, 'cache': 'hit'},
-          );
-        } else {
-          final compCount = result.serverComponents?.components.length ?? 0;
-          DartGoLogger.bench(
-            'DevServer',
-            compCount > 0
-                ? '$artifacts rebuilt (+$compCount server components)'
-                : '$artifacts rebuilt',
-            astSw.elapsedMilliseconds,
-            {
-              'modules': result.moduleCount,
-              'bytes': result.byteSize,
-              'server_components': compCount,
-            },
-          );
-        }
+        cached = result.cached;
+        totalModules = result.moduleCount;
+        bundleBytes = result.byteSize;
       } else {
-        DartGoLogger.warn(
-          'AST rebuild failed in ${astSw.elapsedMilliseconds}ms (${result.error})',
-          tag: 'DevServer',
-        );
+        _console.onRebuildFailed(rebuildMs, result.error ?? 'build failed');
       }
     } finally {
       _astRebuildInFlight = false;
@@ -356,12 +360,18 @@ class DartGoServer {
     // current generation. The warning above (plus the next successful save)
     // is the whole signal.
     if (!buildOk) return;
-    _broadcastReload(changedPaths, codeDir.path);
-    DartGoLogger.bench(
-      'DevServer',
-      'Total server reload prep',
-      sw.elapsedMilliseconds,
+    final patchBytes = patchBytesForProject(projectDir)?.length;
+    _console.beginCodeReload(
+      changedFiles: relFiles,
+      rebuildMs: rebuildMs,
+      cached: cached,
+      patchBytes: patchBytes,
+      bundleBytes: bundleBytes,
+      totalModules: totalModules,
+      totalPrepMs: sw.elapsedMilliseconds,
+      connectedClients: _socketHub.clientCount,
     );
+    _broadcastReload(changedPaths, codeDir.path);
     if (_astRebuildQueued || _pendingDartChanges.isNotEmpty) {
       _astRebuildQueued = false;
       final nextBatch = Set<String>.of(_pendingDartChanges);
@@ -370,6 +380,16 @@ class DartGoServer {
         _onCodeChangedBatch(nextBatch, codeDir, projectDir);
       }
     }
+  }
+
+  static String _relativeToProject(String filePath, Directory projectDir) {
+    final normPath = filePath.replaceAll(r'\', '/');
+    final normRoot = projectDir.path.replaceAll(r'\', '/');
+    final prefix = normRoot.endsWith('/') ? normRoot : '$normRoot/';
+    if (normPath.startsWith(prefix)) {
+      return normPath.substring(prefix.length);
+    }
+    return p.relative(filePath, from: projectDir.path).replaceAll(r'\', '/');
   }
 
   void _broadcast(Map<String, dynamic> data) => _socketHub.broadcast(data);
@@ -382,10 +402,12 @@ class DartGoServer {
     bool isAssetChange = false,
   ]) => _socketHub.broadcastReload(changedFilesInput, baseDir, isAssetChange);
 
-  void _setupStdinListener(String serverUrl) {
+  void _setupStdinListener(String serverUrl, StartupScreenInfo startupInfo) {
     _stdinCommands = StdinCommands(
       serverUrl: serverUrl,
       hub: _socketHub,
+      console: _console,
+      startupInfo: startupInfo,
       onStop: stop,
     )..start();
   }
@@ -626,9 +648,10 @@ class DartGoServer {
         if (fontFile != null && fontFile.existsSync()) {
           final stat = fontFile.statSync();
           await _serveAssetFile(request, fontFile);
-          print(
-            '[DevServer] [FONTS] Served $cleanFamily '
-            '(${stat.size} bytes)',
+          _console.onArtifactServed(
+            name: cleanFamily,
+            byteSize: stat.size,
+            isFont: true,
           );
         } else {
           request.response
@@ -736,9 +759,12 @@ class DartGoServer {
           ..headers.add('Cache-Control', 'no-cache')
           ..write(jsonStr)
           ..close();
-        print(
-          '[DevServer] [BUNDLE] Served bundle.json (${bundle.length} user files, ${depResult.deps.length} deps)',
-        );
+        if (DartGoLogger.verbose || DartGoLogger.devLogs) {
+          _console.onArtifactServed(
+            name: 'bundle.json (${bundle.length} files, ${depResult.deps.length} deps)',
+            byteSize: utf8.encode(jsonStr).length,
+          );
+        }
       } catch (e) {
         request.response
           ..statusCode = HttpStatus.internalServerError
@@ -769,6 +795,7 @@ class DartGoServer {
           await request.response.close();
           return;
         }
+        final serveSw = Stopwatch()..start();
         await _serveAssetFile(
           request,
           astFile,
@@ -780,8 +807,16 @@ class DartGoServer {
               'X-Ast-Bundle': fileSourceFingerprintForPath(astFile.path),
           },
         );
-        print(
-          '[DevServer] [AST] Served guest.ast (${await astFile.length()} bytes, etag=$etag)',
+        serveSw.stop();
+        final fingerprints = moduleFingerprintsForProject(projectDir);
+        final projectAssets = _collectProjectAssets(projectDir);
+        _console.onArtifactServed(
+          name: 'guest.ast',
+          byteSize: await astFile.length(),
+          etag: etag,
+          moduleCount: fingerprints.isNotEmpty ? fingerprints.length : null,
+          assetCount: projectAssets.isNotEmpty ? projectAssets.length : null,
+          serveMs: serveSw.elapsedMilliseconds,
         );
       } else {
         request.response
@@ -816,10 +851,12 @@ class DartGoServer {
               'fetch full /guest.ast.',
             )
             ..close();
-          print(
-            '[DevServer] [PATCH] base mismatch (device=${query['base']}, '
-            'patch base=$patchBaseFp) — full fetch advised.',
-          );
+          if (DartGoLogger.devLogs) {
+            _console.onWarning(
+              'Patch base mismatch',
+              'device=${query['base']}, patch base=$patchBaseFp — full fetch advised',
+            );
+          }
           return;
         }
         final bundleFp = bundleFingerprintForProject(projectDir);
@@ -853,8 +890,11 @@ class DartGoServer {
           ..headers.add('Access-Control-Expose-Headers', 'ETag, X-Ast-Bundle')
           ..add(patchBytes);
         await request.response.close();
-        print(
-          '[DevServer] [PATCH] Served guest.ast.patch (${patchBytes.length} bytes, etag=$etag)',
+        _console.onArtifactServed(
+          name: 'guest.ast.patch',
+          byteSize: patchBytes.length,
+          etag: etag,
+          isPatch: true,
         );
       } else {
         request.response
@@ -912,9 +952,9 @@ class DartGoServer {
           : null;
       if (compFile != null && compFile.existsSync()) {
         await _serveAssetFile(request, compFile);
-        print(
-          '[DevServer] [COMPONENT] Served server component $id '
-          '(${await compFile.length()} bytes)',
+        _console.onArtifactServed(
+          name: 'component/$id.ast',
+          byteSize: await compFile.length(),
         );
       } else {
         request.response
@@ -1333,6 +1373,7 @@ class DartGoServer {
     _fileWatchSub?.cancel();
     _assetsWatchSub?.cancel();
     _stdinCommands?.stop();
+    _console.dispose();
     _socketHub.closeAll();
     AstBuildWorker.instance.stop();
     _server?.close(force: true);

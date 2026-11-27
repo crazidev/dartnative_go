@@ -1253,11 +1253,31 @@ class _DartNativeGoState extends State<DartNativeGo> {
       }
 
       if (!mounted || launchSeq != _reloadSeq) return;
+      final mountSw = Stopwatch()..start();
       _interpretedWidget = widget;
       _isAppMounted = true;
       _isLoadingBundle = false;
       _publishPreview();
       _markGuestRendered();
+      final mountMs = mountSw.elapsedMilliseconds;
+      final totalLaunchMs = launchSw.elapsedMilliseconds;
+      final moduleCount = _useAst
+          ? bundle.astModuleFingerprints.length
+          : bundle.sources.length;
+      _liveConnection?.sendLaunchStats(
+        mode: _useAst ? 'AST' : 'Source',
+        totalMs: totalLaunchMs,
+        bundleBytes: bundle.astBytes?.length,
+        moduleCount: moduleCount > 0 ? moduleCount : null,
+        assetCount: bundle.assets.isNotEmpty ? bundle.assets.length : null,
+        timings: {
+          'fetch': bundleFetchMs,
+          if (iconFontsMs > 0) 'sync': iconFontsMs,
+          'ws': websocketMs,
+          'exec': evaluationMs,
+          'mount': mountMs,
+        },
+      );
     } catch (e, stack) {
       final err = e.toString();
       DartGoLogger.error('Interpreter Error: $err', null, stack);
@@ -1394,17 +1414,22 @@ class _DartNativeGoState extends State<DartNativeGo> {
       }
       final remountMs = remountSw.elapsedMilliseconds;
       final totalMs = reloadSw.elapsedMilliseconds;
-
+      final reloadTimings = <String, int>{
+        'fetch': fetchMs,
+        if (syncMs > 0) 'sync': syncMs,
+        'track': trackMs,
+        'eval': evalMs,
+        'remount': remountMs,
+      };
+      _liveConnection?.sendReloadStats(
+        isRestart: false,
+        totalMs: totalMs,
+        timings: reloadTimings,
+      );
       DartGoLogger.reload(
         mode: _useAst ? 'AST' : 'Source',
         totalMs: totalMs,
-        timings: {
-          'fetch': fetchMs,
-          if (syncMs > 0) 'sync': syncMs,
-          'track': trackMs,
-          'eval': evalMs,
-          'remount': remountMs,
-        },
+        timings: reloadTimings,
       );
     } catch (e, stack) {
       final err = 'Hot Reload Error: $e';
@@ -1458,19 +1483,24 @@ class _DartNativeGoState extends State<DartNativeGo> {
       final useAst = flagsFromRuntimeMode(mode);
       _useAst = useAst;
 
+      final fetchSw = Stopwatch()..start();
       final updatedBundle = await _bundleLoader.fetchBundle(
         _activeBundle!.serverUrl,
         onlyAst: _useAst,
       );
+      final fetchMs = fetchSw.elapsedMilliseconds;
       if (!mounted || seq != _restartSeq) return;
       _activeBundle = updatedBundle;
+      final syncSw = Stopwatch()..start();
       await _syncIconFonts(updatedBundle);
       await _syncAndRevalidateAssets(updatedBundle);
+      final syncMs = syncSw.elapsedMilliseconds;
       if (!mounted || seq != _restartSeq) return;
 
       WidgetGenerationTracker.resetAll();
       WidgetGenerationTracker.registerSources(updatedBundle.sources);
 
+      final evalSw = Stopwatch()..start();
       _interpreterRunner.unmount();
       _interpreterRunner.currentServerUrl = updatedBundle.serverUrl;
       _interpreterRunner.useAst = _useAst;
@@ -1479,8 +1509,10 @@ class _DartNativeGoState extends State<DartNativeGo> {
         updatedBundle,
         isHotReload: false,
       );
+      final evalMs = evalSw.elapsedMilliseconds;
 
       if (!mounted || seq != _restartSeq) return;
+      final mountSw = Stopwatch()..start();
       _interpretedWidget = widget;
       _isAppMounted = true;
       _isLoadingBundle = false;
@@ -1499,10 +1531,23 @@ class _DartNativeGoState extends State<DartNativeGo> {
       _guestEpoch++;
       _publishPreview();
       _markGuestRendered();
-      DartGoLogger.bench(
-        'Runner',
-        'Hot Restart (${_useAst ? "AST" : "Source"})',
-        restartSw.elapsedMilliseconds,
+      final mountMs = mountSw.elapsedMilliseconds;
+      final totalMs = restartSw.elapsedMilliseconds;
+      final restartTimings = <String, int>{
+        'fetch': fetchMs,
+        if (syncMs > 0) 'sync': syncMs,
+        'eval': evalMs,
+        'mount': mountMs,
+      };
+      _liveConnection?.sendReloadStats(
+        isRestart: true,
+        totalMs: totalMs,
+        timings: restartTimings,
+      );
+      DartGoLogger.restart(
+        mode: _useAst ? 'AST' : 'Source',
+        totalMs: totalMs,
+        timings: restartTimings,
       );
     } catch (e, stack) {
       final err = 'Hot Restart Error: $e';

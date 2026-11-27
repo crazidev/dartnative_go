@@ -139,5 +139,47 @@ void main() {
         DartGoCommand.unknown,
       );
     });
+
+    test('supports disabling QR via --no-qr, --no-qrcode, --qr=false, and env', () {
+      expect(
+        DartGoCommandLine.parse(['start', '--no-qr'], currentDir: cwd).qrCode,
+        isFalse,
+      );
+      expect(
+        DartGoCommandLine.parse(['--no-qr'], currentDir: cwd),
+        isA<DartGoCommandLine>()
+            .having((c) => c.command, 'command', DartGoCommand.start)
+            .having((c) => c.qrCode, 'qrCode', isFalse),
+      );
+      expect(
+        DartGoCommandLine.parse(['start', '--qr=false'], currentDir: cwd).qrCode,
+        isFalse,
+      );
+      expect(
+        DartGoCommandLine.parse(
+          ['start'],
+          currentDir: cwd,
+          environment: const {'DNGO_NO_QR': '1'},
+        ).qrCode,
+        isFalse,
+      );
+      expect(
+        DartGoCommandLine.parse(
+          ['start'],
+          currentDir: cwd,
+          environment: const {'DNGO_QR': '0'},
+        ).qrCode,
+        isFalse,
+      );
+      // Explicit --qr overrides DNGO_NO_QR=1.
+      expect(
+        DartGoCommandLine.parse(
+          ['start', '--qr'],
+          currentDir: cwd,
+          environment: const {'DNGO_NO_QR': '1'},
+        ).qrCode,
+        isTrue,
+      );
+    });
   });
 }

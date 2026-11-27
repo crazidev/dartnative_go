@@ -2,9 +2,16 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'device_name.dart';
+
+export 'device_name.dart' show appleModelDisplayName, resolveDeviceName;
+
 /// Manages the real-time WebSocket connection to the DartNative Go dev server.
 class LiveConnection {
   final String serverUrl;
+
+  /// Human-readable device name sent to the dev server on connect.
+  final String deviceName;
   final void Function(String? changedFile)? onReload;
   final void Function(List<String> changedFiles, {bool isAssetChange})?
   onReloadBatch;
@@ -88,6 +95,7 @@ class LiveConnection {
 
   LiveConnection({
     required this.serverUrl,
+    String? deviceName,
     this.onReload,
     this.onReloadBatch,
     this.onBreakpoints,
@@ -107,7 +115,9 @@ class LiveConnection {
     this.onUiSubmit,
     this.onUiType,
     this.onUiScroll,
-  });
+  }) : deviceName = (deviceName != null && deviceName.trim().isNotEmpty)
+           ? deviceName.trim()
+           : resolveDeviceName();
 
   bool get isConnected =>
       _socket != null && _socket!.readyState == WebSocket.open;
@@ -134,7 +144,15 @@ class LiveConnection {
     if (_initialVerboseState.isCompleted) {
       _initialVerboseState = Completer<bool>();
     }
-    final wsUrl = '${serverUrl.replaceFirst('http', 'ws')}/ws';
+    final baseWs = Uri.parse('${serverUrl.replaceFirst('http', 'ws')}/ws');
+    final wsUrl = baseWs
+        .replace(
+          queryParameters: {
+            if (deviceName.isNotEmpty) 'deviceName': deviceName,
+            'platform': Platform.operatingSystem,
+          },
+        )
+        .toString();
     final generation = ++_socketGeneration;
 
     try {
@@ -324,6 +342,52 @@ class LiveConnection {
           'type': 'log',
           'level': level,
           'message': message,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        }),
+      );
+    } catch (_) {}
+  }
+
+  /// Sends structured reload or restart timing telemetry to the dev server so
+  /// Normal mode can render concise per-phase timings without verbose log noise.
+  void sendReloadStats({
+    required bool isRestart,
+    required int totalMs,
+    required Map<String, int> timings,
+  }) {
+    if (!isConnected) return;
+    try {
+      _socket?.add(
+        jsonEncode({
+          'type': isRestart ? 'restart_stats' : 'reload_stats',
+          'totalMs': totalMs,
+          'timings': timings,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        }),
+      );
+    } catch (_) {}
+  }
+
+  /// Sends initial connect/launch timing and bundle metadata to the dev server.
+  void sendLaunchStats({
+    required String mode,
+    required int totalMs,
+    required Map<String, int> timings,
+    int? bundleBytes,
+    int? moduleCount,
+    int? assetCount,
+  }) {
+    if (!isConnected) return;
+    try {
+      _socket?.add(
+        jsonEncode({
+          'type': 'launch_stats',
+          'mode': mode,
+          'totalMs': totalMs,
+          'timings': timings,
+          'bundleBytes': ?bundleBytes,
+          'moduleCount': ?moduleCount,
+          'assetCount': ?assetCount,
           'timestamp': DateTime.now().millisecondsSinceEpoch,
         }),
       );
