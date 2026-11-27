@@ -26,6 +26,7 @@ class DartGoCommandLine {
   final int endPort;
   final String? host;
   final bool verbose;
+  final bool devLogs;
   final bool broadcast;
   final bool qrCode;
   final bool rebuildAst;
@@ -58,6 +59,7 @@ class DartGoCommandLine {
     required this.endPort,
     required this.host,
     required this.verbose,
+    this.devLogs = false,
     required this.broadcast,
     required this.qrCode,
     required this.rebuildAst,
@@ -68,9 +70,14 @@ class DartGoCommandLine {
     this.deepLinkQr = false,
   });
 
-  factory DartGoCommandLine.parse(List<String> args, {Directory? currentDir}) {
+  factory DartGoCommandLine.parse(
+    List<String> args, {
+    Directory? currentDir,
+    Map<String, String>? environment,
+  }) {
     final baseDir = currentDir ?? Directory.current;
-    if (args.isEmpty) return _start(args, baseDir);
+    final env = environment ?? Platform.environment;
+    if (args.isEmpty) return _start(args, baseDir, env);
     if (args.contains('-h') ||
         args.contains('--help') ||
         args.first == 'help') {
@@ -115,16 +122,49 @@ class DartGoCommandLine {
     }
 
     final startArgs = first == 'start' ? args.skip(1).toList() : args;
-    if (first == 'start' ||
-        !first.startsWith('-') ||
-        first == '-v' ||
-        first == '--verbose') {
-      return _start(startArgs, baseDir);
+    if (first == 'start' || !first.startsWith('-') || _isStartFlag(first)) {
+      return _start(startArgs, baseDir, env);
     }
     return _simple(DartGoCommand.unknown, args, baseDir);
   }
 
-  static DartGoCommandLine _start(List<String> args, Directory baseDir) {
+  static bool _isStartFlag(String arg) {
+    const exact = {
+      '-v',
+      '--verbose',
+      '--dev-logs',
+      '--no-qr',
+      '--no-qrcode',
+      '--qr',
+      '--qrcode',
+      '--no-broadcast',
+      '--rebuild-ast',
+      '--no-rebuild-ast',
+      '--profile',
+      '-p',
+      '--port',
+      '--port-range',
+      '--project',
+      '--host',
+    };
+    if (exact.contains(arg)) return true;
+    const prefixes = [
+      '-p=',
+      '--port=',
+      '--port-range=',
+      '--project=',
+      '--host=',
+      '--qr=',
+      '--qrcode=',
+    ];
+    return prefixes.any(arg.startsWith);
+  }
+
+  static DartGoCommandLine _start(
+    List<String> args,
+    Directory baseDir,
+    Map<String, String> env,
+  ) {
     final (startPort, endPort) = _ports(args);
     return DartGoCommandLine(
       command: DartGoCommand.start,
@@ -134,11 +174,35 @@ class DartGoCommandLine {
       endPort: endPort,
       host: _value(args, 'host'),
       verbose: args.contains('-v') || args.contains('--verbose'),
+      devLogs: args.contains('--dev-logs') || _isTruthyEnv(env['DNGO_DEV']),
       broadcast: !args.contains('--no-broadcast'),
-      qrCode: !args.contains('--no-qrcode'),
+      qrCode: _resolveQrEnabled(args, env),
       rebuildAst: !args.contains('--no-rebuild-ast'),
       profile: args.contains('--profile'),
     );
+  }
+
+  static bool _resolveQrEnabled(List<String> args, Map<String, String> env) {
+    // Explicit CLI flags always win over environment defaults (last flag wins).
+    bool? explicit;
+    for (final arg in args) {
+      if (arg == '--no-qr' || arg == '--no-qrcode') {
+        explicit = false;
+      } else if (arg == '--qr' || arg == '--qrcode') {
+        explicit = true;
+      } else if (arg.startsWith('--qr=')) {
+        explicit = _isTruthyEnv(arg.substring('--qr='.length));
+      } else if (arg.startsWith('--qrcode=')) {
+        explicit = _isTruthyEnv(arg.substring('--qrcode='.length));
+      }
+    }
+    if (explicit != null) return explicit;
+    if (_isTruthyEnv(env['DNGO_NO_QR'])) return false;
+    final qrEnv = env['DNGO_QR'];
+    if (qrEnv != null && qrEnv.trim().isNotEmpty) {
+      return _isTruthyEnv(qrEnv);
+    }
+    return true;
   }
 
   static DartGoCommandLine _open(List<String> args, Directory baseDir) {
@@ -238,5 +302,11 @@ class DartGoCommandLine {
       if (name == 'p' && arg == '-p' && i + 1 < args.length) return args[i + 1];
     }
     return null;
+  }
+
+  static bool _isTruthyEnv(String? value) {
+    if (value == null) return false;
+    final norm = value.trim().toLowerCase();
+    return norm == '1' || norm == 'true' || norm == 'yes' || norm == 'on';
   }
 }

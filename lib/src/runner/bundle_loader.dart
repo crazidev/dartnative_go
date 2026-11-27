@@ -165,12 +165,20 @@ class BundleLoader {
 
   DepCache? get depCache => _depCache;
 
-  /// Normalizes base server URL without trailing slash.
+  /// Normalizes base server URL without trailing slash or `/_dngo/loading`.
   static String normalizeUrl(String input) {
     var trimmed = input.trim();
     if (trimmed.isEmpty) return trimmed;
     if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
       trimmed = 'http://$trimmed';
+    }
+    final parsed = Uri.tryParse(trimmed);
+    if (parsed != null && parsed.path == '/_dngo/loading') {
+      trimmed = Uri(
+        scheme: parsed.scheme,
+        host: parsed.host,
+        port: parsed.hasPort ? parsed.port : null,
+      ).toString();
     }
     if (trimmed.endsWith('/')) {
       trimmed = trimmed.substring(0, trimmed.length - 1);

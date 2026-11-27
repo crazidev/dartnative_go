@@ -19,6 +19,7 @@ import 'package:dartnative_go/src/interpreter/auto_import_parser.dart';
 import 'package:dartnative_go/src/runner/ast_interpreter_runner.dart';
 import 'package:dartnative_go/src/runner/interpreter_runner.dart';
 import 'package:tom_d4rt/d4rt.dart';
+import 'package:tom_d4rt_ast/d4rt.dart' as ast;
 
 /// Which interpreter engine the harness drives.
 enum DnMode {
@@ -47,6 +48,12 @@ class DnHarness {
   /// per-plugin host fakes, e.g. `installFakeSharedPreferences`.
   final List<void Function(D4rt interpreter)> bridgeOverrides;
 
+  /// AST-engine counterpart of [bridgeOverrides]: installed on the core
+  /// `tom_d4rt_ast` runner after the generated AST bridges register and before
+  /// the first evaluation. Same contract — last registration wins — so a host
+  /// fake for a plugin with no native side can shadow the generated bridge.
+  final List<void Function(ast.D4rtRunner runner)> astBridgeOverrides;
+
   late InterpreterRunner _sourceRunner;
   AstInterpreterRunner? _astRunner;
 
@@ -62,6 +69,7 @@ class DnHarness {
     this.packageName = 'guest_app',
     this.onLog,
     this.bridgeOverrides = const [],
+    this.astBridgeOverrides = const [],
   }) {
     _sourceRunner = _newSourceRunner();
   }
@@ -156,6 +164,21 @@ class DnHarness {
     return lastRoot!;
   }
 
+  /// Fresh AST runner with [astBridgeOverrides] applied. `initRunner` builds
+  /// the core runner + generated bridges; the overrides then shadow them
+  /// before the first bundle evaluation.
+  AstInterpreterRunner _newAstRunner() {
+    final runner = AstInterpreterRunner(onLog: onLog);
+    runner.initRunner();
+    final core = runner.runner;
+    if (core != null) {
+      for (final override in astBridgeOverrides) {
+        override(core);
+      }
+    }
+    return runner;
+  }
+
   /// Evaluates pre-compiled AST [bytes] via the analyzer-free engine.
   Future<Widget> evaluateAstBytes(
     List<int> bytes, {
@@ -163,7 +186,7 @@ class DnHarness {
     bool isHotReload = false,
   }) async {
     mode = DnMode.ast;
-    _astRunner ??= AstInterpreterRunner(onLog: onLog);
+    _astRunner ??= _newAstRunner();
     lastRoot = await _astRunner!.evaluateAstBundleAs<Widget>(
       bytes,
       entryPoint: entryPoint,

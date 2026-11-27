@@ -10,11 +10,17 @@ import 'guest_runner.dart';
 import 'logger.dart';
 import '../cli/server_components/server_annotation_scanner.dart';
 import '../interpreter/ast/ast_asset_bridge.dart';
+import '../interpreter/ast/ast_dartnative_sub_barrels.dart';
 import '../interpreter/ast/host_api_bridge.dart';
 import '../interpreter/ast/ast_widget_proxies.dart';
+import '../interpreter/ast/ast_perf_trace.dart';
 import '../interpreter/ast/dartscript.b.dart' as ast_bridges;
 import '../interpreter/ast/isolate_compute_bridge.dart';
 import '../interpreter/ast/server_component_bridge.dart';
+import '../interpreter/media_gallery_ffi_bridge.dart';
+import '../interpreter/routes_bridge.dart';
+import '../interpreter/state_signal_extensions.dart';
+import '../interpreter/zoned_guarded_bridge.dart';
 import '../widgets/server_component_loader.dart';
 
 /// Executes pre-compiled `AstBundle` bytes on the analyzer-free engine.
@@ -133,6 +139,11 @@ class AstInterpreterRunner {
 
   ast.InterpreterVisitor? get visitor => _runner?.visitor;
 
+  /// The core AST runner, created by [initRunner]. Exposed so host tooling
+  /// (tests, the plugin-fake lab) can register bridges that must win over the
+  /// generated ones — e.g. host fakes for plugins with no native side.
+  ast.D4rtRunner? get runner => _runner;
+
   /// Host-visible diagnostics: how many core runners this instance has built.
   int get coreRunnerGeneration => _coreRunnerGeneration;
 
@@ -183,6 +194,9 @@ class AstInterpreterRunner {
 
     // Full generated bridge surface (AST-typed via buildkit_ast.yaml).
     ast_bridges.DartnativeGoAstBridges.register(runner);
+    registerAstDartNativeSubBarrels(runner);
+    registerAstMediaGalleryFfiBridge(runner);
+    registerAstStateSignalExtensions(runner);
     registerAstComputeBridge(runner);
     registerAstWidgetInterfaceProxies(
       runner,
@@ -191,6 +205,12 @@ class AstInterpreterRunner {
       onBlankBuild: onGuestBlankBuild,
       onRecovered: onGuestRecovered,
     );
+    // Opt-in per-frame interpreter perf summary (`--dart-define=DNGO_PERF_TRACE=true`).
+    const perfTrace = bool.fromEnvironment('DNGO_PERF_TRACE');
+    if (perfTrace) {
+      AstPerfTrace.enabled = true;
+      AstPerfTrace.sink = onLog;
+    }
     // Asset-aware Image/AssetImage overrides (last registration wins),
     // mirroring the source engine's registerAssetAwareBridges.
     registerAstAssetAwareBridges(
@@ -265,6 +285,32 @@ class AstInterpreterRunner {
       );
     }
 
+    // Mirror of the source engine §4c: `runZonedGuarded()` from dart:async.
+    // Guest entrypoints (the upstream playground) wrap `main()` in it; zones
+    // are unbridged by design, so this bridge keeps the catch-and-report
+    // contract and ignores the zone plumbing (zoned_guarded_bridge.dart).
+    for (final lib in kRunZonedGuardedLibraries) {
+      runner.registertopLevelFunction(
+        'runZonedGuarded',
+        (visitor, positional, named, typeArgs) =>
+            runZonedGuardedAst(visitor, positional),
+        lib,
+        signature: kRunZonedGuardedSignature,
+      );
+    }
+
+    // Mirror of the source engine §4d: capture registerRoutes() instead of
+    // forwarding to the native-binding stub that throws on the host.
+    for (final lib in kRegisterRoutesLibraries) {
+      runner.registertopLevelFunction(
+        'registerRoutes',
+        (visitor, positional, named, typeArgs) =>
+            registerRoutesAst(visitor, positional),
+        lib,
+        signature: kRegisterRoutesSignature,
+      );
+    }
+
     _runner = runner;
     _coreRunnerGeneration++;
   }
@@ -291,6 +337,8 @@ class AstInterpreterRunner {
   }) async {
     final totalSw = Stopwatch()..start();
     _capturedApp = null;
+    if (!isHotReload) D4rtRoutes.reset();
+    _lastModuleFingerprints = Map<String, String>.of(moduleFingerprints);
     final initSw = Stopwatch()..start();
     final hadCoreRunner = _runner != null;
     initRunner();
@@ -491,11 +539,11 @@ class AstInterpreterRunner {
       }
     }
 
-    // Profile the launch itself. This is timed (and reported in the bench line)
-    // because it used to be invisible: it runs after `exec` and could cost more
-    // than decode + execute together when it serialized the bundle.
+    // Profile the launch / hot restart itself (never hot reload: module/class
+    // sizing tables are only valuable on full restart and skipping them keeps
+    // incremental reloads fast).
     var profileMs = 0;
-    if (profileExecution) {
+    if (profileExecution && !isHotReload) {
       final profileSw = Stopwatch()..start();
       // Launch-path logging must never serialize the bundle: sizes come from
       // the manifest when present, and are simply reported as unavailable for

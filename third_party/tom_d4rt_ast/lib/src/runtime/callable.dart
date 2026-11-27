@@ -888,7 +888,6 @@ class InterpretedFunction implements Callable {
          typeParameterBounds: typeParameterBounds,
        );
 
-
   // Constructor for declared functions (top-level or nested, not methods)
   InterpretedFunction.declaration(
     SFunctionDeclaration declaration,
@@ -2245,14 +2244,21 @@ class InterpretedFunction implements Callable {
     }
   }
 
+  bool _parentMapBuilt = false;
+
   Object? _callImpl(
     InterpreterVisitor visitor,
     List<Object?> positionalArguments,
     Map<String, Object?> namedArguments,
     List<RuntimeType>? typeArguments,
   ) {
-    // Build parent map for AST navigation (SAstNode has no .parent)
-    _buildParentMap(_body);
+    // Parent links are only consulted by the async / generator state machine;
+    // skipping the Expando probe on every synchronous function call avoids
+    // wasted hash lookups on every widget build/method invocation.
+    if (!_parentMapBuilt && (isAsync || isGenerator || isAsyncGenerator)) {
+      _buildParentMap(_body);
+      _parentMapBuilt = true;
+    }
     if (Logger.isDebug) {
       Logger.debug(
         "[InterpretedFunction.call] Called '${_name ?? 'anonymous'}' with ${positionalArguments.length} positional, ${namedArguments.length} named arguments.",
@@ -4273,9 +4279,9 @@ class InterpretedFunction implements Callable {
     final budget = asyncSliceBudgetMicros;
     final nowMicros = _asyncSliceClock.elapsedMicroseconds;
     if (budget <= 0 || nowMicros - _asyncSliceTurnStartMicros < budget) {
-      Future.microtask(() => _runStateMachine(visitor, state)).catchError(
-        onUncaught,
-      );
+      Future.microtask(
+        () => _runStateMachine(visitor, state),
+      ).catchError(onUncaught);
       return;
     }
 
@@ -5026,9 +5032,11 @@ class InterpretedFunction implements Callable {
   /// function's environment. Stops at a function body, so a closure's blocks
   /// are its own.
   static SBlock? _innermostScopedBlock(SAstNode? node) {
-    for (SAstNode? current = node == null ? null : _parentOf(node);
-        current != null;
-        current = _parentOf(current)) {
+    for (
+      SAstNode? current = node == null ? null : _parentOf(node);
+      current != null;
+      current = _parentOf(current)
+    ) {
       if (current is SFunctionBody) return null;
       if (current is SBlock) {
         return _parentOf(current) is SBlockFunctionBody ? null : current;
@@ -7777,7 +7785,8 @@ class ResolvedBinding {
     // also why a binding check cannot be the `is` predicate: `1 is double` is
     // false, but `for (final double d in [1, 2.5])` is a program real Dart
     // accepts, because the literal widens.
-    if (_declaredName == 'double' && value is int) return widen('double', value);
+    if (_declaredName == 'double' && value is int)
+      return widen('double', value);
 
     // SCE103: `{}` is a Map unless the CONTEXT type says Set — Dart's own rule,
     // and the interpreter has no context type to consult, so the literal always
@@ -7797,6 +7806,24 @@ class ResolvedBinding {
     // that hides mistakes.
     if (_declaredName == 'Set' && value is Map && value.isEmpty) {
       return <Object?>{};
+    }
+
+    // Fast path: non-generic bridged parameter with an O(1) native
+    // `isAssignable` predicate (e.g. BuildContext, Widget, Color, String,
+    // double, int, Canvas, Size). Avoids env.getRuntimeType(value) — which
+    // otherwise walks/scans the bridge registry on every widget build.
+    if (_appliedDeclared == null) {
+      final declared = _declaredType;
+      if (declared is BridgedClass &&
+          value is! InterpretedInstance &&
+          value is! InterpretedEnumValue &&
+          value is! BridgedEnumValue) {
+        final check = declared.isAssignable;
+        if (check != null) {
+          final native = value is BridgedInstance ? value.nativeObject : value;
+          if (check(native)) return value;
+        }
+      }
     }
 
     final RuntimeType? valueType;

@@ -5,6 +5,11 @@
 class DartGoLogger {
   static bool verbose = false;
 
+  /// Enables internal runtime/protocol telemetry (etags, interpreter cell
+  /// counts, raw AST sizing, fetch sub-timings). Off for normal and verbose
+  /// app-developer output; enabled via `--dev-logs` or `DNGO_DEV=1`.
+  static bool devLogs = false;
+
   /// Optional log sink (e.g. WebSocket connection to relay device logs to CLI).
   static void Function(String message, {String level})? logSink;
 
@@ -59,6 +64,21 @@ class DartGoLogger {
     final msg = verbose
         ? '[RELOAD] $mode finished in ${totalMs}ms ($details)'
         : '[RELOAD] $mode finished in ${totalMs}ms';
+    _output(msg, level: 'INFO');
+  }
+
+  /// Logs hot restart duration and optional step breakdowns.
+  static void restart({
+    required String mode,
+    required int totalMs,
+    Map<String, int> timings = const {},
+  }) {
+    final details = timings.entries
+        .map((e) => '${e.key}=${e.value}ms')
+        .join(', ');
+    final msg = verbose && details.isNotEmpty
+        ? '[RESTART] $mode finished in ${totalMs}ms ($details)'
+        : '[RESTART] $mode finished in ${totalMs}ms';
     _output(msg, level: 'INFO');
   }
 

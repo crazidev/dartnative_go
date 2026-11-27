@@ -11,6 +11,8 @@ import '../interpreter/debug_controller.dart';
 import '../interpreter/dn_bridge.dart';
 import '../interpreter/host_api_bridge.dart';
 import '../interpreter/server_component_source_bridge.dart';
+import '../interpreter/routes_bridge.dart';
+import '../interpreter/zoned_guarded_bridge.dart';
 import '../widgets/server_component_loader.dart';
 import 'ast_interpreter_runner.dart';
 import 'bundle_loader.dart';
@@ -132,6 +134,7 @@ class InterpreterRunner implements GuestRunner {
   @override
   void initInterpreter() {
     _capturedApp = null;
+    D4rtRoutes.reset();
     _debugController.onLog = onLog;
     AssetResolver.activeServerUrl = currentServerUrl;
 
@@ -271,6 +274,38 @@ class InterpreterRunner implements GuestRunner {
       'package:dartnative/src/framework.dart',
     ]) {
       registerUnawaited(lib);
+    }
+
+    // 4c. Register runZonedGuarded() from dart:async.
+    //
+    // Guest entrypoints wrap `main()` in it to funnel uncaught errors into one
+    // handler (the upstream playground does). Zones are deliberately unbridged,
+    // so without this the whole entrypoint fails to load with
+    // "Undefined variable: runZonedGuarded (not bridged ...)". The bridge keeps
+    // the guest-visible contract — body runs, errors reach onError — and
+    // ignores the zone plumbing (see zoned_guarded_bridge.dart).
+    for (final lib in kRunZonedGuardedLibraries) {
+      interpreter.registertopLevelFunction(
+        'runZonedGuarded',
+        (visitor, positional, named, typeArgs) =>
+            runZonedGuardedSource(visitor, positional),
+        lib,
+        signature: kRunZonedGuardedSignature,
+      );
+    }
+
+    // 4d. Intercept registerRoutes(): a native-binding call whose host stub
+    // throws UnimplementedError. Capture the table (and coerce the interpreted
+    // builder closures into real WidgetBuilders) so guests that register named
+    // routes boot headless. Registered after the generated bridge, so it wins.
+    for (final lib in kRegisterRoutesLibraries) {
+      interpreter.registertopLevelFunction(
+        'registerRoutes',
+        (visitor, positional, named, typeArgs) =>
+            registerRoutesSource(visitor, positional),
+        lib,
+        signature: kRegisterRoutesSignature,
+      );
     }
 
     // 5. Debugger and Breakpoint hooks
@@ -601,6 +636,23 @@ class InterpreterRunner implements GuestRunner {
 
     Widget? resolvedWidget =
         _capturedApp ?? unwrap<Widget>(rawResult, visitor: interpreter.visitor);
+
+    if (resolvedWidget == null) {
+      // A guest `main()` may start asynchronous work and call `runApp` from a
+      // continuation (`runZonedGuarded(() { Logger.run(() async { … runApp(…) }) })`
+      // — the upstream playground does exactly this). Since tom_d4rt 1.235.0 a
+      // block body that runs off its end yields null rather than its last
+      // statement's value (Dart semantics), so the entry's return value no
+      // longer happens to be the future that continuation was awaiting and the
+      // capture can land just after the entry returns. Give it a bounded window
+      // to arrive before reporting a missing root. Mirrors
+      // `AstInterpreterRunner.evaluateAstBundleAs`.
+      final deadline = DateTime.now().add(const Duration(seconds: 5));
+      while (_capturedApp == null && DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+      }
+      resolvedWidget = _capturedApp;
+    }
 
     if (resolvedWidget == null) {
       throw StateError(

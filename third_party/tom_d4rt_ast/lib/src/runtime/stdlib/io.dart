@@ -7,6 +7,7 @@ import 'package:tom_d4rt_ast/src/runtime/stdlib/io/file.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/io/stdio.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/io/http.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/io/process.dart';
+import 'package:tom_d4rt_ast/src/runtime/stdlib/io/process_info.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/io/platform.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/io/io_sink.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/io/io_exception.dart';
@@ -21,6 +22,7 @@ export 'package:tom_d4rt_ast/src/runtime/stdlib/io/file.dart';
 export 'package:tom_d4rt_ast/src/runtime/stdlib/io/stdio.dart';
 export 'package:tom_d4rt_ast/src/runtime/stdlib/io/http.dart';
 export 'package:tom_d4rt_ast/src/runtime/stdlib/io/process.dart';
+export 'package:tom_d4rt_ast/src/runtime/stdlib/io/process_info.dart';
 export 'package:tom_d4rt_ast/src/runtime/stdlib/io/platform.dart';
 export 'package:tom_d4rt_ast/src/runtime/stdlib/io/io_sink.dart';
 export 'package:tom_d4rt_ast/src/runtime/stdlib/io/io_exception.dart';
@@ -81,6 +83,7 @@ class IoStdlib {
     environment.defineBridge(ProcessResultIo.definition);
     environment.defineBridge(ProcessSignalIo.definition);
     environment.defineBridge(ProcessStartModeIo.definition);
+    environment.defineBridge(ProcessInfoIo.definition);
 
     // Register Platform class
     environment.defineBridge(PlatformIo.definition);

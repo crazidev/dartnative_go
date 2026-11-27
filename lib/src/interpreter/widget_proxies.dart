@@ -1009,6 +1009,10 @@ Widget? wrapInterpretedWidget(Object? arg, {InterpreterVisitor? visitor}) {
             cur.bridgedSuperclass?.name == 'StatelessWidget') {
           return InterpretedStatelessWidget(effectiveVisitor, arg);
         }
+        if (cur.name == 'InheritedWidget' ||
+            cur.bridgedSuperclass?.name == 'InheritedWidget') {
+          return InterpretedInheritedWidget(effectiveVisitor, arg);
+        }
         if (cur.superclass == null) break;
         cur = cur.superclass!;
       }
@@ -1021,6 +1025,331 @@ Widget? wrapInterpretedWidget(Object? arg, {InterpreterVisitor? visitor}) {
     }
   }
   return null;
+}
+
+/// Native proxy for source-engine classes that extend [InheritedWidget].
+///
+/// Mirror of `InterpretedInheritedWidget` in `ast/ast_widget_proxies.dart`.
+class InterpretedInheritedWidget extends InheritedWidget
+    implements D4InterpretedProxy {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedInheritedWidget(this.visitor, this.instance, {Key? key})
+    : super(
+        key: key ?? _keyFor(instance),
+        child: _childFor(visitor, instance),
+      ) {
+    instance.nativeProxy = this;
+  }
+
+  static Key _keyFor(InterpretedInstance instance) =>
+      ValueKey('Inherited_${instance.klass.name}');
+
+  static Widget _childFor(
+    InterpreterVisitor visitor,
+    InterpretedInstance instance,
+  ) {
+    Object? raw;
+    try {
+      raw = instance.get('child', visitor: visitor);
+    } catch (_) {}
+    return wrapInterpretedWidget(raw, visitor: visitor) ??
+        const SizedBox.shrink();
+  }
+
+  @override
+  Object get d4rtInstance => instance;
+
+  @override
+  bool updateShouldNotify(InheritedWidget oldWidget) {
+    try {
+      final method = instance.get('updateShouldNotify', visitor: visitor);
+      if (method is Callable) {
+        final previous = oldWidget is InterpretedInheritedWidget
+            ? oldWidget.instance
+            : oldWidget;
+        final result = method.call(visitor, [previous], {});
+        return result == true;
+      }
+    } catch (_) {}
+    return true;
+  }
+}
+
+/// Intercepts `BuildContext.dependOnInheritedWidgetOfExactType<T>()` and
+/// `getInheritedWidgetOfExactType<T>()` so generic type arguments are honoured
+/// instead of falling through to the type-erased `InheritedWidget` lookup.
+void _registerInheritedWidgetInterceptors() {
+  Object? lookup(
+    Object? target,
+    List<RuntimeType>? typeArgs, {
+    required bool depend,
+  }) {
+    final ctx = D4.validateTarget<BuildContext>(target, 'BuildContext');
+    if (typeArgs == null || typeArgs.isEmpty) {
+      return depend
+          ? ctx.dependOnInheritedWidgetOfExactType()
+          : ctx.getInheritedWidgetOfExactType();
+    }
+    final typeArg = typeArgs.first;
+    if (typeArg is InterpretedClass) {
+      final nearest = depend
+          ? ctx.dependOnInheritedWidgetOfExactType<InterpretedInheritedWidget>()
+          : ctx.getInheritedWidgetOfExactType<InterpretedInheritedWidget>();
+      if (nearest == null) return null;
+      if (nearest.instance.klass == typeArg ||
+          nearest.instance.klass.name == typeArg.name) {
+        return nearest.instance;
+      }
+      InterpretedInstance? found;
+      try {
+        ctx.visitAncestorElements((ancestor) {
+          final w = ancestor.widget;
+          if (w is InterpretedInheritedWidget &&
+              (w.instance.klass == typeArg ||
+                  w.instance.klass.name == typeArg.name)) {
+            found = w.instance;
+            return false;
+          }
+          return true;
+        });
+      } catch (_) {}
+      return found;
+    }
+    if (typeArg is BridgedClass) {
+      final nativeType = typeArg.nativeType;
+      if (nativeType == MediaQuery) {
+        return depend
+            ? ctx.dependOnInheritedWidgetOfExactType<MediaQuery>()
+            : ctx.getInheritedWidgetOfExactType<MediaQuery>();
+      }
+      if (nativeType == Directionality) {
+        return depend
+            ? ctx.dependOnInheritedWidgetOfExactType<Directionality>()
+            : ctx.getInheritedWidgetOfExactType<Directionality>();
+      }
+      if (nativeType == DefaultTextStyle) {
+        return depend
+            ? ctx.dependOnInheritedWidgetOfExactType<DefaultTextStyle>()
+            : ctx.getInheritedWidgetOfExactType<DefaultTextStyle>();
+      }
+      if (nativeType == SliderTheme) {
+        return depend
+            ? ctx.dependOnInheritedWidgetOfExactType<SliderTheme>()
+            : ctx.getInheritedWidgetOfExactType<SliderTheme>();
+      }
+      Widget? found;
+      try {
+        ctx.visitAncestorElements((ancestor) {
+          final w = ancestor.widget;
+          if (w.runtimeType == nativeType) {
+            found = w;
+            return false;
+          }
+          return true;
+        });
+      } catch (_) {}
+      return found;
+    }
+    return depend
+        ? ctx.dependOnInheritedWidgetOfExactType()
+        : ctx.getInheritedWidgetOfExactType();
+  }
+
+  D4.registerBridgedMethodInterceptor(
+    'Element',
+    'dependOnInheritedWidgetOfExactType',
+    (visitor, target, positional, named, typeArgs) =>
+        lookup(target, typeArgs, depend: true),
+  );
+  D4.registerBridgedMethodInterceptor(
+    'Element',
+    'getInheritedWidgetOfExactType',
+    (visitor, target, positional, named, typeArgs) =>
+        lookup(target, typeArgs, depend: false),
+  );
+}
+
+void _registerGlobalKeyGenericConstructor() {
+  D4.registerGenericConstructor('GlobalKey', '', (
+    visitor,
+    positional,
+    named,
+    typeArgs,
+  ) {
+    if (typeArgs != null && typeArgs.isNotEmpty) {
+      final arg = typeArgs.first;
+      if (arg is BridgedClass) {
+        final t = arg.nativeType;
+        if (t == SliderMenuContainerState) {
+          return GlobalKey<SliderMenuContainerState>();
+        }
+        if (t == RefreshIndicatorState) {
+          return GlobalKey<RefreshIndicatorState>();
+        }
+        if (t == NestedScrollViewState) {
+          return GlobalKey<NestedScrollViewState>();
+        }
+        if (t == OverlayState) {
+          return GlobalKey<OverlayState>();
+        }
+      }
+    }
+    return GlobalKey();
+  });
+}
+
+/// Native proxy for source-engine classes that are [TickerProvider]s.
+///
+/// Mirror of `InterpretedTickerProvider` in `ast/ast_widget_proxies.dart`:
+/// `SingleTickerProviderStateMixin` / `TickerProviderStateMixin` list
+/// `TickerProvider` in their bridged supertypes, so one registration serves
+/// both, and `AnimationController(vsync: this)` stops failing with
+/// `expected TickerProvider?, got InterpretedInstance(_…State)`.
+class InterpretedTickerProvider implements TickerProvider, D4InterpretedProxy {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedTickerProvider(this.visitor, this.instance);
+
+  @override
+  Object get d4rtInstance => instance;
+
+  @override
+  Ticker createTicker(TickerCallback onTick) {
+    // Honour a script override; the mixin bridge's createTicker is not an
+    // InterpretedFunction, so this only finds a guest-declared method.
+    final method = instance.klass.findInstanceMethod('createTicker');
+    if (method != null) {
+      final result = instance
+          .bindMethodCached(method)
+          .call(visitor, [onTick], {});
+      if (result is Ticker) return result;
+    }
+    return Ticker(onTick);
+  }
+}
+
+/// Native proxy for source-engine classes that mix in
+/// [WidgetsBindingObserver].
+///
+/// Mirror of `InterpretedWidgetsBindingObserver` in
+/// `ast/ast_widget_proxies.dart`: dispatch reads the guest's own methods only,
+/// so the bridged mixin adapter (which would call back into this proxy)
+/// cannot recurse, and equality by guest instance lets `removeObserver(this)`
+/// pair with the proxy `addObserver` kept.
+class InterpretedWidgetsBindingObserver extends WidgetsBindingObserver
+    implements D4InterpretedProxy {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedWidgetsBindingObserver(this.visitor, this.instance);
+
+  @override
+  Object get d4rtInstance => instance;
+
+  void _dispatch(String name, List<Object?> args) {
+    final method = instance.klass.findInstanceMethod(name);
+    if (method == null) return;
+    _runWithLogCapture(
+      () => instance.bindMethodCached(method).call(visitor, args, {}),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) =>
+      _dispatch('didChangeAppLifecycleState', [state]);
+
+  @override
+  void didChangeMetrics() => _dispatch('didChangeMetrics', const []);
+
+  @override
+  void didChangePlatformBrightness() =>
+      _dispatch('didChangePlatformBrightness', const []);
+
+  @override
+  void didChangeAccessibilityFeatures() =>
+      _dispatch('didChangeAccessibilityFeatures', const []);
+
+  @override
+  void didHaveMemoryPressure() => _dispatch('didHaveMemoryPressure', const []);
+
+  @override
+  bool operator ==(Object other) =>
+      other is InterpretedWidgetsBindingObserver &&
+      identical(other.instance, instance);
+
+  @override
+  int get hashCode => identityHashCode(instance);
+}
+
+/// Native proxy for source-engine [CustomPainter] subclasses.
+///
+/// Mirror of `InterpretedCustomPainter` in `ast/ast_widget_proxies.dart`.
+/// Only members the guest declares are forwarded: `preferredHeight` is not
+/// abstract and the base implementation throws `UnimplementedError`, so a
+/// painter that does not override it must get `null`.
+class InterpretedCustomPainter extends CustomPainter
+    implements D4InterpretedProxy {
+  final InterpreterVisitor visitor;
+  final InterpretedInstance instance;
+
+  InterpretedCustomPainter(this.visitor, this.instance)
+    : super(repaint: _repaintOf(instance));
+
+  /// `super(repaint: …)` from the guest constructor, when it passed one. The
+  /// super-call is skipped for a proxy-backed abstract base, so the argument
+  /// is only available because `CustomPainter` is marked as super-arg
+  /// capturing at registration.
+  static Listenable? _repaintOf(InterpretedInstance instance) {
+    final captured = instance.superCallNamedArgs?['repaint'];
+    return captured is Listenable ? captured : null;
+  }
+
+  @override
+  Object get d4rtInstance => instance;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final method = instance.klass.findInstanceMethod('paint');
+    if (method == null) return;
+    _runWithLogCapture(
+      () => instance.bindMethodCached(method).call(visitor, [
+        canvas,
+        size,
+      ], {}),
+    );
+  }
+
+  @override
+  double? preferredHeight(double availableWidth) {
+    final method = instance.klass.findInstanceMethod('preferredHeight');
+    if (method == null) return null;
+    final result = _runWithLogCapture(
+      () => instance.bindMethodCached(method).call(visitor, [
+        availableWidth,
+      ], {}),
+    );
+    return result is num ? result.toDouble() : null;
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    final method = instance.klass.findInstanceMethod('shouldRepaint');
+    if (method == null) return true;
+    // The parameter is `covariant CustomPainter`, so a script reads its own
+    // fields off it (`oldDelegate.progress`) — pass the guest instance, not
+    // the proxy.
+    final CustomPainter delegate = oldDelegate;
+    final previous = delegate is D4InterpretedProxy
+        ? (delegate as D4InterpretedProxy).d4rtInstance
+        : delegate;
+    final result = _runWithLogCapture(
+      () => instance.bindMethodCached(method).call(visitor, [previous], {}),
+    );
+    return result == true;
+  }
 }
 
 /// Registers interface proxies for [StatelessWidget], [StatefulWidget], and
@@ -1057,12 +1386,61 @@ void registerWidgetInterfaceProxies(
   );
 
   D4.registerInterfaceProxy('StatelessWidget', (visitor, instance) {
+    final existing = instance.nativeProxy;
+    if (existing is InterpretedStatelessWidget &&
+        identical(existing.visitor, visitor)) {
+      return existing;
+    }
     return InterpretedStatelessWidget(visitor, instance);
   });
 
+  D4.registerInterfaceProxy('InheritedWidget', (visitor, instance) {
+    final existing = instance.nativeProxy;
+    if (existing is InterpretedInheritedWidget &&
+        identical(existing.visitor, visitor)) {
+      return existing;
+    }
+    return InterpretedInheritedWidget(visitor, instance);
+  });
+
+  _registerInheritedWidgetInterceptors();
+  _registerGlobalKeyGenericConstructor();
+
   D4.registerInterfaceProxy('StatefulWidget', (visitor, instance) {
+    final existing = instance.nativeProxy;
+    if (existing is InterpretedStatefulWidget &&
+        identical(existing.visitor, visitor)) {
+      return existing;
+    }
     return InterpretedStatefulWidget(visitor, instance);
   });
+
+  // `AnimationController(vsync: this)` from a State using
+  // `SingleTickerProviderStateMixin` / `TickerProviderStateMixin`. Both mixin
+  // bridges list `TickerProvider` in their supertypes, so one registration
+  // serves both.
+  D4.registerInterfaceProxy('TickerProvider', (visitor, instance) {
+    return InterpretedTickerProvider(visitor, instance);
+  });
+
+  // `WidgetsBinding.instance.addObserver(this)` from a State mixing in
+  // `WidgetsBindingObserver`. Equality is by guest instance (see the class) so
+  // `removeObserver(this)` pairs with the observer `addObserver` kept.
+  D4.registerInterfaceProxy('WidgetsBindingObserver', (visitor, instance) {
+    return InterpretedWidgetsBindingObserver(visitor, instance);
+  });
+
+  // `CustomPaint(painter: …)` / `CanvasSurface(painter: …)`. Cached on the
+  // instance so the same painter object comes back for the same guest painter
+  // (the framework compares painters between builds).
+  D4.registerInterfaceProxy('CustomPainter', (visitor, instance) {
+    final existing = instance.nativeProxy;
+    if (existing is CustomPainter) return existing;
+    return InterpretedCustomPainter(visitor, instance);
+  });
+  // `super(repaint: …)` is skipped for the abstract base (no constructor
+  // adapter), so the argument has to be captured for the proxy to honour it.
+  D4.markProxyCapturesSuperArgs('CustomPainter');
 
   D4.registerInterfaceProxy('ConsumerWidget', (visitor, instance) {
     return InterpretedConsumerWidget(visitor, instance);

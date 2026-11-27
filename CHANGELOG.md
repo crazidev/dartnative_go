@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Performance & Runtime Optimizations
+- **AST interpreter hot-path acceleration (`third_party/tom_d4rt_ast`)** — reduced interpreter share of frame CPU from ~89% to ~23% in both AOT and JIT:
+  - **O(1) parameter & return type checking**: `ResolvedBinding.bind` (`callable.dart`), `visitReturnStatement` (`interpreter_visitor.dart`), and `BridgedClass.isSubtypeOf` (`bridged_types.dart`) now fast-path non-generic bridged types via `BridgedClass.isAssignable` before falling back to `Environment.getRuntimeType` or supertype walks.
+  - **Persistent module-scoped bridge caches**: `Environment` (`environment.dart`) now hosts versioned `_resolvedTypeCache`, `_unbridgedTypeCache`, `_toBridgedClassCache`, `_runtimeTypeCache`, and `_assignableBridgesCache` on the nearest bridge-owning enclosing environment (`_cacheHostEnv()`) instead of ephemeral per-call function frames, and runs exact-`Type` chain lookup before any linear scan — eliminating repeated O(N) `LazyBridgeRegistry` scans and `RuntimeD4rtException` + stack-trace formatting on every `build(BuildContext)`.
+  - **Fast primitive binary operators & extension lookup**: `visitBinaryExpression` fast-paths `num`/`String`/`bool`/`null` `==`, `!=`, and `String +` without scanning extensions; `Environment.findExtensionMember` tracks `_namedExtensionsRaw` separately from `_values`, removes `sync*` allocation, and checks `lookup(ext) != null` before running `_matchesExtensionType`.
+  - **O(1) supertype sets, empty coercion short-circuit, & sync parent-map skip**: `BridgedClass.transitiveSupertypeNameSet` caches a `Set<String>` for O(1) subtype lookups; `D4.hasTypeCoercion` short-circuits when `_typeCoercionsByType.isEmpty`; `InterpretedFunction._callImpl` skips `_buildParentMap` for synchronous calls.
+  - **Canonical `const` widget/list caching**: `tom_d4rt_ast` canonicalizes `const` interpreted widgets, bridged widgets, and `const` lists so unchanged subtrees preserve identity across rebuilds (`test/runner/ast_const_widget_caching_test.dart`).
+- **Widget proxy identity & lifecycle optimizations (`lib/src/interpreter/ast/ast_widget_proxies.dart`)**:
+  - Reuses `instance.nativeProxy` (when `identical(existing.visitor, visitor)`) across `StatelessWidget`, `StatefulWidget`, `ConsumerWidget`, `ConsumerStatefulWidget`, and `InheritedWidget` interface proxies so `identical(oldWidget, newWidget)` holds in `DartNativeReconciler` for cached and `const` interpreted widgets.
+  - Guards hot-reload `createState()` + `_transferStateFields` + extra `setState` in `didUpdateWidget` behind `!identical(newOwner.visitor, visitor)` so ordinary parent rebuilds keep existing `State` instances intact.
+  - Reuses the active log-capture `Zone` in `_runWithLogCapture` to avoid nested `Zone` allocations per widget build, and logs guest/callback errors with `[BridgeErr]` prefix.
+- **Pause background LAN scanner while a guest app runs (`lib/src/client/network_scanner.dart`, `lib/src/app_shell.dart`)**:
+  - Added `DartGoNetworkScanner.pause()` / `resume()`, paused periodic SharedPreferences FFI + HTTP manifest polling during active guest sessions, and suppressed root `_DartNativeGoState.setState()` while the preview route is open.
+- **Opt-in frame profiler (`lib/src/interpreter/ast/ast_perf_trace.dart`)**:
+  - Added `AstPerfTrace` (gated behind `--dart-define=DNGO_PERF_TRACE=true`, zero cost when off) to log per-window interpreted build, `CustomPainter.paint`, `setState`, `InheritedWidget`, and frame-gap telemetry.
+
+### Fixed
+- **Guest asset bridges for `loadAssetBytes`, `Lottie`, `AudioPlayer`, and `dartnative_path_provider` (`lib/src/interpreter/ast/ast_asset_bridge.dart`, `lib/src/app_shell.dart`)**:
+  - Added top-level `loadAssetBytes(String assetKey)` override reading disk-cached guest assets (`AppCache`) before host bundle fallback, plus automatic pre-caching of guest data/media assets (`.lrc`, `.txt`, `.frag`, `.mp3`, `.wav`, `.mp4`, etc.) on launch so Spotify lyrics, canvas video loops, and audio tracks work out of the box.
+  - Added asset-aware `Lottie(asset: ...)` and `LottiePreWarm.warmAssets(...)` bridges that fetch and cache guest Lottie JSONs over HTTP into memory and `AppCache`, fixing blank stickers in Stickers Keyboard and Lottie asset grids.
+  - Added asset-aware `AudioPlayer.setAsset(...)` override routing guest audio assets through `AppCache` + `setPath(...)` (preserving queued `play()` calls during cold fetches).
+  - Added `dart:io` sandbox directory fallback for `dartnative_path_provider` (`getTemporaryDirectory`, `getApplicationDocumentsDirectory`, `getApplicationSupportDirectory`, `getApplicationCacheDirectory`) when `dlsym` throws `ArgumentError` on Intel `x86_64` iOS Simulators (where the xcframework ships an arm64-only simulator slice).
+
 ### Added
 - **Assets & fonts server rewrite, on-demand native font registration, and client caching**:
   - Added ETag + `304 Not Modified` support across `/assets/...`, `/asset?path=...`, and `/fonts/<family>.ttf`, plus `/assets.json` and `/icon-fonts.json` endpoints.
@@ -44,6 +67,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `tool/d4rtgen_select.dart` allowing `tool/d4rtgen.dart` and `tool/d4rtgen_ast.dart` to target specific packages or modules instead of full regeneration.
   - Implemented fingerprint stamp tracking to skip unchanged packages and avoid rewriting shared barrels during partial runs.
   - Added generator post-fixes for Riverpod 3 skew (`StateNotifier`, `ProviderScope` type coercion, and member getters).
+- **Upstream `playground/` runs headless on both engines**: the reference
+  DartNative app is vendored as a fixture and covered by
+  `test/playground/playground_headless_test.dart` (AST) and
+  `test/playground/playground_source_headless_test.dart` (source). Both boot
+  the real `main.dart` (registrant, Skia, SQLite pre-warm,
+  Firebase/notifications, 43 `registerRoutes` calls, theme restore) and build
+  **all 43 captured routes**; the AST suite also builds the five tab bodies.
+  `_knownGaps` is empty and a route that regresses fails the suite. See
+  `docs/architecture/playground-headless.md`.
+- **Interpreted proxies for the remaining abstract bridge parameters**:
+  `TickerProvider` (`AnimationController(vsync: this)` from
+  `SingleTickerProviderStateMixin` / `TickerProviderStateMixin`),
+  `CustomPainter` (`CustomPaint` / `CanvasSurface` painters) and
+  `WidgetsBindingObserver` (`WidgetsBinding.instance.addObserver(this)`) are
+  now materialised for interpreted subclasses in both engines
+  (`InterpretedTickerProvider`, `InterpretedCustomPainter`,
+  `InterpretedWidgetsBindingObserver`).
+- **`Signal.watch` / `Computed.watch` bridged by hand**
+  (`lib/src/interpreter/state_signal_extensions.dart`): the extension is
+  declared on the library-private `_SignalBase`, so the generator skips it.
+  Registered per public subclass on both engines; falls back to `.value` when
+  there is no element to subscribe (headless builds).
+- **`dart:io` `ProcessInfo` bridge** in both vendored engines
+  (`stdlib/io/process_info.dart`, gated on `DangerousPermission`).
+- **`dart:developer` stdlib for the source engine**
+  (`third_party/tom_d4rt/lib/src/stdlib/developer*`): ported from the AST
+  engine, so a guest importing `dart:developer` loads in source mode too.
+- **`MediaGalleryFFIBindings` host bridge**
+  (`lib/src/interpreter/media_gallery_ffi_bridge.dart`): the generator never
+  emitted the class, so `MediaGalleryFFIBindings.loadSymbols()` in the
+  playground's plugin registrant failed — fatally in source mode, where
+  statically undefined names are rejected before a guest `try` can run.
+- **Source-mode `runApp` capture**: `InterpreterRunner.evaluate` now waits
+  briefly for a late `runApp`, matching `AstInterpreterRunner`, because the
+  playground calls it from an async continuation.
+- **Playground host fakes**: `fake_media_gallery_ast.dart`,
+  `fake_connectivity_ast.dart` and `fake_audio_player_ast.dart` (each covering
+  both engines) shadow the plugins whose FFI asserts on a host.
+- **Bridges for the rest of the first-party plugin surface**:
+  `dartnative_skia`, `_sqlite`, `_secure_storage`, `_hive`, `_social_sign_in`,
+  `_firebase`, `_video_player`, `_audio`, `_permissions`, `_camera`,
+  `_image_crop`, `_compressor`, `_supertonic_tts`, `_lottie` and
+  `_onnxruntime` are now dependencies with modules in `buildkit.yaml` /
+  `buildkit_ast.yaml` (both bridge sets regenerated). `kAstBridgedLibraries`
+  covers their URIs plus `package:dartnative/canvas.dart`, which
+  `dartnative.dart` does not re-export — the UI surface is registered under that
+  URI by `registerDartNativeSubBarrels` / `registerAstDartNativeSubBarrels`.
+- **Host bridges for native-binding entry points**:
+  - `runZonedGuarded` (`zoned_guarded_bridge.dart`) keeps the catch-and-report
+    contract without bridging `Zone`, so entrypoints that wrap `main()` boot.
+  - `registerRoutes` (`routes_bridge.dart`) captures the route table in
+    `D4rtRoutes` and coerces each interpreted closure into a native
+    `WidgetBuilder` instead of hitting the host stub that throws.
+- **`DnHarness.astBridgeOverrides`** (and `AstInterpreterRunner.runner`) so host
+  fakes can shadow generated AST bridges, mirroring `bridgeOverrides` for the
+  source engine. `fake_shared_preferences_ast.dart` is the first such fake.
+
 - **Deep links (`dartnativego://open?url=<host:port>&name=<app>`)**: Launches the app directly into a guest project via `app_links_kit`, registered on iOS and Android. Added `dart_go open` CLI command with `--device` (simctl/adb dispatch) and `--qr` flags.
 - **`R` hot-restart key in CLI dev server**: Uppercase `R` in `dart_go start` broadcasts a hot restart, dropping interpreter state and re-evaluating the current bundle from scratch.
 - **Split app entrypoints for AST vs Source runtimes**: `lib/main.dart` links only the AST runtime, keeping ~690k lines of `package:analyzer` and source bridges out of release AOT compiles. Developer source runtime is accessible via `lib/main_source.dart`.
@@ -112,6 +192,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Benchmarking & Testing Infrastructure**:
   - Added `tool/scale_inject.dart` to generate and clean synthetic realistic Cupertino modules for scale benchmarking.
   - Added `tool/benchmark_scale.dart` and `tool/benchmark_speed.dart` for automated AST generation and reload latency profiling.
+
+### Fixed
+- **Library-scope getters were returned instead of invoked** (`tom_d4rt_ast`):
+  reading `kHomeBg` yielded the `InterpretedFunction`, so
+  `Container(color: kTileBg)` received a function. `visitSimpleIdentifier` now
+  invokes a library-scope getter.
+- **A library getter and setter sharing a name clobbered each other**
+  (`tom_d4rt_ast`): the second declaration overwrote the first, so
+  `playgroundPalette` resolved to the setter function. Both halves are now kept
+  in a `LibraryProperty`; reads invoke the getter, assignments the setter.
+- **Interpreted `InheritedWidget` subclasses were not widgets**
+  (`tom_d4rt_ast`): a guest theme wrapper failed its parent's build with
+  `Invalid parameter "buildResult": expected Widget`. The new
+  `InterpretedInheritedWidget` proxy wraps them, and the build paths prefer
+  `wrapAstInterpretedWidget` over `extractBridgedArg<Widget>`.
+- **Missing `assets/app-logo.png` broke `dn test` / `dn run`**: `pubspec.yaml`
+  and three widgets referenced the app logo, but the file was never committed,
+  so asset bundling failed with `No file or variants found for asset:
+  assets/app-logo.png`. Added the file (the existing `assets/dartnative.png`
+  brand mark).
+- **AST bridge regeneration lost the sqlite `??>` patch**: `tool/d4rtgen_ast.dart`
+  now applies it like the source driver, so formatting no longer fails on
+  `dartnative_sqlite_bridges.b.dart`.
 
 ### Changed
 - **The whole `tom_d4rt` family is now vendored under `third_party/`** and

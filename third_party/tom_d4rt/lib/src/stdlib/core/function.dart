@@ -38,12 +38,13 @@ class FunctionCore {
     staticMethods: {
       'apply': (visitor, positionalArgs, namedArgs, _) {
         D4.checkArity(positionalArgs, 'Function.apply', atMost: 3);
-        if (positionalArgs.isEmpty || positionalArgs[0] is! Callable) {
+        if (positionalArgs.isEmpty ||
+            (positionalArgs[0] is! Callable &&
+                positionalArgs[0] is! Function)) {
           throw RuntimeD4rtException(
             'Function.apply requires a Callable as the first argument.',
           );
         }
-        final functionToApply = positionalArgs[0] as Callable;
         // Both argument lists are nullable in the SDK signature, and `null`
         // means "none" rather than being an error.
         final rawPositional = positionalArgs.length > 1
@@ -59,16 +60,51 @@ class FunctionCore {
             // forwarding it and implying it could carry something.
             : const <String, Object?>{};
 
-        return D4.enterInterpreted(visitor, functionToApply,
-          argumentsToPass,
-          namedArgumentsToPass,
-        );
+        final fn = positionalArgs[0];
+        if (fn is Callable) {
+          return D4.enterInterpreted(
+            visitor,
+            fn,
+            argumentsToPass,
+            namedArgumentsToPass,
+          );
+        }
+        final wrappedPositional = argumentsToPass
+            .map((a) => D4.coerceCallableToFunction(visitor, a))
+            .toList();
+        final symbolNamed = namedArgumentsToPass.isEmpty
+            ? const <Symbol, Object?>{}
+            : <Symbol, Object?>{
+                for (final e in namedArgumentsToPass.entries)
+                  Symbol(e.key): D4.coerceCallableToFunction(visitor, e.value),
+              };
+        return Function.apply(fn as Function, wrappedPositional, symbolNamed);
       },
     },
     methods: {
       'call': (visitor, target, positionalArgs, namedArgs, _) {
         if (target is Callable) {
-          return D4.enterInterpreted(visitor, target, positionalArgs, namedArgs);
+          return D4.enterInterpreted(
+            visitor,
+            target,
+            positionalArgs,
+            namedArgs,
+          );
+        }
+        if (target is Function) {
+          final wrappedPositional = positionalArgs
+              .map((a) => D4.coerceCallableToFunction(visitor, a))
+              .toList();
+          final symbolNamed = namedArgs.isEmpty
+              ? const <Symbol, Object?>{}
+              : <Symbol, Object?>{
+                  for (final e in namedArgs.entries)
+                    Symbol(e.key): D4.coerceCallableToFunction(
+                      visitor,
+                      e.value,
+                    ),
+                };
+          return Function.apply(target, wrappedPositional, symbolNamed);
         }
         throw RuntimeD4rtException('Cannot call non-Callable Function');
       },

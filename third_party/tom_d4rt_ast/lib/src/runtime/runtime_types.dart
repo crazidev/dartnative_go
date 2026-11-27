@@ -2349,14 +2349,14 @@ class InterpretedInstance implements RuntimeValue {
         }
       }
 
-      try {
-        final staticField = includeStatics
-            ? currentClass.getStaticField(name)
-            : null;
+      if (includeStatics &&
+          (currentClass.staticCells.containsKey(name) ||
+              currentClass.staticFields.containsKey(name))) {
+        final staticField = currentClass.getStaticField(name);
         if (staticField != null) {
           return staticField;
         }
-      } catch (_) {}
+      }
 
       final staticGetter = includeStatics
           ? currentClass.findStaticGetter(name)
@@ -2479,11 +2479,11 @@ class InterpretedInstance implements RuntimeValue {
           // Methods require the strict `nativeTarget` (no nativeStateProxy
           // fallback) — see Bug-45.
           if (nativeTarget != null) {
-            // Try method next
-            final methodAdapter = bridgedSuper.findReachableMethodAdapter(
-              name,
-              visitor,
-            );
+            // Try target-level method interceptor (e.g. Listenable listener
+            // identity tracking) before the bridged superclass method table.
+            final methodAdapter =
+                D4.findTargetMethodInterceptor(name, nativeTarget) ??
+                bridgedSuper.findReachableMethodAdapter(name, visitor);
             // SCF39: a native `toString` that is `Object`'s default names the
             // native class; the interpreted class answers its own default.
             if (name == 'toString' &&

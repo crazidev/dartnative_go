@@ -1,0 +1,291 @@
+PODS:
+  - AppAuth (1.7.6):
+    - AppAuth/Core (= 1.7.6)
+    - AppAuth/ExternalUserAgent (= 1.7.6)
+  - AppAuth/Core (1.7.6)
+  - AppAuth/ExternalUserAgent (1.7.6):
+    - AppAuth/Core
+  - AppCheckCore (11.2.0):
+    - GoogleUtilities/Environment (~> 8.0)
+    - GoogleUtilities/UserDefaults (~> 8.0)
+    - PromisesObjC (~> 2.4)
+  - Cache (6.0.0)
+  - dartnative_audio (1.0.0)
+  - dartnative_camera (1.0.0)
+  - dartnative_compressor (1.0.0)
+  - dartnative_connectivity (1.0.0)
+  - dartnative_firebase (1.0.0):
+    - FirebaseCore
+    - FirebaseCrashlytics
+    - FirebaseMessaging
+  - dartnative_image_crop (1.0.0)
+  - dartnative_ios (1.0.0):
+    - FlexLayout (= 2.0.10)
+  - dartnative_lottie (1.0.0):
+    - lottie-ios (~> 4.6.0)
+  - dartnative_media_picker (1.1.0)
+  - dartnative_notifications (1.0.0)
+  - dartnative_onnxruntime (1.6.4):
+    - onnxruntime-objc (~> 1.21)
+  - dartnative_path_provider (1.0.0)
+  - dartnative_permissions (1.0.0)
+  - dartnative_secure_storage (1.0.0)
+  - dartnative_shared_preferences (1.0.0)
+  - dartnative_skia (1.0.0)
+  - dartnative_social_sign_in (1.0.0):
+    - GoogleSignIn (~> 8.0)
+  - dartnative_system (1.0.0)
+  - dartnative_video_player (1.0.0):
+    - Cache (~> 6.0)
+    - GCDWebServer
+    - PINCache
+  - DartNativeCore (1.0.0)
+  - FirebaseCore (12.13.0):
+    - FirebaseCoreInternal (~> 12.13.0)
+    - GoogleUtilities/Environment (~> 8.1)
+    - GoogleUtilities/Logger (~> 8.1)
+  - FirebaseCoreExtension (12.13.0):
+    - FirebaseCore (~> 12.13.0)
+  - FirebaseCoreInternal (12.13.0):
+    - "GoogleUtilities/NSData+zlib (~> 8.1)"
+  - FirebaseCrashlytics (12.13.0):
+    - FirebaseCore (~> 12.13.0)
+    - FirebaseInstallations (~> 12.13.0)
+    - FirebaseRemoteConfigInterop (~> 12.13.0)
+    - FirebaseSessions (~> 12.13.0)
+    - GoogleDataTransport (~> 10.1)
+    - GoogleUtilities/Environment (~> 8.1)
+    - nanopb (~> 3.30910.0)
+    - PromisesObjC (~> 2.4)
+  - FirebaseInstallations (12.13.0):
+    - FirebaseCore (~> 12.13.0)
+    - GoogleUtilities/Environment (~> 8.1)
+    - GoogleUtilities/UserDefaults (~> 8.1)
+    - PromisesObjC (~> 2.4)
+  - FirebaseMessaging (12.13.0):
+    - FirebaseCore (~> 12.13.0)
+    - FirebaseInstallations (~> 12.13.0)
+    - GoogleDataTransport (~> 10.1)
+    - GoogleUtilities/AppDelegateSwizzler (~> 8.1)
+    - GoogleUtilities/Environment (~> 8.1)
+    - GoogleUtilities/Reachability (~> 8.1)
+    - GoogleUtilities/UserDefaults (~> 8.1)
+    - nanopb (~> 3.30910.0)
+  - FirebaseRemoteConfigInterop (12.13.0)
+  - FirebaseSessions (12.13.0):
+    - FirebaseCore (~> 12.13.0)
+    - FirebaseCoreExtension (~> 12.13.0)
+    - FirebaseInstallations (~> 12.13.0)
+    - GoogleDataTransport (~> 10.1)
+    - GoogleUtilities/Environment (~> 8.1)
+    - GoogleUtilities/UserDefaults (~> 8.1)
+    - nanopb (~> 3.30910.0)
+    - PromisesSwift (~> 2.1)
+  - FlexLayout (2.0.10)
+  - GCDWebServer (3.5.4):
+    - GCDWebServer/Core (= 3.5.4)
+  - GCDWebServer/Core (3.5.4)
+  - GoogleDataTransport (10.1.0):
+    - nanopb (~> 3.30910.0)
+    - PromisesObjC (~> 2.4)
+  - GoogleSignIn (8.0.0):
+    - AppAuth (< 2.0, >= 1.7.3)
+    - AppCheckCore (~> 11.0)
+    - GTMAppAuth (< 5.0, >= 4.1.1)
+    - GTMSessionFetcher/Core (~> 3.3)
+  - GoogleUtilities/AppDelegateSwizzler (8.1.0):
+    - GoogleUtilities/Environment
+    - GoogleUtilities/Logger
+    - GoogleUtilities/Network
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Environment (8.1.0):
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Logger (8.1.0):
+    - GoogleUtilities/Environment
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Network (8.1.0):
+    - GoogleUtilities/Logger
+    - "GoogleUtilities/NSData+zlib"
+    - GoogleUtilities/Privacy
+    - GoogleUtilities/Reachability
+  - "GoogleUtilities/NSData+zlib (8.1.0)":
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Privacy (8.1.0)
+  - GoogleUtilities/Reachability (8.1.0):
+    - GoogleUtilities/Logger
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/UserDefaults (8.1.0):
+    - GoogleUtilities/Logger
+    - GoogleUtilities/Privacy
+  - GTMAppAuth (4.1.1):
+    - AppAuth/Core (~> 1.7)
+    - GTMSessionFetcher/Core (< 4.0, >= 3.3)
+  - GTMSessionFetcher/Core (3.5.0)
+  - lottie-ios (4.6.0)
+  - nanopb (3.30910.0):
+    - nanopb/decode (= 3.30910.0)
+    - nanopb/encode (= 3.30910.0)
+  - nanopb/decode (3.30910.0)
+  - nanopb/encode (3.30910.0)
+  - onnxruntime-c (1.26.0)
+  - onnxruntime-objc (1.26.0):
+    - onnxruntime-objc/Core (= 1.26.0)
+  - onnxruntime-objc/Core (1.26.0):
+    - onnxruntime-c (= 1.26.0)
+  - PINCache (3.0.4):
+    - PINCache/Arc-exception-safe (= 3.0.4)
+    - PINCache/Core (= 3.0.4)
+  - PINCache/Arc-exception-safe (3.0.4):
+    - PINCache/Core
+  - PINCache/Core (3.0.4):
+    - PINOperation (~> 1.2.3)
+  - PINOperation (1.2.3)
+  - PromisesObjC (2.4.0)
+  - PromisesSwift (2.4.0):
+    - PromisesObjC (= 2.4.0)
+
+DEPENDENCIES:
+  - dartnative_audio (from `.symlinks/plugins/dartnative_audio/ios`)
+  - dartnative_camera (from `.symlinks/plugins/dartnative_camera/ios`)
+  - dartnative_compressor (from `.symlinks/plugins/dartnative_compressor/ios`)
+  - dartnative_connectivity (from `.symlinks/plugins/dartnative_connectivity/ios`)
+  - dartnative_firebase (from `.symlinks/plugins/dartnative_firebase/ios`)
+  - dartnative_image_crop (from `.symlinks/plugins/dartnative_image_crop/ios`)
+  - dartnative_ios (from `.symlinks/plugins/dartnative_ios/ios`)
+  - dartnative_lottie (from `.symlinks/plugins/dartnative_lottie/ios`)
+  - dartnative_media_picker (from `.symlinks/plugins/dartnative_media_picker/ios`)
+  - dartnative_notifications (from `.symlinks/plugins/dartnative_notifications/ios`)
+  - dartnative_onnxruntime (from `.symlinks/plugins/dartnative_onnxruntime/ios`)
+  - dartnative_path_provider (from `.symlinks/plugins/dartnative_path_provider/ios`)
+  - dartnative_permissions (from `.symlinks/plugins/dartnative_permissions/ios`)
+  - dartnative_secure_storage (from `.symlinks/plugins/dartnative_secure_storage/ios`)
+  - dartnative_shared_preferences (from `.symlinks/plugins/dartnative_shared_preferences/ios`)
+  - dartnative_skia (from `.symlinks/plugins/dartnative_skia/ios`)
+  - dartnative_social_sign_in (from `.symlinks/plugins/dartnative_social_sign_in/ios`)
+  - dartnative_system (from `.symlinks/plugins/dartnative_system/ios`)
+  - dartnative_video_player (from `.symlinks/plugins/dartnative_video_player/ios`)
+  - DartNativeCore (from `DartNative`)
+  - FlexLayout (= 2.0.10)
+
+SPEC REPOS:
+  trunk:
+    - AppAuth
+    - AppCheckCore
+    - Cache
+    - FirebaseCore
+    - FirebaseCoreExtension
+    - FirebaseCoreInternal
+    - FirebaseCrashlytics
+    - FirebaseInstallations
+    - FirebaseMessaging
+    - FirebaseRemoteConfigInterop
+    - FirebaseSessions
+    - FlexLayout
+    - GCDWebServer
+    - GoogleDataTransport
+    - GoogleSignIn
+    - GoogleUtilities
+    - GTMAppAuth
+    - GTMSessionFetcher
+    - lottie-ios
+    - nanopb
+    - onnxruntime-c
+    - onnxruntime-objc
+    - PINCache
+    - PINOperation
+    - PromisesObjC
+    - PromisesSwift
+
+EXTERNAL SOURCES:
+  dartnative_audio:
+    :path: ".symlinks/plugins/dartnative_audio/ios"
+  dartnative_camera:
+    :path: ".symlinks/plugins/dartnative_camera/ios"
+  dartnative_compressor:
+    :path: ".symlinks/plugins/dartnative_compressor/ios"
+  dartnative_connectivity:
+    :path: ".symlinks/plugins/dartnative_connectivity/ios"
+  dartnative_firebase:
+    :path: ".symlinks/plugins/dartnative_firebase/ios"
+  dartnative_image_crop:
+    :path: ".symlinks/plugins/dartnative_image_crop/ios"
+  dartnative_ios:
+    :path: ".symlinks/plugins/dartnative_ios/ios"
+  dartnative_lottie:
+    :path: ".symlinks/plugins/dartnative_lottie/ios"
+  dartnative_media_picker:
+    :path: ".symlinks/plugins/dartnative_media_picker/ios"
+  dartnative_notifications:
+    :path: ".symlinks/plugins/dartnative_notifications/ios"
+  dartnative_onnxruntime:
+    :path: ".symlinks/plugins/dartnative_onnxruntime/ios"
+  dartnative_path_provider:
+    :path: ".symlinks/plugins/dartnative_path_provider/ios"
+  dartnative_permissions:
+    :path: ".symlinks/plugins/dartnative_permissions/ios"
+  dartnative_secure_storage:
+    :path: ".symlinks/plugins/dartnative_secure_storage/ios"
+  dartnative_shared_preferences:
+    :path: ".symlinks/plugins/dartnative_shared_preferences/ios"
+  dartnative_skia:
+    :path: ".symlinks/plugins/dartnative_skia/ios"
+  dartnative_social_sign_in:
+    :path: ".symlinks/plugins/dartnative_social_sign_in/ios"
+  dartnative_system:
+    :path: ".symlinks/plugins/dartnative_system/ios"
+  dartnative_video_player:
+    :path: ".symlinks/plugins/dartnative_video_player/ios"
+  DartNativeCore:
+    :path: DartNative
+
+SPEC CHECKSUMS:
+  AppAuth: d4f13a8fe0baf391b2108511793e4b479691fb73
+  AppCheckCore: cc8fd0a3a230ddd401f326489c99990b013f0c4f
+  Cache: 4ca7e00363fca5455f26534e5607634c820ffc2d
+  dartnative_audio: 699f37c16ada9787952b121ee80998a6e806d3c5
+  dartnative_camera: 333b5b424a979748ed7aab529e480a6175d98b53
+  dartnative_compressor: 6b1629e01d5ac8ff698247cbae2ac7175b16e455
+  dartnative_connectivity: b92e376910df710d3887cb6e21cb8271a36bdff3
+  dartnative_firebase: 65db3e696c5596d351eb5ad26ef3c63cd3a0248a
+  dartnative_image_crop: f1c1faf5c95857188581c451563c925fea679da7
+  dartnative_ios: 690c8d6c31802126ff8fd1dec37338e2cb60cbe8
+  dartnative_lottie: 9afb8c21e1857620a6804e542af4a6c4cb83c098
+  dartnative_media_picker: 40d66ec01fb29ea267640e71d56291b30bd3c472
+  dartnative_notifications: 094ead93c21cba85e52a10808d0efa64af1fcd9a
+  dartnative_onnxruntime: 21a8c041c6fc68e7681a74e2e9856ecccbee601b
+  dartnative_path_provider: c70d5d38a31ebf4a132a67dfa8de9f435fb11ed6
+  dartnative_permissions: 8557fd4d71d7bc1388c82a932a952317de81d90d
+  dartnative_secure_storage: 5c838b5528d26c429576c27be0c099d22eba6935
+  dartnative_shared_preferences: f019d4d8e4e114cc557fe415eacef45e48a8280a
+  dartnative_skia: 48e95f6c81e1fa8dffa06018e1dd89a3de0a3e72
+  dartnative_social_sign_in: aa8e068003d7ee724b3a4fd390f90b64a2315278
+  dartnative_system: 7c5082ad91c93afbaf882129cd2c6e2c97ef35d2
+  dartnative_video_player: 02afa6a2dd2cea931e63aca7b0e83eed4a36f688
+  DartNativeCore: 97106aef3a975e6b1a268568d58dfb74dcbebd9f
+  FirebaseCore: 58905958aa00a061397a0fd759ae4b55bddb3576
+  FirebaseCoreExtension: 5b94169f1ee96ecc2dbde40bc53690e4d65eb652
+  FirebaseCoreInternal: 37bee58388fc6d183f0ab1b32d69ae44f2cf8aad
+  FirebaseCrashlytics: 8bb2d41cb47e8f3ea34200d99361499a59995e0d
+  FirebaseInstallations: 134bde50e477628ded76070efdb12d515d53f948
+  FirebaseMessaging: 30564b85d2f81a96f9d312bd23acf8186ff092ae
+  FirebaseRemoteConfigInterop: 4801ab93a543ef8fedfb40ae2f66d03e3fdcb864
+  FirebaseSessions: 0e5f64cd99400275798fcb5e2b773dd000ca02c1
+  FlexLayout: ea94491c923485f7f28891cb5b10245d22df380b
+  GCDWebServer: 2c156a56c8226e2d5c0c3f208a3621ccffbe3ce4
+  GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
+  GoogleSignIn: ce8c89bb9b37fb624b92e7514cc67335d1e277e4
+  GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
+  GTMAppAuth: f69bd07d68cd3b766125f7e072c45d7340dea0de
+  GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
+  lottie-ios: 8f959969761e9c45d70353667d00af0e5b9cadb3
+  nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
+  onnxruntime-c: e6e9272f5996fed3ea3ca3c9bc843478b2ecbc73
+  onnxruntime-objc: 63687acb8d78c35dd0ab097abf755b1f3dc468c7
+  PINCache: d9a87a0ff397acffe9e2f0db972ac14680441158
+  PINOperation: fb563bcc9c32c26d6c78aaff967d405aa2ee74a7
+  PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
+  PromisesSwift: 9d77319bbe72ebf6d872900551f7eeba9bce2851
+
+PODFILE CHECKSUM: 7c02fbd1777093a503c4f6f82637c0d5363cd206
+
+COCOAPODS: 1.16.2

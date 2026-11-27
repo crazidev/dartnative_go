@@ -190,6 +190,34 @@ Future<void> _formatGeneratedBridges({
 
 /// Same generator-bug workarounds as `tool/d4rtgen.dart`, applied to the
 /// AST output dir. Kept in sync manually until the generator is fixed.
+/// Modules whose bridged API surface uses `@experimental` members (Hive's
+/// `HiveList`, …). The generator emits calls to them, so without the ignore
+/// every regeneration reintroduces warnings into `dart analyze`. Keeping the
+/// list explicit means a regeneration only rewrites the files that need it
+/// instead of touching every bridge with a cosmetic ignore line. DN-PATCH.
+const _experimentalMemberModules = {'dartnative_hive_bridges.b.dart'};
+
+/// Silences `experimental_member_use` in one generated bridge.
+void _addExperimentalMemberUseIgnore(String path) {
+  if (!_experimentalMemberModules.any(path.endsWith)) return;
+  final file = File(path);
+  if (!file.existsSync()) return;
+  var content = file.readAsStringSync();
+  const marker = '// ignore_for_file: ';
+  final idx = content.indexOf(marker);
+  if (idx < 0) return;
+  if (content.substring(idx, content.indexOf('\n', idx)).contains(
+    'experimental_member_use',
+  )) {
+    return;
+  }
+  content = content.replaceFirst(
+    marker,
+    '${marker}experimental_member_use, ',
+  );
+  file.writeAsStringSync(content);
+}
+
 void _applyAstBridgePostFixes({Set<String>? only}) {
   bool want(String path) => only == null || only.contains(path);
 
@@ -215,6 +243,49 @@ void _applyAstBridgePostFixes({Set<String>? only}) {
         return '${m[1]} curve = $prefix.Curves.linear, int durationMs = 0';
       },
     );
+    // ValueNotifier<T> is mutable (has `set value(T)`): narrowing
+    // `ValueNotifier(0)` to `ValueNotifier<int>(0)` via GEN-075 breaks
+    // `ValueNotifier<double> x = ValueNotifier(0); x.value = 1.5;` and
+    // nullable `ValueNotifier<T?>` assigned `null`.
+    content = content.replaceAllMapped(
+      RegExp(
+        r"(BridgedClass _createValueNotifierBridge\(\) \{[\s\S]*?'value',\n\s*'ValueNotifier',\n\s*\);\n\s*)"
+        r'// GEN-075: Preserve generic type parameter from runtime value\n'
+        r'\s*switch \(value\) \{[\s\S]*?default:\n'
+        r'\s*return (\$dartnative_\d+\.ValueNotifier)\(value\);\n'
+        r'\s*\}',
+      ),
+      (m) => '${m[1]}return ${m[2]}<dynamic>(value);',
+    );
+    // ListenableWatch.watch on interpreted ChangeNotifier subclasses:
+    // `target` is an InterpretedInstance whose `bridgedSuperObject` is the
+    // native ChangeNotifier (a Listenable). Unwrap via D4.validateTarget and
+    // return `target` so `final hist = _history.watch<_ClickHistory>(context)`
+    // preserves the guest instance.
+    content = content.replaceAllMapped(
+      RegExp(
+        r"final t = target as (\$dartnative_\d+)\.Listenable;\n"
+        r"\s*return Function\.apply\(\n"
+        r"\s*t\.watch,\n"
+        r"\s*positional,\n"
+        r"\s*named\.map\(\(k, v\) => MapEntry\(Symbol\(k\), v\)\),\n"
+        r"\s*\);",
+      ),
+      (m) {
+        final p = m[1];
+        return 'final raw = target is InterpretedInstance\n'
+            '                ? (target.bridgedSuperObject ?? target.nativeProxy ?? target)\n'
+            '                : target;\n'
+            '            final t = D4.validateTarget<$p.Listenable>(raw, \'Listenable\');\n'
+            '            final ctx = positional.isNotEmpty ? positional[0] : null;\n'
+            '            if (ctx is $p.BuildContext) {\n'
+            '              try {\n'
+            '                t.watch(ctx);\n'
+            '              } catch (_) {}\n'
+            '            }\n'
+            '            return target;';
+      },
+    );
     dnBridgesFile.writeAsStringSync(content);
   }
 
@@ -238,6 +309,32 @@ void _applyAstBridgePostFixes({Set<String>? only}) {
   if (want('lib/src/interpreter/ast/dio_bridges.b.dart')) {
     _patchDioBridges(File('lib/src/interpreter/ast/dio_bridges.b.dart'));
   }
+  if (want('lib/src/interpreter/ast/dartnative_sqlite_bridges.b.dart')) {
+    _patchSqliteBridges(
+      File('lib/src/interpreter/ast/dartnative_sqlite_bridges.b.dart'),
+    );
+  }
+
+  final dir = Directory('lib/src/interpreter/ast');
+  if (dir.existsSync()) {
+    for (final entity in dir.listSync()) {
+      if (entity is File &&
+          entity.path.endsWith('.b.dart') &&
+          want(entity.path)) {
+        _addExperimentalMemberUseIgnore(entity.path);
+      }
+    }
+  }
+}
+
+/// sqflite's `Database.query` family declares nullable named parameters with
+/// the legacy `Type??` spelling, which the generator emits verbatim and which
+/// does not parse under null safety. Collapse `??>` to `?>`. DN-PATCH.
+void _patchSqliteBridges(File file) {
+  if (!file.existsSync()) return;
+  var content = file.readAsStringSync();
+  content = content.replaceAll('??>', '?>');
+  file.writeAsStringSync(content);
 }
 
 /// dio's `FormData.fromMap` defaults `boundaryName` to the private top-level

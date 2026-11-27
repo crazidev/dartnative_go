@@ -28,6 +28,8 @@ class DartGoNetworkScanner {
 
   RawDatagramSocket? _udpSocket;
   Timer? _scanTimer;
+  Duration _scanInterval = const Duration(seconds: 4);
+  bool _paused = false;
   bool _isScanning = false;
   bool _disposed = false;
 
@@ -87,8 +89,27 @@ class DartGoNetworkScanner {
     await scanNow();
 
     // 4. Start periodic auto-scan
+    _scanInterval = interval;
     _scanTimer?.cancel();
-    _scanTimer = Timer.periodic(interval, (_) => scanNow());
+    if (!_paused) {
+      _scanTimer = Timer.periodic(interval, (_) => scanNow());
+    }
+  }
+
+  /// Pauses periodic background scanning while a guest app is running so
+  /// SharedPreferences FFI reads and HTTP probes don't contend with UI frames.
+  void pause() {
+    _paused = true;
+    _scanTimer?.cancel();
+    _scanTimer = null;
+  }
+
+  /// Resumes periodic background scanning when returning to the launcher.
+  void resume() {
+    if (!_paused || _disposed) return;
+    _paused = false;
+    _scanTimer?.cancel();
+    _scanTimer = Timer.periodic(_scanInterval, (_) => scanNow());
   }
 
   /// Listens for UDP discovery beacons sent by DartGoBroadcaster.
@@ -116,6 +137,7 @@ class DartGoNetworkScanner {
   }
 
   void _handleUdpDatagram(Datagram datagram) {
+    if (_paused || _disposed) return;
     try {
       final text = utf8.decode(datagram.data);
       final json = jsonDecode(text) as Map<String, dynamic>;
@@ -268,8 +290,10 @@ class DartGoNetworkScanner {
         existing.appVersion != updated.appVersion ||
         existing.iconUrl != updated.iconUrl;
     _projectsMap[project.url] = updated;
-    // Refresh stored metadata in place — never reshuffle [_recentOrder].
-    if (_recentOrder.contains(updated.url)) {
+    // Refresh stored metadata in place only when metadata actually changed —
+    // never rewrite SharedPreferences on every heartbeat beacon or reshuffle
+    // [_recentOrder].
+    if (metadataChanged && _recentOrder.contains(updated.url)) {
       unawaited(_storage.upsertProject(updated));
     }
     if (!_batchingEmits && metadataChanged) {

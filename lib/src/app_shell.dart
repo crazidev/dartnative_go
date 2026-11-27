@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:app_links_kit/app_links_kit.dart';
 import 'package:dartnative/dartnative.dart';
@@ -241,6 +242,13 @@ class _DartNativeGoState extends State<DartNativeGo> {
 
     AstAssetResolver.cachedAssetFileProvider = resolveCachedAsset;
     AssetResolver.cachedAssetFileProvider = resolveCachedAsset;
+    AstAssetResolver.saveCachedAssetProvider = (assetPath, bytes) async {
+      final serverUrl =
+          _activeBundle?.serverUrl ?? AstAssetResolver.activeServerUrl;
+      if (serverUrl == null || serverUrl.isEmpty) return null;
+      final etag = _activeBundle?.assetEtags[assetPath];
+      return _appCache?.saveAsset(serverUrl, assetPath, bytes, etag: etag);
+    };
     AppCache.create().then((cache) {
       if (mounted) _appCache = cache;
     });
@@ -511,10 +519,11 @@ class _DartNativeGoState extends State<DartNativeGo> {
   Future<void> _initScanner() async {
     _scannerSub = _scanner.projectsStream.listen((projects) {
       if (mounted) {
-        setState(() {
-          _projects = projects;
-          _isLoading = false;
-        });
+        _projects = projects;
+        _isLoading = false;
+        if (!_previewRouteOpen) {
+          setState(() {});
+        }
         _maybeAutoConnect(projects);
         _hostBinding.notify();
       }
@@ -792,6 +801,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
           bundle.serverUrl,
           assetPath,
         );
+        AstAssetResolver.evictUrl(url);
         try {
           ImageCache.evict(NetworkImage(url));
         } catch (_) {}
@@ -799,7 +809,97 @@ class _DartNativeGoState extends State<DartNativeGo> {
       if (!bundle.isPatch) {
         await _appCache?.saveBundle(bundle);
       }
+      await _precacheGuestDataAssets(bundle);
     } catch (_) {}
+  }
+
+  /// Pre-caches non-image, non-sticker guest assets (`.lrc`, `.txt`, `.frag`,
+  /// `.mp3`, `.wav`, `.mp4`, etc.) into [AppCache] so synchronous
+  /// `loadAssetBytes(...)` and `AudioPlayer.setAsset(...)` work on first open.
+  ///
+  /// Tiny text/lyrics/shader files are awaited (~3ms on localhost) so screens
+  /// like Spotify lyrics have their data immediately on first build; larger
+  /// audio/video assets download concurrently in the background.
+  Future<void> _precacheGuestDataAssets(ProjectBundle bundle) async {
+    final cache = _appCache;
+    if (cache == null || bundle.serverUrl.isEmpty) return;
+    final assetPaths = <String>{
+      ...bundle.assets,
+      ...bundle.assetEtags.keys,
+    };
+    if (assetPaths.isEmpty) return;
+
+    const immediateExts = ['.lrc', '.txt', '.frag', '.glsl', '.sksl'];
+    const backgroundExts = [
+      '.mp3',
+      '.wav',
+      '.m4a',
+      '.aac',
+      '.ogg',
+      '.mp4',
+      '.mov',
+    ];
+
+    final immediate = <String>[];
+    final background = <String>[];
+    for (final path in assetPaths) {
+      final lower = path.toLowerCase();
+      if (cache.getCachedAssetFile(bundle.serverUrl, path) != null) continue;
+      if (immediateExts.any(lower.endsWith)) {
+        immediate.add(path);
+      } else if (backgroundExts.any(lower.endsWith)) {
+        background.add(path);
+      }
+    }
+
+    Future<void> fetchList(List<String> paths) async {
+      if (paths.isEmpty) return;
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 5);
+      try {
+        await Future.wait([
+          for (final assetPath in paths)
+            () async {
+              try {
+                final url = AstAssetResolver.resolveAssetUrl(
+                  bundle.serverUrl,
+                  assetPath,
+                );
+                final req = await client.getUrl(Uri.parse(url));
+                final res = await req.close().timeout(
+                  const Duration(seconds: 15),
+                );
+                if (res.statusCode != 200) {
+                  await res.drain<void>();
+                  return;
+                }
+                final builder = BytesBuilder(copy: false);
+                await for (final chunk in res) {
+                  builder.add(chunk);
+                }
+                final bytes = builder.takeBytes();
+                if (bytes.isNotEmpty) {
+                  await cache.saveAsset(
+                    bundle.serverUrl,
+                    assetPath,
+                    bytes,
+                    etag: bundle.assetEtags[assetPath],
+                  );
+                }
+              } catch (_) {}
+            }(),
+        ]);
+      } finally {
+        client.close(force: true);
+      }
+    }
+
+    if (immediate.isNotEmpty) {
+      await fetchList(immediate);
+    }
+    if (background.isNotEmpty) {
+      unawaited(fetchList(background));
+    }
   }
 
   /// Completes after the framework has committed the next frame.
@@ -844,6 +944,7 @@ class _DartNativeGoState extends State<DartNativeGo> {
 
   /// Launches a project given its server URL.
   Future<void> _launchProject(String rawUrl, {String? fallbackAppName}) async {
+    _scanner.pause();
     final serverUrl = BundleLoader.normalizeUrl(rawUrl);
     final launchSw = Stopwatch()..start();
     // A fresh launch supersedes any in-flight reload/restart — and any
@@ -1152,11 +1253,31 @@ class _DartNativeGoState extends State<DartNativeGo> {
       }
 
       if (!mounted || launchSeq != _reloadSeq) return;
+      final mountSw = Stopwatch()..start();
       _interpretedWidget = widget;
       _isAppMounted = true;
       _isLoadingBundle = false;
       _publishPreview();
       _markGuestRendered();
+      final mountMs = mountSw.elapsedMilliseconds;
+      final totalLaunchMs = launchSw.elapsedMilliseconds;
+      final moduleCount = _useAst
+          ? bundle.astModuleFingerprints.length
+          : bundle.sources.length;
+      _liveConnection?.sendLaunchStats(
+        mode: _useAst ? 'AST' : 'Source',
+        totalMs: totalLaunchMs,
+        bundleBytes: bundle.astBytes?.length,
+        moduleCount: moduleCount > 0 ? moduleCount : null,
+        assetCount: bundle.assets.isNotEmpty ? bundle.assets.length : null,
+        timings: {
+          'fetch': bundleFetchMs,
+          if (iconFontsMs > 0) 'sync': iconFontsMs,
+          'ws': websocketMs,
+          'exec': evaluationMs,
+          'mount': mountMs,
+        },
+      );
     } catch (e, stack) {
       final err = e.toString();
       DartGoLogger.error('Interpreter Error: $err', null, stack);
@@ -1293,17 +1414,22 @@ class _DartNativeGoState extends State<DartNativeGo> {
       }
       final remountMs = remountSw.elapsedMilliseconds;
       final totalMs = reloadSw.elapsedMilliseconds;
-
+      final reloadTimings = <String, int>{
+        'fetch': fetchMs,
+        if (syncMs > 0) 'sync': syncMs,
+        'track': trackMs,
+        'eval': evalMs,
+        'remount': remountMs,
+      };
+      _liveConnection?.sendReloadStats(
+        isRestart: false,
+        totalMs: totalMs,
+        timings: reloadTimings,
+      );
       DartGoLogger.reload(
         mode: _useAst ? 'AST' : 'Source',
         totalMs: totalMs,
-        timings: {
-          'fetch': fetchMs,
-          if (syncMs > 0) 'sync': syncMs,
-          'track': trackMs,
-          'eval': evalMs,
-          'remount': remountMs,
-        },
+        timings: reloadTimings,
       );
     } catch (e, stack) {
       final err = 'Hot Reload Error: $e';
@@ -1357,19 +1483,24 @@ class _DartNativeGoState extends State<DartNativeGo> {
       final useAst = flagsFromRuntimeMode(mode);
       _useAst = useAst;
 
+      final fetchSw = Stopwatch()..start();
       final updatedBundle = await _bundleLoader.fetchBundle(
         _activeBundle!.serverUrl,
         onlyAst: _useAst,
       );
+      final fetchMs = fetchSw.elapsedMilliseconds;
       if (!mounted || seq != _restartSeq) return;
       _activeBundle = updatedBundle;
+      final syncSw = Stopwatch()..start();
       await _syncIconFonts(updatedBundle);
       await _syncAndRevalidateAssets(updatedBundle);
+      final syncMs = syncSw.elapsedMilliseconds;
       if (!mounted || seq != _restartSeq) return;
 
       WidgetGenerationTracker.resetAll();
       WidgetGenerationTracker.registerSources(updatedBundle.sources);
 
+      final evalSw = Stopwatch()..start();
       _interpreterRunner.unmount();
       _interpreterRunner.currentServerUrl = updatedBundle.serverUrl;
       _interpreterRunner.useAst = _useAst;
@@ -1378,8 +1509,10 @@ class _DartNativeGoState extends State<DartNativeGo> {
         updatedBundle,
         isHotReload: false,
       );
+      final evalMs = evalSw.elapsedMilliseconds;
 
       if (!mounted || seq != _restartSeq) return;
+      final mountSw = Stopwatch()..start();
       _interpretedWidget = widget;
       _isAppMounted = true;
       _isLoadingBundle = false;
@@ -1398,10 +1531,23 @@ class _DartNativeGoState extends State<DartNativeGo> {
       _guestEpoch++;
       _publishPreview();
       _markGuestRendered();
-      DartGoLogger.bench(
-        'Runner',
-        'Hot Restart (${_useAst ? "AST" : "Source"})',
-        restartSw.elapsedMilliseconds,
+      final mountMs = mountSw.elapsedMilliseconds;
+      final totalMs = restartSw.elapsedMilliseconds;
+      final restartTimings = <String, int>{
+        'fetch': fetchMs,
+        if (syncMs > 0) 'sync': syncMs,
+        'eval': evalMs,
+        'mount': mountMs,
+      };
+      _liveConnection?.sendReloadStats(
+        isRestart: true,
+        totalMs: totalMs,
+        timings: restartTimings,
+      );
+      DartGoLogger.restart(
+        mode: _useAst ? 'AST' : 'Source',
+        totalMs: totalMs,
+        timings: restartTimings,
       );
     } catch (e, stack) {
       final err = 'Hot Restart Error: $e';
@@ -1543,6 +1689,8 @@ class _DartNativeGoState extends State<DartNativeGo> {
     _downloadProgress = null;
     _downloadedCount = null;
     _downloadTotal = null;
+    AstAssetResolver.clearInMemoryCaches();
+    _scanner.resume();
     _publishPreview();
   }
 

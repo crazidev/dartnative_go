@@ -73,11 +73,12 @@ Future<void> main(List<String> args) async {
           customHost: cli.host,
           rebuildAst: cli.rebuildAst,
           verbose: cli.verbose,
+          devLogs: cli.devLogs,
           profile: cli.profile,
         ),
       );
       ProcessSignal.sigint.watch().listen((_) {
-        print('\n[STOP] Shutting down DartNative Go server...');
+        print('\n○ Stopped DartNative Go dev server');
         server.stop();
         exit(0);
       });
@@ -243,10 +244,12 @@ OPTIONS FOR 'start':
       --host=<ip>             Custom host IP/interface to advertise
       --rebuild-ast           Rebuild .dart_tool/bundles/guest.ast on Dart changes (AST hot reload; default: on)
       --no-rebuild-ast        Disable AST rebuild (source-only hot reload)
-  -v, --verbose               Enable verbose step-by-step benchmark logs and diagnostic traces
+  -v, --verbose               Enable verbose diagnostic details and hot-restart profile summary
+      --dev-logs              Show internal runtime/protocol telemetry (or set DNGO_DEV=1)
       --profile               Show the AST BUNDLE explorer in the app DevTools sheet (default: off)
       --no-broadcast          Disable local UDP discovery beacon
-      --no-qrcode             Disable terminal QR code rendering
+      --no-qr, --no-qrcode    Disable terminal QR code rendering (or set DNGO_NO_QR=1; press q to show on demand)
+      --qr, --qrcode          Force-enable terminal QR code (overrides DNGO_NO_QR=1)
 
 EXAMPLES:
   dngo start

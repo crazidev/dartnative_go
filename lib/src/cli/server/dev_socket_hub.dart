@@ -8,6 +8,7 @@ import 'dart:io';
 import '../../runner/logger.dart';
 import '../packaging/ast_builder.dart';
 import 'http_support.dart';
+import 'terminal_ui.dart';
 
 /// `ui_*` requests a test script sends to drive the device.
 const _uiRequests = {
@@ -33,10 +34,14 @@ const _uiResults = {
 };
 
 class DevSocketHub {
-  DevSocketHub(this.projectDir);
+  DevSocketHub(this.projectDir, {DevServerConsole? console})
+    : console = console ?? DevServerConsole();
 
   final Directory projectDir;
+  final DevServerConsole console;
+  StartupScreenInfo? startupInfo;
   final List<WebSocket> _sockets = [];
+  final Map<WebSocket, String> _deviceNames = {};
 
   /// Breakpoints replayed to every newly connected client.
   final List<Map<String, dynamic>> breakpoints = [];
@@ -49,9 +54,14 @@ class DevSocketHub {
       sendText(request, HttpStatus.badRequest, 'Expected WebSocket upgrade');
       return;
     }
+    final rawName = request.uri.queryParameters['deviceName']?.trim();
+    final deviceName = (rawName != null && rawName.isNotEmpty) ? rawName : null;
     final socket = await WebSocketTransformer.upgrade(request);
     _sockets.add(socket);
-    print('[DevServer] [WS] Client connected (${_sockets.length} active)');
+    if (deviceName != null) {
+      _deviceNames[socket] = deviceName;
+    }
+    console.onDeviceConnected(_sockets.length, deviceName: deviceName);
 
     socket.add(
       jsonEncode({'type': 'set_verbose', 'enabled': DartGoLogger.verbose}),
@@ -66,16 +76,18 @@ class DevSocketHub {
       (message) {
         try {
           final data = jsonDecode(message as String);
-          if (data is Map) _onMessage(data);
+          if (data is Map) _onMessage(data, socket: socket);
         } catch (_) {}
       },
       onDone: () {
+        final name = _deviceNames.remove(socket);
         _sockets.remove(socket);
-        print(
-          '[DevServer] [WS] Client disconnected (${_sockets.length} active)',
-        );
+        console.onDeviceDisconnected(_sockets.length, deviceName: name);
       },
-      onError: (_) => _sockets.remove(socket),
+      onError: (_) {
+        _deviceNames.remove(socket);
+        _sockets.remove(socket);
+      },
     );
   }
 
@@ -141,31 +153,52 @@ class DevSocketHub {
     return rel.replaceAll(r'\', '/');
   }
 
-  void _onMessage(Map data) {
+  void _onMessage(Map data, {WebSocket? socket}) {
     final type = data['type'];
     final fromTest = data['origin'] == 'test';
     switch (type) {
+      case 'hello':
+        final name = data['deviceName']?.toString().trim();
+        if (socket != null && name != null && name.isNotEmpty) {
+          _deviceNames[socket] = name;
+        }
       case 'log':
         _printDeviceLog(data);
+      case 'launch_stats':
+        _onLaunchStats(data);
+      case 'reload_stats':
+        _onStructuredStats(data, isRestart: false);
+      case 'restart_stats':
+        _onStructuredStats(data, isRestart: true);
       case 'set_verbose':
         final enabled = data['enabled'] == true;
         DartGoLogger.verbose = enabled;
-        print('\n[VERBOSE] Toggled from app: ${verboseLabel(enabled)}\n');
+        console.onVerboseToggled(
+          enabled,
+          startupInfo: startupInfo,
+          fromApp: true,
+        );
         broadcast({'type': 'set_verbose', 'enabled': enabled});
       case 'breakpoint_hit':
         _printBreakpointHit(data);
       // Test scripts have no filesystem access; only `origin: test` is
       // honored, so device-originated reloads cannot loop back.
       case 'reload' when fromTest:
-        print('[DevServer] [UI] Test-triggered reload requested');
+        if (DartGoLogger.devLogs) {
+          print('[DevServer] [UI] Test-triggered reload requested');
+        }
         broadcastReload(data['changedFile']?.toString(), projectDir.path);
       case 'restart' when fromTest:
-        print('[DevServer] [UI] Test-triggered restart requested');
+        if (DartGoLogger.devLogs) {
+          print('[DevServer] [UI] Test-triggered restart requested');
+        }
         broadcastRestart(origin: 'test');
       case 'ui_tree':
-        print(
-          '[DevServer] [UI] UI tree received (request ${data['requestId'] ?? '?'})',
-        );
+        if (DartGoLogger.devLogs) {
+          print(
+            '[DevServer] [UI] UI tree received (request ${data['requestId'] ?? '?'})',
+          );
+        }
         broadcast(Map<String, dynamic>.from(data));
       case final String t when _uiRequests.contains(t):
         broadcast(Map<String, dynamic>.from(data));
@@ -175,29 +208,61 @@ class DevSocketHub {
     }
   }
 
-  void _printDeviceLog(Map data) {
-    final msg = data['message'] ?? '';
-    if ((data['level'] ?? 'INFO') == 'ERROR') {
-      print('\x1B[31m[Device Error]\x1B[0m $msg');
-    } else {
-      print('\x1B[36m[Device Log]\x1B[0m $msg');
+  void _onLaunchStats(Map data) {
+    final totalMs = data['totalMs'] is int ? data['totalMs'] as int : 0;
+    final rawTimings = data['timings'];
+    final timings = <String, int>{};
+    if (rawTimings is Map) {
+      rawTimings.forEach((key, value) {
+        if (value is int) timings[key.toString()] = value;
+      });
     }
+    console.onDeviceLaunch(
+      mode: data['mode']?.toString(),
+      totalMs: totalMs,
+      timings: timings,
+      bundleBytes: data['bundleBytes'] is int ? data['bundleBytes'] as int : null,
+      moduleCount: data['moduleCount'] is int ? data['moduleCount'] as int : null,
+      assetCount: data['assetCount'] is int ? data['assetCount'] as int : null,
+    );
+  }
+
+  void _onStructuredStats(Map data, {required bool isRestart}) {
+    final totalMs = data['totalMs'] is int ? data['totalMs'] as int : 0;
+    final rawTimings = data['timings'];
+    final timings = <String, int>{};
+    if (rawTimings is Map) {
+      rawTimings.forEach((key, value) {
+        if (value is int) timings[key.toString()] = value;
+      });
+    }
+    console.onStructuredReloadOrRestart(
+      isRestart: isRestart,
+      totalMs: totalMs,
+      timings: timings,
+    );
+  }
+
+  void _printDeviceLog(Map data) {
+    final msg = data['message']?.toString() ?? '';
+    final level = data['level']?.toString() ?? 'INFO';
+    console.onDeviceLog(msg, level: level);
   }
 
   void _printBreakpointHit(Map data) {
     final vars = data['variables'] as Map?;
-    print(
-      '\n\x1B[31m[STOP] BREAKPOINT HIT: ${data['file'] ?? '<guest>'}:${data['line'] ?? '?'}\x1B[0m',
-    );
-    if (data['message'] != null) print('   Note: ${data['message']}');
-    if (vars != null && vars.isNotEmpty) {
-      print('   Variables:');
-      vars.forEach((k, v) => print('     $k = $v'));
-    }
-    print('   -> Type c to resume execution.\n');
+    final loc = '${data['file'] ?? '<guest>'}:${data['line'] ?? '?'}';
+    final lines = <String>[
+      if (data['message'] != null) 'note: ${data['message']}',
+      if (vars != null && vars.isNotEmpty)
+        for (final entry in vars.entries) '${entry.key} = ${entry.value}',
+      'press c or POST /resume to continue',
+    ];
+    console.onError('Breakpoint hit · $loc', lines.join('\n'));
   }
 
   void _printUiResult(String type, Map data) {
+    if (!DartGoLogger.devLogs) return;
     final req = data['requestId'] ?? '?';
     final action = type.replaceFirst('ui_', '').replaceFirst('_result', '');
     if (data['ok'] == true) {

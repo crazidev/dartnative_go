@@ -25,17 +25,26 @@ void main() async {
   );
 
   print('⚡️ Compiling dngo native executable...');
-  final tempOut = '${Directory.systemTemp.path}/dngo_build';
+  final tempOutDir = Directory('${Directory.systemTemp.path}/dngo_build');
+  if (tempOutDir.existsSync()) {
+    tempOutDir.deleteSync(recursive: true);
+  }
 
   final result = await Process.run(
     'dart',
-    ['compile', 'exe', binFile.path, '-o', tempOut],
+    ['build', 'cli', '-t', binFile.path, '-o', tempOutDir.path],
     workingDirectory: scriptDir.path,
   );
 
   if (result.exitCode != 0) {
     print('Compilation failed:\n${result.stderr}');
     exit(result.exitCode);
+  }
+
+  final builtBin = File('${tempOutDir.path}/bundle/bin/dngo');
+  if (!builtBin.existsSync()) {
+    print('Compilation succeeded but expected binary not found at ${builtBin.path}');
+    exit(1);
   }
 
   final home = Platform.environment['HOME'] ?? '';
@@ -49,20 +58,35 @@ void main() async {
     final dir = Directory(dirPath);
     if (dir.existsSync()) {
       final destFile = File('$dirPath/dngo');
+      final stagedFile = File('$dirPath/.dngo.tmp.$pid');
       try {
-        File(tempOut).copySync(destFile.path);
-        // Ensure executable permissions
-        Process.runSync('chmod', ['+x', destFile.path]);
+        // Stage to a fresh inode and atomically rename into place instead of
+        // overwriting in place. On macOS, overwriting an existing executable
+        // keeps the kernel's cached code signature (csblob) on the old vnode,
+        // causing taskgated to kill the new binary with SIGKILL (Code Signature Invalid).
+        if (stagedFile.existsSync()) {
+          stagedFile.deleteSync();
+        }
+        builtBin.copySync(stagedFile.path);
+        if (!Platform.isWindows) {
+          Process.runSync('chmod', ['+x', stagedFile.path]);
+        }
+        stagedFile.renameSync(destFile.path);
         print('✔ Installed to ${destFile.path}');
         installedCount++;
       } catch (e) {
+        if (stagedFile.existsSync()) {
+          try {
+            stagedFile.deleteSync();
+          } catch (_) {}
+        }
         print('⚠ Could not write to ${destFile.path}: $e');
       }
     }
   }
 
   try {
-    File(tempOut).deleteSync();
+    tempOutDir.deleteSync(recursive: true);
   } catch (_) {}
 
   if (installedCount > 0) {
