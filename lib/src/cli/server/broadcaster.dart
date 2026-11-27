@@ -97,7 +97,6 @@ class DartGoBroadcaster {
       'appName': appName,
       if (appVersion != null) 'appVersion': appVersion,
       'url': 'http://$host:$port',
-      'bundleUrl': 'http://$host:$port/bundle.json',
       'manifestUrl': 'http://$host:$port/manifest.json',
       'wsUrl': 'ws://$host:$port/ws',
       'port': port,

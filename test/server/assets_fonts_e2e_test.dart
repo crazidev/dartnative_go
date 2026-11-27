@@ -22,9 +22,15 @@ void main() {
 
     setUpAll(() async {
       tempCacheDir = Directory.systemTemp.createTempSync('dngo_assets_test_');
+      final exampleDir = Directory('${Directory.current.path}/example');
+      final exampleAst = File('${exampleDir.path}/.dart_tool/bundles/guest.ast');
+      if (!exampleAst.existsSync()) {
+        final built = await buildGuestAstBundle(exampleDir);
+        expect(built.success, isTrue, reason: built.error);
+      }
       server = DartGoServer(
         DartGoServerOptions(
-          projectDir: Directory('${Directory.current.path}/example'),
+          projectDir: exampleDir,
           startPort: 9140,
           endPort: 9145,
           enableBroadcast: false,
@@ -107,12 +113,12 @@ void main() {
       await res2.drain<void>();
       expect(res2.statusCode, equals(HttpStatus.notModified));
 
-      // Asset via /asset?path=... without assets/ prefix
+      // Legacy /asset?path=... endpoint is disabled (AST client uses /assets/...)
       final req3 = await client.getUrl(
         Uri.parse('$baseUrl/asset?path=dn-logo.png'),
       );
       final res3 = await req3.close();
-      expect(res3.statusCode, equals(HttpStatus.ok));
+      expect(res3.statusCode, equals(HttpStatus.notFound));
       await res3.drain<void>();
 
       // Custom font via /fonts/ArialRoundedBold.ttf + 304
@@ -224,7 +230,7 @@ void main() {
       final loader = BundleLoader();
       final registrar = NativeFontRegistrar();
 
-      final bundle = await loader.fetchBundle(baseUrl);
+      final bundle = await loader.fetchBundle(baseUrl, onlyAst: true);
       final manager = IconFontManager.fromLoader(
         loader,
         baseUrl,

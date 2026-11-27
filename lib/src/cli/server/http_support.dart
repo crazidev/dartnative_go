@@ -5,6 +5,8 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
 import '../packaging/ast_artifact_paths.dart';
 
 const _corsHeader = 'Access-Control-Allow-Origin';
@@ -141,20 +143,47 @@ ContentType contentTypeForFile(String path) {
   };
 }
 
-/// Relative paths of every file under `<project>/assets`, sorted.
-/// Excludes generated `assets/bundles/` artifacts.
+/// Returns true if any segment in [relativePath] is empty, `.`, `..`, or
+/// hidden (starts with `.`).
+bool _hasUnsafeOrHiddenSegment(String relativePath) {
+  if (relativePath.isEmpty) return true;
+  for (final seg in relativePath.split('/')) {
+    if (seg.isEmpty || seg == '.' || seg == '..' || seg.startsWith('.')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/// Relative paths of every regular file under `<project>/assets`, sorted.
+/// Excludes generated `assets/bundles/` artifacts, hidden dotfiles/directories,
+/// and symlinks escaping `<project>/assets/`.
 List<String> collectProjectAssets(Directory projectDir) {
-  final assetsDir = Directory('${projectDir.path}/assets');
+  final assetsDir = Directory(p.join(projectDir.path, 'assets'));
   if (!assetsDir.existsSync()) return const [];
   final results = <String>[];
   try {
+    final canonicalAssets = assetsDir.resolveSymbolicLinksSync();
     for (final entity in assetsDir.listSync(recursive: true)) {
       if (entity is File) {
-        final rel = entity.path
-            .replaceFirst('${projectDir.path}/', '')
+        final canonicalFile = entity.resolveSymbolicLinksSync();
+        if (!p.isWithin(canonicalAssets, canonicalFile)) continue;
+        final relUnderAssets = p
+            .relative(entity.path, from: assetsDir.path)
             .replaceAll(r'\', '/');
-        if (rel.startsWith('assets/bundles/')) continue;
-        results.add(rel);
+        if (_hasUnsafeOrHiddenSegment(relUnderAssets)) continue;
+        if (relUnderAssets == 'bundles' ||
+            relUnderAssets.startsWith('bundles/')) {
+          continue;
+        }
+        final canonicalRel = p
+            .relative(canonicalFile, from: canonicalAssets)
+            .replaceAll(r'\', '/');
+        if (_hasUnsafeOrHiddenSegment(canonicalRel)) continue;
+        if (canonicalRel == 'bundles' || canonicalRel.startsWith('bundles/')) {
+          continue;
+        }
+        results.add('assets/$relUnderAssets');
       }
     }
   } catch (_) {}
@@ -185,24 +214,54 @@ File? resolveAstBundleFile(Directory projectDir) {
   );
 }
 
-/// Maps a request path to a project file (direct, under `assets/`, or with
-/// the `assets/` prefix stripped). Rejects `..` and symlink escapes.
+/// Maps an asset request path strictly to a regular file inside
+/// `<projectDir>/assets/`.
+///
+/// Rejects paths outside `assets/`, hidden dotfiles/directories, `..`
+/// traversal, `assets/bundles/`, malformed URI encodings, null bytes, and
+/// symlinks whose target escapes `<projectDir>/assets/`.
 File? resolveAssetFile(Directory projectDir, String path) {
-  var clean = path.startsWith('/') ? path.substring(1) : path;
-  clean = Uri.decodeComponent(clean).replaceAll(r'\', '/');
-  if (clean.contains('..') || clean.isEmpty) return null;
-
-  final root = projectDir.path;
-  final candidates = ['$root/$clean'];
-  if (clean.startsWith('assets/')) {
-    final stripped = clean.substring('assets/'.length);
-    candidates
-      ..add('$root/$stripped')
-      ..add('$root/assets/$stripped');
-  } else {
-    candidates.add('$root/assets/$clean');
+  if (path.contains('\x00')) return null;
+  String decoded;
+  try {
+    decoded = Uri.decodeComponent(path);
+  } catch (_) {
+    return null;
   }
-  return _firstInsideProject(projectDir, candidates);
+  if (decoded.contains('\x00')) return null;
+
+  var clean = decoded.replaceAll(r'\', '/');
+  while (clean.startsWith('/')) {
+    clean = clean.substring(1);
+  }
+  if (clean.startsWith('assets/')) {
+    clean = clean.substring('assets/'.length);
+  }
+  if (_hasUnsafeOrHiddenSegment(clean)) return null;
+  if (clean == 'bundles' || clean.startsWith('bundles/')) return null;
+
+  final assetsDir = Directory(p.join(projectDir.path, 'assets'));
+  if (!assetsDir.existsSync()) return null;
+
+  try {
+    final canonicalAssets = assetsDir.resolveSymbolicLinksSync();
+    final candidate = File(p.join(assetsDir.path, clean));
+    if (!candidate.existsSync()) return null;
+    if (!FileSystemEntity.isFileSync(candidate.path)) return null;
+    final canonicalFile = candidate.resolveSymbolicLinksSync();
+    if (!p.isWithin(canonicalAssets, canonicalFile)) return null;
+
+    final canonicalRel = p
+        .relative(canonicalFile, from: canonicalAssets)
+        .replaceAll(r'\', '/');
+    if (_hasUnsafeOrHiddenSegment(canonicalRel)) return null;
+    if (canonicalRel == 'bundles' || canonicalRel.startsWith('bundles/')) {
+      return null;
+    }
+    return candidate;
+  } catch (_) {
+    return null;
+  }
 }
 
 File? _firstInsideProject(Directory projectDir, Iterable<String> candidates) {
@@ -211,7 +270,7 @@ File? _firstInsideProject(Directory projectDir, Iterable<String> candidates) {
     for (final candidate in candidates) {
       final file = File(candidate);
       if (file.existsSync() &&
-          file.resolveSymbolicLinksSync().startsWith(canonicalProject)) {
+          p.isWithin(canonicalProject, file.resolveSymbolicLinksSync())) {
         return file;
       }
     }

@@ -105,11 +105,17 @@ void main() {
       for (final key in [
         'hasBytecodeBundle',
         'bytecodeUrl',
+        'depMode',
+        'depsHash',
+        'depsCount',
+        'depsUrl',
+        'userCodeUrl',
+        'userCodeHash',
       ]) {
         expect(
           manifest.containsKey(key),
           isFalse,
-          reason: 'the Bytecode engine was removed: no $key may leak',
+          reason: 'removed/source-mode key $key must not leak in manifest',
         );
       }
     });
@@ -125,6 +131,28 @@ void main() {
         equals(HttpStatus.notFound),
         reason: 'no route may serve a bundle format nothing executes',
       );
+    });
+
+    test('source-mode endpoints are disabled (404)', () async {
+      for (final path in [
+        '/bundle.json',
+        '/app.dart',
+        '/user-code.zip',
+        '/user-code-hash',
+        '/deps.json',
+        '/pkg/dartnative@1.0.0.zip',
+      ]) {
+        final req = await client.getUrl(
+          Uri.parse('http://127.0.0.1:9120$path'),
+        );
+        final res = await req.close();
+        await res.drain<void>();
+        expect(
+          res.statusCode,
+          equals(HttpStatus.notFound),
+          reason: 'source-mode endpoint $path must return 404',
+        );
+      }
     });
 
     test('/assets/icon.png serves bytes', () async {
@@ -143,19 +171,60 @@ void main() {
       );
     });
 
-    test('/asset?path= serves by query parameter', () async {
-      expect(
-        await getBytes('/asset?path=assets/dn-logo.png', mimeType: 'image/png'),
-        isNotEmpty,
-      );
+    test('/asset?path= query endpoint is disabled (404)', () async {
+      for (final path in [
+        '/asset?path=assets/dn-logo.png',
+        '/asset?path=pubspec.yaml',
+      ]) {
+        final req = await client.getUrl(
+          Uri.parse('http://127.0.0.1:9120$path'),
+        );
+        final res = await req.close();
+        await res.drain<void>();
+        expect(
+          res.statusCode,
+          equals(HttpStatus.notFound),
+          reason: 'legacy query endpoint $path must return 404',
+        );
+      }
     });
 
-    test('/bundle.json carries files + manifest + assets', () async {
-      final bundle = await getJson('/bundle.json');
-      expect(bundle['files'], isA<Map>());
-      expect(bundle['manifest'], isA<Map>());
-      expect(bundle['assets'], isA<List>());
-      expect(bundle['manifest']['assets'], isA<List>());
+    test('non-asset project files are never exposed (404)', () async {
+      for (final path in [
+        '/pubspec.yaml',
+        '/lib/main.dart',
+        '/assets/pubspec.yaml',
+        '/assets/lib/main.dart',
+        '/assets/../pubspec.yaml',
+        '/assets/%2e%2e/pubspec.yaml',
+        '/assets/bundles/guest.ast',
+        '/assets/%ZZ',
+      ]) {
+        final req = await client.getUrl(
+          Uri.parse('http://127.0.0.1:9120$path'),
+        );
+        final res = await req.close();
+        await res.drain<void>();
+        expect(
+          res.statusCode,
+          equals(HttpStatus.notFound),
+          reason: 'path $path must not expose project files',
+        );
+      }
+    });
+
+    test('/_dngo/loading omits local filesystem path', () async {
+      final req = await client.getUrl(
+        Uri.parse('http://127.0.0.1:9120/_dngo/loading'),
+      );
+      final res = await req.close();
+      final body = await res.transform(utf8.decoder).join();
+      expect(res.statusCode, equals(HttpStatus.ok));
+      expect(
+        body,
+        isNot(contains(Directory.current.path)),
+        reason: 'loading page must not leak local project path on LAN',
+      );
     });
   });
 }
