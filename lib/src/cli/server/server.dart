@@ -9,14 +9,12 @@ import '../../client/deep_link.dart';
 import '../diagnostics/asset_detector.dart';
 import '../diagnostics/icon_font_detector.dart';
 import '../packaging/ast_builder.dart';
-import '../packaging/ast_artifact_paths.dart';
 import 'broadcaster.dart';
 import 'dev_socket_hub.dart';
 import 'http_support.dart';
 import 'loading_page.dart';
 import 'terminal_ui.dart';
 import '../diagnostics/version_info.dart';
-import '../packaging/dep_packager.dart';
 import '../diagnostics/pubspec_validator.dart';
 
 /// Configuration options for launching the DartNative Go server.
@@ -236,8 +234,6 @@ class DartGoServer {
       _handleHttpRequest(
         request: request,
         projectDir: projectDir,
-        codeDir: codeDir,
-        mainFile: mainFile,
         assets: assets,
         validation: validation,
         serverUrl: serverUrl,
@@ -247,8 +243,7 @@ class DartGoServer {
   }
 
   /// Builds `guest.ast` in the background at startup so `/guest.ast` exists
-  /// before the first client connects. Failures only log; source mode is
-  /// unaffected.
+  /// before the first client connects.
   Future<void> _initialAstBuild(Directory projectDir) async {
     final sw = Stopwatch()..start();
     _console.beginBundling();
@@ -256,7 +251,7 @@ class DartGoServer {
       final result = await AstBuildWorker.instance.build(projectDir);
       sw.stop();
       if (result.success) {
-        final astFile = _resolveAstBundleFile(projectDir);
+        final astFile = resolveAstBundleFile(projectDir);
         final etag = astFile != null
             ? '"${astBundleFingerprintForProject(projectDir, astFile)}"'
             : null;
@@ -415,8 +410,6 @@ class DartGoServer {
   Future<void> _handleHttpRequest({
     required HttpRequest request,
     required Directory projectDir,
-    required Directory codeDir,
-    required File mainFile,
     required ProjectAssets assets,
     required PubspecValidationResult validation,
     required String serverUrl,
@@ -427,16 +420,7 @@ class DartGoServer {
     if (path == '/ws') {
       await _socketHub.accept(request);
     } else if (path == '/manifest.json') {
-      final depResult = DepPackager.resolveAndPack(
-        projectDir,
-        serverUrl,
-        packageName: validation.packageName,
-      );
-      final userCode = DepPackager.packUserCode(
-        codeDir,
-        packageName: validation.packageName,
-      );
-      final astFile = _resolveAstBundleFile(projectDir);
+      final astFile = resolveAstBundleFile(projectDir);
       // Icon-font usage is re-detected per manifest fetch (cached by source
       // fingerprint inside IconFontDetector) so newly added
       // `CupertinoIcons.xxx` / `Icons.xxx` glyphs appear without restart.
@@ -454,12 +438,6 @@ class DartGoServer {
         'appVersion': validation.appVersion,
         ...versions.toJson(),
         'serverUrl': serverUrl,
-        'depMode': true,
-        'depsHash': depResult.depsHash,
-        'depsCount': depResult.deps.length,
-        'depsUrl': '$serverUrl/deps.json',
-        'userCodeUrl': '$serverUrl/user-code.zip',
-        'userCodeHash': userCode.hash,
         'hasIcon': assets.hasIcon,
         'iconUrl': assets.hasIcon
             ? '$serverUrl/assets/icon.png?v=${computeFileVersionToken(assets.iconFile!)}'
@@ -470,7 +448,7 @@ class DartGoServer {
             : null,
         'splashBackgroundColor': assets.splashBackgroundColor,
         'splashBackgroundColorDark': assets.splashBackgroundColorDark,
-        'assets': _collectProjectAssets(projectDir),
+        'assets': collectProjectAssets(projectDir),
         'assetEtags': collectProjectAssetEtags(projectDir),
         // On-demand icon fonts: only the families the guest touches are
         // advertised; devices fetch each `.ttf`/`.otf` via its `url` once.
@@ -489,9 +467,7 @@ class DartGoServer {
         // Tells AST-mode clients whether a bundle is still being built: the
         // initial build runs in the background, so a client that connects in
         // the first seconds sees hasAstBundle=false while bytes are moments
-        // away. Clients wait briefly instead of falling back to source mode.
-        // Stays true when the build failed — clients retry briefly, then fall
-        // back; the build error is in this process's log.
+        // away.
         'astPending': options.rebuildAst && astFile == null,
         // Only when the server runs with `--profile`: the app may open the
         // AST BUNDLE explorer in its DevTools sheet (costs an AST sizing
@@ -502,7 +478,7 @@ class DartGoServer {
             : const <String, String>{},
         // Server components (Phase 5): advertised when the last AST build
         // emitted server_components/manifest.json.
-        ..._serverComponentsManifest(projectDir, serverUrl),
+        ...serverComponentsManifest(projectDir, serverUrl),
         'supportedPlugins': validation.validSupportedPlugins,
         'unsupportedPlugins': validation.unsupportedNativePlugins,
         'versionMismatches': validation.versionMismatches
@@ -521,69 +497,8 @@ class DartGoServer {
         ..headers.add('Cache-Control', 'no-cache')
         ..write(jsonEncode(manifest))
         ..close();
-    } else if (path == '/deps.json') {
-      final depResult = DepPackager.resolveAndPack(
-        projectDir,
-        serverUrl,
-        packageName: validation.packageName,
-      );
-      request.response
-        ..headers.contentType = ContentType.json
-        ..headers.add('Access-Control-Allow-Origin', '*')
-        ..headers.add('Cache-Control', 'no-cache')
-        ..write(
-          jsonEncode({
-            'depsHash': depResult.depsHash,
-            'deps': depResult.deps.map((e) => e.toJson()).toList(),
-          }),
-        )
-        ..close();
-    } else if (path.startsWith('/pkg/') && path.endsWith('.zip')) {
-      final pkgKey = path.substring(5, path.length - 4); // <name>@<version>
-      final depResult = DepPackager.resolveAndPack(
-        projectDir,
-        serverUrl,
-        packageName: validation.packageName,
-      );
-      final zipBytes = depResult.packageZips[pkgKey];
-      if (zipBytes != null) {
-        request.response
-          ..headers.contentType = ContentType('application', 'zip')
-          ..headers.add('Access-Control-Allow-Origin', '*')
-          ..headers.add('Cache-Control', 'public, max-age=31536000')
-          ..add(zipBytes)
-          ..close();
-      } else {
-        request.response
-          ..statusCode = HttpStatus.notFound
-          ..headers.add('Access-Control-Allow-Origin', '*')
-          ..write('Package zip not found: $pkgKey')
-          ..close();
-      }
-    } else if (path == '/user-code.zip') {
-      final userCode = DepPackager.packUserCode(
-        codeDir,
-        packageName: validation.packageName,
-      );
-      request.response
-        ..headers.contentType = ContentType('application', 'zip')
-        ..headers.add('Access-Control-Allow-Origin', '*')
-        ..headers.add('Cache-Control', 'no-cache')
-        ..add(userCode.bytes)
-        ..close();
-    } else if (path == '/user-code-hash') {
-      final userCode = DepPackager.packUserCode(
-        codeDir,
-        packageName: validation.packageName,
-      );
-      request.response
-        ..headers.contentType = ContentType.json
-        ..headers.add('Access-Control-Allow-Origin', '*')
-        ..headers.add('Cache-Control', 'no-cache')
-        ..write(jsonEncode({'hash': userCode.hash}))
-        ..close();
     } else if (path == '/assets.json') {
-      final projectAssets = _collectProjectAssets(projectDir);
+      final projectAssets = collectProjectAssets(projectDir);
       final assetEtags = collectProjectAssetEtags(projectDir);
       request.response
         ..headers.contentType = ContentType.json
@@ -665,7 +580,7 @@ class DartGoServer {
       if (assets.hasIcon) {
         await _serveAssetFile(request, assets.iconFile!);
       } else {
-        final resolved = _resolveAssetFile(projectDir, path);
+        final resolved = resolveAssetFile(projectDir, 'assets/icon.png');
         if (resolved != null) {
           await _serveAssetFile(request, resolved);
         } else {
@@ -680,7 +595,7 @@ class DartGoServer {
       if (assets.hasSplash) {
         await _serveAssetFile(request, assets.splashFile!);
       } else {
-        final resolved = _resolveAssetFile(projectDir, path);
+        final resolved = resolveAssetFile(projectDir, 'assets/splash.png');
         if (resolved != null) {
           await _serveAssetFile(request, resolved);
         } else {
@@ -691,92 +606,21 @@ class DartGoServer {
             ..close();
         }
       }
-    } else if (path.startsWith('/assets/') || path == '/asset') {
-      final assetPath = path == '/asset'
-          ? (request.uri.queryParameters['path'] ?? '')
-          : path;
-      final file = _resolveAssetFile(projectDir, assetPath);
+    } else if (path.startsWith('/assets/')) {
+      final file = resolveAssetFile(projectDir, path);
       if (file != null) {
         await _serveAssetFile(request, file);
       } else {
         request.response
           ..statusCode = HttpStatus.notFound
           ..headers.add('Access-Control-Allow-Origin', '*')
-          ..write('Asset not found: $assetPath')
-          ..close();
-      }
-    } else if (path == '/bundle.json') {
-      try {
-        final bundle = <String, String>{};
-        if (codeDir.existsSync()) {
-          await for (final entity in codeDir.list(recursive: true)) {
-            if (entity is File && entity.path.endsWith('.dart')) {
-              final relPath = entity.path
-                  .replaceFirst('${codeDir.path}/', '')
-                  .replaceAll(r'\', '/');
-              bundle[relPath] = await entity.readAsString();
-            }
-          }
-        }
-        final depResult = DepPackager.resolveAndPack(
-          projectDir,
-          serverUrl,
-          packageName: validation.packageName,
-        );
-        final userCode = DepPackager.packUserCode(
-          codeDir,
-          packageName: validation.packageName,
-        );
-        final projectAssets = _collectProjectAssets(projectDir);
-        final jsonStr = jsonEncode({
-          'manifest': {
-            'appName': validation.appName,
-            'packageName': validation.packageName,
-            'appVersion': validation.appVersion,
-            ...options.versions.toJson(),
-            'depMode': true,
-            'depsHash': depResult.depsHash,
-            'depsCount': depResult.deps.length,
-            'userCodeHash': userCode.hash,
-            'splashBackgroundColor': assets.splashBackgroundColor,
-            'splashBackgroundColorDark': assets.splashBackgroundColorDark,
-            'iconUrl': assets.hasIcon
-                ? '$serverUrl/assets/icon.png?v=${computeFileVersionToken(assets.iconFile!)}'
-                : null,
-            'splashUrl': assets.hasSplash
-                ? '$serverUrl/assets/splash.png?v=${computeFileVersionToken(assets.splashFile!)}'
-                : null,
-            'assets': projectAssets,
-          },
-          'deps': depResult.deps.map((e) => e.toJson()).toList(),
-          'assets': projectAssets,
-          'files': bundle,
-          'breakpoints': _activeBreakpoints,
-        });
-        request.response
-          ..headers.contentType = ContentType.json
-          ..headers.add('Access-Control-Allow-Origin', '*')
-          ..headers.add('Cache-Control', 'no-cache')
-          ..write(jsonStr)
-          ..close();
-        if (DartGoLogger.verbose || DartGoLogger.devLogs) {
-          _console.onArtifactServed(
-            name: 'bundle.json (${bundle.length} files, ${depResult.deps.length} deps)',
-            byteSize: utf8.encode(jsonStr).length,
-          );
-        }
-      } catch (e) {
-        request.response
-          ..statusCode = HttpStatus.internalServerError
-          ..headers.add('Access-Control-Allow-Origin', '*')
-          ..write('Error reading bundle: $e')
+          ..write('Asset not found: $path')
           ..close();
       }
     } else if (path == '/guest.ast') {
       // Pre-compiled AST bundle (tom_ast_generator output).
       // Built via `dart run tool/build_ast_bundle.dart`.
-      // 404 when absent — client stays on source mode.
-      final astFile = _resolveAstBundleFile(projectDir);
+      final astFile = resolveAstBundleFile(projectDir);
       if (astFile != null) {
         final fp = astBundleFingerprintForProject(projectDir, astFile);
         final etag = '"$fp"';
@@ -809,7 +653,7 @@ class DartGoServer {
         );
         serveSw.stop();
         final fingerprints = moduleFingerprintsForProject(projectDir);
-        final projectAssets = _collectProjectAssets(projectDir);
+        final projectAssets = collectProjectAssets(projectDir);
         _console.onArtifactServed(
           name: 'guest.ast',
           byteSize: await astFile.length(),
@@ -860,7 +704,7 @@ class DartGoServer {
           return;
         }
         final bundleFp = bundleFingerprintForProject(projectDir);
-        final astFile = _resolveAstBundleFile(projectDir);
+        final astFile = resolveAstBundleFile(projectDir);
         final fp = astFile != null
             ? astBundleFingerprintForProject(projectDir, astFile)
             : '${DateTime.now().millisecondsSinceEpoch}';
@@ -907,7 +751,7 @@ class DartGoServer {
       // Module URIs shipped in the client bundle (Phase 1). Component
       // builders subtract these from each delta. 404 until the first
       // successful AST build writes it alongside guest.ast.
-      final astFile = _resolveAstBundleFile(projectDir);
+      final astFile = resolveAstBundleFile(projectDir);
       final indexFile = astFile != null
           ? File('${astFile.parent.path}/client-module-index.json')
           : null;
@@ -923,7 +767,7 @@ class DartGoServer {
     } else if (path == '/server-components/manifest.json') {
       // Component ID → bundle URL + fingerprint (Phase 5). 404 when the
       // app has no @ServerComponent annotations (nothing to serve).
-      final astFile = _resolveAstBundleFile(projectDir);
+      final astFile = resolveAstBundleFile(projectDir);
       final manifestFile = astFile != null
           ? File('${astFile.parent.path}/server_components/manifest.json')
           : null;
@@ -941,7 +785,7 @@ class DartGoServer {
         path.endsWith('.ast')) {
       // One pre-built delta bundle per @ServerComponent (Phase 5).
       // The id is strictly validated — no traversal, no sub-paths.
-      final astFile = _resolveAstBundleFile(projectDir);
+      final astFile = resolveAstBundleFile(projectDir);
       final id = path.substring(
         '/server-components/'.length,
         path.length - '.ast'.length,
@@ -961,25 +805,6 @@ class DartGoServer {
           ..statusCode = HttpStatus.notFound
           ..headers.add('Access-Control-Allow-Origin', '*')
           ..write('Server component not found: $id')
-          ..close();
-      }
-    } else if (path == '/app.dart') {
-      try {
-        final content = await mainFile.readAsString();
-        request.response
-          ..headers.contentType = ContentType(
-            'application',
-            'dart',
-            charset: 'utf-8',
-          )
-          ..headers.add('Access-Control-Allow-Origin', '*')
-          ..write(content)
-          ..close();
-      } catch (e) {
-        request.response
-          ..statusCode = HttpStatus.internalServerError
-          ..headers.add('Access-Control-Allow-Origin', '*')
-          ..write('Error reading entrypoint: $e')
           ..close();
       }
     } else if (path == '/breakpoints') {
@@ -1078,13 +903,10 @@ class DartGoServer {
           ..close();
       }
     } else if (path == kDngoLoadingPath) {
-      final versions = options.versions;
       final html = buildLoadingPageHtml(
         appName: validation.appName,
         appVersion: validation.appVersion,
         serverUrl: serverUrl,
-        projectPath: projectDir.path,
-        // versions: versions,
       );
       request.response
         ..headers.contentType = ContentType('text', 'html', charset: 'utf-8')
@@ -1093,205 +915,11 @@ class DartGoServer {
         ..write(html)
         ..close();
     } else {
-      // Fallback: check if requested path points to any project asset
-      final maybeAsset = _resolveAssetFile(projectDir, path);
-      if (maybeAsset != null) {
-        await _serveAssetFile(request, maybeAsset);
-      } else {
-        request.response
-          ..statusCode = HttpStatus.notFound
-          ..headers.add('Access-Control-Allow-Origin', '*')
-          ..write('404 Not Found')
-          ..close();
-      }
-    }
-  }
-
-  /// Collects relative paths for all assets in [projectDir]/assets.
-  static List<String> _collectProjectAssets(Directory projectDir) {
-    final assetsDir = Directory('${projectDir.path}/assets');
-    if (!assetsDir.existsSync()) return const [];
-    final results = <String>[];
-    try {
-      for (final entity in assetsDir.listSync(recursive: true)) {
-        if (entity is File) {
-          final rel = entity.path
-              .replaceFirst('${projectDir.path}/', '')
-              .replaceAll(r'\', '/');
-          results.add(rel);
-        }
-      }
-    } catch (_) {}
-    results.sort();
-    return results;
-  }
-
-  /// Server-component advertisement for `/manifest.json` (Phase 5).
-  ///
-  /// Reads the `server_components/manifest.json` emitted by the last AST
-  /// build (next to `guest.ast`) and re-bases its relative bundle URLs to
-  /// absolute dev-server URLs. Returns `hasServerComponents: false` plus an
-  /// empty component map when the app has no annotated components — never
-  /// throws, so manifest serving stays up even with a half-written build.
-  static Map<String, Object?> _serverComponentsManifest(
-    Directory projectDir,
-    String serverUrl,
-  ) {
-    try {
-      final astFile = _resolveAstBundleFile(projectDir);
-      final manifestFile = astFile != null
-          ? File('${astFile.parent.path}/server_components/manifest.json')
-          : null;
-      if (manifestFile == null || !manifestFile.existsSync()) {
-        return {
-          'hasServerComponents': false,
-          'serverComponentsUrl': null,
-          'serverComponents': const <String, Object?>{},
-        };
-      }
-      final raw =
-          jsonDecode(manifestFile.readAsStringSync()) as Map<String, dynamic>;
-      final entries = (raw['components'] as Map<String, dynamic>?) ?? const {};
-      return {
-        'hasServerComponents': true,
-        'serverComponentsUrl': '$serverUrl/server-components/manifest.json',
-        'serverComponents': {
-          for (final e in entries.entries)
-            e.key: {
-              'url': '$serverUrl/${(e.value as Map)['url']}',
-              'fingerprint': (e.value as Map)['fingerprint'],
-            },
-        },
-      };
-    } catch (_) {
-      return {
-        'hasServerComponents': false,
-        'serverComponentsUrl': null,
-        'serverComponents': const <String, Object?>{},
-      };
-    }
-  }
-
-  /// Locates a pre-compiled AST bundle if `tool/build_ast_bundle.dart` ran.
-  ///
-  /// Checks `.dart_tool/bundles/guest.ast` first, then the legacy
-  /// `assets/bundles/guest.ast` and `build/guest.ast` locations
-  /// (traversal-safe).
-  static File? _resolveAstBundleFile(Directory projectDir) {
-    try {
-      final canonicalProject = projectDir.resolveSymbolicLinksSync();
-      for (final rel in kAstBundleCandidates) {
-        final file = File('${projectDir.path}/$rel');
-        if (file.existsSync()) {
-          final canonicalFile = file.resolveSymbolicLinksSync();
-          if (canonicalFile.startsWith(canonicalProject)) return file;
-        }
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  /// Resolves an asset request path to a concrete [File] inside [projectDir].
-  static File? _resolveAssetFile(
-    Directory projectDir,
-    String path, {
-    String? queryPath,
-  }) {
-    String cleanPath = queryPath ?? path;
-    if (cleanPath.startsWith('/')) {
-      cleanPath = cleanPath.substring(1);
-    }
-    cleanPath = Uri.decodeComponent(cleanPath).replaceAll(r'\', '/');
-
-    // Prevent directory traversal attacks
-    if (cleanPath.contains('..') || cleanPath.isEmpty) return null;
-
-    final candidates = <String>[];
-
-    // 1. Direct path from projectDir (e.g. assets/dn-logo.png)
-    candidates.add('${projectDir.path}/$cleanPath');
-
-    // 2. Under assets/ folder if path doesn't already start with assets/
-    if (!cleanPath.startsWith('assets/')) {
-      candidates.add('${projectDir.path}/assets/$cleanPath');
-    }
-
-    // 3. If path starts with assets/, also check without 'assets/' prefix
-    if (cleanPath.startsWith('assets/')) {
-      final stripped = cleanPath.substring('assets/'.length);
-      candidates.add('${projectDir.path}/$stripped');
-      candidates.add('${projectDir.path}/assets/$stripped');
-    }
-
-    try {
-      final canonicalProject = projectDir.resolveSymbolicLinksSync();
-      for (final candidate in candidates) {
-        final file = File(candidate);
-        if (file.existsSync()) {
-          final canonicalFile = file.resolveSymbolicLinksSync();
-          if (canonicalFile.startsWith(canonicalProject)) {
-            return file;
-          }
-        }
-      }
-    } catch (_) {}
-
-    return null;
-  }
-
-  /// Returns appropriate ContentType based on file extension.
-  static ContentType _getContentTypeForFile(String path) {
-    final lastDot = path.lastIndexOf('.');
-    final ext = lastDot != -1 ? path.substring(lastDot + 1).toLowerCase() : '';
-    switch (ext) {
-      case 'png':
-        return ContentType('image', 'png');
-      case 'jpg':
-      case 'jpeg':
-        return ContentType('image', 'jpeg');
-      case 'gif':
-        return ContentType('image', 'gif');
-      case 'webp':
-        return ContentType('image', 'webp');
-      case 'svg':
-        return ContentType('image', 'svg+xml');
-      case 'ico':
-        return ContentType('image', 'x-icon');
-      case 'bmp':
-        return ContentType('image', 'bmp');
-      case 'json':
-        return ContentType.json;
-      case 'ttf':
-        return ContentType('font', 'ttf');
-      case 'otf':
-        return ContentType('font', 'otf');
-      case 'woff':
-        return ContentType('font', 'woff');
-      case 'woff2':
-        return ContentType('font', 'woff2');
-      case 'mp3':
-        return ContentType('audio', 'mpeg');
-      case 'wav':
-        return ContentType('audio', 'wav');
-      case 'ogg':
-        return ContentType('audio', 'ogg');
-      case 'mp4':
-        return ContentType('video', 'mp4');
-      case 'webm':
-        return ContentType('video', 'webm');
-      case 'txt':
-        return ContentType('text', 'plain', charset: 'utf-8');
-      case 'html':
-      case 'htm':
-        return ContentType('text', 'html', charset: 'utf-8');
-      case 'css':
-        return ContentType('text', 'css', charset: 'utf-8');
-      case 'js':
-        return ContentType('application', 'javascript', charset: 'utf-8');
-      case 'pdf':
-        return ContentType('application', 'pdf');
-      default:
-        return ContentType('application', 'octet-stream');
+      request.response
+        ..statusCode = HttpStatus.notFound
+        ..headers.add('Access-Control-Allow-Origin', '*')
+        ..write('404 Not Found')
+        ..close();
     }
   }
 
@@ -1328,7 +956,7 @@ class DartGoServer {
         return;
       }
       final bytes = await file.readAsBytes();
-      final contentType = _getContentTypeForFile(file.path);
+      final contentType = contentTypeForFile(file.path);
       request.response
         ..statusCode = HttpStatus.ok
         ..headers.contentType = contentType
