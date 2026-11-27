@@ -4706,7 +4706,10 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
             rethrow; // Rethrow other errors from get()
           }
         }
-      } else if (toBridgedInstance(targetValue) case (final bridgedInstance?, true)) {
+      } else if (toBridgedInstance(targetValue) case (
+        final bridgedInstance?,
+        true,
+      )) {
         final bridgedClass = bridgedInstance.bridgedClass;
         switch (methodName) {
           case 'toString':
@@ -9672,7 +9675,19 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
 
             // Return the *new* value for prefix operators
             return newValue;
+          } else if (targetValue is InterpretedClass) {
+            return _stepStaticProperty(
+              targetValue,
+              propertyName,
+              operatorType,
+            ).$2;
           } else {
+            final stepped = _stepBridgedProperty(
+              targetValue,
+              propertyName,
+              operatorType,
+            );
+            if (stepped != null) return stepped.$2;
             throw RuntimeD4rtException(
               "Cannot increment/decrement property on non-instance object of type '${targetValue?.runtimeType}'.",
             );
@@ -9775,7 +9790,19 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
 
             // Return the *new* value for prefix operators
             return newValue;
+          } else if (targetValue is InterpretedClass) {
+            return _stepStaticProperty(
+              targetValue,
+              propertyName,
+              operatorType,
+            ).$2;
           } else {
+            final stepped = _stepBridgedProperty(
+              targetValue,
+              propertyName,
+              operatorType,
+            );
+            if (stepped != null) return stepped.$2;
             throw RuntimeD4rtException(
               "Cannot increment/decrement property on non-instance object of type '${targetValue?.runtimeType}'.",
             );
@@ -10148,7 +10175,15 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
 
         // Return the *original* value for postfix operators
         return originalValue;
+      } else if (targetValue is InterpretedClass) {
+        return _stepStaticProperty(targetValue, propertyName, operatorType).$1;
       } else {
+        final stepped = _stepBridgedProperty(
+          targetValue,
+          propertyName,
+          operatorType,
+        );
+        if (stepped != null) return stepped.$1;
         throw RuntimeD4rtException(
           "Cannot increment/decrement property on non-instance object of type '${targetValue?.runtimeType}'.",
         );
@@ -10252,7 +10287,15 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
 
         // Return the *original* value for postfix operators
         return originalValue;
+      } else if (targetValue is InterpretedClass) {
+        return _stepStaticProperty(targetValue, propertyName, operatorType).$1;
       } else {
+        final stepped = _stepBridgedProperty(
+          targetValue,
+          propertyName,
+          operatorType,
+        );
+        if (stepped != null) return stepped.$1;
         throw RuntimeD4rtException(
           "Cannot increment/decrement property on non-instance object of type '${targetValue?.runtimeType}'.",
         );
@@ -11809,6 +11852,76 @@ class InterpreterVisitor extends GeneralizingSAstVisitor<Object?> {
 
     Logger.debug("[Visitor.visitEnumDeclaration] END (Pass 2) for '$enumName'");
     return null; // Declaration doesn't return a value
+  }
+
+  /// Steps a static property (`Class.n++` / `++Class.n` / `--`) on an
+  /// [InterpretedClass], returning `(oldValue, newValue)`.
+  (Object?, Object?) _stepStaticProperty(
+    InterpretedClass klass,
+    String name,
+    String operatorType,
+  ) {
+    final getter = klass.findStaticGetter(name);
+    final Object? oldValue;
+    if (getter != null) {
+      oldValue = getter.call(this, [], {});
+    } else if (klass.staticCells.containsKey(name) ||
+        klass.staticFields.containsKey(name)) {
+      oldValue = klass.getStaticField(name);
+    } else {
+      throw RuntimeD4rtException(
+        "Class '${klass.name}' has no static field or getter named '$name'.",
+      );
+    }
+    final newValue = computeCompoundValue(
+      oldValue,
+      1,
+      operatorType == '++' ? '+=' : '-=',
+    );
+    final setter = klass.findStaticSetter(name);
+    if (setter != null) {
+      setter.call(this, [newValue], {});
+    } else if (klass.staticCells.containsKey(name) ||
+        klass.staticFields.containsKey(name)) {
+      klass.setStaticField(name, newValue);
+    } else {
+      throw RuntimeD4rtException(
+        "Class '${klass.name}' has no static setter or field named '$name'.",
+      );
+    }
+    return (oldValue, newValue);
+  }
+
+  /// Steps a property (`obj.p++` / `++obj.p` / `--`) on a bridged native
+  /// receiver (e.g. `Signal<int>.value++`), or returns `null` when [target] is
+  /// not a bridged instance. Returns `(oldValue, newValue)`.
+  (Object?, Object?)? _stepBridgedProperty(
+    Object? target,
+    String propertyName,
+    String operatorType,
+  ) {
+    final (bridged, isBridged) = toBridgedInstance(target);
+    if (!isBridged) return null;
+    final bridgedClass = bridged!.bridgedClass;
+    final getter = bridgedClass.findReachableGetterAdapter(propertyName, this);
+    final setter = bridgedClass.findReachableSetterAdapter(propertyName, this);
+    if (getter == null || setter == null) {
+      throw RuntimeD4rtException(
+        "Cannot increment/decrement '${bridgedClass.name}.$propertyName': "
+        "the bridge has ${getter == null ? 'no getter' : 'no setter'} for it.",
+      );
+    }
+    final oldValue = getter(this, bridged.nativeObject);
+    final newValue = computeCompoundValue(
+      oldValue,
+      1,
+      operatorType == '++' ? '+=' : '-=',
+    );
+    D4.withActiveVisitor<void>(
+      this,
+      () => setter(this, bridged.nativeObject, newValue),
+    );
+    return (oldValue, newValue);
   }
 
   // Helper function to compute compound assignment values

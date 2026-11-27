@@ -53,8 +53,10 @@ bool main() {
     expect(result, isTrue);
   });
 
-  test('GlobalKey<SliderMenuContainerState> constructs reified key for SliderMenuContainer', () async {
-    final result = await runSnippet('''
+  test(
+    'GlobalKey<SliderMenuContainerState> constructs reified key for SliderMenuContainer',
+    () async {
+      final result = await runSnippet('''
 import 'package:dartnative/dartnative.dart';
 
 Object main() {
@@ -67,8 +69,9 @@ Object main() {
   return widget.runtimeType.toString();
 }
 ''');
-    expect(result, isA<String>());
-  });
+      expect(result, isA<String>());
+    },
+  );
 
   test('Iterable.indexed native Record matches Dart record pattern', () async {
     final result = await runSnippet('''
@@ -85,8 +88,10 @@ String main() {
     expect(result, equals('0:a:1,1:b:2'));
   });
 
-  test('Listenable.watch works on interpreted ChangeNotifier subclass', () async {
-    final result = await runSnippet('''
+  test(
+    'Listenable.watch works on interpreted ChangeNotifier subclass',
+    () async {
+      final result = await runSnippet('''
 import 'package:dartnative/dartnative.dart';
 
 class _ClickHistory extends ChangeNotifier {
@@ -99,8 +104,9 @@ int main() {
   return watched.count;
 }
 ''');
-    expect(result, equals(42));
-  });
+      expect(result, equals(42));
+    },
+  );
 
   test('await on null and non-Future values succeeds', () async {
     final result = await runSnippet('''
@@ -113,4 +119,33 @@ Future<String> main() async {
 ''');
     expect(result, equals('null:7'));
   });
+
+  test(
+    'prefix and postfix ++/-- work on bridged Signal.value and class statics',
+    () async {
+      final result = await runSnippet('''
+import 'package:dartnative/dartnative.dart';
+
+class _Box {
+  static int s = 10;
+  final Signal<int> counter = signal<int>(0);
+}
+
+String main() {
+  final sig = signal<int>(5);
+  final a = sig.value++;
+  final b = ++sig.value;
+  final c = sig.value--;
+  final d = --sig.value;
+  final box = _Box();
+  final e = box.counter.value++;
+  final f = ++box.counter.value;
+  final g = _Box.s++;
+  final h = ++_Box.s;
+  return '\$a,\$b,\$c,\$d,\${sig.value}|\$e,\$f,\${box.counter.value}|\$g,\$h,\${_Box.s}';
+}
+''');
+      expect(result, equals('5,7,7,5,5|0,2,2|10,12,12'));
+    },
+  );
 }
