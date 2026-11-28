@@ -13,6 +13,11 @@ version: 1.279.0
 #   text-rendering screen does) fails to load the module.
 # - `dart:io` `ProcessInfo` bridge (`stdlib/io/process_info.dart`): `currentRss`
 #   / `maxRss` are host values like `Platform`, gated on DangerousPermission.
+# - `dart:ffi` stdlib registrar (`stdlib/ffi.dart`): `DynamicLibrary` is
+#   bridged for real and `lookupFunction` maps the guest's `FunctionRuntimeType`
+#   onto a real `lookupFunction<NativeT, DartT>` for a fixed signature table
+#   (zero/one argument, int/double/bool/void). Unsupported signatures throw at
+#   call time, so a guest that guards its FFI use keeps working.
 repository: https://github.com/al-the-bear/tom_d4rt
 homepage: https://github.com/al-the-bear/tom_d4rt
 platforms:

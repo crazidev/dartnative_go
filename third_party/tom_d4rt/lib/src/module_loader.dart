@@ -6,6 +6,7 @@ import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/analysis/features.dart';
 import 'package:tom_d4rt/src/stdlib/convert.dart';
 import 'package:tom_d4rt/src/stdlib/developer.dart';
+import 'package:tom_d4rt/src/stdlib/ffi.dart';
 import 'package:tom_d4rt/src/declared_names.dart';
 import 'package:tom_d4rt/src/execution_run.dart';
 import 'package:tom_d4rt/src/stdlib/isolate.dart';
@@ -477,6 +478,7 @@ class ModuleLoader {
     'typed_data': TypedDataStdlib.register,
     'isolate': IsolateStdlib.register,
     'developer': DeveloperStdlib.register,
+    'ffi': FfiStdlib.register,
   };
 
   /// Loads a `dart:*` stdlib module into an isolated per-stdlib [Environment].

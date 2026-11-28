@@ -11,6 +11,7 @@ import 'package:tom_d4rt_ast/src/runtime/module_context.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/collection.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/convert.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/developer.dart';
+import 'package:tom_d4rt_ast/src/runtime/stdlib/ffi.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/isolate.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/math.dart';
 import 'package:tom_d4rt_ast/src/runtime/stdlib/stdlib_io.dart'
@@ -411,6 +412,7 @@ class AstModuleLoader implements ModuleContext {
     'typed_data': (env) => TypedDataStdlib.register(env),
     'isolate': (env) => IsolateStdlib.register(env),
     'developer': (env) => DeveloperStdlib.register(env),
+    'ffi': (env) => FfiStdlib.register(env),
   };
 
   /// Per-stdlib isolated environments (GEN-101 design, restored in GEN-107
