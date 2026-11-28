@@ -15,6 +15,7 @@ Cross-cutting depth (reload internals, bridge details) stays in the root
 | Debugging | `lib/src/{dap,debug}/`, `interpreter/debug_controller.dart` | [debugging.md](debugging.md) |
 | Host UI | `lib/main.dart`, `pkgs/dngo_ui`, `pkgs/dngo_api`, `lib/src/{preview,widgets,devtool,theme,client}/` | [host-ui.md](host-ui.md) |
 | UI automation and tests | `lib/src/runner/{ui_probe,ui_tree_json,icon_registry}.dart`, `test/` | [testing.md](testing.md) |
+| Headless fixtures | `playground/`, `silly_benchmark/`, `test/{playground,silly_benchmark}/` | [playground-headless.md](playground-headless.md), [silly-benchmark.md](silly-benchmark.md) |
 
 ## Rules that apply everywhere
 

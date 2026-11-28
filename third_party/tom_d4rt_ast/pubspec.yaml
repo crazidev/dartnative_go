@@ -35,6 +35,11 @@ version: 0.260.0
 # - `dart:developer` stdlib bridge surface (adapted from upstream D4rt).
 # - `dart:io` `ProcessInfo` bridge (`stdlib/io/process_info.dart`): `currentRss`
 #   / `maxRss` are host values like `Platform`, gated on DangerousPermission.
+# - `dart:ffi` stdlib registrar (`stdlib/ffi.dart`): `DynamicLibrary` is
+#   bridged for real and `lookupFunction` maps the guest's `FunctionRuntimeType`
+#   onto a real `lookupFunction<NativeT, DartT>` for a fixed signature table
+#   (zero/one argument, int/double/bool/void). Unsupported signatures throw at
+#   call time, so a guest that guards its FFI use keeps working.
 # - Async continuation slicing (`asyncSliceBudgetMicros`, 4 ms default): a spent
 #   budget hands the next continuation to a timer turn so an embedder's frame
 #   pipeline runs.

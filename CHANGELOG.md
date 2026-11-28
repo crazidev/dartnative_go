@@ -105,6 +105,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Playground host fakes**: `fake_media_gallery_ast.dart`,
   `fake_connectivity_ast.dart` and `fake_audio_player_ast.dart` (each covering
   both engines) shadow the plugins whose FFI asserts on a host.
+- **`dn-silly-benchmark` runs headless on both engines** (vendored under
+  `silly_benchmark/`, coverage in `test/silly_benchmark/`). The bouncing-balls
+  benchmark is the second fixture beside `playground/` and the first that owns
+  its own frame clock (`Ticker(callback)..start()`,
+  `DartNativePerformance.addFrameTimingCallback`, `Timer.periodic`), reads
+  `ProcessInfo.currentRss` every sample and calls `clock()` through
+  `dart:ffi`. See `docs/architecture/silly-benchmark.md`.
+- **`dart:ffi` stdlib bridge in both vendored engines** (`stdlib/ffi.dart`).
+  A module importing `dart:ffi` used to be rejected at load — fatally in source
+  mode, where the guest's `try`/`catch` never runs. `DynamicLibrary` is now
+  bridged for real (`process`, `open`, `executable`) and `lookupFunction` maps
+  the guest's `FunctionRuntimeType` onto a real `lookupFunction<NativeT, DartT>`
+  for a fixed signature table (zero/one argument; int, double, bool or void
+  returns). Anything outside the table throws at call time, so guarded FFI use
+  degrades instead of breaking the module.
 - **Bridges for the rest of the first-party plugin surface**:
   `dartnative_skia`, `_sqlite`, `_secure_storage`, `_hive`, `_social_sign_in`,
   `_firebase`, `_video_player`, `_audio`, `_permissions`, `_camera`,
